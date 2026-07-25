@@ -91,6 +91,14 @@ export function LiveOrdersPanel() {
 
   const prevSeenRef = useRef<Set<string>>(new Set());
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showEnablePrompt, setShowEnablePrompt] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("live-orders-audio-prompt-dismissed") !== "1";
+  });
+  function dismissEnablePrompt() {
+    sessionStorage.setItem("live-orders-audio-prompt-dismissed", "1");
+    setShowEnablePrompt(false);
+  }
 
   useEffect(() => {
     // Detect newly arrived bookings for a subtle "new" fade indicator.
