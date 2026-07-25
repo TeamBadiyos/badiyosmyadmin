@@ -449,6 +449,22 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
               </button>
             )}
           </div>
+          <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
+            {locateError && (
+              <span className="bg-card/95 backdrop-blur border border-border rounded-[10px] px-2 py-1 text-[11px] font-semibold text-destructive shadow-sm">
+                {locateError}
+              </span>
+            )}
+            <button
+              onClick={handleLocate}
+              disabled={locating}
+              aria-label="Use my current location"
+              title="Use my current location"
+              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <LocateFixed size={18} className={locating ? "animate-pulse text-primary" : ""} />
+            </button>
+          </div>
         </div>
         <div className="shrink-0 border-t border-border px-6 py-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
