@@ -67,6 +67,7 @@ export function BookingDetailsModal({
   const queryClient = useQueryClient();
   const fetchDetails = useServerFn(getBookingDetails);
   const updateStatus = useServerFn(updateBookingStatus);
+  const cancelFn = useServerFn(cancelBooking);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["bookings", "details", bookingId],
@@ -79,6 +80,12 @@ export function BookingDetailsModal({
     [data],
   );
   const [nextStatus, setNextStatus] = useState<BookingStatus | "">("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
+
+  const isTerminal =
+    !!data && ["completed", "cancelled", "rejected"].includes(data.status);
+  const canCancel = canEdit && !!data && !isTerminal;
 
   const mutation = useMutation({
     mutationFn: (payload: { newStatus: BookingStatus }) =>
@@ -90,6 +97,19 @@ export function BookingDetailsModal({
       setNextStatus("");
     },
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: (reason: CancellationReason) =>
+      cancelFn({ data: { bookingId, reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      setCancelOpen(false);
+      setCancelReason("");
+    },
+  });
+
 
   const inr = new Intl.NumberFormat("en-IN", {
     style: "currency",
