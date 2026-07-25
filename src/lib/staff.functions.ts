@@ -34,8 +34,7 @@ export const listStaffUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StaffUserRow[]> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("staff_users")
       .select("id, auth_user_id, name, email, role, zone_id, status, created_at")
       .order("created_at", { ascending: false });
@@ -48,7 +47,7 @@ export const listStaffUsers = createServerFn({ method: "GET" })
     );
     const zoneNameById = new Map<string, string>();
     if (zoneIds.length) {
-      const { data: zones } = await supabaseAdmin
+      const { data: zones } = await context.supabase
         .from("zones")
         .select("id, name")
         .in("id", zoneIds);
