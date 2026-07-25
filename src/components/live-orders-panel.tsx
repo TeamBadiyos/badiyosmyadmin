@@ -305,22 +305,41 @@ function OrderCard(props: {
       </div>
 
       {isAccepted ? (
-        <div className="mt-4">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+        <div className="mt-4 space-y-2">
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Assign expert
           </label>
           <div className="relative">
             <select
-              disabled
-              className="w-full appearance-none bg-muted/40 border border-border rounded-[14px] px-3 py-2.5 text-[13px] text-muted-foreground"
+              value={selectedExpert}
+              onChange={(e) => setSelectedExpert(e.target.value)}
+              disabled={assigning}
+              className="w-full appearance-none bg-card border border-border rounded-[14px] px-3 py-2.5 text-[13px] text-foreground disabled:opacity-60"
             >
-              <option>Select expert…</option>
+              <option value="">
+                {experts.length === 0 ? "No active experts" : "Select expert…"}
+              </option>
+              {experts.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name} · {ex.phone}
+                </option>
+              ))}
             </select>
             <ChevronDown
               size={16}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
             />
           </div>
+          <button
+            onClick={() => selectedExpert && onAssign(selectedExpert)}
+            disabled={!selectedExpert || assigning}
+            className="w-full h-10 rounded-[14px] bg-primary text-white text-[13px] font-bold disabled:opacity-60"
+          >
+            {assigning ? "Assigning…" : "Confirm assignment"}
+          </button>
+          {assignError && (
+            <p className="text-[12px] text-destructive">{assignError}</p>
+          )}
         </div>
       ) : state?.kind === "rejecting" ? (
         <div className="mt-4 space-y-2">
