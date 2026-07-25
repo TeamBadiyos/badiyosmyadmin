@@ -189,6 +189,41 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_extensions: {
+        Row: {
+          booking_id: string
+          created_at: string
+          extra_minutes: number
+          id: string
+          price: number
+          razorpay_payment_id: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          extra_minutes: number
+          id?: string
+          price: number
+          razorpay_payment_id?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          extra_minutes?: number
+          id?: string
+          price?: number
+          razorpay_payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_extensions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           address_id: string | null
@@ -204,8 +239,10 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time_slot: string | null
           service_duration_minutes: number
+          service_end_at: string | null
           service_label: string
           slot_type: string
+          started_at: string | null
           status: string
           updated_at: string | null
           user_id: string | null
@@ -225,8 +262,10 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
           service_duration_minutes: number
+          service_end_at?: string | null
           service_label: string
           slot_type: string
+          started_at?: string | null
           status?: string
           updated_at?: string | null
           user_id?: string | null
@@ -246,8 +285,10 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
           service_duration_minutes?: number
+          service_end_at?: string | null
           service_label?: string
           slot_type?: string
+          started_at?: string | null
           status?: string
           updated_at?: string | null
           user_id?: string | null
@@ -955,6 +996,14 @@ export type Database = {
         Args: { _booking_id: string }
         Returns: undefined
       }
+      extend_booking: {
+        Args: {
+          _booking_id: string
+          _extra_minutes: number
+          _razorpay_payment_id: string
+        }
+        Returns: string
+      }
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
       is_active_staff: {
@@ -1043,6 +1092,7 @@ export type Database = {
         }
         Returns: string
       }
+      start_service: { Args: { _booking_id: string }; Returns: string }
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
