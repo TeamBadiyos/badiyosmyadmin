@@ -241,6 +241,8 @@ function Shell() {
           <RolesPage />
         ) : active === "audit" ? (
           <AuditLogsPage />
+        ) : active === "reports" ? (
+          <ReportsPage role={role} />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
