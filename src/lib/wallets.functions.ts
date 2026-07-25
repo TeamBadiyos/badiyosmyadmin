@@ -186,8 +186,8 @@ export const listPayoutItems = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<PayoutItem[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: items, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: items, error } = await db
       .from("payout_batch_items")
       .select("id, batch_id, owner_type, owner_id, amount, paid, paid_at")
       .eq("batch_id", data.batch_id)
@@ -200,10 +200,10 @@ export const listPayoutItems = createServerFn({ method: "GET" })
 
     const [expertsRes, partnersRes] = await Promise.all([
       expertIds.length
-        ? supabaseAdmin.from("experts").select("id, name").in("id", expertIds)
+        ? db.from("experts").select("id, name").in("id", expertIds)
         : Promise.resolve({ data: [], error: null }),
       partnerIds.length
-        ? supabaseAdmin.from("area_partners").select("id, name").in("id", partnerIds)
+        ? db.from("area_partners").select("id, name").in("id", partnerIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
     if (expertsRes.error) throw new Error(expertsRes.error.message);
