@@ -52,7 +52,9 @@ export const listPendingBookings = createServerFn({ method: "GET" })
     const rows = bookings ?? [];
     if (rows.length === 0) return [];
 
-    const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+    const userIds = Array.from(
+      new Set(rows.map((r) => r.user_id).filter((id): id is string => !!id)),
+    );
     const addressIds = Array.from(
       new Set(rows.map((r) => r.address_id).filter(Boolean) as string[]),
     );
