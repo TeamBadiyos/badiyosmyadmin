@@ -145,33 +145,72 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
     return map;
   }, [data]);
 
-  // Audio alerts for new "Confirmed" (unactioned) bookings.
-  const confirmedIds = useMemo(
-    () => (grouped.get("confirmed") ?? []).map((b) => b.id),
+  // Audio alerts for new "Needs Expert" (accepted, awaiting expert) bookings.
+  const needsExpertIds = useMemo(
+    () => (grouped.get("accepted") ?? []).map((b) => b.id),
     [grouped],
   );
   const audioRef = useRef<AudioHandle | null>(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-  const [showEnablePrompt, setShowEnablePrompt] = useState(() => {
+  const [muted, setMuted] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return sessionStorage.getItem("pipeline-audio-prompt-dismissed") !== "1";
+    return localStorage.getItem("pipeline-audio-muted") === "1";
   });
-  function dismissEnablePrompt() {
-    sessionStorage.setItem("pipeline-audio-prompt-dismissed", "1");
-    setShowEnablePrompt(false);
-  }
+  useEffect(() => {
+    try {
+      localStorage.setItem("pipeline-audio-muted", muted ? "1" : "0");
+    } catch {
+      /* noop */
+    }
+  }, [muted]);
+
+  // Autoplay unlock: on first user interaction after mount, silently start &
+  // stop a zero-volume AudioContext so subsequent programmatic beeps play.
+  const audioUnlockedRef = useRef(false);
+  useEffect(() => {
+    if (audioUnlockedRef.current) return;
+    const unlock = () => {
+      if (audioUnlockedRef.current) return;
+      audioUnlockedRef.current = true;
+      try {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        const ctx = new Ctx();
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        src.connect(gain).connect(ctx.destination);
+        src.start(0);
+        // Resume in case the context started suspended.
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
+        setTimeout(() => ctx.close().catch(() => {}), 100);
+      } catch {
+        /* audio unsupported */
+      }
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+    window.addEventListener("pointerdown", unlock, { once: false });
+    window.addEventListener("keydown", unlock, { once: false });
+    window.addEventListener("touchstart", unlock, { once: false });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!audioEnabled) {
-      stopBeep(audioRef);
-      return;
-    }
-    if (confirmedIds.length === 0) {
+    if (muted || needsExpertIds.length === 0) {
       stopBeep(audioRef);
       return;
     }
     startBeep(audioRef);
-  }, [audioEnabled, confirmedIds.length]);
+  }, [muted, needsExpertIds.length]);
 
   useEffect(() => {
     return () => stopBeep(audioRef);
@@ -195,50 +234,22 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
           )}
         </div>
         <button
-          onClick={() => setAudioEnabled((v) => !v)}
-          className={`shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-            audioEnabled
-              ? "border-primary text-primary bg-primary-tint"
-              : "border-border text-muted-foreground hover:text-foreground"
+          type="button"
+          onClick={() => setMuted((v) => !v)}
+          className={`shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full border transition-colors ${
+            muted
+              ? "border-border text-muted-foreground hover:text-foreground bg-background"
+              : "border-primary text-primary bg-primary-tint"
           }`}
-          aria-pressed={audioEnabled}
-          title="Toggle order alert sound"
+          aria-pressed={muted}
+          aria-label={muted ? "Unmute order alerts" : "Mute order alerts"}
+          title={muted ? "Alerts muted — click to unmute" : "Alerts on — click to mute"}
         >
-          {audioEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-          {audioEnabled ? "Sound on" : "Sound off"}
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
       </div>
 
-      {showEnablePrompt && !audioEnabled && (
-        <div className="mb-4 flex items-start gap-3 p-3 rounded-[14px] bg-primary-tint border border-primary/30">
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-foreground">
-              Enable order alerts?
-            </p>
-            <p className="text-[12px] text-muted-foreground mt-0.5">
-              Play a sound while new bookings wait in “Confirmed”.
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={() => {
-                setAudioEnabled(true);
-                dismissEnablePrompt();
-              }}
-              className="text-[12px] font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90"
-            >
-              Enable
-            </button>
-            <button
-              onClick={dismissEnablePrompt}
-              aria-label="Dismiss"
-              className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+
 
       <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
         {COLUMNS.map((col) => {
