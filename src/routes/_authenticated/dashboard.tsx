@@ -6,6 +6,8 @@ import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
+import { ExpertsPage } from "@/components/experts-page";
+import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 
 import {
