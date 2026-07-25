@@ -30,8 +30,11 @@ type LocalState =
 export function LiveOrdersPanel() {
   const queryClient = useQueryClient();
   const fetchPending = useServerFn(listPendingBookings);
+  const fetchPending = useServerFn(listPendingBookings);
+  const fetchExperts = useServerFn(listActiveExperts);
   const accept = useServerFn(acceptPendingBooking);
   const reject = useServerFn(rejectPendingBooking);
+  const assign = useServerFn(assignExpertToBooking);
 
   const { data, isLoading } = useQuery({
     queryKey: ["live-orders", "pending"],
