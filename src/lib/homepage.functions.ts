@@ -1,12 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type JsonRecord = Record<string, any>;
+
 export type HomepageSection = {
   section_id: string;
   section_type: string;
   display_order: number;
   is_active: boolean;
-  payload: Record<string, unknown>;
+  payload: JsonRecord;
   city_id: string | null;
   updated_at: string | null;
 };
