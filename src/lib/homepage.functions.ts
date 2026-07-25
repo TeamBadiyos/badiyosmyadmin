@@ -34,8 +34,7 @@ export const listHomepageSections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HomepageSection[]> => {
     await requireHomepageStaff(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("homepage_sections")
       .select("*")
       .order("section_type", { ascending: true })

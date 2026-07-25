@@ -41,8 +41,7 @@ export const getReferralConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ReferralConfig> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("referral_config")
       .select("id, reward_coins, is_active, updated_at")
       .order("updated_at", { ascending: false, nullsFirst: false })
@@ -76,8 +75,7 @@ export const listReferrals = createServerFn({ method: "GET" })
   .inputValidator((input: { status?: string | null } | undefined) => input ?? {})
   .handler(async ({ data, context }): Promise<ReferralRow[]> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+    let q = context.supabase
       .from("referral_transactions")
       .select(
         "id, status, reward_amount, reward_date, booking_id, created_at, reversal_reason, referrer_id, referred_user_id",
@@ -94,7 +92,7 @@ export const listReferrals = createServerFn({ method: "GET" })
       if (t.referred_user_id) userIds.add(t.referred_user_id);
     }
     const { data: users, error: uErr } = userIds.size
-      ? await supabaseAdmin.from("users").select("id, full_name, phone").in("id", Array.from(userIds))
+      ? await context.supabase.from("users").select("id, full_name, phone").in("id", Array.from(userIds))
       : { data: [], error: null };
     if (uErr) throw new Error(uErr.message);
     const uMap = new Map<string, { name: string | null; phone: string | null }>();
@@ -124,8 +122,7 @@ export const listReferralStatuses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<string[]> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("referral_transactions")
       .select("status")
       .limit(1000);

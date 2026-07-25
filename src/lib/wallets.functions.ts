@@ -62,13 +62,13 @@ export const listWalletOwners = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WalletOwner[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [{ data: experts, error: e1 }, { data: partners, error: e2 }, { data: ledger, error: e3 }] =
       await Promise.all([
-        supabaseAdmin.from("experts").select("id, name, phone, wallet_balance"),
-        supabaseAdmin.from("area_partners").select("id, name, phone"),
-        supabaseAdmin.from("wallet_ledger").select("owner_type, owner_id, type, amount"),
+        db.from("experts").select("id, name, phone, wallet_balance"),
+        db.from("area_partners").select("id, name, phone"),
+        db.from("wallet_ledger").select("owner_type, owner_id, type, amount"),
       ]);
     if (e1) throw new Error(e1.message);
     if (e2) throw new Error(e2.message);
@@ -112,8 +112,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<LedgerEntry[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+    const { data: rows, error } = await context.supabase
       .from("wallet_ledger")
       .select("id, amount, type, reason, created_at")
       .eq("owner_type", data.owner_type)
@@ -164,8 +163,7 @@ export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PayoutBatch[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("payout_batches")
       .select("id, week_start, week_end, status, total_amount, created_at")
       .order("week_start", { ascending: false });
@@ -188,8 +186,8 @@ export const listPayoutItems = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<PayoutItem[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: items, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: items, error } = await db
       .from("payout_batch_items")
       .select("id, batch_id, owner_type, owner_id, amount, paid, paid_at")
       .eq("batch_id", data.batch_id)
@@ -202,10 +200,10 @@ export const listPayoutItems = createServerFn({ method: "GET" })
 
     const [expertsRes, partnersRes] = await Promise.all([
       expertIds.length
-        ? supabaseAdmin.from("experts").select("id, name").in("id", expertIds)
+        ? db.from("experts").select("id, name").in("id", expertIds)
         : Promise.resolve({ data: [], error: null }),
       partnerIds.length
-        ? supabaseAdmin.from("area_partners").select("id, name").in("id", partnerIds)
+        ? db.from("area_partners").select("id, name").in("id", partnerIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
     if (expertsRes.error) throw new Error(expertsRes.error.message);

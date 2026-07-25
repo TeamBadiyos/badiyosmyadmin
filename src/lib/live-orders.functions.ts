@@ -36,11 +36,9 @@ export const listPendingBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PendingBooking[]> => {
     await assertActiveStaff(context);
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const db = context.supabase;
 
-    const { data: bookings, error } = await supabaseAdmin
+    const { data: bookings, error } = await db
       .from("bookings")
       .select(
         "id, user_id, address_id, service_label, scheduled_date, scheduled_time_slot, created_at",
@@ -61,9 +59,9 @@ export const listPendingBookings = createServerFn({ method: "GET" })
     );
 
     const [usersRes, addrRes] = await Promise.all([
-      supabaseAdmin.from("users").select("id, full_name").in("id", userIds),
+      db.from("users").select("id, full_name").in("id", userIds),
       addressIds.length
-        ? supabaseAdmin
+        ? db
             .from("addresses")
             .select("id, label, area, city, full_address")
             .in("id", addressIds)

@@ -47,14 +47,14 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       context,
     }): Promise<{ rows: AuditLogRow[]; total: number; page: number; pageSize: number }> => {
       await requireSuperAdmin(context.supabase, context.userId);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const db = context.supabase;
 
       const page = Math.max(1, Number(data.page ?? 1));
       const pageSize = Math.min(100, Math.max(1, Number(data.pageSize ?? 25)));
       const fromIdx = (page - 1) * pageSize;
       const toIdx = fromIdx + pageSize - 1;
 
-      let q = supabaseAdmin
+      let q = db
         .from("audit_logs")
         .select("id, actor_id, action, target_table, target_id, before_state, after_state, created_at", {
           count: "exact",
@@ -78,7 +78,7 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       );
       const nameByAuthId = new Map<string, string>();
       if (actorIds.length) {
-        const { data: staff } = await supabaseAdmin
+        const { data: staff } = await db
           .from("staff_users")
           .select("auth_user_id, name")
           .in("auth_user_id", actorIds);
@@ -117,14 +117,14 @@ export const listAuditFilterOptions = createServerFn({ method: "GET" })
       tables: string[];
     }> => {
       await requireSuperAdmin(context.supabase, context.userId);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const db = context.supabase;
 
       const [{ data: staff }, { data: logs }] = await Promise.all([
-        supabaseAdmin
+        db
           .from("staff_users")
           .select("auth_user_id, name")
           .order("name", { ascending: true }),
-        supabaseAdmin
+        db
           .from("audit_logs")
           .select("action, target_table")
           .order("created_at", { ascending: false })
