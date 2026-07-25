@@ -14,6 +14,9 @@ import {
   BarChart3,
   ScrollText,
   LogOut,
+  Menu,
+  X,
+
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
 
@@ -113,13 +116,25 @@ function Shell({
   onLogout: () => void;
 }) {
   const activeItem = NAV_ITEMS.find((n) => n.key === active)!;
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen w-full flex bg-background">
-      {/* Sidebar */}
-      <aside className="w-[240px] shrink-0 bg-card border-r border-border flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-border">
+    <div className="min-h-screen w-full bg-background lg:pl-[240px]">
+      {/* Sidebar — fixed on desktop, off-canvas drawer on mobile */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-[240px] bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="h-16 flex items-center justify-between px-6 border-b border-border">
           <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto" />
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            className="lg:hidden text-muted-foreground hover:text-foreground"
+          >
+            <X size={20} />
+          </button>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
@@ -128,14 +143,21 @@ function Shell({
             return (
               <button
                 key={item.key}
-                onClick={() => setActive(item.key)}
+                onClick={() => {
+                  setActive(item.key);
+                  setMobileOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                   isActive
                     ? "border-primary bg-primary-tint text-foreground font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                <Icon size={18} strokeWidth={isActive ? 2.25 : 2} className={isActive ? "text-primary" : ""} />
+                <Icon
+                  size={18}
+                  strokeWidth={isActive ? 2.25 : 2}
+                  className={isActive ? "text-primary" : ""}
+                />
                 <span>{item.label}</span>
               </button>
             );
@@ -143,35 +165,55 @@ function Shell({
         </nav>
       </aside>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-8">
-          <h1 className="text-[18px] font-bold text-foreground">{activeItem.label}</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm">
-                AD
-              </div>
-              <span className="text-sm font-semibold text-foreground">Admin User</span>
-            </div>
-            <button
-              onClick={onLogout}
-              aria-label="Log out"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </header>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <button
+          aria-label="Close menu backdrop"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-foreground/40 lg:hidden"
+        />
+      )}
 
-        {/* Content */}
-        <main className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center">
-            <p className="text-[15px] text-muted-foreground">Coming soon</p>
+      {/* Top bar — full width next to sidebar */}
+      <header className="sticky top-0 z-20 h-16 bg-card border-b border-border grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 sm:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="lg:hidden text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <Menu size={22} />
+          </button>
+          <h1 className="truncate text-[18px] font-bold text-foreground">
+            {activeItem.label}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+              AD
+            </div>
+            <span className="hidden sm:inline text-sm font-semibold text-foreground">
+              Admin User
+            </span>
           </div>
-        </main>
-      </div>
+          <button
+            onClick={onLogout}
+            aria-label="Log out"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </header>
+
+      {/* Content — full remaining width */}
+      <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-[15px] text-muted-foreground">Coming soon</p>
+        </div>
+      </main>
     </div>
   );
 }
+
