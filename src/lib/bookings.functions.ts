@@ -212,6 +212,7 @@ export type BookingDetails = {
   } | null;
   zone: { id: string | null; name: string | null };
   expert: { id: string | null; name: string | null; phone: string | null };
+  cancellationReason: string | null;
 };
 
 async function loadBookingDetails(
