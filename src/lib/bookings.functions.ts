@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export type BookingStatus =
   | "confirmed"
   | "accepted"
-  | "assigned"
   | "expert_assigned"
   | "in_progress"
   | "completed"
@@ -14,13 +13,13 @@ export type BookingStatus =
 export const BOOKING_STATUSES: BookingStatus[] = [
   "confirmed",
   "accepted",
-  "assigned",
   "expert_assigned",
   "in_progress",
   "completed",
   "cancelled",
   "rejected",
 ];
+
 
 export type BookingRow = {
   id: string;
