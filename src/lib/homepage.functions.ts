@@ -73,7 +73,8 @@ export const upsertHomepageSection = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: id, error } = await context.supabase.rpc(
       "staff_upsert_homepage_section",
-      { _payload: data },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { _payload: data as any },
     );
     if (error) throw new Error(error.message);
     return { id: id as string };
