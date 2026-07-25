@@ -55,12 +55,13 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className={`grid ${canManage ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px]" : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]"} gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <span></span>
           <span>Name</span>
           <span>City</span>
           <span>Assigned Area Partner</span>
           <span>Status</span>
+          {canManage && <span className="text-right">Actions</span>}
         </div>
 
         {isLoading && (
@@ -78,9 +79,10 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
         )}
 
         {zones.map((z) => (
-          <ZoneRowItem key={z.id} zone={z} />
+          <ZoneRowItem key={z.id} zone={z} canManage={canManage} />
         ))}
       </div>
+
 
       {drawOpen && <DrawZoneModal onClose={() => setDrawOpen(false)} />}
     </div>
