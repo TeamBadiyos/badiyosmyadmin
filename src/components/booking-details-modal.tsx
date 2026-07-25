@@ -241,6 +241,41 @@ export function BookingDetailsModal({
   }, [editOpen, durationsQuery.data, editDuration, editPrice]);
 
 
+  // Interim OTP verification (staff-relayed until Expert App ships)
+  const verifyStartFn = useServerFn(verifyStartOtp);
+  const verifyEndFn = useServerFn(verifyEndOtp);
+  const [startOtpInput, setStartOtpInput] = useState("");
+  const [endOtpInput, setEndOtpInput] = useState("");
+
+  const showStartOtp =
+    !!data && data.status === "expert_assigned" && canEdit;
+  const showEndOtp =
+    !!data && data.status === "in_progress" && canEdit;
+
+  const invalidateAfterOtp = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+  };
+
+  const startOtpMutation = useMutation({
+    mutationFn: (otp: string) => verifyStartFn({ data: { bookingId, otp } }),
+    onSuccess: () => {
+      toast.success("Service started");
+      setStartOtpInput("");
+      invalidateAfterOtp();
+    },
+  });
+  const endOtpMutation = useMutation({
+    mutationFn: (otp: string) => verifyEndFn({ data: { bookingId, otp } }),
+    onSuccess: () => {
+      toast.success("Service marked completed");
+      setEndOtpInput("");
+      invalidateAfterOtp();
+    },
+  });
+
 
   // Expert assignment / reassignment
   const fetchExperts = useServerFn(listActiveExperts);
