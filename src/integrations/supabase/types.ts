@@ -782,12 +782,28 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      staff_reorder_homepage_sections: {
+        Args: { _orders: Json }
+        Returns: undefined
+      }
+      staff_set_homepage_section_active: {
+        Args: { _active: boolean; _id: string }
+        Returns: undefined
+      }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
       }
+      staff_update_service_price: {
+        Args: { _id: string; _payload: Json }
+        Returns: undefined
+      }
       staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
       staff_upsert_expert: { Args: { _payload: Json }; Returns: string }
+      staff_upsert_homepage_section: {
+        Args: { _payload: Json }
+        Returns: string
+      }
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
