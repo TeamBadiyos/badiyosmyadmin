@@ -327,13 +327,6 @@ export type Database = {
             foreignKeyName: "bookings_assigned_expert_id_fkey"
             columns: ["assigned_expert_id"]
             isOneToOne: false
-            referencedRelation: "assigned_expert_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_assigned_expert_id_fkey"
-            columns: ["assigned_expert_id"]
-            isOneToOne: false
             referencedRelation: "experts"
             referencedColumns: ["id"]
           },
@@ -423,13 +416,6 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "emergency_alerts_expert_id_fkey"
-            columns: ["expert_id"]
-            isOneToOne: false
-            referencedRelation: "assigned_expert_public"
             referencedColumns: ["id"]
           },
           {
@@ -1112,44 +1098,7 @@ export type Database = {
       }
     }
     Views: {
-      assigned_expert_public: {
-        Row: {
-          id: string | null
-          level: string | null
-          name: string | null
-          phone: string | null
-          photo_url: string | null
-          status: string | null
-          zone_id: string | null
-        }
-        Insert: {
-          id?: string | null
-          level?: string | null
-          name?: string | null
-          phone?: string | null
-          photo_url?: string | null
-          status?: string | null
-          zone_id?: string | null
-        }
-        Update: {
-          id?: string | null
-          level?: string | null
-          name?: string | null
-          phone?: string | null
-          photo_url?: string | null
-          status?: string | null
-          zone_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "experts_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       advance_booking_status: {
@@ -1195,6 +1144,18 @@ export type Database = {
         Returns: string
       }
       generate_otp4: { Args: never; Returns: string }
+      get_assigned_expert_public: {
+        Args: { _booking_id: string }
+        Returns: {
+          id: string
+          level: string
+          name: string
+          phone: string
+          photo_url: string
+          status: string
+          zone_id: string
+        }[]
+      }
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
       get_expert_id_for_auth: { Args: { _auth_uid: string }; Returns: string }
