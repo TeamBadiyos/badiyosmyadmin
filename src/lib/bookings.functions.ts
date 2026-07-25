@@ -34,6 +34,7 @@ export type BookingRow = {
   status: BookingStatus;
   paid: boolean;
   createdAt: string;
+  deletedAt: string | null;
 };
 
 export type ListBookingsInput = {
@@ -43,6 +44,7 @@ export type ListBookingsInput = {
   to?: string | null;
   page?: number;
   pageSize?: number;
+  includeDeleted?: boolean;
 };
 
 export type ListBookingsResult = {
@@ -51,6 +53,7 @@ export type ListBookingsResult = {
   page: number;
   pageSize: number;
 };
+
 
 const sel = (s: string): string => s;
 
