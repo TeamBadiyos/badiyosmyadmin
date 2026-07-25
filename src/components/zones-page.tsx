@@ -179,12 +179,15 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapObj = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const drawingManager = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const polygonRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clickListenerRef = useRef<any>(null);
 
   const [mapError, setMapError] = useState<string | null>(null);
-  const [hasPolygon, setHasPolygon] = useState(false);
+  const [pointCount, setPointCount] = useState(0);
+  const [finished, setFinished] = useState(false);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -203,23 +206,34 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
     },
   });
 
+  function clearMarkers() {
+    for (const m of markersRef.current) m.setMap(null);
+    markersRef.current = [];
+  }
+
   function clearPolygon() {
     if (polygonRef.current) {
       polygonRef.current.setMap(null);
       polygonRef.current = null;
     }
-    setHasPolygon(false);
-    if (drawingManager.current && window.google?.maps?.drawing) {
-      drawingManager.current.setDrawingMode(
-        window.google.maps.drawing.OverlayType.POLYGON,
-      );
-    }
+    clearMarkers();
+    setPointCount(0);
+    setFinished(false);
   }
 
   function finishDrawing() {
-    if (drawingManager.current) {
-      drawingManager.current.setDrawingMode(null);
+    if (!polygonRef.current) return;
+    const path = polygonRef.current.getPath();
+    if (path.getLength() < 3) return;
+    polygonRef.current.setOptions({ editable: true });
+    // Remove click listener so no more points are added
+    if (clickListenerRef.current && window.google?.maps?.event) {
+      window.google.maps.event.removeListener(clickListenerRef.current);
+      clickListenerRef.current = null;
     }
+    // Hide vertex markers since polygon is now editable
+    clearMarkers();
+    setFinished(true);
   }
 
   function extractBoundary(): { lat: number; lng: number }[] {
@@ -267,41 +281,54 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
         disableDefaultUI: false,
         streetViewControl: false,
         mapTypeControl: false,
+        clickableIcons: false,
       });
       mapObj.current = map;
 
-      const dm = new g.drawing.DrawingManager({
-        drawingMode: g.drawing.OverlayType.POLYGON,
-        drawingControl: false,
-        polygonOptions: {
-          fillColor: "#00B97A",
-          fillOpacity: 0.2,
-          strokeColor: "#00B97A",
-          strokeWeight: 2,
-          clickable: false,
-          editable: true,
-          zIndex: 1,
-        },
-      });
-      dm.setMap(map);
-      drawingManager.current = dm;
-
-      g.event.addListener(dm, "polygoncomplete", (poly: unknown) => {
-        // Only allow one polygon at a time.
-        if (polygonRef.current) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (polygonRef.current as any).setMap(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      clickListenerRef.current = map.addListener("click", (e: any) => {
+        if (!e?.latLng) return;
+        if (!polygonRef.current) {
+          polygonRef.current = new g.Polygon({
+            paths: [e.latLng],
+            fillColor: "#00B97A",
+            fillOpacity: 0.2,
+            strokeColor: "#00B97A",
+            strokeWeight: 2,
+            clickable: false,
+            editable: false,
+            zIndex: 1,
+            map,
+          });
+        } else {
+          polygonRef.current.getPath().push(e.latLng);
         }
-        polygonRef.current = poly;
-        dm.setDrawingMode(null);
-        setHasPolygon(true);
+        const marker = new g.Marker({
+          position: e.latLng,
+          map,
+          icon: {
+            path: g.SymbolPath.CIRCLE,
+            scale: 5,
+            fillColor: "#00B97A",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+        markersRef.current.push(marker);
+        setPointCount(polygonRef.current.getPath().getLength());
       });
     }
 
-    if (window.google?.maps?.drawing) {
+    if (window.google?.maps) {
       initialize();
       return () => {
         cancelled = true;
+        if (clickListenerRef.current && window.google?.maps?.event) {
+          window.google.maps.event.removeListener(clickListenerRef.current);
+        }
+        clearMarkers();
+        if (polygonRef.current) polygonRef.current.setMap(null);
       };
     }
 
@@ -310,13 +337,26 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
       'script[data-badiyo-gmaps="1"]',
     );
     if (existing) {
+      // Script may already be loaded but google not yet ready; poll briefly.
+      const iv = window.setInterval(() => {
+        if (window.google?.maps) {
+          window.clearInterval(iv);
+          initialize();
+        }
+      }, 100);
       return () => {
         cancelled = true;
+        window.clearInterval(iv);
+        if (clickListenerRef.current && window.google?.maps?.event) {
+          window.google.maps.event.removeListener(clickListenerRef.current);
+        }
+        clearMarkers();
+        if (polygonRef.current) polygonRef.current.setMap(null);
       };
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyoInitMap&libraries=drawing`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyoInitMap`;
     script.async = true;
     script.defer = true;
     script.dataset.badiyoGmaps = "1";
@@ -325,12 +365,17 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
 
     return () => {
       cancelled = true;
+      if (clickListenerRef.current && window.google?.maps?.event) {
+        window.google.maps.event.removeListener(clickListenerRef.current);
+      }
+      clearMarkers();
       if (polygonRef.current) polygonRef.current.setMap(null);
-      if (drawingManager.current) drawingManager.current.setMap(null);
     };
   }, []);
 
   const saving = saveMutation.isPending;
+  const hasPolygon = pointCount >= 3 && finished;
+  const canFinish = pointCount >= 3 && !finished;
 
   return (
     <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
@@ -339,7 +384,7 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
           <div>
             <h2 className="text-[18px] font-bold text-foreground">Draw New Zone</h2>
             <p className="text-[12px] text-muted-foreground">
-              Click on the map to add points. Double-click or press Finish to close the shape.
+              Click on the map to add points (min 3). Press Finish Drawing to close the shape.
             </p>
           </div>
           <button
@@ -357,8 +402,12 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
               <p className="text-[13px] text-destructive">{mapError}</p>
             </div>
           )}
+          <div className="absolute top-4 left-4 bg-card/95 backdrop-blur border border-border rounded-[12px] px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm">
+            Points: {pointCount}
+            {finished && <span className="ml-2 text-primary">• Closed</span>}
+          </div>
           <div className="absolute top-4 right-4 flex gap-2">
-            {!hasPolygon && (
+            {canFinish && (
               <button
                 onClick={finishDrawing}
                 className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
@@ -366,7 +415,7 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
                 Finish Drawing
               </button>
             )}
-            {hasPolygon && (
+            {pointCount > 0 && (
               <button
                 onClick={clearPolygon}
                 className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
@@ -429,4 +478,5 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+
 
