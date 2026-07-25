@@ -8,8 +8,10 @@ export type AuditLogRow = {
   action: string;
   targetTable: string | null;
   targetId: string | null;
-  beforeState: Record<string, unknown> | null;
-  afterState: Record<string, unknown> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeState: Record<string, any> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  afterState: Record<string, any> | null;
   createdAt: string;
 };
 
