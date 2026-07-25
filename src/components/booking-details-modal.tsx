@@ -1040,6 +1040,8 @@ function ExpertAssignSection({
   mode,
   experts,
   loading,
+  errorMessage,
+  onRetry,
   search,
   onSearch,
   selected,
@@ -1051,6 +1053,8 @@ function ExpertAssignSection({
   mode: "assign" | "reassign";
   experts: Array<{ id: string; name: string; phone: string; distanceKm?: number | null }>;
   loading: boolean;
+  errorMessage?: string | null;
+  onRetry?: () => void;
   search: string;
   onSearch: (v: string) => void;
   selected: string;
@@ -1073,31 +1077,52 @@ function ExpertAssignSection({
         {isReassign ? "Reassign expert" : "Assign expert"}
       </h3>
       <div className="space-y-3">
-        <input
-          type="text"
-          placeholder="Search by name or phone…"
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-        />
-        <select
-          value={selected}
-          onChange={(e) => onSelect(e.target.value)}
-          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-        >
-          <option value="">
-            {loading
-              ? "Loading experts…"
-              : experts.length === 0
-                ? "No experts nearby (within broadcast radius)"
-                : "Select expert…"}
-          </option>
-          {experts.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} — {e.phone}
-              {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
-            </option>
-          ))}
+        {errorMessage ? (
+          <div className="rounded-[14px] border border-destructive bg-destructive/5 p-3 space-y-2">
+            <p className="text-[13px] text-destructive font-semibold">
+              Couldn't load experts
+            </p>
+            <p className="text-[12px] text-destructive/80">{errorMessage}</p>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="h-9 px-4 rounded-[10px] border border-destructive text-destructive text-[13px] font-bold"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Search by name or phone…"
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+            />
+            <select
+              value={selected}
+              onChange={(e) => onSelect(e.target.value)}
+              disabled={loading}
+              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] disabled:opacity-60"
+            >
+              <option value="">
+                {loading
+                  ? "Loading experts…"
+                  : experts.length === 0
+                    ? "No experts nearby (within broadcast radius)"
+                    : "Select expert…"}
+              </option>
+              {experts.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name} — {e.phone}
+                  {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         </select>
         <div className="flex flex-wrap items-center gap-3">
           <button
