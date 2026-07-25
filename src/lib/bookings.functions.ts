@@ -215,7 +215,8 @@ export type BookingDetails = {
 };
 
 async function loadBookingDetails(
-  supabase: ReturnType<typeof requireSupabaseAuth> extends never ? never : any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   bookingId: string,
   role: string,
   staffZoneId: string | null,
