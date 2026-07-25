@@ -1123,7 +1123,6 @@ function ExpertAssignSection({
             </select>
           </>
         )}
-        </select>
         <div className="flex flex-wrap items-center gap-3">
           <button
             disabled={!selected || pending}
