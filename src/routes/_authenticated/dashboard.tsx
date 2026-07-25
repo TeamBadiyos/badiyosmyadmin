@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
 import { ZonesPage } from "@/components/zones-page";
+import { BookingsPage } from "@/components/bookings-page";
 
 import {
   LayoutDashboard,
