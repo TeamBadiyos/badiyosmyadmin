@@ -164,6 +164,8 @@ export const listBookings = createServerFn({ method: "POST" })
       status: r.status as BookingStatus,
       paid: !!r.razorpay_payment_id,
       createdAt: r.created_at,
+      deletedAt: r.deleted_at ?? null,
+
     }));
 
     return { rows: out, total: count ?? out.length, page, pageSize };
