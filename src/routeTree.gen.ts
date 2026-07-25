@@ -9,11 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as JoinExpertRouteImport } from './routes/join-expert'
+import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinExpertRoute = JoinExpertRouteImport.update({
+  id: '/join-expert',
+  path: '/join-expert',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinAreaPartnerRoute = JoinAreaPartnerRouteImport.update({
+  id: '/join-area-partner',
+  path: '/join-area-partner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -37,11 +55,17 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join-area-partner': typeof JoinAreaPartnerRoute
+  '/join-expert': typeof JoinExpertRoute
+  '/support': typeof SupportRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/join-area-partner': typeof JoinAreaPartnerRoute
+  '/join-expert': typeof JoinExpertRoute
+  '/support': typeof SupportRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
 }
 export interface FileRoutesById {
@@ -49,18 +73,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/join-area-partner': typeof JoinAreaPartnerRoute
+  '/join-expert': typeof JoinExpertRoute
+  '/support': typeof SupportRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/join-area-partner'
+    | '/join-expert'
+    | '/support'
+    | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/join-area-partner'
+    | '/join-expert'
+    | '/support'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/join-area-partner'
+    | '/join-expert'
+    | '/support'
     | '/_authenticated/dashboard'
   fileRoutesById: FileRoutesById
 }
@@ -68,10 +110,34 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  JoinAreaPartnerRoute: typeof JoinAreaPartnerRoute
+  JoinExpertRoute: typeof JoinExpertRoute
+  SupportRoute: typeof SupportRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-expert': {
+      id: '/join-expert'
+      path: '/join-expert'
+      fullPath: '/join-expert'
+      preLoaderRoute: typeof JoinExpertRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-area-partner': {
+      id: '/join-area-partner'
+      path: '/join-area-partner'
+      fullPath: '/join-area-partner'
+      preLoaderRoute: typeof JoinAreaPartnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -118,6 +184,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  JoinAreaPartnerRoute: JoinAreaPartnerRoute,
+  JoinExpertRoute: JoinExpertRoute,
+  SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

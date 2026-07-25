@@ -85,6 +85,36 @@ export type Database = {
         }
         Relationships: []
       }
+      area_partner_leads: {
+        Row: {
+          area: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string
+          status: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone: string
+          status?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          status?: string
+        }
+        Relationships: []
+      }
       area_partners: {
         Row: {
           commission_rate: number
@@ -253,6 +283,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      expert_leads: {
+        Row: {
+          area: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string
+          status: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone: string
+          status?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          status?: string
+        }
+        Relationships: []
       }
       experts: {
         Row: {
@@ -670,6 +730,33 @@ export type Database = {
           role?: string
           status?: string
           zone_id?: string | null
+        }
+        Relationships: []
+      }
+      support_inquiries: {
+        Row: {
+          contact: string
+          created_at: string
+          id: string
+          message: string
+          name: string
+          status: string
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          id?: string
+          message: string
+          name: string
+          status?: string
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          status?: string
         }
         Relationships: []
       }
