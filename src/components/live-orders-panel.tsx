@@ -5,9 +5,12 @@ import { Check, X, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   acceptPendingBooking,
+  assignExpertToBooking,
+  listActiveExperts,
   listPendingBookings,
   rejectPendingBooking,
   REJECT_REASONS,
+  type ActiveExpert,
   type PendingBooking,
   type RejectReason,
 } from "@/lib/live-orders.functions";
@@ -27,8 +30,10 @@ type LocalState =
 export function LiveOrdersPanel() {
   const queryClient = useQueryClient();
   const fetchPending = useServerFn(listPendingBookings);
+  const fetchExperts = useServerFn(listActiveExperts);
   const accept = useServerFn(acceptPendingBooking);
   const reject = useServerFn(rejectPendingBooking);
+  const assign = useServerFn(assignExpertToBooking);
 
   const { data, isLoading } = useQuery({
     queryKey: ["live-orders", "pending"],
@@ -131,6 +136,37 @@ export function LiveOrdersPanel() {
     },
   });
 
+  const { data: experts } = useQuery({
+    queryKey: ["live-orders", "experts"],
+    queryFn: () => fetchExperts(),
+    staleTime: 30_000,
+  });
+
+  const [assignError, setAssignError] = useState<Record<string, string>>({});
+  const assignMutation = useMutation({
+    mutationFn: (v: { bookingId: string; expertId: string }) =>
+      assign({ data: v }),
+    onSuccess: (_res, v) => {
+      setAssignError((e) => {
+        const { [v.bookingId]: _drop, ...rest } = e;
+        return rest;
+      });
+      setLocalState((s) => {
+        const { [v.bookingId]: _drop, ...rest } = s;
+        return rest;
+      });
+      queryClient.invalidateQueries({ queryKey: ["live-orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    },
+    onError: (err, v) => {
+      setAssignError((e) => ({
+        ...e,
+        [v.bookingId]:
+          err instanceof Error ? err.message : "Failed to assign expert",
+      }));
+    },
+  });
+
   return (
     <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-20 self-start">
       <div className="bg-card border border-border rounded-[18px] flex flex-col max-h-[calc(100vh-6rem)]">
@@ -174,6 +210,11 @@ export function LiveOrdersPanel() {
               rejecting={
                 rejectMutation.isPending && rejectMutation.variables?.bookingId === b.id
               }
+              assigning={
+                assignMutation.isPending && assignMutation.variables?.bookingId === b.id
+              }
+              assignError={assignError[b.id]}
+              experts={experts ?? []}
               onAccept={() => acceptMutation.mutate(b.id)}
               onStartReject={() =>
                 setLocalState((s) => ({ ...s, [b.id]: { kind: "rejecting" } }))
@@ -186,6 +227,9 @@ export function LiveOrdersPanel() {
               }
               onConfirmReject={(reason) =>
                 rejectMutation.mutate({ bookingId: b.id, reason })
+              }
+              onAssign={(expertId) =>
+                assignMutation.mutate({ bookingId: b.id, expertId })
               }
               isAccepted={acceptedIds.has(b.id)}
             />
@@ -201,24 +245,33 @@ function OrderCard(props: {
   state: LocalState | undefined;
   accepting: boolean;
   rejecting: boolean;
+  assigning: boolean;
+  assignError: string | undefined;
+  experts: ActiveExpert[];
   isAccepted: boolean;
   onAccept: () => void;
   onStartReject: () => void;
   onCancelReject: () => void;
   onConfirmReject: (r: RejectReason) => void;
+  onAssign: (expertId: string) => void;
 }) {
   const {
     booking: b,
     state,
     accepting,
     rejecting,
+    assigning,
+    assignError,
+    experts,
     isAccepted,
     onAccept,
     onStartReject,
     onCancelReject,
     onConfirmReject,
+    onAssign,
   } = props;
   const [reason, setReason] = useState<RejectReason>("CHANGED_MIND");
+  const [selectedExpert, setSelectedExpert] = useState<string>("");
 
   const timeAgo = useMemo(() => formatShortTime(b.createdAt), [b.createdAt]);
 
@@ -252,22 +305,41 @@ function OrderCard(props: {
       </div>
 
       {isAccepted ? (
-        <div className="mt-4">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+        <div className="mt-4 space-y-2">
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Assign expert
           </label>
           <div className="relative">
             <select
-              disabled
-              className="w-full appearance-none bg-muted/40 border border-border rounded-[14px] px-3 py-2.5 text-[13px] text-muted-foreground"
+              value={selectedExpert}
+              onChange={(e) => setSelectedExpert(e.target.value)}
+              disabled={assigning}
+              className="w-full appearance-none bg-card border border-border rounded-[14px] px-3 py-2.5 text-[13px] text-foreground disabled:opacity-60"
             >
-              <option>Select expert…</option>
+              <option value="">
+                {experts.length === 0 ? "No active experts" : "Select expert…"}
+              </option>
+              {experts.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name} · {ex.phone}
+                </option>
+              ))}
             </select>
             <ChevronDown
               size={16}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
             />
           </div>
+          <button
+            onClick={() => selectedExpert && onAssign(selectedExpert)}
+            disabled={!selectedExpert || assigning}
+            className="w-full h-10 rounded-[14px] bg-primary text-white text-[13px] font-bold disabled:opacity-60"
+          >
+            {assigning ? "Assigning…" : "Confirm assignment"}
+          </button>
+          {assignError && (
+            <p className="text-[12px] text-destructive">{assignError}</p>
+          )}
         </div>
       ) : state?.kind === "rejecting" ? (
         <div className="mt-4 space-y-2">
