@@ -62,7 +62,7 @@ function Hero() {
           <div className="text-center lg:text-left">
             <span className="inline-flex items-center gap-2 h-8 px-3 rounded-full bg-primary-tint text-primary text-[12px] font-bold">
               <MapPin size={13} />
-              New in Latur &amp; Pune
+              Now in Latur
             </span>
             <h1 className="mt-5 text-[42px] sm:text-[60px] lg:text-[68px] leading-[0.98] font-bold text-foreground tracking-tight">
               Trusted home services,{" "}
