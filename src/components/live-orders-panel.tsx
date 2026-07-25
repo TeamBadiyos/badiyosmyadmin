@@ -136,6 +136,37 @@ export function LiveOrdersPanel() {
     },
   });
 
+  const { data: experts } = useQuery({
+    queryKey: ["live-orders", "experts"],
+    queryFn: () => fetchExperts(),
+    staleTime: 30_000,
+  });
+
+  const [assignError, setAssignError] = useState<Record<string, string>>({});
+  const assignMutation = useMutation({
+    mutationFn: (v: { bookingId: string; expertId: string }) =>
+      assign({ data: v }),
+    onSuccess: (_res, v) => {
+      setAssignError((e) => {
+        const { [v.bookingId]: _drop, ...rest } = e;
+        return rest;
+      });
+      setLocalState((s) => {
+        const { [v.bookingId]: _drop, ...rest } = s;
+        return rest;
+      });
+      queryClient.invalidateQueries({ queryKey: ["live-orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    },
+    onError: (err, v) => {
+      setAssignError((e) => ({
+        ...e,
+        [v.bookingId]:
+          err instanceof Error ? err.message : "Failed to assign expert",
+      }));
+    },
+  });
+
   return (
     <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-20 self-start">
       <div className="bg-card border border-border rounded-[18px] flex flex-col max-h-[calc(100vh-6rem)]">
