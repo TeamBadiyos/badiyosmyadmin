@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
+import { PipelineKanban } from "@/components/pipeline-kanban";
+
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
@@ -220,7 +222,7 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
         {active === "dashboard" ? (
-          <DashboardHome />
+          <DashboardHome role={role} />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
@@ -262,7 +264,7 @@ function Shell() {
   );
 }
 
-function DashboardHome() {
+function DashboardHome({ role }: { role: StaffRole | null }) {
   const fetchStats = useServerFn(getDashboardStats);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -315,8 +317,10 @@ function DashboardHome() {
             );
           })}
         </div>
+        <PipelineKanban role={role} />
       </div>
       <LiveOrdersPanel />
     </div>
+
   );
 }
