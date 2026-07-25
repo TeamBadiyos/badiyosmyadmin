@@ -107,9 +107,12 @@ export function BookingDetailsModal({
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
 
+  const isDeleted = !!data?.deletedAt;
   const isTerminal =
     !!data && ["completed", "cancelled", "rejected"].includes(data.status);
-  const canCancel = canEdit && !!data && !isTerminal;
+  const canCancel = canEdit && !!data && !isTerminal && !isDeleted;
+  const canEditFields = canEdit && !!data && !isTerminal && !isDeleted;
+  const canDelete = role === "super_admin" && !!data && !isDeleted;
 
   const mutation = useMutation({
     mutationFn: (payload: { newStatus: BookingStatus }) =>
