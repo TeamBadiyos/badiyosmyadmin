@@ -132,18 +132,56 @@ export const rejectPendingBooking = createServerFn({ method: "POST" })
 
 export type ActiveExpert = { id: string; name: string; phone: string };
 
-export const listActiveExperts = createServerFn({ method: "GET" })
+export const listActiveExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ActiveExpert[]> => {
+  .inputValidator((input?: { bookingId?: string | null }) => ({
+    bookingId: input?.bookingId ?? null,
+  }))
+  .handler(async ({ data, context }): Promise<ActiveExpert[]> => {
     await assertActiveStaff(context);
-    const { data, error } = await context.supabase
+    let zoneId: string | null = null;
+    if (data.bookingId) {
+      const { data: b, error: bErr } = await context.supabase
+        .from("bookings")
+        .select("zone_id")
+        .eq("id", data.bookingId)
+        .maybeSingle();
+      if (bErr) throw new Error(bErr.message);
+      zoneId = (b?.zone_id as string | null) ?? null;
+    }
+    let q = context.supabase
       .from("experts")
-      .select("id, name, phone")
+      .select("id, name, phone, zone_id")
       .eq("status", "active")
       .order("name", { ascending: true });
+    if (zoneId) q = q.eq("zone_id", zoneId);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return (data ?? []) as ActiveExpert[];
+    return ((rows ?? []) as Array<{ id: string; name: string; phone: string }>).map(
+      (r) => ({ id: r.id, name: r.name, phone: r.phone }),
+    );
   });
+
+export const resolveZoneForBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { lat: number; lng: number }) => {
+    const lat = Number(input?.lat);
+    const lng = Number(input?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new Error("lat/lng required");
+    }
+    return { lat, lng };
+  })
+  .handler(async ({ data, context }): Promise<{ zoneId: string | null }> => {
+    await assertActiveStaff(context);
+    const { data: zoneId, error } = await context.supabase.rpc(
+      "resolve_zone_for_point",
+      { _lat: data.lat, _lng: data.lng },
+    );
+    if (error) throw new Error(error.message);
+    return { zoneId: (zoneId as string | null) ?? null };
+  });
+
 
 export const assignExpertToBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

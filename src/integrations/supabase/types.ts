@@ -85,6 +85,30 @@ export type Database = {
         }
         Relationships: []
       }
+      area_partners: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          status?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -137,6 +161,7 @@ export type Database = {
           status: string
           updated_at: string | null
           user_id: string | null
+          zone_id: string | null
         }
         Insert: {
           address_id?: string | null
@@ -156,6 +181,7 @@ export type Database = {
           status?: string
           updated_at?: string | null
           user_id?: string | null
+          zone_id?: string | null
         }
         Update: {
           address_id?: string | null
@@ -175,6 +201,7 @@ export type Database = {
           status?: string
           updated_at?: string | null
           user_id?: string | null
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -196,6 +223,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
@@ -627,7 +661,15 @@ export type Database = {
           name?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "zones_assigned_area_partner_fk"
+            columns: ["assigned_area_partner_id"]
+            isOneToOne: false
+            referencedRelation: "area_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -645,8 +687,20 @@ export type Database = {
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
       link_referral: { Args: { _code: string }; Returns: undefined }
+      point_in_polygon: {
+        Args: { _lat: number; _lng: number; _poly: Json }
+        Returns: boolean
+      }
+      resolve_zone_for_point: {
+        Args: { _lat: number; _lng: number }
+        Returns: string
+      }
       staff_accept_booking: {
         Args: { _booking_id: string }
+        Returns: undefined
+      }
+      staff_assign_area_partner: {
+        Args: { _partner_id: string; _zone_id: string }
         Returns: undefined
       }
       staff_assign_expert: {
