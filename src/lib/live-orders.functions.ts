@@ -389,6 +389,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
           null
         : null,
       createdAt: r.created_at as string,
+      updatedAt: (r.updated_at as string | null) ?? (r.created_at as string),
     }));
   });
 
