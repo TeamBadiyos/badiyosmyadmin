@@ -224,6 +224,10 @@ function Shell() {
           <ExpertsPage role={role} />
         ) : active === "partners" ? (
           <AreaPartnersPage />
+        ) : active === "catalogue" ? (
+          <ServiceCataloguePage />
+        ) : active === "homepage" ? (
+          <HomepageBuilderPage />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
