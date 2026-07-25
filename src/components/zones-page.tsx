@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Map as MapIcon, Plus, X } from "lucide-react";
+import { LocateFixed, Map as MapIcon, Plus, X } from "lucide-react";
 import {
   assignAreaPartner,
   createZone,
@@ -191,6 +191,31 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  function handleLocate() {
+    setLocateError(null);
+    if (!navigator.geolocation) {
+      setLocateError("Location unavailable");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const map = mapObj.current;
+        if (!map) return;
+        map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map.setZoom(14);
+      },
+      () => {
+        setLocating(false);
+        setLocateError("Location unavailable");
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
 
   const queryClient = useQueryClient();
   const saveZone = useServerFn(createZone);
@@ -277,7 +302,7 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
       const g = window.google.maps;
       const map = new g.Map(mapRef.current, {
         center: LATUR_CENTER,
-        zoom: 11,
+        zoom: 13,
         disableDefaultUI: false,
         streetViewControl: false,
         mapTypeControl: false,
@@ -423,6 +448,22 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
                 Clear
               </button>
             )}
+          </div>
+          <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
+            {locateError && (
+              <span className="bg-card/95 backdrop-blur border border-border rounded-[10px] px-2 py-1 text-[11px] font-semibold text-destructive shadow-sm">
+                {locateError}
+              </span>
+            )}
+            <button
+              onClick={handleLocate}
+              disabled={locating}
+              aria-label="Use my current location"
+              title="Use my current location"
+              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <LocateFixed size={18} className={locating ? "animate-pulse text-primary" : ""} />
+            </button>
           </div>
         </div>
         <div className="shrink-0 border-t border-border px-6 py-4 space-y-3">
