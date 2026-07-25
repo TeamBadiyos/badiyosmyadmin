@@ -342,6 +342,15 @@ export function BookingDetailsModal({
                     <>
                       <Field label="Name" value={data.expert.name ?? "—"} />
                       <Field label="Phone" value={data.expert.phone ?? "—"} mono />
+                      {canReassign && !reassignOpen && (
+                        <button
+                          onClick={() => setReassignOpen(true)}
+                          className="mt-2 text-[12px] font-bold text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <RefreshCw size={12} />
+                          Reassign
+                        </button>
+                      )}
                     </>
                   ) : (
                     <p className="text-[13px] text-muted-foreground italic">
@@ -349,6 +358,7 @@ export function BookingDetailsModal({
                     </p>
                   )}
                 </Card>
+
                 <Card title="Zone">
                   <Field label="Name" value={data.zone.name ?? "—"} />
                 </Card>
