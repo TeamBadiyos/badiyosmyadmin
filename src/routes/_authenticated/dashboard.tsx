@@ -288,38 +288,35 @@ function DashboardHome({ role }: { role: StaffRole | null }) {
   ];
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 items-start">
-      <div className="flex-1 min-w-0 space-y-6 w-full">
-        {isError && (
-          <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div
-                key={card.label}
-                className="bg-card border border-border rounded-[18px] p-6 flex items-start justify-between gap-4"
-              >
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {card.label}
-                  </p>
-                  <p className="mt-3 text-[32px] leading-none font-bold text-foreground truncate">
-                    {isLoading && !data ? "—" : card.value}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
-                  <Icon size={20} />
-                </div>
+    <div className="w-full space-y-6">
+      {isError && (
+        <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 xl:gap-6">
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="bg-card border border-border rounded-[18px] p-5 flex items-start justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {card.label}
+                </p>
+                <p className="mt-2 text-[26px] leading-none font-bold text-foreground truncate">
+                  {isLoading && !data ? "—" : card.value}
+                </p>
               </div>
-            );
-          })}
-        </div>
-        <PipelineKanban role={role} />
+              <div className="w-9 h-9 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
+                <Icon size={18} />
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <LiveOrdersPanel />
+      <PipelineKanban role={role} />
     </div>
-
   );
 }
+
