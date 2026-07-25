@@ -292,8 +292,19 @@ export function BookingDetailsModal({
 
   const expertsQuery = useQuery({
     queryKey: ["bookings", "assignable-experts", bookingId],
-    queryFn: () => fetchExperts({ data: { bookingId } }),
+    queryFn: async () =>
+      Promise.race([
+        fetchExperts({ data: { bookingId } }),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(
+            () => reject(new Error("Request timed out after 10s")),
+            10_000,
+          ),
+        ),
+      ]),
     enabled: showAssign || reassignOpen,
+    retry: 1,
+    retryDelay: 500,
   });
   const filteredExperts = useMemo(() => {
     const list = expertsQuery.data ?? [];
