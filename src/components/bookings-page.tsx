@@ -48,6 +48,7 @@ export function BookingsPage({
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [page, setPage] = useState<number>(1);
+  const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
