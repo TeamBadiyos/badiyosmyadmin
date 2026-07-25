@@ -95,7 +95,19 @@ export function BookingDetailsModal({
       queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
       setNextStatus("");
     },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to update status";
+      if (/already been assigned|Invalid status transition|Booking not/i.test(msg)) {
+        toast.error(msg, { description: "Refreshing to show the current state." });
+        queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+        queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+        setNextStatus("");
+      } else {
+        toast.error(msg);
+      }
+    },
   });
+
 
   const cancelMutation = useMutation({
     mutationFn: (reason: CancellationReason) =>
