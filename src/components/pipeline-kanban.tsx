@@ -249,7 +249,7 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
         </button>
       </div>
 
-      )}
+
 
       <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
         {COLUMNS.map((col) => {
