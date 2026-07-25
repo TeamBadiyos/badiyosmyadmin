@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, Check, CircleDashed, CircleDot, XCircle } from "lucide-react";
+import { X, Check, CircleDashed, CircleDot, XCircle, Ban } from "lucide-react";
 import {
   getBookingDetails,
   updateBookingStatus,
+  cancelBooking,
+  CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
+  type CancellationReason,
 } from "@/lib/bookings.functions";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
@@ -64,6 +67,7 @@ export function BookingDetailsModal({
   const queryClient = useQueryClient();
   const fetchDetails = useServerFn(getBookingDetails);
   const updateStatus = useServerFn(updateBookingStatus);
+  const cancelFn = useServerFn(cancelBooking);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["bookings", "details", bookingId],
@@ -76,6 +80,12 @@ export function BookingDetailsModal({
     [data],
   );
   const [nextStatus, setNextStatus] = useState<BookingStatus | "">("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
+
+  const isTerminal =
+    !!data && ["completed", "cancelled", "rejected"].includes(data.status);
+  const canCancel = canEdit && !!data && !isTerminal;
 
   const mutation = useMutation({
     mutationFn: (payload: { newStatus: BookingStatus }) =>
@@ -87,6 +97,19 @@ export function BookingDetailsModal({
       setNextStatus("");
     },
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: (reason: CancellationReason) =>
+      cancelFn({ data: { bookingId, reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      setCancelOpen(false);
+      setCancelReason("");
+    },
+  });
+
 
   const inr = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -288,6 +311,89 @@ export function BookingDetailsModal({
                       )}
                     </div>
                   )}
+                </section>
+              )}
+
+              {/* Cancel booking */}
+              {canCancel && (
+                <section className="bg-background border border-border rounded-[18px] p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Cancel booking
+                      </h3>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        Sets status to Cancelled and records a reason in the audit log.
+                      </p>
+                    </div>
+                    {!cancelOpen && (
+                      <button
+                        onClick={() => setCancelOpen(true)}
+                        className="h-11 px-4 rounded-[14px] border border-destructive text-destructive font-bold text-[14px] inline-flex items-center gap-2 hover:bg-red-50"
+                      >
+                        <Ban size={16} />
+                        Cancel booking
+                      </button>
+                    )}
+                  </div>
+                  {cancelOpen && (
+                    <div className="rounded-[14px] border border-border bg-card p-3 space-y-3">
+                      <p className="text-[13px] text-foreground">
+                        Select a reason to cancel this booking. This cannot be undone.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <select
+                          value={cancelReason}
+                          onChange={(e) =>
+                            setCancelReason(e.target.value as CancellationReason | "")
+                          }
+                          className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] min-w-[220px]"
+                        >
+                          <option value="">Select reason…</option>
+                          {CANCELLATION_REASONS.map((r) => (
+                            <option key={r} value={r}>
+                              {r.replace(/_/g, " ")}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!cancelReason || cancelMutation.isPending}
+                          onClick={() =>
+                            cancelReason && cancelMutation.mutate(cancelReason)
+                          }
+                          className="h-11 px-5 rounded-[14px] bg-destructive text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+                        >
+                          <Ban size={16} />
+                          {cancelMutation.isPending ? "Cancelling…" : "Confirm cancel"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCancelOpen(false);
+                            setCancelReason("");
+                          }}
+                          className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+                        >
+                          Back
+                        </button>
+                      </div>
+                      {cancelMutation.isError && (
+                        <p className="text-[12px] text-destructive">
+                          {(cancelMutation.error as Error)?.message ?? "Cancel failed"}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {data.status === "cancelled" && data.cancellationReason && (
+                <section className="bg-red-50 border border-red-100 rounded-[18px] p-4">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-red-700 mb-1">
+                    Cancellation reason
+                  </h3>
+                  <p className="text-[14px] font-semibold text-red-700">
+                    {data.cancellationReason.replace(/_/g, " ")}
+                  </p>
                 </section>
               )}
             </>

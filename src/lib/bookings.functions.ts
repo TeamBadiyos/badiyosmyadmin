@@ -212,6 +212,7 @@ export type BookingDetails = {
   } | null;
   zone: { id: string | null; name: string | null };
   expert: { id: string | null; name: string | null; phone: string | null };
+  cancellationReason: string | null;
 };
 
 async function loadBookingDetails(
@@ -224,7 +225,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -292,6 +293,7 @@ async function loadBookingDetails(
       name: expertRes.data?.name ?? null,
       phone: expertRes.data?.phone ?? null,
     },
+    cancellationReason: b.cancellation_reason ?? null,
   };
 }
 
@@ -330,6 +332,31 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const CANCELLATION_REASONS = [
+  "SAFETY",
+  "FRAUD",
+  "DUPLICATE",
+  "MANUAL_OVERRIDE",
+  "OTHER",
+] as const;
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
+
+export const cancelBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; reason: CancellationReason }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!CANCELLATION_REASONS.includes(input.reason)) throw new Error("Invalid reason");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_cancel_booking", {
+      _booking_id: data.bookingId,
+      _reason: data.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["accepted", "rejected", "cancelled"],
   accepted: ["assigned", "cancelled", "rejected"],
@@ -340,3 +367,4 @@ export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = 
   cancelled: [],
   rejected: [],
 };
+

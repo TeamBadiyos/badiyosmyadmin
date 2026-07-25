@@ -146,6 +146,7 @@ export type Database = {
         Row: {
           address_id: string | null
           assigned_expert_id: string | null
+          cancellation_reason: string | null
           created_at: string | null
           id: string
           price: number
@@ -166,6 +167,7 @@ export type Database = {
         Insert: {
           address_id?: string | null
           assigned_expert_id?: string | null
+          cancellation_reason?: string | null
           created_at?: string | null
           id?: string
           price: number
@@ -186,6 +188,7 @@ export type Database = {
         Update: {
           address_id?: string | null
           assigned_expert_id?: string | null
+          cancellation_reason?: string | null
           created_at?: string | null
           id?: string
           price?: number
@@ -705,6 +708,10 @@ export type Database = {
       }
       staff_assign_expert: {
         Args: { _booking_id: string; _expert_id: string }
+        Returns: undefined
+      }
+      staff_cancel_booking: {
+        Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
       staff_reject_booking: {
