@@ -305,7 +305,7 @@ function BoardCard({
   broadcastTimeoutSeconds: number;
   onOpen: () => void;
 }) {
-  const canAct = role === "super_admin" || role === "opsUncomprehensive" || role === "ops_manager";
+  const canAct = role === "super_admin" || role === "ops_manager";
   const isBroadcasting = booking.status === "accepted";
 
   // Live-ticking elapsed seconds since the booking entered 'accepted'.
