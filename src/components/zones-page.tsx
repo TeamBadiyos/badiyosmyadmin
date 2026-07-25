@@ -89,9 +89,34 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
   );
 }
 
-function ZoneRowItem({ zone }: { zone: ZoneRow }) {
+function ZoneRowItem({ zone, canManage }: { zone: ZoneRow; canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const fetchPartners = useServerFn(listAreaPartners);
+  const assign = useServerFn(assignAreaPartner);
+  const [selected, setSelected] = useState<string>(zone.assignedAreaPartnerId ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ["area-partners", "active"],
+    queryFn: () => fetchPartners(),
+    staleTime: 60_000,
+    enabled: canManage,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (partnerId: string | null) =>
+      assign({ data: { zoneId: zone.id, partnerId } }),
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["zones", "list"] });
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Failed to assign"),
+  });
+
+  const dirty = (selected || null) !== (zone.assignedAreaPartnerId ?? null);
+
   return (
-    <div className="grid grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px] gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]">
+    <div className={`grid ${canManage ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px]" : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]"} gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]`}>
       <div className="w-8 h-8 rounded-lg bg-primary-tint text-primary flex items-center justify-center">
         <MapIcon size={16} />
       </div>
@@ -115,9 +140,39 @@ function ZoneRowItem({ zone }: { zone: ZoneRow }) {
           {zone.status}
         </span>
       </span>
+      {canManage && (
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2 w-full">
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={mutation.isPending}
+              className="flex-1 min-w-0 h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] text-foreground disabled:opacity-60"
+            >
+              <option value="">
+                {partners.length === 0 ? "No active partners" : "Unassigned"}
+              </option>
+              {partners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => mutation.mutate(selected ? selected : null)}
+              disabled={!dirty || mutation.isPending}
+              className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold disabled:opacity-50"
+            >
+              {mutation.isPending ? "…" : "Save"}
+            </button>
+          </div>
+          {error && <p className="text-[11px] text-destructive">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }
+
 
 function DrawZoneModal({ onClose }: { onClose: () => void }) {
   const mapRef = useRef<HTMLDivElement>(null);
