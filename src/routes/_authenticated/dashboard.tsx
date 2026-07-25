@@ -9,6 +9,8 @@ import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
+import { ServiceCataloguePage } from "@/components/service-catalogue-page";
+import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 
 import {
   LayoutDashboard,
