@@ -62,13 +62,13 @@ export const listWalletOwners = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WalletOwner[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [{ data: experts, error: e1 }, { data: partners, error: e2 }, { data: ledger, error: e3 }] =
       await Promise.all([
-        supabaseAdmin.from("experts").select("id, name, phone, wallet_balance"),
-        supabaseAdmin.from("area_partners").select("id, name, phone"),
-        supabaseAdmin.from("wallet_ledger").select("owner_type, owner_id, type, amount"),
+        db.from("experts").select("id, name, phone, wallet_balance"),
+        db.from("area_partners").select("id, name, phone"),
+        db.from("wallet_ledger").select("owner_type, owner_id, type, amount"),
       ]);
     if (e1) throw new Error(e1.message);
     if (e2) throw new Error(e2.message);
