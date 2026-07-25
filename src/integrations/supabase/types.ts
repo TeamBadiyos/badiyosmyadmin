@@ -1111,6 +1111,14 @@ export type Database = {
         Args: { _payload: Json }
         Returns: string
       }
+      staff_verify_end_otp: {
+        Args: { _booking_id: string; _otp: string }
+        Returns: undefined
+      }
+      staff_verify_start_otp: {
+        Args: { _booking_id: string; _otp: string }
+        Returns: undefined
+      }
       staff_wallet_adjust: {
         Args: {
           _amount: number
