@@ -24,9 +24,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       throw new Error("Forbidden");
     }
 
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const db = context.supabase;
 
     const now = new Date();
     const startOfDay = new Date(
@@ -50,36 +48,40 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       pendingRes,
       expertsRes,
     ] = await Promise.all([
-      supabaseAdmin
+      db
         .from("bookings")
         .select("*", countOnly)
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
-      supabaseAdmin
+      db
         .from("bookings")
         .select("price")
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
         .not("razorpay_payment_id", "is", null),
-      supabaseAdmin
+      db
         .from("bookings")
         .select("*", countOnly)
         .in("status", ["expert_assigned", "in_progress"]),
-      supabaseAdmin
+      db
         .from("bookings")
         .select("*", countOnly)
         .eq("status", "completed")
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
-      supabaseAdmin
+      db
         .from("bookings")
         .select("*", countOnly)
         .eq("status", "confirmed"),
-      supabaseAdmin
+      db
         .from("experts")
         .select("*", countOnly)
         .eq("status", "active"),
     ]);
+
+    for (const res of [todayBookingsRes, revenueRes, activeRes, completedRes, pendingRes, expertsRes]) {
+      if (res.error) throw res.error;
+    }
 
     const revenue = (revenueRes.data ?? []).reduce(
       (sum, row) => sum + Number(row.price ?? 0),
