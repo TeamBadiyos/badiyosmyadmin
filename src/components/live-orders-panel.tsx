@@ -136,11 +136,8 @@ export function LiveOrdersPanel() {
     },
   });
 
-  const { data: experts } = useQuery({
-    queryKey: ["live-orders", "experts"],
-    queryFn: () => fetchExperts(),
-    staleTime: 30_000,
-  });
+  // Experts are now fetched per-card, filtered by that booking's zone.
+
 
   const [assignError, setAssignError] = useState<Record<string, string>>({});
   const assignMutation = useMutation({
