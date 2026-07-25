@@ -330,6 +330,31 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const CANCELLATION_REASONS = [
+  "SAFETY",
+  "FRAUD",
+  "DUPLICATE",
+  "MANUAL_OVERRIDE",
+  "OTHER",
+] as const;
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
+
+export const cancelBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; reason: CancellationReason }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!CANCELLATION_REASONS.includes(input.reason)) throw new Error("Invalid reason");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_cancel_booking", {
+      _booking_id: data.bookingId,
+      _reason: data.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["accepted", "rejected", "cancelled"],
   accepted: ["assigned", "cancelled", "rejected"],
@@ -340,3 +365,4 @@ export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = 
   cancelled: [],
   rejected: [],
 };
+
