@@ -225,7 +225,15 @@ export type Database = {
           status?: string
           zone_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "experts_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fcm_tokens: {
         Row: {
@@ -588,6 +596,36 @@ export type Database = {
           id?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      zones: {
+        Row: {
+          assigned_area_partner_id: string | null
+          boundary: Json
+          city: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          assigned_area_partner_id?: string | null
+          boundary: Json
+          city: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          assigned_area_partner_id?: string | null
+          boundary?: Json
+          city?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
         }
         Relationships: []
       }
