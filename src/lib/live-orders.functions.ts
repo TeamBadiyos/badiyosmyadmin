@@ -199,3 +199,128 @@ export const assignExpertToBooking = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export type PipelineStatus =
+  | "confirmed"
+  | "accepted"
+  | "expert_assigned"
+  | "in_progress"
+  | "completed";
+
+export type PipelineBooking = {
+  id: string;
+  status: PipelineStatus;
+  customerName: string;
+  serviceLabel: string | null;
+  serviceDurationMinutes: number | null;
+  price: number | null;
+  scheduledDate: string | null;
+  scheduledTimeSlot: string | null;
+  assignedExpertName: string | null;
+  createdAt: string;
+};
+
+export const listPipelineBookings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PipelineBooking[]> => {
+    await assertActiveStaff(context);
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).toISOString();
+
+    // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
+    // plus today's completed bookings.
+    const [openRes, completedRes] = await Promise.all([
+      supabaseAdmin
+        .from("bookings")
+        .select(
+          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at",
+        )
+        .in("status", [
+          "confirmed",
+          "accepted",
+          "expert_assigned",
+          "in_progress",
+        ])
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabaseAdmin
+        .from("bookings")
+        .select(
+          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at",
+        )
+        .eq("status", "completed")
+        .is("deleted_at", null)
+        .gte("created_at", startOfDay)
+        .order("created_at", { ascending: false })
+        .limit(200),
+    ]);
+    if (openRes.error) throw openRes.error;
+    if (completedRes.error) throw completedRes.error;
+
+    const rows = [...(openRes.data ?? []), ...(completedRes.data ?? [])];
+    if (rows.length === 0) return [];
+
+    const userIds = Array.from(
+      new Set(
+        rows.map((r) => r.user_id).filter((id): id is string => !!id),
+      ),
+    );
+    const expertIds = Array.from(
+      new Set(
+        rows
+          .map((r) => r.assigned_expert_id)
+          .filter((id): id is string => !!id),
+      ),
+    );
+
+    const [usersRes, expertsRes] = await Promise.all([
+      userIds.length
+        ? supabaseAdmin.from("users").select("id, full_name").in("id", userIds)
+        : Promise.resolve({ data: [], error: null } as const),
+      expertIds.length
+        ? supabaseAdmin
+            .from("experts")
+            .select("id, name")
+            .in("id", expertIds)
+        : Promise.resolve({ data: [], error: null } as const),
+    ]);
+    if ("error" in usersRes && usersRes.error) throw usersRes.error;
+    if ("error" in expertsRes && expertsRes.error) throw expertsRes.error;
+
+    const userMap = new Map(
+      ((usersRes.data ?? []) as Array<{ id: string; full_name: string | null }>)
+        .map((u) => [u.id, u.full_name]),
+    );
+    const expertMap = new Map(
+      ((expertsRes.data ?? []) as Array<{ id: string; name: string }>)
+        .map((e) => [e.id, e.name]),
+    );
+
+    return rows.map((r) => ({
+      id: r.id as string,
+      status: r.status as PipelineStatus,
+      customerName:
+        (userMap.get(r.user_id as string) as string | null) ?? "Customer",
+      serviceLabel: (r.service_label as string | null) ?? null,
+      serviceDurationMinutes:
+        (r.service_duration_minutes as number | null) ?? null,
+      price: r.price != null ? Number(r.price) : null,
+      scheduledDate: (r.scheduled_date as string | null) ?? null,
+      scheduledTimeSlot: (r.scheduled_time_slot as string | null) ?? null,
+      assignedExpertName: r.assigned_expert_id
+        ? (expertMap.get(r.assigned_expert_id as string) as string | null) ??
+          null
+        : null,
+      createdAt: r.created_at as string,
+    }));
+  });
+
