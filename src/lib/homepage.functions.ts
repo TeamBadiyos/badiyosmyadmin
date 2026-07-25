@@ -58,7 +58,7 @@ export type UpsertHomepageSectionInput = {
   section_type: string;
   display_order?: number | null;
   is_active: boolean;
-  payload: Record<string, unknown>;
+  payload: JsonRecord;
   city_id?: string | null;
 };
 
