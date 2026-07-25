@@ -529,6 +529,14 @@ export function BookingDetailsModal({
                   mode={showAssign ? "assign" : "reassign"}
                   experts={filteredExperts}
                   loading={expertsQuery.isLoading}
+                  errorMessage={
+                    expertsQuery.isError
+                      ? expertsQuery.error instanceof Error
+                        ? expertsQuery.error.message
+                        : "Couldn't load experts"
+                      : null
+                  }
+                  onRetry={() => expertsQuery.refetch()}
                   search={expertSearch}
                   onSearch={setExpertSearch}
                   selected={selectedExpertId}
