@@ -51,27 +51,32 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("bookings")
         .select("*", countOnly)
+        .is("deleted_at", null)
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
       db
         .from("bookings")
         .select("price")
+        .is("deleted_at", null)
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
         .not("razorpay_payment_id", "is", null),
       db
         .from("bookings")
         .select("*", countOnly)
+        .is("deleted_at", null)
         .in("status", ["expert_assigned", "in_progress"]),
       db
         .from("bookings")
         .select("*", countOnly)
+        .is("deleted_at", null)
         .eq("status", "completed")
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
       db
         .from("bookings")
         .select("*", countOnly)
+        .is("deleted_at", null)
         .eq("status", "confirmed"),
       db
         .from("experts")

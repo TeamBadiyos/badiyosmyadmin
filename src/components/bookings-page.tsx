@@ -48,6 +48,7 @@ export function BookingsPage({
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [page, setPage] = useState<number>(1);
+  const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
@@ -66,8 +67,9 @@ export function BookingsPage({
       to: to || null,
       page,
       pageSize: PAGE_SIZE,
+      includeDeleted: includeDeleted && role === "super_admin",
     }),
-    [status, zoneId, from, to, page],
+    [status, zoneId, from, to, page, includeDeleted, role],
   );
 
   const { data, isLoading, isError } = useQuery({
@@ -167,10 +169,23 @@ export function BookingsPage({
           </button>
         )}
 
+        {role === "super_admin" && (
+          <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(e) => updateFilter(() => setIncludeDeleted(e.target.checked))}
+              className="accent-primary"
+            />
+            Show deleted
+          </label>
+        )}
+
         <div className="ml-auto text-[12px] text-muted-foreground self-center">
           {isLoading ? "Loading…" : `${total} booking${total === 1 ? "" : "s"}`}
         </div>
       </div>
+
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
         <div className="overflow-x-auto">
@@ -253,9 +268,18 @@ function BookingRowItem({
   return (
     <tr
       onClick={() => onSelect?.(row.id)}
-      className="border-t border-border hover:bg-muted/40 cursor-pointer"
+      className={`border-t border-border hover:bg-muted/40 cursor-pointer ${row.deletedAt ? "opacity-60" : ""}`}
     >
-      <td className="px-4 py-3 font-semibold text-foreground">{row.customerName}</td>
+      <td className="px-4 py-3 font-semibold text-foreground">
+        <div className="flex items-center gap-2">
+          <span>{row.customerName}</span>
+          {row.deletedAt && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-50 text-red-700">
+              Deleted
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3 text-muted-foreground">
         <div className="text-foreground">{row.serviceLabel ?? "—"}</div>
         <div className="text-[11px]">

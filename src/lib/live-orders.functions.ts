@@ -46,6 +46,7 @@ export const listPendingBookings = createServerFn({ method: "GET" })
         "id, user_id, address_id, service_label, scheduled_date, scheduled_time_slot, created_at",
       )
       .eq("status", "confirmed")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw error;

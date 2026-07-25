@@ -34,6 +34,7 @@ export type BookingRow = {
   status: BookingStatus;
   paid: boolean;
   createdAt: string;
+  deletedAt: string | null;
 };
 
 export type ListBookingsInput = {
@@ -43,6 +44,7 @@ export type ListBookingsInput = {
   to?: string | null;
   page?: number;
   pageSize?: number;
+  includeDeleted?: boolean;
 };
 
 export type ListBookingsResult = {
@@ -51,6 +53,7 @@ export type ListBookingsResult = {
   page: number;
   pageSize: number;
 };
+
 
 const sel = (s: string): string => s;
 
@@ -76,12 +79,19 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
         ),
         { count: "exact" },
       )
       .order("created_at", { ascending: false })
       .range(fromIdx, toIdx);
+
+    if (!(data.includeDeleted && staff.role === "super_admin")) {
+      q = q.is("deleted_at", null);
+    }
+
+
+
 
     if (staff.role === "area_partner") {
       if (!staff.zone_id) {
@@ -154,6 +164,8 @@ export const listBookings = createServerFn({ method: "POST" })
       status: r.status as BookingStatus,
       paid: !!r.razorpay_payment_id,
       createdAt: r.created_at,
+      deletedAt: r.deleted_at ?? null,
+
     }));
 
     return { rows: out, total: count ?? out.length, page, pageSize };
@@ -212,6 +224,10 @@ export type BookingDetails = {
   zone: { id: string | null; name: string | null };
   expert: { id: string | null; name: string | null; phone: string | null };
   cancellationReason: string | null;
+  addressId: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  deleteReason: string | null;
 };
 
 async function loadBookingDetails(
@@ -224,7 +240,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -293,6 +309,10 @@ async function loadBookingDetails(
       phone: expertRes.data?.phone ?? null,
     },
     cancellationReason: b.cancellation_reason ?? null,
+    addressId: b.address_id ?? null,
+    deletedAt: b.deleted_at ?? null,
+    deletedBy: b.deleted_by ?? null,
+    deleteReason: b.delete_reason ?? null,
   };
 }
 
@@ -385,6 +405,144 @@ export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = 
   cancelled: [],
   rejected: [],
 };
+
+// ================= Edit / Soft-Delete =================
+
+export type ServiceDurationOption = {
+  durationMinutes: number;
+  durationLabel: string;
+  price: number;
+};
+
+export const listServiceDurations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ServiceDurationOption[]> => {
+    const { data, error } = await context.supabase
+      .from("service_catalogue_config")
+      .select("duration_minutes, duration_label, price, is_active")
+      .eq("is_active", true)
+      .order("duration_minutes");
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Array<{
+      duration_minutes: number;
+      duration_label: string;
+      price: number | string;
+    }>).map((r) => ({
+      durationMinutes: r.duration_minutes,
+      durationLabel: r.duration_label,
+      price: Number(r.price),
+    }));
+  });
+
+export type BookingAddressOption = {
+  id: string;
+  label: string | null;
+  fullAddress: string;
+  area: string | null;
+  city: string | null;
+};
+
+export const listBookingCustomerAddresses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<BookingAddressOption[]> => {
+    const { data: staff } = await context.supabase
+      .from("staff_users")
+      .select("role, status")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+    if (!staff || staff.status !== "active") throw new Error("Forbidden");
+    if (!["super_admin", "ops_manager"].includes(staff.role)) {
+      throw new Error("Forbidden");
+    }
+    const { data: b, error: bErr } = await context.supabase
+      .from("bookings")
+      .select("user_id")
+      .eq("id", data.bookingId)
+      .maybeSingle();
+    if (bErr) throw new Error(bErr.message);
+    if (!b?.user_id) return [];
+    const { data: rows, error } = await context.supabase
+      .from("addresses")
+      .select("id, label, full_address, area, city")
+      .eq("user_id", b.user_id)
+      .order("is_default", { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as Array<{
+      id: string;
+      label: string | null;
+      full_address: string;
+      area: string | null;
+      city: string | null;
+    }>).map((r) => ({
+      id: r.id,
+      label: r.label,
+      fullAddress: r.full_address,
+      area: r.area,
+      city: r.city,
+    }));
+  });
+
+export type EditBookingInput = {
+  bookingId: string;
+  serviceDurationMinutes?: number | null;
+  price?: number | null;
+  addressId?: string | null;
+  scheduledDate?: string | null;
+  scheduledTimeSlot?: string | null;
+};
+
+export const editBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: EditBookingInput) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const payload: Record<string, unknown> = {};
+    if (data.serviceDurationMinutes !== undefined) {
+      payload.service_duration_minutes = data.serviceDurationMinutes;
+    }
+    if (data.price !== undefined && data.price !== null) {
+      payload.price = data.price;
+    }
+    if (data.addressId !== undefined) {
+      payload.address_id = data.addressId;
+    }
+    if (data.scheduledDate !== undefined) {
+      payload.scheduled_date = data.scheduledDate;
+    }
+    if (data.scheduledTimeSlot !== undefined) {
+      payload.scheduled_time_slot = data.scheduledTimeSlot;
+    }
+    const { error } = await context.supabase.rpc("staff_edit_booking", {
+      _booking_id: data.bookingId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _payload: payload as any,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const softDeleteBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; reason: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input?.reason || !input.reason.trim()) throw new Error("Reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_soft_delete_booking", {
+      _booking_id: data.bookingId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 
 
 
