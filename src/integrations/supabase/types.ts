@@ -433,6 +433,80 @@ export type Database = {
         }
         Relationships: []
       }
+      payout_batch_items: {
+        Row: {
+          amount: number
+          batch_id: string
+          booking_ids: string[]
+          created_at: string
+          id: string
+          owner_id: string
+          owner_type: string
+          paid: boolean
+          paid_at: string | null
+        }
+        Insert: {
+          amount?: number
+          batch_id: string
+          booking_ids?: string[]
+          created_at?: string
+          id?: string
+          owner_id: string
+          owner_type: string
+          paid?: boolean
+          paid_at?: string | null
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          booking_ids?: string[]
+          created_at?: string
+          id?: string
+          owner_id?: string
+          owner_type?: string
+          paid?: boolean
+          paid_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batches: {
+        Row: {
+          created_at: string
+          id: string
+          paid_at: string | null
+          status: string
+          total_amount: number
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          total_amount?: number
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          total_amount?: number
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       referral_config: {
         Row: {
           id: string
@@ -467,6 +541,8 @@ export type Database = {
           id: string
           referred_user_id: string | null
           referrer_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
           reward_amount: number | null
           reward_date: string | null
           status: string
@@ -477,6 +553,8 @@ export type Database = {
           id?: string
           referred_user_id?: string | null
           referrer_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           reward_amount?: number | null
           reward_date?: string | null
           status?: string
@@ -487,6 +565,8 @@ export type Database = {
           id?: string
           referred_user_id?: string | null
           referrer_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           reward_amount?: number | null
           reward_date?: string | null
           status?: string
@@ -665,6 +745,47 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          owner_id: string
+          owner_type: string
+          reason: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id: string
+          owner_type: string
+          reason: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          owner_id?: string
+          owner_type?: string
+          reason?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_transactions: {
         Row: {
           amount: number
@@ -778,12 +899,25 @@ export type Database = {
         Args: { _decision: string; _expert_id: string; _reason: string }
         Returns: undefined
       }
+      staff_generate_payout_batch: { Args: never; Returns: string }
+      staff_mark_payout_batch_paid: {
+        Args: { _batch_id: string }
+        Returns: undefined
+      }
+      staff_mark_payout_item_paid: {
+        Args: { _item_id: string; _paid: boolean }
+        Returns: undefined
+      }
       staff_reject_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
       staff_reorder_homepage_sections: {
         Args: { _orders: Json }
+        Returns: undefined
+      }
+      staff_reverse_referral_reward: {
+        Args: { _reason: string; _txn_id: string }
         Returns: undefined
       }
       staff_set_homepage_section_active: {
@@ -794,6 +928,10 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
       }
+      staff_update_referral_config: {
+        Args: { _is_active: boolean; _reward: number }
+        Returns: undefined
+      }
       staff_update_service_price: {
         Args: { _id: string; _payload: Json }
         Returns: undefined
@@ -802,6 +940,16 @@ export type Database = {
       staff_upsert_expert: { Args: { _payload: Json }; Returns: string }
       staff_upsert_homepage_section: {
         Args: { _payload: Json }
+        Returns: string
+      }
+      staff_wallet_adjust: {
+        Args: {
+          _amount: number
+          _owner_id: string
+          _owner_type: string
+          _reason: string
+          _type: string
+        }
         Returns: string
       }
       submit_booking_review: {
