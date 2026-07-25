@@ -163,8 +163,7 @@ export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PayoutBatch[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("payout_batches")
       .select("id, week_start, week_end, status, total_amount, created_at")
       .order("week_start", { ascending: false });
