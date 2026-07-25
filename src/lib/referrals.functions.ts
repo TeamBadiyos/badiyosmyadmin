@@ -122,8 +122,7 @@ export const listReferralStatuses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<string[]> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("referral_transactions")
       .select("status")
       .limit(1000);
