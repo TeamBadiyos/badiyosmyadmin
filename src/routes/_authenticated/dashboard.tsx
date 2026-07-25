@@ -218,6 +218,10 @@ function Shell() {
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
           <BookingsPage role={role} onSelect={(id) => setSelectedBookingId(id)} />
+        ) : active === "experts" ? (
+          <ExpertsPage role={role} />
+        ) : active === "partners" ? (
+          <AreaPartnersPage />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
