@@ -1070,12 +1070,13 @@ function ExpertAssignSection({
             {loading
               ? "Loading experts…"
               : experts.length === 0
-                ? "No active experts in this zone"
+                ? "No experts nearby (within broadcast radius)"
                 : "Select expert…"}
           </option>
           {experts.map((e) => (
             <option key={e.id} value={e.id}>
               {e.name} — {e.phone}
+              {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
             </option>
           ))}
         </select>
