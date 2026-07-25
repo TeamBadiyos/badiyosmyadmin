@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
+import { ZonesPage } from "@/components/zones-page";
 
 import {
   LayoutDashboard,
@@ -208,6 +209,8 @@ function Shell() {
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
         {active === "dashboard" ? (
           <DashboardHome />
+        ) : active === "zones" ? (
+          <ZonesPage role={role} />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
