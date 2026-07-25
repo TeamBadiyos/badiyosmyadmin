@@ -85,9 +85,43 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          id: string
+          target_id: string | null
+          target_table: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          target_id?: string | null
+          target_table: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          id?: string
+          target_id?: string | null
+          target_table?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           address_id: string | null
+          assigned_expert_id: string | null
           created_at: string | null
           id: string
           price: number
@@ -106,6 +140,7 @@ export type Database = {
         }
         Insert: {
           address_id?: string | null
+          assigned_expert_id?: string | null
           created_at?: string | null
           id?: string
           price: number
@@ -124,6 +159,7 @@ export type Database = {
         }
         Update: {
           address_id?: string | null
+          assigned_expert_id?: string | null
           created_at?: string | null
           id?: string
           price?: number
@@ -146,6 +182,13 @@ export type Database = {
             columns: ["address_id"]
             isOneToOne: false
             referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_expert_id_fkey"
+            columns: ["assigned_expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
             referencedColumns: ["id"]
           },
           {
@@ -566,6 +609,10 @@ export type Database = {
       link_referral: { Args: { _code: string }; Returns: undefined }
       staff_accept_booking: {
         Args: { _booking_id: string }
+        Returns: undefined
+      }
+      staff_assign_expert: {
+        Args: { _booking_id: string; _expert_id: string }
         Returns: undefined
       }
       staff_reject_booking: {
