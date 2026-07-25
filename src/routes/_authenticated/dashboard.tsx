@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -48,6 +49,16 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
+type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+
+const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
+  super_admin: NAV_ITEMS.map((n) => n.key),
+  ops_manager: NAV_ITEMS.map((n) => n.key).filter(
+    (k) => k !== "roles" && k !== "catalogue",
+  ),
+  area_partner: ["dashboard", "bookings", "experts"],
+};
+
 function Shell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -69,6 +80,16 @@ function Shell() {
     },
     staleTime: 60_000,
   });
+
+  const role = (staff?.role as StaffRole | undefined) ?? null;
+  const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
+  const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
+
+  useEffect(() => {
+    if (role && !allowedKeys.includes(active)) {
+      setActive("dashboard");
+    }
+  }, [role, active, allowedKeys]);
 
   const name = staff?.name ?? "";
   const initials =
@@ -105,7 +126,7 @@ function Shell() {
           </button>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.key === active;
             return (
