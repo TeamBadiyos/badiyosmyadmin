@@ -277,7 +277,7 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
       const g = window.google.maps;
       const map = new g.Map(mapRef.current, {
         center: LATUR_CENTER,
-        zoom: 11,
+        zoom: 13,
         disableDefaultUI: false,
         streetViewControl: false,
         mapTypeControl: false,
