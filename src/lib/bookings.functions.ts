@@ -358,12 +358,12 @@ export const cancelBooking = createServerFn({ method: "POST" })
 
 export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["accepted", "rejected", "cancelled"],
-  accepted: ["assigned", "cancelled", "rejected"],
-  assigned: ["in_progress", "cancelled"],
+  accepted: ["expert_assigned", "cancelled", "rejected"],
   expert_assigned: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
   rejected: [],
 };
+
 
