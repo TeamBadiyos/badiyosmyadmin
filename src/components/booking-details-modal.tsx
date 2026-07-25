@@ -554,6 +554,213 @@ export function BookingDetailsModal({
                 </section>
               )}
 
+              {/* Edit booking */}
+              {canEdit && (
+                <section className="bg-background border border-border rounded-[18px] p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Edit booking
+                      </h3>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        {canEditFields
+                          ? "Update service duration, price, address, or scheduled slot."
+                          : isDeleted
+                            ? "This booking has been deleted and is read-only."
+                            : "Completed or cancelled bookings are read-only."}
+                      </p>
+                    </div>
+                    {!editOpen && canEditFields && (
+                      <button
+                        onClick={() => setEditOpen(true)}
+                        className="h-11 px-4 rounded-[14px] border border-border text-foreground font-bold text-[14px] inline-flex items-center gap-2 hover:bg-muted"
+                      >
+                        <Pencil size={16} />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  {editOpen && canEditFields && (
+                    <div className="rounded-[14px] border border-border bg-card p-4 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="text-[12px] font-semibold text-muted-foreground">
+                          Service duration
+                          <select
+                            value={editDuration === "" ? "" : String(editDuration)}
+                            onChange={(e) => {
+                              const v = e.target.value ? Number(e.target.value) : "";
+                              setEditDuration(v);
+                              const opt = durationsQuery.data?.find(
+                                (d) => d.durationMinutes === v,
+                              );
+                              if (opt) setEditPrice(String(opt.price));
+                            }}
+                            className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                          >
+                            <option value="">Select duration…</option>
+                            {(durationsQuery.data ?? []).map((d) => (
+                              <option key={d.durationMinutes} value={d.durationMinutes}>
+                                {d.durationLabel} — ₹{d.price.toFixed(0)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-[12px] font-semibold text-muted-foreground">
+                          Price (₹)
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                          />
+                        </label>
+                        <label className="text-[12px] font-semibold text-muted-foreground">
+                          Address
+                          <select
+                            value={editAddressId}
+                            onChange={(e) => setEditAddressId(e.target.value)}
+                            className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                          >
+                            <option value="">— none —</option>
+                            {(addressesQuery.data ?? []).map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {(a.label ? `${a.label} — ` : "") + a.fullAddress}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-[12px] font-semibold text-muted-foreground">
+                          Scheduled date
+                          <input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                            className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                          />
+                        </label>
+                        <label className="text-[12px] font-semibold text-muted-foreground sm:col-span-2">
+                          Scheduled time slot
+                          <input
+                            type="text"
+                            placeholder="e.g. 10:00–11:00"
+                            value={editSlot}
+                            onChange={(e) => setEditSlot(e.target.value)}
+                            className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                          />
+                        </label>
+                      </div>
+                      {priceMismatchWarning && (
+                        <p className="text-[12px] text-amber-600 inline-flex items-center gap-2">
+                          <AlertTriangle size={14} />
+                          {priceMismatchWarning}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          disabled={editMutation.isPending}
+                          onClick={() => {
+                            const priceNum = editPrice === "" ? null : Number(editPrice);
+                            editMutation.mutate({
+                              serviceDurationMinutes:
+                                editDuration === "" ? null : editDuration,
+                              price:
+                                priceNum != null && Number.isFinite(priceNum)
+                                  ? priceNum
+                                  : null,
+                              addressId: editAddressId || null,
+                              scheduledDate: editDate || null,
+                              scheduledTimeSlot: editSlot || null,
+                            });
+                          }}
+                          className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+                        >
+                          <Check size={16} />
+                          {editMutation.isPending ? "Saving…" : "Save changes"}
+                        </button>
+                        <button
+                          onClick={() => setEditOpen(false)}
+                          className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Delete booking (super_admin only) */}
+              {canDelete && (
+                <section className="bg-background border border-red-200 rounded-[18px] p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-red-700">
+                        Delete booking
+                      </h3>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        Soft-delete: hides the booking from lists and reports. Financial and audit history is preserved.
+                      </p>
+                    </div>
+                    {!deleteOpen && (
+                      <button
+                        onClick={() => setDeleteOpen(true)}
+                        className="h-11 px-4 rounded-[14px] border border-destructive text-destructive font-bold text-[14px] inline-flex items-center gap-2 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                        Delete booking
+                      </button>
+                    )}
+                  </div>
+                  {deleteOpen && (
+                    <div className="rounded-[14px] border border-red-200 bg-red-50/40 p-4 space-y-3">
+                      <p className="text-[13px] text-foreground">
+                        Type the short booking ID <span className="font-mono font-bold">{shortId}</span> to confirm.
+                      </p>
+                      <input
+                        value={deleteConfirmId}
+                        onChange={(e) => setDeleteConfirmId(e.target.value)}
+                        placeholder={shortId}
+                        className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] font-mono"
+                      />
+                      <label className="block text-[12px] font-semibold text-muted-foreground">
+                        Reason (required)
+                        <textarea
+                          value={deleteReason}
+                          onChange={(e) => setDeleteReason(e.target.value)}
+                          rows={3}
+                          className="mt-1 w-full px-3 py-2 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+                        />
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          disabled={
+                            deleteConfirmId.trim() !== shortId ||
+                            !deleteReason.trim() ||
+                            deleteMutation.isPending
+                          }
+                          onClick={() => deleteMutation.mutate()}
+                          className="h-11 px-5 rounded-[14px] bg-destructive text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+                        >
+                          <Trash2 size={16} />
+                          {deleteMutation.isPending ? "Deleting…" : "Confirm delete"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteOpen(false);
+                            setDeleteConfirmId("");
+                            setDeleteReason("");
+                          }}
+                          className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* Cancel booking */}
               {canCancel && (
                 <section className="bg-background border border-border rounded-[18px] p-4">
