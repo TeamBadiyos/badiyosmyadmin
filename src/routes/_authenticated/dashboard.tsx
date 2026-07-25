@@ -211,11 +211,14 @@ function Shell() {
           <DashboardHome />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
+        ) : active === "bookings" ? (
+          <BookingsPage role={role} />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
           </div>
         )}
+
       </main>
     </div>
   );
