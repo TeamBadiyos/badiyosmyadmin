@@ -364,8 +364,41 @@ export function BookingDetailsModal({
                 </Card>
               </section>
 
+              {/* Assign / Reassign expert */}
+              {(showAssign || (canReassign && reassignOpen)) && (
+                <ExpertAssignSection
+                  mode={showAssign ? "assign" : "reassign"}
+                  experts={filteredExperts}
+                  loading={expertsQuery.isLoading}
+                  search={expertSearch}
+                  onSearch={setExpertSearch}
+                  selected={selectedExpertId}
+                  onSelect={setSelectedExpertId}
+                  pending={
+                    showAssign
+                      ? assignMutation.isPending
+                      : reassignMutation.isPending
+                  }
+                  onConfirm={() => {
+                    if (!selectedExpertId) return;
+                    if (showAssign) assignMutation.mutate(selectedExpertId);
+                    else reassignMutation.mutate(selectedExpertId);
+                  }}
+                  onCancel={
+                    showAssign
+                      ? undefined
+                      : () => {
+                          setReassignOpen(false);
+                          setSelectedExpertId("");
+                          setExpertSearch("");
+                        }
+                  }
+                />
+              )}
+
               {/* Update status */}
               {canEdit && (
+
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3">
                     Update status
