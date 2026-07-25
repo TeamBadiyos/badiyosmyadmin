@@ -308,7 +308,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       db
         .from("bookings")
         .select(
-          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at",
+          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at",
         )
         .in("status", [
           "confirmed",
