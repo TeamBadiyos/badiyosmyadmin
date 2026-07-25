@@ -92,7 +92,7 @@ function MarketingFooter() {
         <div>
           <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto mb-3" />
           <p className="text-[13px] text-muted-foreground max-w-[240px]">
-            हर घर का अपना साथी. Home services, done right.
+            हर घर का अपना साथी.
           </p>
         </div>
         <FooterCol title="Company">
