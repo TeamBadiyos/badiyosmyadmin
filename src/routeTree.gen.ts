@@ -10,16 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as MyadminRouteImport } from './routes/myadmin'
 import { Route as JoinExpertRouteImport } from './routes/join-expert'
 import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyadminRoute = MyadminRouteImport.update({
+  id: '/myadmin',
+  path: '/myadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinExpertRoute = JoinExpertRouteImport.update({
@@ -46,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyadminLoginRoute = MyadminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => MyadminRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -57,16 +69,20 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/myadmin': typeof MyadminRouteWithChildren
   '/support': typeof SupportRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/myadmin/login': typeof MyadminLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/myadmin': typeof MyadminRouteWithChildren
   '/support': typeof SupportRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/myadmin/login': typeof MyadminLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -75,8 +91,10 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/myadmin': typeof MyadminRouteWithChildren
   '/support': typeof SupportRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/myadmin/login': typeof MyadminLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -85,16 +103,20 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/myadmin'
     | '/support'
     | '/dashboard'
+    | '/myadmin/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/myadmin'
     | '/support'
     | '/dashboard'
+    | '/myadmin/login'
   id:
     | '__root__'
     | '/'
@@ -102,8 +124,10 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/myadmin'
     | '/support'
     | '/_authenticated/dashboard'
+    | '/myadmin/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,6 +136,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   JoinAreaPartnerRoute: typeof JoinAreaPartnerRoute
   JoinExpertRoute: typeof JoinExpertRoute
+  MyadminRoute: typeof MyadminRouteWithChildren
   SupportRoute: typeof SupportRoute
 }
 
@@ -122,6 +147,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/myadmin': {
+      id: '/myadmin'
+      path: '/myadmin'
+      fullPath: '/myadmin'
+      preLoaderRoute: typeof MyadminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join-expert': {
@@ -159,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/myadmin/login': {
+      id: '/myadmin/login'
+      path: '/login'
+      fullPath: '/myadmin/login'
+      preLoaderRoute: typeof MyadminLoginRouteImport
+      parentRoute: typeof MyadminRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -180,12 +219,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface MyadminRouteChildren {
+  MyadminLoginRoute: typeof MyadminLoginRoute
+}
+
+const MyadminRouteChildren: MyadminRouteChildren = {
+  MyadminLoginRoute: MyadminLoginRoute,
+}
+
+const MyadminRouteWithChildren =
+  MyadminRoute._addFileChildren(MyadminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   JoinAreaPartnerRoute: JoinAreaPartnerRoute,
   JoinExpertRoute: JoinExpertRoute,
+  MyadminRoute: MyadminRouteWithChildren,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
