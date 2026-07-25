@@ -947,6 +947,10 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
       }
+      claim_booking_as_expert: {
+        Args: { _booking_id: string; _expert_id: string }
+        Returns: undefined
+      }
       credit_referral_for_booking: {
         Args: { _booking_id: string }
         Returns: undefined

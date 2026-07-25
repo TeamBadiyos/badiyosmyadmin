@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { X, Check, CircleDashed, CircleDot, XCircle, Ban } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   getBookingDetails,
   updateBookingStatus,
@@ -95,7 +97,19 @@ export function BookingDetailsModal({
       queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
       setNextStatus("");
     },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to update status";
+      if (/already been assigned|Invalid status transition|Booking not/i.test(msg)) {
+        toast.error(msg, { description: "Refreshing to show the current state." });
+        queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+        queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+        setNextStatus("");
+      } else {
+        toast.error(msg);
+      }
+    },
   });
+
 
   const cancelMutation = useMutation({
     mutationFn: (reason: CancellationReason) =>
