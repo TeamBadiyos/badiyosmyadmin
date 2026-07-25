@@ -90,10 +90,8 @@ export const listBookings = createServerFn({ method: "POST" })
       q = q.is("deleted_at", null);
     }
 
-        { count: "exact" },
-      )
-      .order("created_at", { ascending: false })
-      .range(fromIdx, toIdx);
+
+
 
     if (staff.role === "area_partner") {
       if (!staff.zone_id) {
