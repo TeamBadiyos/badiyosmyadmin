@@ -29,7 +29,7 @@ export type ReferralRow = {
   reward_amount: number;
   reward_date: string | null;
   booking_id: string | null;
-  created_at: string;
+  created_at: string | null;
   reversal_reason: string | null;
   referrer_name: string | null;
   referrer_phone: string | null;
