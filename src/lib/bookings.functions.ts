@@ -392,6 +392,39 @@ export const reassignExpert = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const verifyStartOtp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; otp: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input?.otp || !input.otp.trim()) throw new Error("OTP required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_verify_start_otp", {
+      _booking_id: data.bookingId,
+      _otp: data.otp.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const verifyEndOtp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; otp: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input?.otp || !input.otp.trim()) throw new Error("OTP required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_verify_end_otp", {
+      _booking_id: data.bookingId,
+      _otp: data.otp.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 // NOTE: `expert_assigned` is intentionally omitted from the `accepted`
 // transitions — assigning an expert happens through the dedicated
 // staff_assign_expert RPC (which sets status atomically), never as a raw

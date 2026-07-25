@@ -25,11 +25,14 @@ import {
   softDeleteBooking,
   listServiceDurations,
   listBookingCustomerAddresses,
+  verifyStartOtp,
+  verifyEndOtp,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
   type CancellationReason,
 } from "@/lib/bookings.functions";
+
 import {
   assignExpertToBooking,
   listActiveExperts,
@@ -237,6 +240,41 @@ export function BookingDetailsModal({
     return null;
   }, [editOpen, durationsQuery.data, editDuration, editPrice]);
 
+
+  // Interim OTP verification (staff-relayed until Expert App ships)
+  const verifyStartFn = useServerFn(verifyStartOtp);
+  const verifyEndFn = useServerFn(verifyEndOtp);
+  const [startOtpInput, setStartOtpInput] = useState("");
+  const [endOtpInput, setEndOtpInput] = useState("");
+
+  const showStartOtp =
+    !!data && data.status === "expert_assigned" && canEdit;
+  const showEndOtp =
+    !!data && data.status === "in_progress" && canEdit;
+
+  const invalidateAfterOtp = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+  };
+
+  const startOtpMutation = useMutation({
+    mutationFn: (otp: string) => verifyStartFn({ data: { bookingId, otp } }),
+    onSuccess: () => {
+      toast.success("Service started");
+      setStartOtpInput("");
+      invalidateAfterOtp();
+    },
+  });
+  const endOtpMutation = useMutation({
+    mutationFn: (otp: string) => verifyEndFn({ data: { bookingId, otp } }),
+    onSuccess: () => {
+      toast.success("Service marked completed");
+      setEndOtpInput("");
+      invalidateAfterOtp();
+    },
+  });
 
 
   // Expert assignment / reassignment
@@ -506,7 +544,57 @@ export function BookingDetailsModal({
                 />
               )}
 
+              {/* Interim: staff-relayed OTP verification */}
+              {(showStartOtp || showEndOtp) && (
+                <section className="bg-amber-50 border border-amber-200 rounded-[18px] p-4">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-amber-900">
+                        {showStartOtp ? "Verify Start OTP" : "Verify End OTP"}
+                      </h3>
+                      <p className="text-[12px] text-amber-800 mt-0.5">
+                        Temporary: verify OTP relayed by Expert via phone. Will be replaced once the Expert App is live.
+                      </p>
+                    </div>
+                  </div>
+                  {showStartOtp && (
+                    <OtpVerifyRow
+                      label="Start OTP"
+                      value={startOtpInput}
+                      onChange={setStartOtpInput}
+                      pending={startOtpMutation.isPending}
+                      onConfirm={() =>
+                        startOtpInput.trim() && startOtpMutation.mutate(startOtpInput.trim())
+                      }
+                      error={
+                        startOtpMutation.isError
+                          ? (startOtpMutation.error as Error)?.message ?? "Verification failed"
+                          : null
+                      }
+                    />
+                  )}
+                  {showEndOtp && (
+                    <OtpVerifyRow
+                      label="End OTP"
+                      value={endOtpInput}
+                      onChange={setEndOtpInput}
+                      pending={endOtpMutation.isPending}
+                      onConfirm={() =>
+                        endOtpInput.trim() && endOtpMutation.mutate(endOtpInput.trim())
+                      }
+                      error={
+                        endOtpMutation.isError
+                          ? (endOtpMutation.error as Error)?.message ?? "Verification failed"
+                          : null
+                      }
+                    />
+                  )}
+                </section>
+              )}
+
               {/* Update status */}
+
               {canEdit && (
 
                 <section className="bg-background border border-border rounded-[18px] p-4">
@@ -1014,3 +1102,51 @@ function ExpertAssignSection({
   );
 }
 
+
+function OtpVerifyRow({
+  label,
+  value,
+  onChange,
+  onConfirm,
+  pending,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+  pending: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-[12px] font-semibold text-amber-900 w-20 shrink-0">
+          {label}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && value.trim() && !pending) onConfirm();
+          }}
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="Enter code"
+          className="h-11 px-3 rounded-[14px] border border-amber-300 bg-white text-[14px] font-mono tracking-widest w-40"
+        />
+        <button
+          disabled={!value.trim() || pending}
+          onClick={onConfirm}
+          className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          <Check size={16} />
+          {pending ? "Verifying…" : "Confirm"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-[12px] text-destructive pl-[92px]">{error}</p>
+      )}
+    </div>
+  );
+}
