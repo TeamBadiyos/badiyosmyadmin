@@ -87,8 +87,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Badiyo — हर घर का अपना साथी" },
       { name: "twitter:description", content: "Badiyo brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0d17661-1fc5-44f3-aa6c-c27e11cddd34/id-preview-8f570bcb--59012e70-7ff3-42b2-9cb5-92ca0f5dbec2.lovable.app-1784971822362.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0d17661-1fc5-44f3-aa6c-c27e11cddd34/id-preview-8f570bcb--59012e70-7ff3-42b2-9cb5-92ca0f5dbec2.lovable.app-1784971822362.png" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/KRj2zBthzuR9e3YIrkADruXsjuJ2/social-images/social-1784996761379-badiyo_site.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/KRj2zBthzuR9e3YIrkADruXsjuJ2/social-images/social-1784996761379-badiyo_site.webp" },
     ],
     links: [
       {
@@ -101,6 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700&display=swap",
       },
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
     ],
   }),
   shellComponent: RootShell,
