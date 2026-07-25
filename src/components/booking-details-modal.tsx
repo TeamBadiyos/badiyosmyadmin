@@ -611,3 +611,89 @@ function Timeline({ current }: { current: BookingStatus }) {
     </ol>
   );
 }
+
+function ExpertAssignSection({
+  mode,
+  experts,
+  loading,
+  search,
+  onSearch,
+  selected,
+  onSelect,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  mode: "assign" | "reassign";
+  experts: Array<{ id: string; name: string; phone: string }>;
+  loading: boolean;
+  search: string;
+  onSearch: (v: string) => void;
+  selected: string;
+  onSelect: (v: string) => void;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel?: () => void;
+}) {
+  const isReassign = mode === "reassign";
+  return (
+    <section
+      className={`border rounded-[18px] p-4 ${
+        isReassign
+          ? "bg-amber-50/50 border-amber-200"
+          : "bg-primary-tint/40 border-primary/20"
+      }`}
+    >
+      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3 inline-flex items-center gap-2">
+        {isReassign ? <RefreshCw size={14} /> : <UserPlus size={14} />}
+        {isReassign ? "Reassign expert" : "Assign expert"}
+      </h3>
+      <div className="space-y-3">
+        <input
+          type="text"
+          placeholder="Search by name or phone…"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+        />
+        <select
+          value={selected}
+          onChange={(e) => onSelect(e.target.value)}
+          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+        >
+          <option value="">
+            {loading
+              ? "Loading experts…"
+              : experts.length === 0
+                ? "No active experts in this zone"
+                : "Select expert…"}
+          </option>
+          {experts.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name} — {e.phone}
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            disabled={!selected || pending}
+            onClick={onConfirm}
+            className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            <Check size={16} />
+            {pending ? "Saving…" : isReassign ? "Confirm reassignment" : "Confirm assignment"}
+          </button>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
