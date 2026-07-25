@@ -272,6 +272,7 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
                     key={b.id}
                     booking={b}
                     role={role}
+                    broadcastTimeoutSeconds={broadcastTimeoutSeconds}
                     onOpen={() => setOpenId(b.id)}
                   />
                 ))}
