@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   acceptPendingBooking,
   assignExpertToBooking,
+  countEligibleExperts,
+  getDispatchConfig,
   listActiveExperts,
   listPipelineBookings,
   rejectPendingBooking,
@@ -97,6 +99,7 @@ function stopBeep(ref: React.MutableRefObject<AudioHandle | null>) {
 export function PipelineKanban({ role }: { role: StaffRole | null }) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
+  const fetchDispatchConfig = useServerFn(getDispatchConfig);
 
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -106,6 +109,14 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
+
+  const dispatchConfigQuery = useQuery({
+    queryKey: ["dispatch-config"],
+    queryFn: () => fetchDispatchConfig(),
+    staleTime: 5 * 60_000,
+  });
+  const broadcastTimeoutSeconds =
+    dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
 
   // Realtime subscription: any booking status change refreshes the board.
   useEffect(() => {
@@ -261,6 +272,7 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
                     key={b.id}
                     booking={b}
                     role={role}
+                    broadcastTimeoutSeconds={broadcastTimeoutSeconds}
                     onOpen={() => setOpenId(b.id)}
                   />
                 ))}
@@ -285,18 +297,52 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
 function BoardCard({
   booking,
   role,
+  broadcastTimeoutSeconds,
   onOpen,
 }: {
   booking: PipelineBooking;
   role: StaffRole | null;
+  broadcastTimeoutSeconds: number;
   onOpen: () => void;
 }) {
   const canAct = role === "super_admin" || role === "ops_manager";
+  const isBroadcasting = booking.status === "accepted";
+
+  // Live-ticking elapsed seconds since the booking entered 'accepted'.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isBroadcasting) return;
+    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [isBroadcasting]);
+  const acceptedAtMs = isBroadcasting
+    ? new Date(booking.updatedAt).getTime()
+    : 0;
+  const elapsedSec = isBroadcasting
+    ? Math.max(0, Math.floor((nowMs - acceptedAtMs) / 1000))
+    : 0;
+  const timedOut = isBroadcasting && elapsedSec > broadcastTimeoutSeconds;
+
+  // Eligible experts count for accepted (broadcasting) cards.
+  const fetchCount = useServerFn(countEligibleExperts);
+  const eligibleQuery = useQuery({
+    queryKey: ["pipeline", "eligible-count", booking.id],
+    queryFn: () => fetchCount({ data: { bookingId: booking.id } }),
+    enabled: isBroadcasting,
+    refetchInterval: isBroadcasting ? 15_000 : false,
+    refetchOnWindowFocus: false,
+    staleTime: 10_000,
+  });
+  const eligibleCount = eligibleQuery.data?.count ?? null;
 
   return (
     <div
       onClick={onOpen}
-      className="bg-card border border-border rounded-[12px] p-3 shadow-sm cursor-pointer hover:border-primary/60 transition-colors"
+      className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
+        timedOut
+          ? "border-warning bg-warning-tint/30"
+          : "border-border hover:border-primary/60"
+      }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <p className="text-[13px] font-bold text-foreground truncate">
@@ -333,6 +379,29 @@ function BoardCard({
         )}
       </div>
 
+      {isBroadcasting && (
+        <div
+          className={`mt-2 rounded-[10px] px-2 py-1.5 text-[11px] font-semibold flex items-center justify-between gap-2 border ${
+            timedOut
+              ? "border-warning text-warning bg-warning-tint/60"
+              : "border-primary/30 text-primary bg-primary-tint"
+          }`}
+        >
+          <span className="truncate">
+            {timedOut
+              ? "No response — assign manually"
+              : `Broadcasting — ${formatElapsed(elapsedSec)}`}
+          </span>
+          <span className="shrink-0 font-bold">
+            {eligibleQuery.isLoading && eligibleCount == null
+              ? "…"
+              : eligibleCount === 0
+                ? "0 experts nearby"
+                : `${eligibleCount ?? "—"} experts notified`}
+          </span>
+        </div>
+      )}
+
       {canAct && booking.status === "confirmed" && (
         <ConfirmedActions bookingId={booking.id} />
       )}
@@ -342,6 +411,14 @@ function BoardCard({
     </div>
   );
 }
+
+function formatElapsed(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
 
 function ConfirmedActions({ bookingId }: { bookingId: string }) {
   const queryClient = useQueryClient();
@@ -478,7 +555,7 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
           {expertsQuery.isLoading
             ? "Loading experts…"
             : (expertsQuery.data ?? []).length === 0
-              ? "No experts in zone"
+              ? "No experts nearby"
               : "Assign expert…"}
         </option>
         {(expertsQuery.data ?? []).map((ex) => (
