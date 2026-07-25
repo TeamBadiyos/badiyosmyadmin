@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   acceptPendingBooking,
   assignExpertToBooking,
+  countEligibleExperts,
+  getDispatchConfig,
   listActiveExperts,
   listPipelineBookings,
   rejectPendingBooking,
