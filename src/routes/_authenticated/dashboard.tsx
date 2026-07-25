@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
 import { ZonesPage } from "@/components/zones-page";
+import { BookingsPage } from "@/components/bookings-page";
 
 import {
   LayoutDashboard,
@@ -211,11 +212,14 @@ function Shell() {
           <DashboardHome />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
+        ) : active === "bookings" ? (
+          <BookingsPage role={role} />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
           </div>
         )}
+
       </main>
     </div>
   );
