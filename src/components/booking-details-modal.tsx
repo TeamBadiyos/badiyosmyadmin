@@ -1,18 +1,24 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, Check, CircleDashed, CircleDot, XCircle, Ban } from "lucide-react";
+import { X, Check, CircleDashed, CircleDot, XCircle, Ban, UserPlus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   getBookingDetails,
   updateBookingStatus,
   cancelBooking,
+  reassignExpert,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
   type CancellationReason,
 } from "@/lib/bookings.functions";
+import {
+  assignExpertToBooking,
+  listActiveExperts,
+} from "@/lib/live-orders.functions";
+
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
