@@ -10,7 +10,7 @@ const LATUR_CENTER = { lat: 18.4088, lng: 76.5604 };
 
 declare global {
   interface Window {
-    google?: typeof google;
+    google?: { maps?: { Map: new (el: HTMLElement, opts: unknown) => unknown } };
     __badiyoInitMap?: () => void;
   }
 }
