@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Map as MapIcon, Plus, X } from "lucide-react";
-import { createZone, listZones, type ZoneRow } from "@/lib/zones.functions";
+import {
+  assignAreaPartner,
+  createZone,
+  listAreaPartners,
+  listZones,
+  type ZoneRow,
+} from "@/lib/zones.functions";
+
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
