@@ -41,8 +41,7 @@ export const getReferralConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ReferralConfig> => {
     await requireSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("referral_config")
       .select("id, reward_coins, is_active, updated_at")
       .order("updated_at", { ascending: false, nullsFirst: false })
