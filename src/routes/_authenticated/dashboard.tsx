@@ -11,6 +11,8 @@ import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
+import { WalletsPage } from "@/components/wallets-page";
+import { ReferralsPage } from "@/components/referrals-page";
 
 import {
   LayoutDashboard,
