@@ -129,6 +129,74 @@ export function BookingDetailsModal({
     },
   });
 
+  // Expert assignment / reassignment
+  const fetchExperts = useServerFn(listActiveExperts);
+  const assignFn = useServerFn(assignExpertToBooking);
+  const reassignFn = useServerFn(reassignExpert);
+
+  const [selectedExpertId, setSelectedExpertId] = useState<string>("");
+  const [expertSearch, setExpertSearch] = useState("");
+  const [reassignOpen, setReassignOpen] = useState(false);
+
+  const showAssign = !!data && data.status === "accepted" && canEdit;
+  const canReassign =
+    !!data && data.status === "expert_assigned" && canEdit;
+
+  const expertsQuery = useQuery({
+    queryKey: ["bookings", "assignable-experts", bookingId],
+    queryFn: () => fetchExperts({ data: { bookingId } }),
+    enabled: showAssign || reassignOpen,
+  });
+  const filteredExperts = useMemo(() => {
+    const list = expertsQuery.data ?? [];
+    const q = expertSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (e) =>
+        e.name.toLowerCase().includes(q) ||
+        (e.phone ?? "").toLowerCase().includes(q),
+    );
+  }, [expertsQuery.data, expertSearch]);
+
+  const invalidateBooking = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+  };
+
+  const assignMutation = useMutation({
+    mutationFn: (expertId: string) =>
+      assignFn({ data: { bookingId, expertId } }),
+    onSuccess: () => {
+      toast.success("Expert assigned");
+      setSelectedExpertId("");
+      setExpertSearch("");
+      invalidateBooking();
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to assign expert";
+      toast.error(msg, { description: "Refreshing to show the current state." });
+      invalidateBooking();
+    },
+  });
+
+  const reassignMutation = useMutation({
+    mutationFn: (newExpertId: string) =>
+      reassignFn({ data: { bookingId, newExpertId } }),
+    onSuccess: () => {
+      toast.success("Expert reassigned");
+      setSelectedExpertId("");
+      setExpertSearch("");
+      setReassignOpen(false);
+      invalidateBooking();
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to reassign expert";
+      toast.error(msg, { description: "Refreshing to show the current state." });
+      invalidateBooking();
+    },
+  });
+
 
   const inr = new Intl.NumberFormat("en-IN", {
     style: "currency",
