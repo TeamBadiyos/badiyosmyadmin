@@ -15,6 +15,7 @@ import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
+import { ReportsPage } from "@/components/reports-page";
 
 import {
   LayoutDashboard,
@@ -76,7 +77,7 @@ const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
     (k) => k !== "roles" && k !== "catalogue" && k !== "referrals",
   ),
-  area_partner: ["dashboard", "bookings", "experts"],
+  area_partner: ["dashboard", "bookings", "experts", "reports"],
 };
 
 function Shell() {
