@@ -236,6 +236,10 @@ function Shell() {
           <WalletsPage role={role} />
         ) : active === "referrals" ? (
           <ReferralsPage />
+        ) : active === "roles" ? (
+          <RolesPage />
+        ) : active === "audit" ? (
+          <AuditLogsPage />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
