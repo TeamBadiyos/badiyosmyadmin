@@ -32,7 +32,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Badiyo brings trusted home services to your doorstep. Book a verified home expert in minutes.",
+          "Badiyo brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more.",
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
