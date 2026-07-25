@@ -91,6 +91,14 @@ export function LiveOrdersPanel() {
 
   const prevSeenRef = useRef<Set<string>>(new Set());
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showEnablePrompt, setShowEnablePrompt] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("live-orders-audio-prompt-dismissed") !== "1";
+  });
+  function dismissEnablePrompt() {
+    sessionStorage.setItem("live-orders-audio-prompt-dismissed", "1");
+    setShowEnablePrompt(false);
+  }
 
   useEffect(() => {
     // Detect newly arrived bookings for a subtle "new" fade indicator.
@@ -186,6 +194,32 @@ export function LiveOrdersPanel() {
             {audioEnabled ? "Sound on" : "Sound off"}
           </button>
         </div>
+        {showEnablePrompt && !audioEnabled && (
+          <div className="px-4 pt-4">
+            <div className="flex items-start gap-3 p-3 rounded-[14px] bg-primary-tint border border-primary/30">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-foreground">Enable order alerts?</p>
+                <p className="text-[12px] text-muted-foreground mt-0.5">Play a sound when new bookings arrive.</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => { setAudioEnabled(true); dismissEnablePrompt(); }}
+                  className="text-[12px] font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90"
+                >
+                  Enable
+                </button>
+                <button
+                  onClick={dismissEnablePrompt}
+                  aria-label="Dismiss"
+                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {isLoading && items.length === 0 && (
