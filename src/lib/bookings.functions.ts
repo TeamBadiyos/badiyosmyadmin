@@ -520,7 +520,8 @@ export const editBooking = createServerFn({ method: "POST" })
     }
     const { error } = await context.supabase.rpc("staff_edit_booking", {
       _booking_id: data.bookingId,
-      _payload: payload,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _payload: payload as any,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
