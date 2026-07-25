@@ -224,9 +224,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PipelineBooking[]> => {
     await assertActiveStaff(context);
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const db = context.supabase;
 
     const now = new Date();
     const startOfDay = new Date(
@@ -238,7 +236,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const [openRes, completedRes] = await Promise.all([
-      supabaseAdmin
+      db
         .from("bookings")
         .select(
           "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at",
@@ -252,7 +250,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(200),
-      supabaseAdmin
+      db
         .from("bookings")
         .select(
           "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at",
@@ -263,8 +261,8 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(200),
     ]);
-    if (openRes.error) throw openRes.error;
-    if (completedRes.error) throw completedRes.error;
+    if (openRes.error) throw new Error(openRes.error.message);
+    if (completedRes.error) throw new Error(completedRes.error.message);
 
     const rows = [...(openRes.data ?? []), ...(completedRes.data ?? [])];
     if (rows.length === 0) return [];
@@ -284,17 +282,18 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
 
     const [usersRes, expertsRes] = await Promise.all([
       userIds.length
-        ? supabaseAdmin.from("users").select("id, full_name").in("id", userIds)
+        ? db.from("users").select("id, full_name").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as const),
       expertIds.length
-        ? supabaseAdmin
-            .from("experts")
-            .select("id, name")
-            .in("id", expertIds)
+        ? db.from("experts").select("id, name").in("id", expertIds)
         : Promise.resolve({ data: [], error: null } as const),
     ]);
-    if ("error" in usersRes && usersRes.error) throw usersRes.error;
-    if ("error" in expertsRes && expertsRes.error) throw expertsRes.error;
+    if ("error" in usersRes && usersRes.error) {
+      throw new Error(usersRes.error.message);
+    }
+    if ("error" in expertsRes && expertsRes.error) {
+      throw new Error(expertsRes.error.message);
+    }
 
     const userMap = new Map(
       ((usersRes.data ?? []) as Array<{ id: string; full_name: string | null }>)
