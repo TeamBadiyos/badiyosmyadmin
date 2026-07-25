@@ -230,6 +230,10 @@ function Shell() {
           <ServiceCataloguePage />
         ) : active === "homepage" ? (
           <HomepageBuilderPage />
+        ) : active === "wallets" ? (
+          <WalletsPage role={role} />
+        ) : active === "referrals" ? (
+          <ReferralsPage />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
