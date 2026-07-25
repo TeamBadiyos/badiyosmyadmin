@@ -186,3 +186,157 @@ export const listZoneOptions = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return ((data ?? []) as ZoneOption[]);
   });
+
+export type BookingDetails = {
+  id: string;
+  status: BookingStatus;
+  serviceLabel: string | null;
+  serviceDurationMinutes: number | null;
+  scheduledDate: string | null;
+  scheduledTimeSlot: string | null;
+  slotType: string | null;
+  price: number | null;
+  paid: boolean;
+  razorpayPaymentId: string | null;
+  razorpayOrderId: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  rating: number | null;
+  reviewText: string | null;
+  customer: { id: string | null; name: string | null; phone: string | null };
+  address: {
+    label: string | null;
+    fullAddress: string | null;
+    area: string | null;
+    city: string | null;
+  } | null;
+  zone: { id: string | null; name: string | null };
+  expert: { id: string | null; name: string | null; phone: string | null };
+};
+
+async function loadBookingDetails(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  bookingId: string,
+  role: string,
+  staffZoneId: string | null,
+): Promise<BookingDetails> {
+  const { data: b, error } = await supabase
+    .from("bookings")
+    .select(
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id",
+    )
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!b) throw new Error("Booking not found");
+  if (role === "area_partner" && (!staffZoneId || b.zone_id !== staffZoneId)) {
+    throw new Error("Forbidden");
+  }
+
+  const [userRes, addrRes, zoneRes, expertRes] = await Promise.all([
+    b.user_id
+      ? supabase.from("users").select("id, full_name, phone").eq("id", b.user_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    b.address_id
+      ? supabase
+          .from("addresses")
+          .select("label, full_address, area, city")
+          .eq("id", b.address_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    b.zone_id
+      ? supabase.from("zones").select("id, name").eq("id", b.zone_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    b.assigned_expert_id
+      ? supabase
+          .from("experts")
+          .select("id, name, phone")
+          .eq("id", b.assigned_expert_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    id: b.id,
+    status: b.status as BookingStatus,
+    serviceLabel: b.service_label ?? null,
+    serviceDurationMinutes: b.service_duration_minutes ?? null,
+    scheduledDate: b.scheduled_date ?? null,
+    scheduledTimeSlot: b.scheduled_time_slot ?? null,
+    slotType: b.slot_type ?? null,
+    price: b.price != null ? Number(b.price) : null,
+    paid: !!b.razorpay_payment_id,
+    razorpayPaymentId: b.razorpay_payment_id ?? null,
+    razorpayOrderId: b.razorpay_order_id ?? null,
+    createdAt: b.created_at,
+    updatedAt: b.updated_at ?? null,
+    rating: b.rating ?? null,
+    reviewText: b.review_text ?? null,
+    customer: {
+      id: userRes.data?.id ?? null,
+      name: userRes.data?.full_name ?? null,
+      phone: userRes.data?.phone ?? null,
+    },
+    address: addrRes.data
+      ? {
+          label: addrRes.data.label ?? null,
+          fullAddress: addrRes.data.full_address ?? null,
+          area: addrRes.data.area ?? null,
+          city: addrRes.data.city ?? null,
+        }
+      : null,
+    zone: { id: zoneRes.data?.id ?? null, name: zoneRes.data?.name ?? null },
+    expert: {
+      id: expertRes.data?.id ?? null,
+      name: expertRes.data?.name ?? null,
+      phone: expertRes.data?.phone ?? null,
+    },
+  };
+}
+
+export const getBookingDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<BookingDetails> => {
+    const { data: staff } = await context.supabase
+      .from("staff_users")
+      .select("role, status, zone_id")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+    if (!staff || staff.status !== "active") throw new Error("Forbidden");
+    return loadBookingDetails(context.supabase, data.bookingId, staff.role, staff.zone_id ?? null);
+  });
+
+export const updateBookingStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { bookingId: string; newStatus: BookingStatus; note?: string | null }) => {
+      if (!input?.bookingId) throw new Error("bookingId required");
+      if (!BOOKING_STATUSES.includes(input.newStatus)) throw new Error("Invalid status");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_update_booking_status", {
+      _booking_id: data.bookingId,
+      _new_status: data.newStatus,
+      _note: data.note ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  confirmed: ["accepted", "rejected", "cancelled"],
+  accepted: ["assigned", "cancelled", "rejected"],
+  assigned: ["in_progress", "cancelled"],
+  expert_assigned: ["in_progress", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+  rejected: [],
+};

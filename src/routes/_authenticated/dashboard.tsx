@@ -6,6 +6,7 @@ import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
+import { BookingDetailsModal } from "@/components/booking-details-modal";
 
 import {
   LayoutDashboard,
@@ -75,6 +76,7 @@ function Shell() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NavKey>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const activeItem = NAV_ITEMS.find((n) => n.key === active)!;
 
   const { data: staff } = useQuery({
@@ -213,7 +215,7 @@ function Shell() {
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
-          <BookingsPage role={role} />
+          <BookingsPage role={role} onSelect={(id) => setSelectedBookingId(id)} />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
@@ -221,6 +223,14 @@ function Shell() {
         )}
 
       </main>
+
+      {selectedBookingId && (
+        <BookingDetailsModal
+          bookingId={selectedBookingId}
+          role={role}
+          onClose={() => setSelectedBookingId(null)}
+        />
+      )}
     </div>
   );
 }

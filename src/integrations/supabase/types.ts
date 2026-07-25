@@ -711,6 +711,10 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      staff_update_booking_status: {
+        Args: { _booking_id: string; _new_status: string; _note?: string }
+        Returns: undefined
+      }
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
