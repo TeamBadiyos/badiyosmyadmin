@@ -159,8 +159,9 @@ export const assignAreaPartner = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("staff_assign_area_partner", {
       _zone_id: data.zoneId,
-      _partner_id: data.partnerId,
+      _partner_id: data.partnerId as string,
     });
+
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
