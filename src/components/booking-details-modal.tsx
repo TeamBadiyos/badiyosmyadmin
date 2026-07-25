@@ -149,6 +149,96 @@ export function BookingDetailsModal({
     },
   });
 
+  // Edit
+  const editFn = useServerFn(editBooking);
+  const deleteFn = useServerFn(softDeleteBooking);
+  const fetchDurations = useServerFn(listServiceDurations);
+  const fetchAddresses = useServerFn(listBookingCustomerAddresses);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDuration, setEditDuration] = useState<number | "">("");
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editAddressId, setEditAddressId] = useState<string>("");
+  const [editSlot, setEditSlot] = useState<string>("");
+  const [editDate, setEditDate] = useState<string>("");
+
+  const durationsQuery = useQuery({
+    queryKey: ["service-durations"],
+    queryFn: () => fetchDurations(),
+    enabled: editOpen,
+  });
+  const addressesQuery = useQuery({
+    queryKey: ["bookings", "customer-addresses", bookingId],
+    queryFn: () => fetchAddresses({ data: { bookingId } }),
+    enabled: editOpen,
+  });
+
+  useEffect(() => {
+    if (editOpen && data) {
+      setEditDuration(data.serviceDurationMinutes ?? "");
+      setEditPrice(data.price != null ? String(data.price) : "");
+      setEditAddressId(data.addressId ?? "");
+      setEditSlot(data.scheduledTimeSlot ?? "");
+      setEditDate(data.scheduledDate ?? "");
+    }
+  }, [editOpen, data]);
+
+  const editMutation = useMutation({
+    mutationFn: (payload: {
+      serviceDurationMinutes?: number | null;
+      price?: number | null;
+      addressId?: string | null;
+      scheduledDate?: string | null;
+      scheduledTimeSlot?: string | null;
+    }) => editFn({ data: { bookingId, ...payload } }),
+    onSuccess: () => {
+      toast.success("Booking updated");
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      setEditOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to update booking");
+    },
+  });
+
+  // Delete
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+
+  const shortId = data ? data.id.slice(0, 8) : "";
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteFn({ data: { bookingId, reason: deleteReason.trim() } }),
+    onSuccess: () => {
+      toast.success("Booking deleted");
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      setDeleteOpen(false);
+      onClose();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete booking");
+    },
+  });
+
+  const priceMismatchWarning = useMemo(() => {
+    if (!editOpen || !durationsQuery.data || editDuration === "") return null;
+    const d = durationsQuery.data.find((x) => x.durationMinutes === editDuration);
+    if (!d) return null;
+    const enteredPrice = Number(editPrice);
+    if (!Number.isFinite(enteredPrice)) return null;
+    if (Math.abs(enteredPrice - d.price) > 0.01) {
+      return `Warning: catalogue price for ${d.durationLabel} is ₹${d.price.toFixed(0)}.`;
+    }
+    return null;
+  }, [editOpen, durationsQuery.data, editDuration, editPrice]);
+
+
+
   // Expert assignment / reassignment
   const fetchExperts = useServerFn(listActiveExperts);
   const assignFn = useServerFn(assignExpertToBooking);
