@@ -169,10 +169,23 @@ export function BookingsPage({
           </button>
         )}
 
+        {role === "super_admin" && (
+          <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(e) => updateFilter(() => setIncludeDeleted(e.target.checked))}
+              className="accent-primary"
+            />
+            Show deleted
+          </label>
+        )}
+
         <div className="ml-auto text-[12px] text-muted-foreground self-center">
           {isLoading ? "Loading…" : `${total} booking${total === 1 ? "" : "s"}`}
         </div>
       </div>
+
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
         <div className="overflow-x-auto">
