@@ -439,10 +439,9 @@ function Field({
 
 function Timeline({ current }: { current: BookingStatus }) {
   const isTerminalBad = current === "cancelled" || current === "rejected";
-  const currentIdxRaw = TIMELINE.indexOf(
-    current === "expert_assigned" ? "assigned" : current,
-  );
+  const currentIdxRaw = TIMELINE.indexOf(current);
   const currentIdx = currentIdxRaw === -1 ? -1 : currentIdxRaw;
+
 
   return (
     <ol className="flex items-center gap-1 overflow-x-auto">
