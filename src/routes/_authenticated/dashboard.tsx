@@ -317,8 +317,10 @@ function DashboardHome({ role }: { role: StaffRole | null }) {
             );
           })}
         </div>
+        <PipelineKanban role={role} />
       </div>
       <LiveOrdersPanel />
     </div>
+
   );
 }
