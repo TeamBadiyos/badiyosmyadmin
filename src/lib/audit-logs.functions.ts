@@ -117,14 +117,14 @@ export const listAuditFilterOptions = createServerFn({ method: "GET" })
       tables: string[];
     }> => {
       await requireSuperAdmin(context.supabase, context.userId);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const db = context.supabase;
 
       const [{ data: staff }, { data: logs }] = await Promise.all([
-        supabaseAdmin
+        db
           .from("staff_users")
           .select("auth_user_id, name")
           .order("name", { ascending: true }),
-        supabaseAdmin
+        db
           .from("audit_logs")
           .select("action, target_table")
           .order("created_at", { ascending: false })
