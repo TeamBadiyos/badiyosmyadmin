@@ -321,6 +321,13 @@ export type Database = {
             foreignKeyName: "bookings_assigned_expert_id_fkey"
             columns: ["assigned_expert_id"]
             isOneToOne: false
+            referencedRelation: "assigned_expert_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_assigned_expert_id_fkey"
+            columns: ["assigned_expert_id"]
+            isOneToOne: false
             referencedRelation: "experts"
             referencedColumns: ["id"]
           },
@@ -383,6 +390,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_alerts_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_expert_public"
             referencedColumns: ["id"]
           },
           {
@@ -1056,7 +1070,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      assigned_expert_public: {
+        Row: {
+          id: string | null
+          level: string | null
+          name: string | null
+          phone: string | null
+          photo_url: string | null
+          status: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          level?: string | null
+          name?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          status?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          level?: string | null
+          name?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          status?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experts_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       advance_booking_status: {
