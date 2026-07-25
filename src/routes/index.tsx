@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Badiyo — हर घर का अपना साथी" },
       {
         property: "og:description",
-        content: "Trusted home services, delivered by verified experts. Book in minutes on the Badiyo app.",
+        content: "Badiyo brings trusted home services to your doorstep. Book a home expert in minutes — cleaning, care and more, delivered by verified professionals.",
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
