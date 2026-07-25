@@ -240,7 +240,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason",
     )
     .eq("id", bookingId)
     .maybeSingle();
