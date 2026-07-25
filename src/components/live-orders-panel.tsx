@@ -166,12 +166,26 @@ export function LiveOrdersPanel() {
       queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
     },
     onError: (err, v) => {
-      setAssignError((e) => ({
-        ...e,
-        [v.bookingId]:
-          err instanceof Error ? err.message : "Failed to assign expert",
-      }));
+      const msg =
+        err instanceof Error ? err.message : "Failed to assign expert";
+      setAssignError((e) => ({ ...e, [v.bookingId]: msg }));
+      if (/already been assigned/i.test(msg)) {
+        toast.error("This booking has already been assigned", {
+          description: "Refreshing to show the current state.",
+        });
+        // Drop local "accepted" state so the card exits assign UI, and refetch.
+        setLocalState((s) => {
+          const { [v.bookingId]: _drop, ...rest } = s;
+          return rest;
+        });
+        queryClient.invalidateQueries({ queryKey: ["live-orders", "pending"] });
+        queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      } else {
+        toast.error(msg);
+      }
     },
+
   });
 
   return (
