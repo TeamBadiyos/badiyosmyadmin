@@ -17,7 +17,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const TIMELINE: BookingStatus[] = [
   "confirmed",
   "accepted",
-  "assigned",
+  "expert_assigned",
   "in_progress",
   "completed",
 ];
@@ -25,7 +25,6 @@ const TIMELINE: BookingStatus[] = [
 const STATUS_LABEL: Record<BookingStatus, string> = {
   confirmed: "Confirmed",
   accepted: "Accepted",
-  assigned: "Assigned",
   expert_assigned: "Expert Assigned",
   in_progress: "In Progress",
   completed: "Completed",
@@ -36,13 +35,13 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
 const STATUS_STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-blue-50 text-blue-700",
   accepted: "bg-primary-tint text-primary",
-  assigned: "bg-amber-50 text-amber-700",
   expert_assigned: "bg-amber-50 text-amber-700",
   in_progress: "bg-indigo-50 text-indigo-700",
   completed: "bg-emerald-50 text-emerald-700",
   cancelled: "bg-muted text-muted-foreground",
   rejected: "bg-red-50 text-red-700",
 };
+
 
 function fmtDateTime(iso: string | null) {
   if (!iso) return "—";
@@ -440,10 +439,9 @@ function Field({
 
 function Timeline({ current }: { current: BookingStatus }) {
   const isTerminalBad = current === "cancelled" || current === "rejected";
-  const currentIdxRaw = TIMELINE.indexOf(
-    current === "expert_assigned" ? "assigned" : current,
-  );
+  const currentIdxRaw = TIMELINE.indexOf(current);
   const currentIdx = currentIdxRaw === -1 ? -1 : currentIdxRaw;
+
 
   return (
     <ol className="flex items-center gap-1 overflow-x-auto">

@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export type BookingStatus =
   | "confirmed"
   | "accepted"
-  | "assigned"
   | "expert_assigned"
   | "in_progress"
   | "completed"
@@ -14,13 +13,13 @@ export type BookingStatus =
 export const BOOKING_STATUSES: BookingStatus[] = [
   "confirmed",
   "accepted",
-  "assigned",
   "expert_assigned",
   "in_progress",
   "completed",
   "cancelled",
   "rejected",
 ];
+
 
 export type BookingRow = {
   id: string;
@@ -359,12 +358,12 @@ export const cancelBooking = createServerFn({ method: "POST" })
 
 export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["accepted", "rejected", "cancelled"],
-  accepted: ["assigned", "cancelled", "rejected"],
-  assigned: ["in_progress", "cancelled"],
+  accepted: ["expert_assigned", "cancelled", "rejected"],
   expert_assigned: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
   rejected: [],
 };
+
 
