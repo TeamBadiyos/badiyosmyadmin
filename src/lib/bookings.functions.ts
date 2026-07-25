@@ -406,5 +406,142 @@ export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = 
   rejected: [],
 };
 
+// ================= Edit / Soft-Delete =================
+
+export type ServiceDurationOption = {
+  durationMinutes: number;
+  durationLabel: string;
+  price: number;
+};
+
+export const listServiceDurations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ServiceDurationOption[]> => {
+    const { data, error } = await context.supabase
+      .from("service_catalogue_config")
+      .select("duration_minutes, duration_label, price, is_active")
+      .eq("is_active", true)
+      .order("duration_minutes");
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Array<{
+      duration_minutes: number;
+      duration_label: string;
+      price: number | string;
+    }>).map((r) => ({
+      durationMinutes: r.duration_minutes,
+      durationLabel: r.duration_label,
+      price: Number(r.price),
+    }));
+  });
+
+export type BookingAddressOption = {
+  id: string;
+  label: string | null;
+  fullAddress: string;
+  area: string | null;
+  city: string | null;
+};
+
+export const listBookingCustomerAddresses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<BookingAddressOption[]> => {
+    const { data: staff } = await context.supabase
+      .from("staff_users")
+      .select("role, status")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+    if (!staff || staff.status !== "active") throw new Error("Forbidden");
+    if (!["super_admin", "ops_manager"].includes(staff.role)) {
+      throw new Error("Forbidden");
+    }
+    const { data: b, error: bErr } = await context.supabase
+      .from("bookings")
+      .select("user_id")
+      .eq("id", data.bookingId)
+      .maybeSingle();
+    if (bErr) throw new Error(bErr.message);
+    if (!b?.user_id) return [];
+    const { data: rows, error } = await context.supabase
+      .from("addresses")
+      .select("id, label, full_address, area, city")
+      .eq("user_id", b.user_id)
+      .order("is_default", { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as Array<{
+      id: string;
+      label: string | null;
+      full_address: string;
+      area: string | null;
+      city: string | null;
+    }>).map((r) => ({
+      id: r.id,
+      label: r.label,
+      fullAddress: r.full_address,
+      area: r.area,
+      city: r.city,
+    }));
+  });
+
+export type EditBookingInput = {
+  bookingId: string;
+  serviceDurationMinutes?: number | null;
+  price?: number | null;
+  addressId?: string | null;
+  scheduledDate?: string | null;
+  scheduledTimeSlot?: string | null;
+};
+
+export const editBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: EditBookingInput) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const payload: Record<string, unknown> = {};
+    if (data.serviceDurationMinutes !== undefined) {
+      payload.service_duration_minutes = data.serviceDurationMinutes;
+    }
+    if (data.price !== undefined && data.price !== null) {
+      payload.price = data.price;
+    }
+    if (data.addressId !== undefined) {
+      payload.address_id = data.addressId;
+    }
+    if (data.scheduledDate !== undefined) {
+      payload.scheduled_date = data.scheduledDate;
+    }
+    if (data.scheduledTimeSlot !== undefined) {
+      payload.scheduled_time_slot = data.scheduledTimeSlot;
+    }
+    const { error } = await context.supabase.rpc("staff_edit_booking", {
+      _booking_id: data.bookingId,
+      _payload: payload,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const softDeleteBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; reason: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input?.reason || !input.reason.trim()) throw new Error("Reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_soft_delete_booking", {
+      _booking_id: data.bookingId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+
 
 
