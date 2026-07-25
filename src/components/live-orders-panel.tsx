@@ -5,9 +5,12 @@ import { Check, X, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   acceptPendingBooking,
+  assignExpertToBooking,
+  listActiveExperts,
   listPendingBookings,
   rejectPendingBooking,
   REJECT_REASONS,
+  type ActiveExpert,
   type PendingBooking,
   type RejectReason,
 } from "@/lib/live-orders.functions";
