@@ -87,27 +87,44 @@ export type Database = {
       }
       area_partners: {
         Row: {
+          commission_rate: number
           created_at: string
           id: string
           name: string
           phone: string
+          setup_fee_status: string
           status: string
+          zone_id: string | null
         }
         Insert: {
+          commission_rate?: number
           created_at?: string
           id?: string
           name: string
           phone: string
+          setup_fee_status?: string
           status?: string
+          zone_id?: string | null
         }
         Update: {
+          commission_rate?: number
           created_at?: string
           id?: string
           name?: string
           phone?: string
+          setup_fee_status?: string
           status?: string
+          zone_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "area_partners_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
@@ -239,27 +256,66 @@ export type Database = {
       }
       experts: {
         Row: {
+          address: string | null
+          bank_account_holder_name: string | null
+          bank_account_number: string | null
+          bank_ifsc: string | null
           created_at: string
           id: string
+          kyc_aadhaar_url: string | null
+          kyc_address_proof_url: string | null
+          kyc_pan_url: string | null
+          kyc_rejection_reason: string | null
+          kyc_status: string
+          level: string
           name: string
           phone: string
+          photo_url: string | null
+          security_deposit_status: string
           status: string
+          wallet_balance: number
           zone_id: string | null
         }
         Insert: {
+          address?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
           created_at?: string
           id?: string
+          kyc_aadhaar_url?: string | null
+          kyc_address_proof_url?: string | null
+          kyc_pan_url?: string | null
+          kyc_rejection_reason?: string | null
+          kyc_status?: string
+          level?: string
           name: string
           phone: string
+          photo_url?: string | null
+          security_deposit_status?: string
           status?: string
+          wallet_balance?: number
           zone_id?: string | null
         }
         Update: {
+          address?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
           created_at?: string
           id?: string
+          kyc_aadhaar_url?: string | null
+          kyc_address_proof_url?: string | null
+          kyc_pan_url?: string | null
+          kyc_rejection_reason?: string | null
+          kyc_status?: string
+          level?: string
           name?: string
           phone?: string
+          photo_url?: string | null
+          security_deposit_status?: string
           status?: string
+          wallet_balance?: number
           zone_id?: string | null
         }
         Relationships: [
@@ -689,6 +745,10 @@ export type Database = {
       }
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
+      is_active_staff: {
+        Args: { _roles: string[]; _uid: string }
+        Returns: boolean
+      }
       link_referral: { Args: { _code: string }; Returns: undefined }
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
@@ -714,6 +774,10 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      staff_expert_kyc_decision: {
+        Args: { _decision: string; _expert_id: string; _reason: string }
+        Returns: undefined
+      }
       staff_reject_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
@@ -722,6 +786,8 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
       }
+      staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
+      staff_upsert_expert: { Args: { _payload: Json }; Returns: string }
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
