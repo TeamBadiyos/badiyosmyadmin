@@ -293,6 +293,7 @@ async function loadBookingDetails(
       name: expertRes.data?.name ?? null,
       phone: expertRes.data?.phone ?? null,
     },
+    cancellationReason: b.cancellation_reason ?? null,
   };
 }
 
