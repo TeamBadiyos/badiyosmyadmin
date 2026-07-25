@@ -1102,3 +1102,51 @@ function ExpertAssignSection({
   );
 }
 
+
+function OtpVerifyRow({
+  label,
+  value,
+  onChange,
+  onConfirm,
+  pending,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+  pending: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-[12px] font-semibold text-amber-900 w-20 shrink-0">
+          {label}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && value.trim() && !pending) onConfirm();
+          }}
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="Enter code"
+          className="h-11 px-3 rounded-[14px] border border-amber-300 bg-white text-[14px] font-mono tracking-widest w-40"
+        />
+        <button
+          disabled={!value.trim() || pending}
+          onClick={onConfirm}
+          className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          <Check size={16} />
+          {pending ? "Verifying…" : "Confirm"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-[12px] text-destructive pl-[92px]">{error}</p>
+      )}
+    </div>
+  );
+}
