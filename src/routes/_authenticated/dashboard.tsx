@@ -126,7 +126,7 @@ function Shell() {
           </button>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.key === active;
             return (
