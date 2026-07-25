@@ -79,8 +79,17 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
         ),
+        { count: "exact" },
+      )
+      .order("created_at", { ascending: false })
+      .range(fromIdx, toIdx);
+
+    if (!(data.includeDeleted && staff.role === "super_admin")) {
+      q = q.is("deleted_at", null);
+    }
+
         { count: "exact" },
       )
       .order("created_at", { ascending: false })
