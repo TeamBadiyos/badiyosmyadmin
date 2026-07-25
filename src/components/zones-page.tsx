@@ -191,6 +191,31 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  function handleLocate() {
+    setLocateError(null);
+    if (!navigator.geolocation) {
+      setLocateError("Location unavailable");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const map = mapObj.current;
+        if (!map) return;
+        map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map.setZoom(14);
+      },
+      () => {
+        setLocating(false);
+        setLocateError("Location unavailable");
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
 
   const queryClient = useQueryClient();
   const saveZone = useServerFn(createZone);
