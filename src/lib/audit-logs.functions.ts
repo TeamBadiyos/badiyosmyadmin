@@ -47,14 +47,14 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       context,
     }): Promise<{ rows: AuditLogRow[]; total: number; page: number; pageSize: number }> => {
       await requireSuperAdmin(context.supabase, context.userId);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const db = context.supabase;
 
       const page = Math.max(1, Number(data.page ?? 1));
       const pageSize = Math.min(100, Math.max(1, Number(data.pageSize ?? 25)));
       const fromIdx = (page - 1) * pageSize;
       const toIdx = fromIdx + pageSize - 1;
 
-      let q = supabaseAdmin
+      let q = db
         .from("audit_logs")
         .select("id, actor_id, action, target_table, target_id, before_state, after_state, created_at", {
           count: "exact",
