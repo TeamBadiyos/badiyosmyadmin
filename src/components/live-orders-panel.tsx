@@ -245,24 +245,33 @@ function OrderCard(props: {
   state: LocalState | undefined;
   accepting: boolean;
   rejecting: boolean;
+  assigning: boolean;
+  assignError: string | undefined;
+  experts: ActiveExpert[];
   isAccepted: boolean;
   onAccept: () => void;
   onStartReject: () => void;
   onCancelReject: () => void;
   onConfirmReject: (r: RejectReason) => void;
+  onAssign: (expertId: string) => void;
 }) {
   const {
     booking: b,
     state,
     accepting,
     rejecting,
+    assigning,
+    assignError,
+    experts,
     isAccepted,
     onAccept,
     onStartReject,
     onCancelReject,
     onConfirmReject,
+    onAssign,
   } = props;
   const [reason, setReason] = useState<RejectReason>("CHANGED_MIND");
+  const [selectedExpert, setSelectedExpert] = useState<string>("");
 
   const timeAgo = useMemo(() => formatShortTime(b.createdAt), [b.createdAt]);
 
