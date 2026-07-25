@@ -81,6 +81,16 @@ function Shell() {
     staleTime: 60_000,
   });
 
+  const role = (staff?.role as StaffRole | undefined) ?? null;
+  const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
+  const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
+
+  useEffect(() => {
+    if (role && !allowedKeys.includes(active)) {
+      setActive("dashboard");
+    }
+  }, [role, active, allowedKeys]);
+
   const name = staff?.name ?? "";
   const initials =
     name
