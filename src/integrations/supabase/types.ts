@@ -373,6 +373,24 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_runtime_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       emergency_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -456,6 +474,41 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      expert_push_tokens: {
+        Row: {
+          created_at: string
+          expert_id: string
+          fcm_token: string
+          id: string
+          platform: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expert_id: string
+          fcm_token: string
+          id?: string
+          platform?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expert_id?: string
+          fcm_token?: string
+          id?: string
+          platform?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expert_push_tokens_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       experts: {
         Row: {
