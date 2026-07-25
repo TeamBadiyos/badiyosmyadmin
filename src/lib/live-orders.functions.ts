@@ -286,6 +286,7 @@ export type PipelineBooking = {
   scheduledTimeSlot: string | null;
   assignedExpertName: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
