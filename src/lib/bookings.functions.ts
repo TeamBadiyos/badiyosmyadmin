@@ -309,6 +309,10 @@ async function loadBookingDetails(
       phone: expertRes.data?.phone ?? null,
     },
     cancellationReason: b.cancellation_reason ?? null,
+    addressId: b.address_id ?? null,
+    deletedAt: b.deleted_at ?? null,
+    deletedBy: b.deleted_by ?? null,
+    deleteReason: b.delete_reason ?? null,
   };
 }
 
