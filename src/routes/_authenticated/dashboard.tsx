@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
+import { LiveOrdersPanel } from "@/components/live-orders-panel";
 
 import {
   LayoutDashboard,
