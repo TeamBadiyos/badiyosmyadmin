@@ -112,8 +112,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<LedgerEntry[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+    const { data: rows, error } = await context.supabase
       .from("wallet_ledger")
       .select("id, amount, type, reason, created_at")
       .eq("owner_type", data.owner_type)
