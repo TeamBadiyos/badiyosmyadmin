@@ -150,7 +150,7 @@ export const getExpert = createServerFn({ method: "POST" })
       kycPanPath: e.kyc_pan_url ?? null,
       kycAddressProofPath: e.kyc_address_proof_url ?? null,
       kycRejectionReason: e.kyc_rejection_reason ?? null,
-      securityDepositStatus: e.security_deposit_status,
+      securityDepositStatus: e.security_deposit_status as ExpertDetails["securityDepositStatus"],
       createdAt: e.created_at,
     };
   });
