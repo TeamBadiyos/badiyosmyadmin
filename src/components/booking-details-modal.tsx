@@ -1,18 +1,24 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, Check, CircleDashed, CircleDot, XCircle, Ban } from "lucide-react";
+import { X, Check, CircleDashed, CircleDot, XCircle, Ban, UserPlus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   getBookingDetails,
   updateBookingStatus,
   cancelBooking,
+  reassignExpert,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
   type CancellationReason,
 } from "@/lib/bookings.functions";
+import {
+  assignExpertToBooking,
+  listActiveExperts,
+} from "@/lib/live-orders.functions";
+
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -120,6 +126,74 @@ export function BookingDetailsModal({
       queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
       setCancelOpen(false);
       setCancelReason("");
+    },
+  });
+
+  // Expert assignment / reassignment
+  const fetchExperts = useServerFn(listActiveExperts);
+  const assignFn = useServerFn(assignExpertToBooking);
+  const reassignFn = useServerFn(reassignExpert);
+
+  const [selectedExpertId, setSelectedExpertId] = useState<string>("");
+  const [expertSearch, setExpertSearch] = useState("");
+  const [reassignOpen, setReassignOpen] = useState(false);
+
+  const showAssign = !!data && data.status === "accepted" && canEdit;
+  const canReassign =
+    !!data && data.status === "expert_assigned" && canEdit;
+
+  const expertsQuery = useQuery({
+    queryKey: ["bookings", "assignable-experts", bookingId],
+    queryFn: () => fetchExperts({ data: { bookingId } }),
+    enabled: showAssign || reassignOpen,
+  });
+  const filteredExperts = useMemo(() => {
+    const list = expertsQuery.data ?? [];
+    const q = expertSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (e) =>
+        e.name.toLowerCase().includes(q) ||
+        (e.phone ?? "").toLowerCase().includes(q),
+    );
+  }, [expertsQuery.data, expertSearch]);
+
+  const invalidateBooking = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+  };
+
+  const assignMutation = useMutation({
+    mutationFn: (expertId: string) =>
+      assignFn({ data: { bookingId, expertId } }),
+    onSuccess: () => {
+      toast.success("Expert assigned");
+      setSelectedExpertId("");
+      setExpertSearch("");
+      invalidateBooking();
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to assign expert";
+      toast.error(msg, { description: "Refreshing to show the current state." });
+      invalidateBooking();
+    },
+  });
+
+  const reassignMutation = useMutation({
+    mutationFn: (newExpertId: string) =>
+      reassignFn({ data: { bookingId, newExpertId } }),
+    onSuccess: () => {
+      toast.success("Expert reassigned");
+      setSelectedExpertId("");
+      setExpertSearch("");
+      setReassignOpen(false);
+      invalidateBooking();
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Failed to reassign expert";
+      toast.error(msg, { description: "Refreshing to show the current state." });
+      invalidateBooking();
     },
   });
 
@@ -268,6 +342,15 @@ export function BookingDetailsModal({
                     <>
                       <Field label="Name" value={data.expert.name ?? "—"} />
                       <Field label="Phone" value={data.expert.phone ?? "—"} mono />
+                      {canReassign && !reassignOpen && (
+                        <button
+                          onClick={() => setReassignOpen(true)}
+                          className="mt-2 text-[12px] font-bold text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <RefreshCw size={12} />
+                          Reassign
+                        </button>
+                      )}
                     </>
                   ) : (
                     <p className="text-[13px] text-muted-foreground italic">
@@ -275,13 +358,47 @@ export function BookingDetailsModal({
                     </p>
                   )}
                 </Card>
+
                 <Card title="Zone">
                   <Field label="Name" value={data.zone.name ?? "—"} />
                 </Card>
               </section>
 
+              {/* Assign / Reassign expert */}
+              {(showAssign || (canReassign && reassignOpen)) && (
+                <ExpertAssignSection
+                  mode={showAssign ? "assign" : "reassign"}
+                  experts={filteredExperts}
+                  loading={expertsQuery.isLoading}
+                  search={expertSearch}
+                  onSearch={setExpertSearch}
+                  selected={selectedExpertId}
+                  onSelect={setSelectedExpertId}
+                  pending={
+                    showAssign
+                      ? assignMutation.isPending
+                      : reassignMutation.isPending
+                  }
+                  onConfirm={() => {
+                    if (!selectedExpertId) return;
+                    if (showAssign) assignMutation.mutate(selectedExpertId);
+                    else reassignMutation.mutate(selectedExpertId);
+                  }}
+                  onCancel={
+                    showAssign
+                      ? undefined
+                      : () => {
+                          setReassignOpen(false);
+                          setSelectedExpertId("");
+                          setExpertSearch("");
+                        }
+                  }
+                />
+              )}
+
               {/* Update status */}
               {canEdit && (
+
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3">
                     Update status
@@ -494,3 +611,89 @@ function Timeline({ current }: { current: BookingStatus }) {
     </ol>
   );
 }
+
+function ExpertAssignSection({
+  mode,
+  experts,
+  loading,
+  search,
+  onSearch,
+  selected,
+  onSelect,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  mode: "assign" | "reassign";
+  experts: Array<{ id: string; name: string; phone: string }>;
+  loading: boolean;
+  search: string;
+  onSearch: (v: string) => void;
+  selected: string;
+  onSelect: (v: string) => void;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel?: () => void;
+}) {
+  const isReassign = mode === "reassign";
+  return (
+    <section
+      className={`border rounded-[18px] p-4 ${
+        isReassign
+          ? "bg-amber-50/50 border-amber-200"
+          : "bg-primary-tint/40 border-primary/20"
+      }`}
+    >
+      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3 inline-flex items-center gap-2">
+        {isReassign ? <RefreshCw size={14} /> : <UserPlus size={14} />}
+        {isReassign ? "Reassign expert" : "Assign expert"}
+      </h3>
+      <div className="space-y-3">
+        <input
+          type="text"
+          placeholder="Search by name or phone…"
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+        />
+        <select
+          value={selected}
+          onChange={(e) => onSelect(e.target.value)}
+          className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+        >
+          <option value="">
+            {loading
+              ? "Loading experts…"
+              : experts.length === 0
+                ? "No active experts in this zone"
+                : "Select expert…"}
+          </option>
+          {experts.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name} — {e.phone}
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            disabled={!selected || pending}
+            onClick={onConfirm}
+            className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            <Check size={16} />
+            {pending ? "Saving…" : isReassign ? "Confirm reassignment" : "Confirm assignment"}
+          </button>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+

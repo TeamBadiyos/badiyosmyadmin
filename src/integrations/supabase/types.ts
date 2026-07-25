@@ -1048,6 +1048,10 @@ export type Database = {
         Args: { _item_id: string; _paid: boolean }
         Returns: undefined
       }
+      staff_reassign_expert: {
+        Args: { _booking_id: string; _new_expert_id: string }
+        Returns: undefined
+      }
       staff_reject_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined

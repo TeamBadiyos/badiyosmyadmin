@@ -356,14 +356,35 @@ export const cancelBooking = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const reassignExpert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; newExpertId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input?.newExpertId) throw new Error("newExpertId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_reassign_expert", {
+      _booking_id: data.bookingId,
+      _new_expert_id: data.newExpertId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// NOTE: `expert_assigned` is intentionally omitted from the `accepted`
+// transitions — assigning an expert happens through the dedicated
+// staff_assign_expert RPC (which sets status atomically), never as a raw
+// status change.
 export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["accepted", "rejected", "cancelled"],
-  accepted: ["expert_assigned", "cancelled", "rejected"],
+  accepted: ["cancelled", "rejected"],
   expert_assigned: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
   rejected: [],
 };
+
 
 
