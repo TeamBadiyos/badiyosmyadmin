@@ -220,7 +220,7 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
         {active === "dashboard" ? (
-          <DashboardHome />
+          <DashboardHome role={role} />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
