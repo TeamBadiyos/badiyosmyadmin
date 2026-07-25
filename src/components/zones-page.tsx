@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Map as MapIcon, Plus, X } from "lucide-react";
-import { listZones, type ZoneRow } from "@/lib/zones.functions";
+import { createZone, listZones, type ZoneRow } from "@/lib/zones.functions";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -10,7 +10,8 @@ const LATUR_CENTER = { lat: 18.4088, lng: 76.5604 };
 
 declare global {
   interface Window {
-    google?: { maps?: { Map: new (el: HTMLElement, opts: unknown) => unknown } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    google?: any;
     __badiyoInitMap?: () => void;
   }
 }
