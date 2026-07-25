@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { getDashboardStats } from "@/lib/dashboard.functions";
 
 import {
   LayoutDashboard,
@@ -18,6 +20,12 @@ import {
   LogOut,
   Menu,
   X,
+  IndianRupee,
+  Activity,
+  CheckCircle2,
+  Clock,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,10 +205,70 @@ function Shell() {
 
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <p className="text-[15px] text-muted-foreground">Coming soon</p>
-        </div>
+        {active === "dashboard" ? (
+          <DashboardHome />
+        ) : (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <p className="text-[15px] text-muted-foreground">Coming soon</p>
+          </div>
+        )}
       </main>
+    </div>
+  );
+}
+
+function DashboardHome() {
+  const fetchStats = useServerFn(getDashboardStats);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: () => fetchStats(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const inr = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  });
+
+  const cards: Array<{ label: string; value: string; icon: LucideIcon }> = [
+    { label: "Today's Bookings", value: String(data?.todayBookings ?? 0), icon: CalendarCheck },
+    { label: "Today's Revenue", value: inr.format(data?.todayRevenue ?? 0), icon: IndianRupee },
+    { label: "Active Bookings", value: String(data?.activeBookings ?? 0), icon: Activity },
+    { label: "Completed Today", value: String(data?.completedToday ?? 0), icon: CheckCircle2 },
+    { label: "Pending Assignment", value: String(data?.pendingAssignment ?? 0), icon: Clock },
+    { label: "Online Experts", value: String(data?.onlineExperts ?? 0), icon: Users },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {isError && (
+        <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="bg-card border border-border rounded-[18px] p-6 flex items-start justify-between gap-4"
+            >
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {card.label}
+                </p>
+                <p className="mt-3 text-[32px] leading-none font-bold text-foreground truncate">
+                  {isLoading && !data ? "—" : card.value}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
+                <Icon size={20} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
