@@ -112,7 +112,76 @@ function ZoneRowItem({ zone }: { zone: ZoneRow }) {
 
 function DrawZoneModal({ onClose }: { onClose: () => void }) {
   const mapRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapObj = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const drawingManager = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const polygonRef = useRef<any>(null);
+
   const [mapError, setMapError] = useState<string | null>(null);
+  const [hasPolygon, setHasPolygon] = useState(false);
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const saveZone = useServerFn(createZone);
+  const saveMutation = useMutation({
+    mutationFn: (input: { name: string; city: string; boundary: { lat: number; lng: number }[] }) =>
+      saveZone({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["zones", "list"] });
+      onClose();
+    },
+    onError: (err: unknown) => {
+      setSaveError(err instanceof Error ? err.message : "Failed to save zone");
+    },
+  });
+
+  function clearPolygon() {
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    setHasPolygon(false);
+    if (drawingManager.current && window.google?.maps?.drawing) {
+      drawingManager.current.setDrawingMode(
+        window.google.maps.drawing.OverlayType.POLYGON,
+      );
+    }
+  }
+
+  function finishDrawing() {
+    if (drawingManager.current) {
+      drawingManager.current.setDrawingMode(null);
+    }
+  }
+
+  function extractBoundary(): { lat: number; lng: number }[] {
+    if (!polygonRef.current) return [];
+    const path = polygonRef.current.getPath();
+    const pts: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < path.getLength(); i++) {
+      const p = path.getAt(i);
+      pts.push({ lat: p.lat(), lng: p.lng() });
+    }
+    return pts;
+  }
+
+  function handleSave() {
+    setSaveError(null);
+    const boundary = extractBoundary();
+    if (boundary.length < 3) {
+      setSaveError("Draw a polygon with at least 3 points.");
+      return;
+    }
+    if (!name.trim() || !city.trim()) {
+      setSaveError("Zone name and city are required.");
+      return;
+    }
+    saveMutation.mutate({ name: name.trim(), city: city.trim(), boundary });
+  }
 
   useEffect(() => {
     const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
@@ -127,16 +196,45 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
 
     function initialize() {
       if (cancelled || !mapRef.current || !window.google?.maps) return;
-      new window.google.maps.Map(mapRef.current, {
+      const g = window.google.maps;
+      const map = new g.Map(mapRef.current, {
         center: LATUR_CENTER,
         zoom: 11,
         disableDefaultUI: false,
         streetViewControl: false,
         mapTypeControl: false,
       });
+      mapObj.current = map;
+
+      const dm = new g.drawing.DrawingManager({
+        drawingMode: g.drawing.OverlayType.POLYGON,
+        drawingControl: false,
+        polygonOptions: {
+          fillColor: "#00B97A",
+          fillOpacity: 0.2,
+          strokeColor: "#00B97A",
+          strokeWeight: 2,
+          clickable: false,
+          editable: true,
+          zIndex: 1,
+        },
+      });
+      dm.setMap(map);
+      drawingManager.current = dm;
+
+      g.event.addListener(dm, "polygoncomplete", (poly: unknown) => {
+        // Only allow one polygon at a time.
+        if (polygonRef.current) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (polygonRef.current as any).setMap(null);
+        }
+        polygonRef.current = poly;
+        dm.setDrawingMode(null);
+        setHasPolygon(true);
+      });
     }
 
-    if (window.google?.maps) {
+    if (window.google?.maps?.drawing) {
       initialize();
       return () => {
         cancelled = true;
@@ -148,7 +246,6 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
       'script[data-badiyo-gmaps="1"]',
     );
     if (existing) {
-      // Another instance is loading; wait for the callback.
       return () => {
         cancelled = true;
       };
@@ -164,17 +261,21 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
 
     return () => {
       cancelled = true;
+      if (polygonRef.current) polygonRef.current.setMap(null);
+      if (drawingManager.current) drawingManager.current.setMap(null);
     };
   }, []);
 
+  const saving = saveMutation.isPending;
+
   return (
     <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
-      <div className="bg-card w-full max-w-[1100px] h-[85vh] rounded-[24px] shadow-xl flex flex-col overflow-hidden">
+      <div className="bg-card w-full max-w-[1100px] h-[90vh] rounded-[24px] shadow-xl flex flex-col overflow-hidden">
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border">
           <div>
             <h2 className="text-[18px] font-bold text-foreground">Draw New Zone</h2>
             <p className="text-[12px] text-muted-foreground">
-              Drawing tools coming next — map preview centered on Latur.
+              Click on the map to add points. Double-click or press Finish to close the shape.
             </p>
           </div>
           <button
@@ -185,29 +286,83 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 relative bg-muted">
+        <div className="flex-1 relative bg-muted min-h-0">
           <div ref={mapRef} className="absolute inset-0" />
           {mapError && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <p className="text-[13px] text-destructive">{mapError}</p>
             </div>
           )}
+          <div className="absolute top-4 right-4 flex gap-2">
+            {!hasPolygon && (
+              <button
+                onClick={finishDrawing}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Finish Drawing
+              </button>
+            )}
+            {hasPolygon && (
+              <button
+                onClick={clearPolygon}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
-        <div className="h-16 shrink-0 flex items-center justify-end gap-3 px-6 border-t border-border">
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-[14px] border border-border text-[13px] font-semibold text-foreground hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            disabled
-            className="h-10 px-4 rounded-[14px] bg-primary text-white text-[13px] font-bold opacity-50 cursor-not-allowed"
-          >
-            Save Zone
-          </button>
+        <div className="shrink-0 border-t border-border px-6 py-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[12px] font-semibold text-foreground mb-1">
+                Zone Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Latur Central"
+                disabled={!hasPolygon || saving}
+                className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:bg-muted disabled:cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-[12px] font-semibold text-foreground mb-1">
+                City
+              </label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Latur"
+                disabled={!hasPolygon || saving}
+                className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:bg-muted disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+          {saveError && (
+            <p className="text-[12px] text-destructive">{saveError}</p>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="h-10 px-4 rounded-[14px] border border-border text-[13px] font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!hasPolygon || saving}
+              className="h-10 px-5 rounded-[14px] bg-primary text-white text-[13px] font-bold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save Zone"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
