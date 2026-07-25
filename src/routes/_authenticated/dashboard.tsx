@@ -13,6 +13,8 @@ import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
+import { RolesPage } from "@/components/roles-page";
+import { AuditLogsPage } from "@/components/audit-logs-page";
 
 import {
   LayoutDashboard,
