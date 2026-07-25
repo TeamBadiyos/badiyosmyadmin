@@ -78,7 +78,7 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       );
       const nameByAuthId = new Map<string, string>();
       if (actorIds.length) {
-        const { data: staff } = await supabaseAdmin
+        const { data: staff } = await db
           .from("staff_users")
           .select("auth_user_id, name")
           .in("auth_user_id", actorIds);
