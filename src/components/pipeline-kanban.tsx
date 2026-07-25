@@ -534,7 +534,19 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
 
   const expertsQuery = useQuery({
     queryKey: ["pipeline", "assignable-experts", bookingId],
-    queryFn: () => fetchExperts({ data: { bookingId } }),
+    queryFn: async () => {
+      return await Promise.race([
+        fetchExperts({ data: { bookingId } }),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(
+            () => reject(new Error("Request timed out after 10s")),
+            10_000,
+          ),
+        ),
+      ]);
+    },
+    retry: 1,
+    retryDelay: 500,
   });
 
   const assignMut = useMutation({
@@ -552,37 +564,61 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
     },
   });
 
+  const experts = expertsQuery.data ?? [];
+  const errMsg =
+    expertsQuery.error instanceof Error
+      ? expertsQuery.error.message
+      : expertsQuery.isError
+        ? "Couldn't load experts"
+        : null;
+
   return (
     <div
       className="mt-3 pt-3 border-t border-border space-y-2"
       onClick={(e) => e.stopPropagation()}
     >
-      <select
-        value={expertId}
-        onChange={(e) => setExpertId(e.target.value)}
-        className="w-full h-8 px-2 rounded-[10px] border border-border bg-card text-[12px]"
-      >
-        <option value="">
-          {expertsQuery.isLoading
-            ? "Loading experts…"
-            : (expertsQuery.data ?? []).length === 0
-              ? "No experts nearby"
-              : "Assign expert…"}
-        </option>
-        {(expertsQuery.data ?? []).map((ex) => (
-          <option key={ex.id} value={ex.id}>
-            {ex.name}
-          </option>
-        ))}
-      </select>
-      <button
-        disabled={!expertId || assignMut.isPending}
-        onClick={() => assignMut.mutate()}
-        className="w-full h-8 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50"
-      >
-        <UserPlus size={13} />
-        {assignMut.isPending ? "Assigning…" : "Confirm"}
-      </button>
+      {expertsQuery.isError ? (
+        <div className="space-y-1">
+          <p className="text-[11px] text-destructive px-1">{errMsg}</p>
+          <button
+            onClick={() => expertsQuery.refetch()}
+            className="w-full h-8 rounded-[10px] border border-destructive text-destructive text-[12px] font-bold"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <>
+          <select
+            value={expertId}
+            onChange={(e) => setExpertId(e.target.value)}
+            disabled={expertsQuery.isLoading}
+            className="w-full h-8 px-2 rounded-[10px] border border-border bg-card text-[12px] disabled:opacity-60"
+          >
+            <option value="">
+              {expertsQuery.isLoading
+                ? "Loading experts…"
+                : experts.length === 0
+                  ? "No experts nearby"
+                  : "Assign expert…"}
+            </option>
+            {experts.map((ex) => (
+              <option key={ex.id} value={ex.id}>
+                {ex.name}
+                {ex.distanceKm != null ? ` · ${ex.distanceKm.toFixed(1)} km` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            disabled={!expertId || assignMut.isPending}
+            onClick={() => assignMut.mutate()}
+            className="w-full h-8 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50"
+          >
+            <UserPlus size={13} />
+            {assignMut.isPending ? "Assigning…" : "Confirm"}
+          </button>
+        </>
+      )}
     </div>
   );
 }
