@@ -389,6 +389,39 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_users: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+          status: string
+          zone_id: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+          status?: string
+          zone_id?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          status?: string
+          zone_id?: string | null
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           created_at: string
