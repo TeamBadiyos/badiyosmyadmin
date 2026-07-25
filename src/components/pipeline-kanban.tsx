@@ -99,6 +99,7 @@ function stopBeep(ref: React.MutableRefObject<AudioHandle | null>) {
 export function PipelineKanban({ role }: { role: StaffRole | null }) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
+  const fetchDispatchConfig = useServerFn(getDispatchConfig);
 
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -108,6 +109,14 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
+
+  const dispatchConfigQuery = useQuery({
+    queryKey: ["dispatch-config"],
+    queryFn: () => fetchDispatchConfig(),
+    staleTime: 5 * 60_000,
+  });
+  const broadcastTimeoutSeconds =
+    dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
 
   // Realtime subscription: any booking status change refreshes the board.
   useEffect(() => {
