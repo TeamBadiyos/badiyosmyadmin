@@ -268,9 +268,18 @@ function BookingRowItem({
   return (
     <tr
       onClick={() => onSelect?.(row.id)}
-      className="border-t border-border hover:bg-muted/40 cursor-pointer"
+      className={`border-t border-border hover:bg-muted/40 cursor-pointer ${row.deletedAt ? "opacity-60" : ""}`}
     >
-      <td className="px-4 py-3 font-semibold text-foreground">{row.customerName}</td>
+      <td className="px-4 py-3 font-semibold text-foreground">
+        <div className="flex items-center gap-2">
+          <span>{row.customerName}</span>
+          {row.deletedAt && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-50 text-red-700">
+              Deleted
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3 text-muted-foreground">
         <div className="text-foreground">{row.serviceLabel ?? "—"}</div>
         <div className="text-[11px]">
