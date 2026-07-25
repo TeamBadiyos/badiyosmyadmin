@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { LiveOrdersPanel } from "@/components/live-orders-panel";
+import { PipelineKanban } from "@/components/pipeline-kanban";
+
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
