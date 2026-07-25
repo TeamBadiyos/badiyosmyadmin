@@ -43,3 +43,64 @@ export const listZones = createServerFn({ method: "GET" })
       assignedAreaPartnerName: null,
     }));
   });
+
+export type LatLng = { lat: number; lng: number };
+
+export const createZone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { name: string; city: string; boundary: LatLng[] }) => {
+      const name = input?.name?.trim();
+      const city = input?.city?.trim();
+      if (!name) throw new Error("Zone name is required");
+      if (!city) throw new Error("City is required");
+      if (!Array.isArray(input?.boundary) || input.boundary.length < 3) {
+        throw new Error("Zone boundary must have at least 3 points");
+      }
+      const boundary = input.boundary.map((p) => {
+        const lat = Number(p?.lat);
+        const lng = Number(p?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          throw new Error("Invalid boundary point");
+        }
+        return { lat, lng };
+      });
+      return { name, city, boundary };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { data: staff, error: staffErr } = await context.supabase
+      .from("staff_users")
+      .select("role, status")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+    if (staffErr) throw new Error(staffErr.message);
+    if (!staff || staff.status !== "active") throw new Error("Forbidden");
+    if (staff.role !== "super_admin" && staff.role !== "ops_manager") {
+      throw new Error("Forbidden");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: inserted, error: insErr } = await supabaseAdmin
+      .from("zones")
+      .insert({
+        name: data.name,
+        city: data.city,
+        boundary: data.boundary,
+      })
+      .select("id, name, city, boundary, status")
+      .single();
+    if (insErr) throw new Error(insErr.message);
+
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "create_zone",
+      target_table: "zones",
+      target_id: inserted.id,
+      before_state: null,
+      after_state: inserted,
+    });
+
+    return { id: inserted.id as string };
+  });
+
