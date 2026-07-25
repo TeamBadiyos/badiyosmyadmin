@@ -544,7 +544,57 @@ export function BookingDetailsModal({
                 />
               )}
 
+              {/* Interim: staff-relayed OTP verification */}
+              {(showStartOtp || showEndOtp) && (
+                <section className="bg-amber-50 border border-amber-200 rounded-[18px] p-4">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-amber-900">
+                        {showStartOtp ? "Verify Start OTP" : "Verify End OTP"}
+                      </h3>
+                      <p className="text-[12px] text-amber-800 mt-0.5">
+                        Temporary: verify OTP relayed by Expert via phone. Will be replaced once the Expert App is live.
+                      </p>
+                    </div>
+                  </div>
+                  {showStartOtp && (
+                    <OtpVerifyRow
+                      label="Start OTP"
+                      value={startOtpInput}
+                      onChange={setStartOtpInput}
+                      pending={startOtpMutation.isPending}
+                      onConfirm={() =>
+                        startOtpInput.trim() && startOtpMutation.mutate(startOtpInput.trim())
+                      }
+                      error={
+                        startOtpMutation.isError
+                          ? (startOtpMutation.error as Error)?.message ?? "Verification failed"
+                          : null
+                      }
+                    />
+                  )}
+                  {showEndOtp && (
+                    <OtpVerifyRow
+                      label="End OTP"
+                      value={endOtpInput}
+                      onChange={setEndOtpInput}
+                      pending={endOtpMutation.isPending}
+                      onConfirm={() =>
+                        endOtpInput.trim() && endOtpMutation.mutate(endOtpInput.trim())
+                      }
+                      error={
+                        endOtpMutation.isError
+                          ? (endOtpMutation.error as Error)?.message ?? "Verification failed"
+                          : null
+                      }
+                    />
+                  )}
+                </section>
+              )}
+
               {/* Update status */}
+
               {canEdit && (
 
                 <section className="bg-background border border-border rounded-[18px] p-4">
