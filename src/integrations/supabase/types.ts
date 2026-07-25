@@ -157,6 +157,33 @@ export type Database = {
           },
         ]
       }
+      experts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          status: string
+          zone_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          status?: string
+          zone_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          status?: string
+          zone_id?: string | null
+        }
+        Relationships: []
+      }
       fcm_tokens: {
         Row: {
           created_at: string
