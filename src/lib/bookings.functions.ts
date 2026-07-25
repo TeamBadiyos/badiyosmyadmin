@@ -324,7 +324,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_booking_status", {
       _booking_id: data.bookingId,
       _new_status: data.newStatus,
-      _note: data.note ?? null,
+      _note: data.note ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
