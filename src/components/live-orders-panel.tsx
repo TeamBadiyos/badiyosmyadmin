@@ -210,6 +210,11 @@ export function LiveOrdersPanel() {
               rejecting={
                 rejectMutation.isPending && rejectMutation.variables?.bookingId === b.id
               }
+              assigning={
+                assignMutation.isPending && assignMutation.variables?.bookingId === b.id
+              }
+              assignError={assignError[b.id]}
+              experts={experts ?? []}
               onAccept={() => acceptMutation.mutate(b.id)}
               onStartReject={() =>
                 setLocalState((s) => ({ ...s, [b.id]: { kind: "rejecting" } }))
@@ -222,6 +227,9 @@ export function LiveOrdersPanel() {
               }
               onConfirmReject={(reason) =>
                 rejectMutation.mutate({ bookingId: b.id, reason })
+              }
+              onAssign={(expertId) =>
+                assignMutation.mutate({ bookingId: b.id, expertId })
               }
               isAccepted={acceptedIds.has(b.id)}
             />
