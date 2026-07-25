@@ -129,8 +129,16 @@ export const rejectPendingBooking = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-export type ActiveExpert = { id: string; name: string; phone: string };
+export type ActiveExpert = {
+  id: string;
+  name: string;
+  phone: string;
+  distanceKm: number | null;
+};
 
+// Radius-based eligible experts for a booking (uses dispatch_config radius
+// via the get_eligible_experts_for_booking RPC). If no bookingId is provided
+// (rare — generic list), falls back to all active experts (no distance).
 export const listActiveExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input?: { bookingId?: string | null }) => ({
@@ -138,27 +146,89 @@ export const listActiveExperts = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }): Promise<ActiveExpert[]> => {
     await assertActiveStaff(context);
-    let zoneId: string | null = null;
+    const db = context.supabase;
+
     if (data.bookingId) {
-      const { data: b, error: bErr } = await context.supabase
-        .from("bookings")
-        .select("zone_id")
-        .eq("id", data.bookingId)
-        .maybeSingle();
-      if (bErr) throw new Error(bErr.message);
-      zoneId = (b?.zone_id as string | null) ?? null;
+      const { data: eligible, error: rpcErr } = await db.rpc(
+        "get_eligible_experts_for_booking",
+        { p_booking_id: data.bookingId },
+      );
+      if (rpcErr) throw new Error(rpcErr.message);
+      const rows = (eligible ?? []) as Array<{
+        expert_id: string;
+        distance_km: number | string | null;
+      }>;
+      if (rows.length === 0) return [];
+      const ids = rows.map((r) => r.expert_id);
+      const { data: experts, error } = await db
+        .from("experts")
+        .select("id, name, phone")
+        .in("id", ids);
+      if (error) throw new Error(error.message);
+      const map = new Map(
+        ((experts ?? []) as Array<{ id: string; name: string; phone: string }>)
+          .map((e) => [e.id, e]),
+      );
+      return rows
+        .map((r) => {
+          const ex = map.get(r.expert_id);
+          if (!ex) return null;
+          const d = r.distance_km == null ? null : Number(r.distance_km);
+          return {
+            id: ex.id,
+            name: ex.name,
+            phone: ex.phone,
+            distanceKm: Number.isFinite(d as number) ? (d as number) : null,
+          };
+        })
+        .filter((e): e is ActiveExpert => e !== null);
     }
-    let q = context.supabase
+
+    const { data: rows, error } = await db
       .from("experts")
-      .select("id, name, phone, zone_id")
+      .select("id, name, phone")
       .eq("status", "active")
       .order("name", { ascending: true });
-    if (zoneId) q = q.eq("zone_id", zoneId);
-    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return ((rows ?? []) as Array<{ id: string; name: string; phone: string }>).map(
-      (r) => ({ id: r.id, name: r.name, phone: r.phone }),
+    return ((rows ?? []) as Array<{ id: string; name: string; phone: string }>)
+      .map((r) => ({ id: r.id, name: r.name, phone: r.phone, distanceKm: null }));
+  });
+
+export type DispatchConfig = {
+  broadcastRadiusKm: number;
+  broadcastTimeoutSeconds: number;
+};
+
+export const getDispatchConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<DispatchConfig> => {
+    await assertActiveStaff(context);
+    const { data, error } = await context.supabase
+      .from("dispatch_config")
+      .select("broadcast_radius_km, broadcast_timeout_seconds")
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return {
+      broadcastRadiusKm: Number(data?.broadcast_radius_km ?? 5),
+      broadcastTimeoutSeconds: Number(data?.broadcast_timeout_seconds ?? 90),
+    };
+  });
+
+export const countEligibleExperts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ count: number }> => {
+    await assertActiveStaff(context);
+    const { data: rows, error } = await context.supabase.rpc(
+      "get_eligible_experts_for_booking",
+      { p_booking_id: data.bookingId },
     );
+    if (error) throw new Error(error.message);
+    return { count: (rows ?? []).length };
   });
 
 export const resolveZoneForBooking = createServerFn({ method: "POST" })
