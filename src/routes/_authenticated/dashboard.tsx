@@ -11,6 +11,8 @@ import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
+import { WalletsPage } from "@/components/wallets-page";
+import { ReferralsPage } from "@/components/referrals-page";
 
 import {
   LayoutDashboard,
@@ -70,7 +72,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "catalogue",
+    (k) => k !== "roles" && k !== "catalogue" && k !== "referrals",
   ),
   area_partner: ["dashboard", "bookings", "experts"],
 };
@@ -228,6 +230,10 @@ function Shell() {
           <ServiceCataloguePage />
         ) : active === "homepage" ? (
           <HomepageBuilderPage />
+        ) : active === "wallets" ? (
+          <WalletsPage role={role} />
+        ) : active === "referrals" ? (
+          <ReferralsPage />
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <p className="text-[15px] text-muted-foreground">Coming soon</p>
