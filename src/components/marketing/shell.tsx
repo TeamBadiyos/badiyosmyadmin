@@ -1,37 +1,86 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronDown, Play } from "lucide-react";
 import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <div className="min-h-screen w-full bg-background flex flex-col">
-      <header className="w-full border-b border-border bg-card/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center">
+      <header
+        className={`sticky top-0 z-40 w-full bg-card/90 backdrop-blur border-b border-border transition-shadow ${
+          scrolled ? "shadow-[0_4px_18px_-8px_rgba(0,0,0,0.12)]" : ""
+        }`}
+      >
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center shrink-0">
             <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1 sm:gap-2 text-[13px] sm:text-[14px] font-semibold">
-            <NavLink to="/join-area-partner">Area Partner</NavLink>
-            <NavLink to="/join-expert">Join as Expert</NavLink>
-            <NavLink to="/support">Support</NavLink>
+
+          <nav className="hidden md:flex items-center gap-1 text-[14px] font-semibold">
+            <div
+              className="relative"
+              onMouseEnter={() => setServicesOpen(true)}
+              onMouseLeave={() => setServicesOpen(false)}
+            >
+              <button
+                type="button"
+                className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1"
+              >
+                Services
+                <ChevronDown size={14} />
+              </button>
+              {servicesOpen && (
+                <div className="absolute left-0 top-full pt-2 w-[220px]">
+                  <div className="bg-card border border-border rounded-[14px] shadow-lg p-2">
+                    {["Cleaning", "Dishwashing", "Laundry", "Bathroom Cleaning"].map((s) => (
+                      <a
+                        key={s}
+                        href="#services"
+                        className="block px-3 py-2 rounded-[10px] text-[13px] text-foreground hover:bg-muted"
+                      >
+                        {s}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <a
+              href="#why"
+              className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              About
+            </a>
+            <a
+              href="#faq"
+              className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              FAQ
+            </a>
           </nav>
+
+          <a
+            href="#download"
+            className="inline-flex items-center gap-2 h-10 px-4 sm:px-5 rounded-full bg-primary text-white font-bold text-[13px] sm:text-[14px] hover:brightness-95 transition"
+          >
+            <Play size={16} />
+            Get the App
+          </a>
         </div>
       </header>
       <main className="flex-1 w-full">{children}</main>
       <MarketingFooter />
     </div>
-  );
-}
-
-function NavLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Link
-      to={to}
-      className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-      activeProps={{ className: "px-3 py-2 rounded-[10px] text-foreground bg-primary-tint" }}
-    >
-      {children}
-    </Link>
   );
 }
 
