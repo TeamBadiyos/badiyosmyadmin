@@ -344,7 +344,7 @@ const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Which areas do you currently serve?",
-    a: "We're just getting started in Latur and Pune. More cities and neighbourhoods will be added as we grow — turn on notifications in the app to know when Badiyo launches near you.",
+    a: "We're just getting started in Latur. More cities and neighbourhoods will be added as we grow — turn on notifications in the app to know when Badiyo launches near you.",
   },
 ];
 
