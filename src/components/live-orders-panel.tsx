@@ -245,7 +245,7 @@ function OrderCard(props: {
   rejecting: boolean;
   assigning: boolean;
   assignError: string | undefined;
-  experts: ActiveExpert[];
+  fetchExperts: (opts?: { data?: { bookingId?: string | null } }) => Promise<ActiveExpert[]>;
   isAccepted: boolean;
   onAccept: () => void;
   onStartReject: () => void;
@@ -260,7 +260,7 @@ function OrderCard(props: {
     rejecting,
     assigning,
     assignError,
-    experts,
+    fetchExperts,
     isAccepted,
     onAccept,
     onStartReject,
@@ -270,6 +270,14 @@ function OrderCard(props: {
   } = props;
   const [reason, setReason] = useState<RejectReason>("CHANGED_MIND");
   const [selectedExpert, setSelectedExpert] = useState<string>("");
+
+  const { data: experts = [] } = useQuery({
+    queryKey: ["live-orders", "experts", b.id],
+    queryFn: () => fetchExperts({ data: { bookingId: b.id } }),
+    enabled: isAccepted,
+    staleTime: 15_000,
+  });
+
 
   const timeAgo = useMemo(() => formatShortTime(b.createdAt), [b.createdAt]);
 
