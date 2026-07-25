@@ -8,8 +8,8 @@ export type AuditLogRow = {
   action: string;
   targetTable: string | null;
   targetId: string | null;
-  beforeState: unknown;
-  afterState: unknown;
+  beforeState: Record<string, unknown> | null;
+  afterState: Record<string, unknown> | null;
   createdAt: string;
 };
 
