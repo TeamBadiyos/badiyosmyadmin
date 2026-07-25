@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, Check, CircleDashed, CircleDot, XCircle } from "lucide-react";
+import { X, Check, CircleDashed, CircleDot, XCircle, Ban } from "lucide-react";
 import {
   getBookingDetails,
   updateBookingStatus,
+  cancelBooking,
+  CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
+  type CancellationReason,
 } from "@/lib/bookings.functions";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
