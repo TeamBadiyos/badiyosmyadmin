@@ -555,7 +555,7 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
           {expertsQuery.isLoading
             ? "Loading experts…"
             : (expertsQuery.data ?? []).length === 0
-              ? "No experts in zone"
+              ? "No experts nearby"
               : "Assign expert…"}
         </option>
         {(expertsQuery.data ?? []).map((ex) => (
