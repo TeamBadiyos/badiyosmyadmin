@@ -262,7 +262,7 @@ function Shell() {
   );
 }
 
-function DashboardHome() {
+function DashboardHome({ role }: { role: StaffRole | null }) {
   const fetchStats = useServerFn(getDashboardStats);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["dashboard", "stats"],
