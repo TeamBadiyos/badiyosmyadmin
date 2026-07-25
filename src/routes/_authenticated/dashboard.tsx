@@ -49,6 +49,16 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
+type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+
+const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
+  super_admin: NAV_ITEMS.map((n) => n.key),
+  ops_manager: NAV_ITEMS.map((n) => n.key).filter(
+    (k) => k !== "roles" && k !== "catalogue",
+  ),
+  area_partner: ["dashboard", "bookings", "experts"],
+};
+
 function Shell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
