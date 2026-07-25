@@ -67,8 +67,9 @@ export function BookingsPage({
       to: to || null,
       page,
       pageSize: PAGE_SIZE,
+      includeDeleted: includeDeleted && role === "super_admin",
     }),
-    [status, zoneId, from, to, page],
+    [status, zoneId, from, to, page, includeDeleted, role],
   );
 
   const { data, isLoading, isError } = useQuery({
