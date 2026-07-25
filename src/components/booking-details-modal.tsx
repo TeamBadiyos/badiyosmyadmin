@@ -1030,7 +1030,7 @@ function ExpertAssignSection({
   onCancel,
 }: {
   mode: "assign" | "reassign";
-  experts: Array<{ id: string; name: string; phone: string }>;
+  experts: Array<{ id: string; name: string; phone: string; distanceKm?: number | null }>;
   loading: boolean;
   search: string;
   onSearch: (v: string) => void;
