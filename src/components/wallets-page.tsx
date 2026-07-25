@@ -479,7 +479,7 @@ function PayoutsTab() {
   );
 }
 
-function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () => void }) {
+export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () => void }) {
   const queryClient = useQueryClient();
   const fetchItems = useServerFn(listPayoutItems);
   const markItem = useServerFn(markPayoutItemPaid);
