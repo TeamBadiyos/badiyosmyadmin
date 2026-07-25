@@ -564,6 +564,14 @@ export type Database = {
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
       link_referral: { Args: { _code: string }; Returns: undefined }
+      staff_accept_booking: {
+        Args: { _booking_id: string }
+        Returns: undefined
+      }
+      staff_reject_booking: {
+        Args: { _booking_id: string; _reason: string }
+        Returns: undefined
+      }
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
