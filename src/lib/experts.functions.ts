@@ -203,7 +203,7 @@ export const kycDecision = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_expert_kyc_decision", {
       _expert_id: data.expertId,
       _decision: data.decision,
-      _reason: data.reason ?? null,
+      _reason: data.reason ?? "",
     });
     if (error) throw new Error(error.message);
     return { ok: true };
