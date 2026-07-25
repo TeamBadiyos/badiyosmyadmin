@@ -33,16 +33,39 @@ export const listZones = createServerFn({ method: "GET" })
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
+    const rows = data ?? [];
 
-    return (data ?? []).map((z) => ({
+    const partnerIds = Array.from(
+      new Set(
+        rows
+          .map((z) => z.assigned_area_partner_id as string | null)
+          .filter((id): id is string => !!id),
+      ),
+    );
+    const partnerMap = new Map<string, string>();
+    if (partnerIds.length) {
+      const { data: partners } = await context.supabase
+        .from("area_partners")
+        .select("id, name")
+        .in("id", partnerIds);
+      for (const p of partners ?? []) {
+        partnerMap.set(p.id as string, p.name as string);
+      }
+    }
+
+    return rows.map((z) => ({
       id: z.id as string,
       name: z.name as string,
       city: z.city as string,
       status: z.status as "active" | "inactive",
       assignedAreaPartnerId: (z.assigned_area_partner_id as string | null) ?? null,
-      assignedAreaPartnerName: null,
+      assignedAreaPartnerName:
+        (z.assigned_area_partner_id &&
+          partnerMap.get(z.assigned_area_partner_id as string)) ||
+        null,
     }));
   });
+
 
 export type LatLng = { lat: number; lng: number };
 
