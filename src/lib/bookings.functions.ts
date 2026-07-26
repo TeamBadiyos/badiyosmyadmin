@@ -106,6 +106,12 @@ export const listBookings = createServerFn({ method: "POST" })
     if (data.status && BOOKING_STATUSES.includes(data.status as BookingStatus)) {
       q = q.eq("status", data.status);
     }
+    if (data.statuses && Array.isArray(data.statuses) && data.statuses.length) {
+      const valid = data.statuses.filter((s) =>
+        BOOKING_STATUSES.includes(s as BookingStatus),
+      );
+      if (valid.length) q = q.in("status", valid);
+    }
     if (data.from) q = q.gte("created_at", `${data.from}T00:00:00Z`);
     if (data.to) q = q.lte("created_at", `${data.to}T23:59:59Z`);
 
