@@ -346,6 +346,39 @@ export type Database = {
           },
         ]
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          fcm_token: string
+          id: string
+          last_used_at: string
+          platform: string
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          fcm_token: string
+          id?: string
+          last_used_at?: string
+          platform: string
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          fcm_token?: string
+          id?: string
+          last_used_at?: string
+          platform?: string
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       dispatch_config: {
         Row: {
           broadcast_radius_km: number
@@ -1273,6 +1306,17 @@ export type Database = {
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
+      }
+      register_device_token: {
+        Args: { p_fcm_token: string; p_platform: string }
+        Returns: string
+      }
+      resolve_caller_identity: {
+        Args: { _auth_uid: string }
+        Returns: {
+          user_id: string
+          user_type: string
+        }[]
       }
       resolve_zone_for_point: {
         Args: { _lat: number; _lng: number }
