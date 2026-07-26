@@ -110,6 +110,8 @@ export const listExperts = createServerFn({ method: "POST" })
       kycStatus: r.kyc_status as KycStatus,
       walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
       status: r.status as ActiveStatus,
+      isOnline: !!r.is_online,
+      isBusy: !!r.is_busy,
     }));
   });
 
