@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ScrollText, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listAuditLogs,
   listAuditFilterOptions,
