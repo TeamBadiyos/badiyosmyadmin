@@ -1312,6 +1312,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_expert_broadcast: {
+        Args: {
+          _body: string
+          _booking_id: string
+          _expert_id: string
+          _title: string
+        }
+        Returns: undefined
+      }
+      notify_expert_push: {
+        Args: {
+          _body: string
+          _expert_id: string
+          _route: string
+          _title: string
+        }
+        Returns: undefined
+      }
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
