@@ -384,7 +384,7 @@ function BoardCard({
           </p>
         )}
         <div className="flex items-center justify-between gap-2">
-          <span>{formatTime(booking.createdAt)}</span>
+          <span>{formatPlacedAt(booking.createdAt)}</span>
           {booking.price != null && (
             <span className="font-semibold text-foreground">
               {inr.format(booking.price)}
