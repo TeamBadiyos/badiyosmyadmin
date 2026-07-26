@@ -294,7 +294,15 @@ function Shell() {
   );
 }
 
-function DashboardHome({ role }: { role: StaffRole | null }) {
+function DashboardHome({
+  role,
+  onGoBookings,
+  onGoExperts,
+}: {
+  role: StaffRole | null;
+  onGoBookings: (preset: { status?: string; from?: string; to?: string } | null) => void;
+  onGoExperts: (onlineOnly: boolean) => void;
+}) {
   const fetchStats = useServerFn(getDashboardStats);
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
