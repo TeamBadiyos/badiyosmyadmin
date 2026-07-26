@@ -15,6 +15,11 @@ const SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
   Deno.env.get("SB_SERVICE_ROLE_KEY") ||
   Deno.env.get("SERVICE_ROLE_KEY")!;
+// Dedicated internal shared-secret for gating this function. Preferred over
+// reusing the service-role key because Supabase now injects the new opaque
+// `sb_secret_...` format for SUPABASE_SERVICE_ROLE_KEY, while callers may
+// still hold the legacy JWT — the two never compare equal.
+const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
 
 const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
 const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
@@ -160,9 +165,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
-  // Gate: only trusted internal callers holding the service-role key.
+  // Gate: only trusted internal callers with the shared internal secret.
   const internalSecret = req.headers.get("x-internal-secret");
-  if (!SERVICE_ROLE_KEY || internalSecret !== SERVICE_ROLE_KEY) {
+  console.log("[push] auth-check", {
+    headerPresent: !!internalSecret,
+    headerLen: internalSecret ? internalSecret.length : 0,
+    expectedLen: INTERNAL_SECRET.length,
+    match: !!internalSecret && internalSecret === INTERNAL_SECRET,
+  });
+  if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
     return json(401, { error: "Unauthorized" });
   }
 
