@@ -129,10 +129,44 @@ async function sendToToken(
   body: string,
   data?: Record<string, unknown>,
 ): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string }> {
+  // High-attention "new job" pushes get an urgent Android config so the OS
+  // shows a heads-up notification with sound + vibration even when the app
+  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'.
+  const isUrgentBroadcast =
+    !!data && (data as Record<string, unknown>).type === "new_booking_broadcast";
+
+  const androidConfig = isUrgentBroadcast
+    ? {
+        priority: "HIGH",
+        notification: {
+          channel_id: "new_booking_alerts",
+          sound: "default",
+          default_vibrate_timings: false,
+          vibrate_timings: ["0s", "0.4s", "0.2s", "0.4s", "0.2s", "0.4s"],
+          notification_priority: "PRIORITY_MAX",
+          visibility: "PUBLIC",
+          default_light_settings: true,
+        },
+      }
+    : {
+        priority: "HIGH",
+        notification: { sound: "default", channel_id: "default" },
+      };
+
   const payload = {
     message: {
       token: fcmToken,
       notification: { title, body },
+      android: androidConfig,
+      apns: {
+        headers: { "apns-priority": "10" },
+        payload: {
+          aps: {
+            sound: isUrgentBroadcast ? "default" : "default",
+            "interruption-level": isUrgentBroadcast ? "time-sensitive" : "active",
+          },
+        },
+      },
       data: data
         ? Object.fromEntries(
             Object.entries(data).map(([k, v]) => [
@@ -155,6 +189,7 @@ async function sendToToken(
       body: JSON.stringify(payload),
     },
   );
+
 
   if (res.ok) return { ok: true, invalid: false, status: res.status };
   const errText = await res.text();
