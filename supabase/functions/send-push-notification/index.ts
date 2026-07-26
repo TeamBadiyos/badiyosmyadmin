@@ -20,6 +20,10 @@ const SERVICE_ROLE_KEY =
 // `sb_secret_...` format for SUPABASE_SERVICE_ROLE_KEY, while callers may
 // still hold the legacy JWT — the two never compare equal.
 const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
+// Secondary shared secret used by Postgres triggers/RPCs (via pg_net) so DB
+// code can call this function without needing the primary INTERNAL_SECRET
+// (which cannot be read from SQL). Both are treated as equally privileged.
+const TRIGGER_SECRET = Deno.env.get("PUSH_TRIGGER_SECRET") || "";
 
 const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
 const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
@@ -167,13 +171,15 @@ Deno.serve(async (req) => {
 
   // Gate: only trusted internal callers with the shared internal secret.
   const internalSecret = req.headers.get("x-internal-secret");
+  const matchesInternal = !!internalSecret && !!INTERNAL_SECRET && internalSecret === INTERNAL_SECRET;
+  const matchesTrigger = !!internalSecret && !!TRIGGER_SECRET && internalSecret === TRIGGER_SECRET;
   console.log("[push] auth-check", {
     headerPresent: !!internalSecret,
     headerLen: internalSecret ? internalSecret.length : 0,
-    expectedLen: INTERNAL_SECRET.length,
-    match: !!internalSecret && internalSecret === INTERNAL_SECRET,
+    matchInternal: matchesInternal,
+    matchTrigger: matchesTrigger,
   });
-  if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
+  if (!matchesInternal && !matchesTrigger) {
     return json(401, { error: "Unauthorized" });
   }
 
