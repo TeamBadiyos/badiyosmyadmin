@@ -16,6 +16,8 @@ export type ExpertRow = {
   kycStatus: KycStatus;
   walletBalance: number;
   status: ActiveStatus;
+  isOnline: boolean;
+  isBusy: boolean;
 };
 
 export type ExpertDetails = ExpertRow & {
@@ -49,8 +51,12 @@ async function requireStaff(
 export const listExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { zoneId?: string | null; kycStatus?: string | null; level?: string | null } | undefined) =>
-      input ?? {},
+    (input: {
+      zoneId?: string | null;
+      kycStatus?: string | null;
+      level?: string | null;
+      onlineOnly?: boolean | null;
+    } | undefined) => input ?? {},
   )
   .handler(async ({ data, context }): Promise<ExpertRow[]> => {
     const staff = await requireStaff(context.supabase, context.userId);
@@ -58,9 +64,12 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status",
-      )
-      .order("created_at", { ascending: false });
+        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at",
+      );
+    if (data.onlineOnly) {
+      q = q.eq("is_online", true).order("is_busy", { ascending: true });
+    }
+    q = q.order("created_at", { ascending: false });
 
     if (staff.role === "area_partner") {
       if (!staff.zone_id) return [];
@@ -101,6 +110,8 @@ export const listExperts = createServerFn({ method: "POST" })
       kycStatus: r.kyc_status as KycStatus,
       walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
       status: r.status as ActiveStatus,
+      isOnline: !!r.is_online,
+      isBusy: !!r.is_busy,
     }));
   });
 
@@ -142,6 +153,8 @@ export const getExpert = createServerFn({ method: "POST" })
       kycStatus: e.kyc_status as KycStatus,
       walletBalance: e.wallet_balance != null ? Number(e.wallet_balance) : 0,
       status: e.status as ActiveStatus,
+      isOnline: !!e.is_online,
+      isBusy: !!e.is_busy,
       address: e.address ?? null,
       bankAccountNumber: e.bank_account_number ?? null,
       bankIfsc: e.bank_ifsc ?? null,

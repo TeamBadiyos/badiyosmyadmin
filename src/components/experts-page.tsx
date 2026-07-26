@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, UserRound } from "lucide-react";
@@ -31,23 +31,39 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-export function ExpertsPage({ role }: { role: StaffRole | null }) {
+export function ExpertsPage({
+  role,
+  initialOnlineOnly = false,
+}: {
+  role: StaffRole | null;
+  initialOnlineOnly?: boolean;
+}) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
 
   const [zoneId, setZoneId] = useState("");
   const [kycStatus, setKycStatus] = useState("");
   const [level, setLevel] = useState("");
+  const [availability, setAvailability] = useState<string>(initialOnlineOnly ? "online" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAvailability(initialOnlineOnly ? "online" : "");
+  }, [initialOnlineOnly]);
 
   const fetchExperts = useServerFn(listExperts);
   const fetchZones = useServerFn(listZoneOptions);
 
   const filters = useMemo(
-    () => ({ zoneId: zoneId || null, kycStatus: kycStatus || null, level: level || null }),
-    [zoneId, kycStatus, level],
+    () => ({
+      zoneId: zoneId || null,
+      kycStatus: kycStatus || null,
+      level: level || null,
+      onlineOnly: availability === "online" || availability === "online_free",
+    }),
+    [zoneId, kycStatus, level, availability],
   );
 
   const { data: zones = [] } = useQuery({
@@ -56,11 +72,14 @@ export function ExpertsPage({ role }: { role: StaffRole | null }) {
     staleTime: 60_000,
   });
 
-  const { data: experts = [], isLoading, isError } = useQuery({
+  const { data: expertsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["experts", "list", filters],
     queryFn: () => fetchExperts({ data: filters }),
     staleTime: 15_000,
   });
+
+  const experts =
+    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw;
 
   return (
     <div className="space-y-6">
@@ -95,6 +114,11 @@ export function ExpertsPage({ role }: { role: StaffRole | null }) {
         <Filter label="Level" value={level} onChange={setLevel}>
           <option value="">All levels</option>
           {LEVELS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </Filter>
+        <Filter label="Availability" value={availability} onChange={setAvailability}>
+          <option value="">All experts</option>
+          <option value="online">Online only</option>
+          <option value="online_free">Online & free</option>
         </Filter>
       </div>
 
@@ -204,10 +228,19 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         </span>
       </span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
-      <span>
+      <span className="flex items-center gap-1.5 flex-wrap">
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
           {expert.status}
         </span>
+        {expert.isOnline && (
+          <span
+            title={expert.isBusy ? "Online — on a job" : "Online — free"}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${expert.isBusy ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${expert.isBusy ? "bg-amber-500" : "bg-emerald-500"}`} />
+            {expert.isBusy ? "busy" : "live"}
+          </span>
+        )}
       </span>
     </button>
   );
