@@ -584,6 +584,7 @@ export type Database = {
           name: string
           phone: string
           photo_url: string | null
+          pin_hash: string | null
           security_deposit_status: string
           status: string
           wallet_balance: number
@@ -611,6 +612,7 @@ export type Database = {
           name: string
           phone: string
           photo_url?: string | null
+          pin_hash?: string | null
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
@@ -638,6 +640,7 @@ export type Database = {
           name?: string
           phone?: string
           photo_url?: string | null
+          pin_hash?: string | null
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
@@ -829,6 +832,27 @@ export type Database = {
           total_amount?: number
           week_end?: string
           week_start?: string
+        }
+        Relationships: []
+      }
+      pin_login_lockouts: {
+        Row: {
+          failed_attempts: number
+          locked_until: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          failed_attempts?: number
+          locked_until?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          failed_attempts?: number
+          locked_until?: string | null
+          phone?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1058,6 +1082,7 @@ export type Database = {
           id: string
           notification_preferences: Json
           phone: string | null
+          pin_hash: string | null
           referral_code: string | null
           referral_count: number | null
           referred_by: string | null
@@ -1073,6 +1098,7 @@ export type Database = {
           id: string
           notification_preferences?: Json
           phone?: string | null
+          pin_hash?: string | null
           referral_code?: string | null
           referral_count?: number | null
           referred_by?: string | null
@@ -1088,6 +1114,7 @@ export type Database = {
           id?: string
           notification_preferences?: Json
           phone?: string | null
+          pin_hash?: string | null
           referral_code?: string | null
           referral_count?: number | null
           referred_by?: string | null
@@ -1394,6 +1421,7 @@ export type Database = {
         Args: { _lat: number; _lng: number }
         Returns: string
       }
+      set_login_pin: { Args: { p_pin: string }; Returns: undefined }
       staff_accept_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -1495,6 +1523,14 @@ export type Database = {
       system_accept_booking_after_payment: {
         Args: { _booking_id: string }
         Returns: undefined
+      }
+      verify_login_pin: {
+        Args: { p_phone: string; p_pin: string; p_user_type: string }
+        Returns: {
+          auth_user_id: string
+          retry_after_seconds: number
+          status: string
+        }[]
       }
     }
     Enums: {
