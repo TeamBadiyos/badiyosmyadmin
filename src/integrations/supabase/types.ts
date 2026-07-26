@@ -1320,6 +1320,17 @@ export type Database = {
       }
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_auth_user_id_by_phone: { Args: { _phone: string }; Returns: string }
+      get_broadcast_booking_address: {
+        Args: { p_booking_id: string }
+        Returns: {
+          area: string
+          city: string
+          full_address: string
+          landmark_photo_url: string
+          latitude: number
+          longitude: number
+        }[]
+      }
       get_eligible_experts_for_booking: {
         Args: { p_booking_id: string }
         Returns: {
