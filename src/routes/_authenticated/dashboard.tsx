@@ -338,13 +338,49 @@ function DashboardHome({
     maximumFractionDigits: 0,
   });
 
-  const cards: Array<{ label: string; value: string; icon: LucideIcon }> = [
-    { label: "Today's Bookings", value: String(data?.todayBookings ?? 0), icon: CalendarCheck },
-    { label: "Today's Revenue", value: inr.format(data?.todayRevenue ?? 0), icon: IndianRupee },
-    { label: "Active Bookings", value: String(data?.activeBookings ?? 0), icon: Activity },
-    { label: "Completed Today", value: String(data?.completedToday ?? 0), icon: CheckCircle2 },
-    { label: "Pending Assignment", value: String(data?.pendingAssignment ?? 0), icon: Clock },
-    { label: "Online Experts", value: String(data?.onlineExperts ?? 0), icon: Users },
+  const today = new Date().toISOString().slice(0, 10);
+  const cards: Array<{
+    label: string;
+    value: string;
+    icon: LucideIcon;
+    onClick?: () => void;
+  }> = [
+    {
+      label: "Today's Bookings",
+      value: String(data?.todayBookings ?? 0),
+      icon: CalendarCheck,
+      onClick: () => onGoBookings({ from: today, to: today }),
+    },
+    {
+      label: "Today's Revenue",
+      value: inr.format(data?.todayRevenue ?? 0),
+      icon: IndianRupee,
+      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
+    },
+    {
+      label: "Active Bookings",
+      value: String(data?.activeBookings ?? 0),
+      icon: Activity,
+      onClick: () => onGoBookings({ status: "active" }),
+    },
+    {
+      label: "Completed Today",
+      value: String(data?.completedToday ?? 0),
+      icon: CheckCircle2,
+      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
+    },
+    {
+      label: "Pending Assignment",
+      value: String(data?.pendingAssignment ?? 0),
+      icon: Clock,
+      onClick: () => onGoBookings({ status: "accepted" }),
+    },
+    {
+      label: "Online Experts",
+      value: String(data?.onlineExperts ?? 0),
+      icon: Users,
+      onClick: () => onGoExperts(true),
+    },
   ];
 
   return (
@@ -356,9 +392,11 @@ function DashboardHome({
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div
+            <button
               key={card.label}
-              className="bg-card border border-border rounded-[18px] p-5 flex items-start justify-between gap-3"
+              type="button"
+              onClick={card.onClick}
+              className="text-left bg-card border border-border rounded-[18px] p-5 flex items-start justify-between gap-3 cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -371,7 +409,7 @@ function DashboardHome({
               <div className="w-9 h-9 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
                 <Icon size={18} />
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
