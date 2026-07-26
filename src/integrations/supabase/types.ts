@@ -1378,6 +1378,10 @@ export type Database = {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
       }
+      system_accept_booking_after_payment: {
+        Args: { _booking_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
