@@ -20,6 +20,10 @@ const SERVICE_ROLE_KEY =
 // `sb_secret_...` format for SUPABASE_SERVICE_ROLE_KEY, while callers may
 // still hold the legacy JWT — the two never compare equal.
 const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
+// Secondary shared secret used by Postgres triggers/RPCs (via pg_net) so DB
+// code can call this function without needing the primary INTERNAL_SECRET
+// (which cannot be read from SQL). Both are treated as equally privileged.
+const TRIGGER_SECRET = Deno.env.get("PUSH_TRIGGER_SECRET") || "";
 
 const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
 const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
