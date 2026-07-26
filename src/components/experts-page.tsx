@@ -228,10 +228,19 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         </span>
       </span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
-      <span>
+      <span className="flex items-center gap-1.5 flex-wrap">
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
           {expert.status}
         </span>
+        {expert.isOnline && (
+          <span
+            title={expert.isBusy ? "Online — on a job" : "Online — free"}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${expert.isBusy ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${expert.isBusy ? "bg-amber-500" : "bg-emerald-500"}`} />
+            {expert.isBusy ? "busy" : "live"}
+          </span>
+        )}
       </span>
     </button>
   );
