@@ -87,7 +87,25 @@ function Shell() {
   const [active, setActive] = useState<NavKey>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [bookingsInitial, setBookingsInitial] = useState<
+    { status?: string; from?: string; to?: string } | null
+  >(null);
+  const [expertsOnlineOnly, setExpertsOnlineOnly] = useState(false);
+  const [navNonce, setNavNonce] = useState(0);
   const activeItem = NAV_ITEMS.find((n) => n.key === active)!;
+
+  function gotoBookings(preset: { status?: string; from?: string; to?: string } | null) {
+    setBookingsInitial(preset);
+    setActive("bookings");
+    setNavNonce((n) => n + 1);
+    setMobileOpen(false);
+  }
+  function gotoExperts(onlineOnly: boolean) {
+    setExpertsOnlineOnly(onlineOnly);
+    setActive("experts");
+    setNavNonce((n) => n + 1);
+    setMobileOpen(false);
+  }
 
   const { data: staff } = useQuery({
     queryKey: ["me", "staff"],
