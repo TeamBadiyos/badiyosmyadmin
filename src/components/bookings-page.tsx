@@ -128,6 +128,7 @@ export function BookingsPage({
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[160px]"
           >
             <option value="">All statuses</option>
+            <option value="active">Active (assigned + in progress)</option>
             {BOOKING_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s.replace("_", " ")}
