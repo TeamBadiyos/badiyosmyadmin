@@ -239,14 +239,26 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
         {active === "dashboard" ? (
-          <DashboardHome role={role} />
+          <DashboardHome
+            role={role}
+            onGoBookings={gotoBookings}
+            onGoExperts={gotoExperts}
+          />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
-          <BookingsPage role={role} onSelect={(id) => setSelectedBookingId(id)} />
+          <BookingsPage
+            key={`bookings-${navNonce}`}
+            role={role}
+            onSelect={(id) => setSelectedBookingId(id)}
+            initialFilters={bookingsInitial ?? undefined}
+          />
         ) : active === "experts" ? (
-          <ExpertsPage role={role} />
-        ) : active === "partners" ? (
+          <ExpertsPage
+            key={`experts-${navNonce}`}
+            role={role}
+            initialOnlineOnly={expertsOnlineOnly}
+          />
           <AreaPartnersPage />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
