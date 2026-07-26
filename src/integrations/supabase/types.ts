@@ -1366,6 +1366,7 @@ export type Database = {
         }[]
       }
       get_expert_id_for_auth: { Args: { _auth_uid: string }; Returns: string }
+      has_login_pin: { Args: { p_phone: string }; Returns: boolean }
       haversine_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
@@ -1531,6 +1532,10 @@ export type Database = {
           retry_after_seconds: number
           status: string
         }[]
+      }
+      verify_login_pin_internal: {
+        Args: { p_phone: string; p_pin: string }
+        Returns: Json
       }
     }
     Enums: {
