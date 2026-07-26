@@ -15,6 +15,11 @@ const SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
   Deno.env.get("SB_SERVICE_ROLE_KEY") ||
   Deno.env.get("SERVICE_ROLE_KEY")!;
+// Dedicated internal shared-secret for gating this function. Preferred over
+// reusing the service-role key because Supabase now injects the new opaque
+// `sb_secret_...` format for SUPABASE_SERVICE_ROLE_KEY, while callers may
+// still hold the legacy JWT — the two never compare equal.
+const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
 
 const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
 const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
