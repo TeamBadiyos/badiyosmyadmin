@@ -1303,6 +1303,15 @@ export type Database = {
         Returns: boolean
       }
       link_referral: { Args: { _code: string }; Returns: undefined }
+      notify_customer_push: {
+        Args: {
+          _body: string
+          _booking_id: string
+          _route: string
+          _title: string
+        }
+        Returns: undefined
+      }
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
