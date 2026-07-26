@@ -37,17 +37,25 @@ function fmtDateTime(iso: string) {
   });
 }
 
+export type BookingsInitialFilters = {
+  status?: string;
+  from?: string;
+  to?: string;
+};
+
 export function BookingsPage({
   role,
   onSelect,
+  initialFilters,
 }: {
   role: StaffRole | null;
   onSelect?: (bookingId: string) => void;
+  initialFilters?: BookingsInitialFilters;
 }) {
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<string>(initialFilters?.status ?? "");
   const [zoneId, setZoneId] = useState<string>("");
-  const [from, setFrom] = useState<string>("");
-  const [to, setTo] = useState<string>("");
+  const [from, setFrom] = useState<string>(initialFilters?.from ?? "");
+  const [to, setTo] = useState<string>(initialFilters?.to ?? "");
   const [page, setPage] = useState<number>(1);
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
 
@@ -60,18 +68,19 @@ export function BookingsPage({
     staleTime: 60_000,
   });
 
-  const filters = useMemo(
-    () => ({
-      status: status || null,
+  const filters = useMemo(() => {
+    const activePreset = status === "active";
+    return {
+      status: activePreset ? null : status || null,
+      statuses: activePreset ? ["expert_assigned", "in_progress"] : null,
       zoneId: zoneId || null,
       from: from || null,
       to: to || null,
       page,
       pageSize: PAGE_SIZE,
       includeDeleted: includeDeleted && role === "super_admin",
-    }),
-    [status, zoneId, from, to, page, includeDeleted, role],
-  );
+    };
+  }, [status, zoneId, from, to, page, includeDeleted, role]);
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
