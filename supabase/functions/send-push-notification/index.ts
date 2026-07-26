@@ -162,6 +162,23 @@ Deno.serve(async (req) => {
 
   // Gate: only trusted internal callers holding the service-role key.
   const internalSecret = req.headers.get("x-internal-secret");
+  const hdrLen = internalSecret ? internalSecret.length : 0;
+  const keyLen = SERVICE_ROLE_KEY ? SERVICE_ROLE_KEY.length : 0;
+  const which =
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      ? "SUPABASE_SERVICE_ROLE_KEY"
+      : Deno.env.get("SB_SERVICE_ROLE_KEY")
+        ? "SB_SERVICE_ROLE_KEY"
+        : Deno.env.get("SERVICE_ROLE_KEY")
+          ? "SERVICE_ROLE_KEY"
+          : "(none)";
+  console.log("[push] auth-check", {
+    headerPresent: !!internalSecret,
+    headerLen: hdrLen,
+    keySource: which,
+    keyLen,
+    match: !!internalSecret && internalSecret === SERVICE_ROLE_KEY,
+  });
   if (!SERVICE_ROLE_KEY || internalSecret !== SERVICE_ROLE_KEY) {
     return json(401, { error: "Unauthorized" });
   }
