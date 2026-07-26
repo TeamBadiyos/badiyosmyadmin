@@ -39,6 +39,7 @@ export type BookingRow = {
 
 export type ListBookingsInput = {
   status?: string | null;
+  statuses?: string[] | null;
   zoneId?: string | null;
   from?: string | null; // ISO date (yyyy-mm-dd)
   to?: string | null;
