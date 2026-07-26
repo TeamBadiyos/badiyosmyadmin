@@ -153,6 +153,8 @@ export const getExpert = createServerFn({ method: "POST" })
       kycStatus: e.kyc_status as KycStatus,
       walletBalance: e.wallet_balance != null ? Number(e.wallet_balance) : 0,
       status: e.status as ActiveStatus,
+      isOnline: !!e.is_online,
+      isBusy: !!e.is_busy,
       address: e.address ?? null,
       bankAccountNumber: e.bank_account_number ?? null,
       bankIfsc: e.bank_ifsc ?? null,
