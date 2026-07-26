@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   BOOKING_STATUSES,
   listBookings,
@@ -72,11 +73,27 @@ export function BookingsPage({
     [status, zoneId, from, to, page, includeDeleted, role],
   );
 
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["bookings", "list", filters],
     queryFn: () => fetchBookings({ data: filters }),
     staleTime: 15_000,
   });
+
+  // Realtime: any change to bookings invalidates the list.
+  useEffect(() => {
+    const channel = supabase
+      .channel("bookings-list")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
+        () => queryClient.invalidateQueries({ queryKey: ["bookings", "list"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;

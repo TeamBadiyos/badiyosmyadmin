@@ -349,9 +349,9 @@ function BoardCard({
     queryKey: ["pipeline", "eligible-count", booking.id],
     queryFn: () => fetchCount({ data: { bookingId: booking.id } }),
     enabled: isBroadcasting,
-    refetchInterval: isBroadcasting ? 15_000 : false,
+    refetchInterval: isBroadcasting ? 5_000 : false,
     refetchOnWindowFocus: false,
-    staleTime: 10_000,
+    staleTime: 3_000,
   });
   const eligibleCount = eligibleQuery.data?.count ?? null;
 

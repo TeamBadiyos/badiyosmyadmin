@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ScrollText, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listAuditLogs,
   listAuditFilterOptions,
@@ -39,11 +40,27 @@ export function AuditLogsPage() {
     [page, actorId, action, targetTable, from, to],
   );
 
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["audit-logs", "list", filters],
     queryFn: () => fetchLogs({ data: filters }),
     staleTime: 10_000,
   });
+
+  // Realtime: new audit log rows invalidate the list.
+  useEffect(() => {
+    const channel = supabase
+      .channel("audit-logs-list")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "audit_logs" },
+        () => queryClient.invalidateQueries({ queryKey: ["audit-logs", "list"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
