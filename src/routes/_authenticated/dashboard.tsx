@@ -265,12 +265,33 @@ function Shell() {
 
 function DashboardHome({ role }: { role: StaffRole | null }) {
   const fetchStats = useServerFn(getDashboardStats);
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["dashboard", "stats"],
     queryFn: () => fetchStats(),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000, // safety-net poll; realtime below drives normal refreshes
     refetchOnWindowFocus: false,
   });
+
+  // Realtime: any change to bookings or experts.is_online invalidates the stats.
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-stats")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
+        () => queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "experts" },
+        () => queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const inr = new Intl.NumberFormat("en-IN", {
     style: "currency",
