@@ -16,6 +16,8 @@ export type ExpertRow = {
   kycStatus: KycStatus;
   walletBalance: number;
   status: ActiveStatus;
+  isOnline: boolean;
+  isBusy: boolean;
 };
 
 export type ExpertDetails = ExpertRow & {
