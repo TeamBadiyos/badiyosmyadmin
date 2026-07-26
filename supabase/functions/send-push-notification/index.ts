@@ -171,13 +171,15 @@ Deno.serve(async (req) => {
 
   // Gate: only trusted internal callers with the shared internal secret.
   const internalSecret = req.headers.get("x-internal-secret");
+  const matchesInternal = !!internalSecret && !!INTERNAL_SECRET && internalSecret === INTERNAL_SECRET;
+  const matchesTrigger = !!internalSecret && !!TRIGGER_SECRET && internalSecret === TRIGGER_SECRET;
   console.log("[push] auth-check", {
     headerPresent: !!internalSecret,
     headerLen: internalSecret ? internalSecret.length : 0,
-    expectedLen: INTERNAL_SECRET.length,
-    match: !!internalSecret && internalSecret === INTERNAL_SECRET,
+    matchInternal: matchesInternal,
+    matchTrigger: matchesTrigger,
   });
-  if (!INTERNAL_SECRET || internalSecret !== INTERNAL_SECRET) {
+  if (!matchesInternal && !matchesTrigger) {
     return json(401, { error: "Unauthorized" });
   }
 
