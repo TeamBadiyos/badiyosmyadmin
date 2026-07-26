@@ -412,7 +412,7 @@ export function BookingDetailsModal({
                     {STATUS_LABEL[data.status]}
                   </span>
                   <span className="text-[12px] text-muted-foreground">
-                    Created {fmtDateTime(data.createdAt)}
+                    Placed {fmtDateTime(data.createdAt)}
                   </span>
                 </div>
                 <Timeline current={data.status} />
