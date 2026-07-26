@@ -115,6 +115,11 @@ export function ExpertsPage({
           <option value="">All levels</option>
           {LEVELS.map((s) => <option key={s} value={s}>{s}</option>)}
         </Filter>
+        <Filter label="Availability" value={availability} onChange={setAvailability}>
+          <option value="">All experts</option>
+          <option value="online">Online only</option>
+          <option value="online_free">Online & free</option>
+        </Filter>
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
