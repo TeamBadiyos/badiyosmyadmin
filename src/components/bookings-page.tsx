@@ -198,7 +198,7 @@ export function BookingsPage({
                 <th className="text-left px-4 py-3">Expert</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Payment</th>
-                <th className="text-left px-4 py-3">Created</th>
+                <th className="text-left px-4 py-3">Placed</th>
               </tr>
             </thead>
             <tbody>

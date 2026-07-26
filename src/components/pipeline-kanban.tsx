@@ -35,12 +35,21 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-function formatTime(iso: string): string {
+function formatPlacedAt(iso: string): string {
   try {
-    return new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
+    const d = new Date(iso);
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    const time = d.toLocaleTimeString([], {
+      hour: "numeric",
       minute: "2-digit",
     });
+    if (sameDay) return `Placed at ${time}`;
+    const date = d.toLocaleDateString([], { day: "2-digit", month: "short" });
+    return `Placed ${date}, ${time}`;
   } catch {
     return "";
   }
@@ -375,7 +384,7 @@ function BoardCard({
           </p>
         )}
         <div className="flex items-center justify-between gap-2">
-          <span>{formatTime(booking.createdAt)}</span>
+          <span>{formatPlacedAt(booking.createdAt)}</span>
           {booking.price != null && (
             <span className="font-semibold text-foreground">
               {inr.format(booking.price)}
