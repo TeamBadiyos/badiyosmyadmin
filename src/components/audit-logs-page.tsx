@@ -40,11 +40,27 @@ export function AuditLogsPage() {
     [page, actorId, action, targetTable, from, to],
   );
 
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["audit-logs", "list", filters],
     queryFn: () => fetchLogs({ data: filters }),
     staleTime: 10_000,
   });
+
+  // Realtime: new audit log rows invalidate the list.
+  useEffect(() => {
+    const channel = supabase
+      .channel("audit-logs-list")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "audit_logs" },
+        () => queryClient.invalidateQueries({ queryKey: ["audit-logs", "list"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
