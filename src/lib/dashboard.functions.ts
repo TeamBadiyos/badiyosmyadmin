@@ -81,7 +81,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("experts")
         .select("*", countOnly)
-        .eq("status", "active"),
+        .eq("status", "active")
+        .eq("is_online", true),
     ]);
 
     for (const res of [todayBookingsRes, revenueRes, activeRes, completedRes, pendingRes, expertsRes]) {
