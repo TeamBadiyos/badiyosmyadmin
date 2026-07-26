@@ -230,7 +230,10 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          cancellation_fee: number | null
           cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string | null
           delete_reason: string | null
           deleted_at: string | null
@@ -241,6 +244,9 @@ export type Database = {
           rating: number | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
+          refund_amount: number | null
+          refund_id: string | null
+          refund_status: string | null
           review_text: string | null
           scheduled_date: string | null
           scheduled_time_slot: string | null
@@ -260,7 +266,10 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          cancellation_fee?: number | null
           cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
@@ -271,6 +280,9 @@ export type Database = {
           rating?: number | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          refund_amount?: number | null
+          refund_id?: string | null
+          refund_status?: string | null
           review_text?: string | null
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
@@ -290,7 +302,10 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          cancellation_fee?: number | null
           cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string | null
           delete_reason?: string | null
           deleted_at?: string | null
@@ -301,6 +316,9 @@ export type Database = {
           rating?: number | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          refund_amount?: number | null
+          refund_id?: string | null
+          refund_status?: string | null
           review_text?: string | null
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
@@ -1201,7 +1219,10 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          cancellation_fee: number | null
           cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string | null
           delete_reason: string | null
           deleted_at: string | null
@@ -1212,6 +1233,9 @@ export type Database = {
           rating: number | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
+          refund_amount: number | null
+          refund_id: string | null
+          refund_status: string | null
           review_text: string | null
           scheduled_date: string | null
           scheduled_time_slot: string | null
@@ -1236,6 +1260,16 @@ export type Database = {
       credit_referral_for_booking: {
         Args: { _booking_id: string }
         Returns: undefined
+      }
+      customer_cancel_booking_apply: {
+        Args: {
+          _booking_id: string
+          _cancellation_fee: number
+          _refund_amount: number
+          _refund_id: string
+          _refund_status: string
+        }
+        Returns: Json
       }
       ensure_start_otp: { Args: { _booking_id: string }; Returns: string }
       expert_ensure_booking_codes: {
