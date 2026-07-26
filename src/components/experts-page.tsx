@@ -31,23 +31,39 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-export function ExpertsPage({ role }: { role: StaffRole | null }) {
+export function ExpertsPage({
+  role,
+  initialOnlineOnly = false,
+}: {
+  role: StaffRole | null;
+  initialOnlineOnly?: boolean;
+}) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
 
   const [zoneId, setZoneId] = useState("");
   const [kycStatus, setKycStatus] = useState("");
   const [level, setLevel] = useState("");
+  const [availability, setAvailability] = useState<string>(initialOnlineOnly ? "online" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAvailability(initialOnlineOnly ? "online" : "");
+  }, [initialOnlineOnly]);
 
   const fetchExperts = useServerFn(listExperts);
   const fetchZones = useServerFn(listZoneOptions);
 
   const filters = useMemo(
-    () => ({ zoneId: zoneId || null, kycStatus: kycStatus || null, level: level || null }),
-    [zoneId, kycStatus, level],
+    () => ({
+      zoneId: zoneId || null,
+      kycStatus: kycStatus || null,
+      level: level || null,
+      onlineOnly: availability === "online" || availability === "online_free",
+    }),
+    [zoneId, kycStatus, level, availability],
   );
 
   const { data: zones = [] } = useQuery({
@@ -56,11 +72,14 @@ export function ExpertsPage({ role }: { role: StaffRole | null }) {
     staleTime: 60_000,
   });
 
-  const { data: experts = [], isLoading, isError } = useQuery({
+  const { data: expertsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["experts", "list", filters],
     queryFn: () => fetchExperts({ data: filters }),
     staleTime: 15_000,
   });
+
+  const experts =
+    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw;
 
   return (
     <div className="space-y-6">
