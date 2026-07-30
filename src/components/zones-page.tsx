@@ -148,6 +148,8 @@ function ZoneRowItem({
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [redrawOpen, setRedrawOpen] = useState(false);
+
 
   const isDeleted = !!zone.deletedAt;
 
