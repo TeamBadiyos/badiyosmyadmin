@@ -307,6 +307,10 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
         streetViewControl: false,
         mapTypeControl: false,
         clickableIcons: false,
+        zoomControl: true,
+        zoomControlOptions: { position: g.ControlPosition.LEFT_BOTTOM },
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: g.ControlPosition.TOP_RIGHT },
       });
       mapObj.current = map;
 
