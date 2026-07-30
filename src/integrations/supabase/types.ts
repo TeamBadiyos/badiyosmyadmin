@@ -1198,6 +1198,9 @@ export type Database = {
           boundary: Json
           city: string
           created_at: string
+          delete_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           name: string
           status: string
@@ -1207,6 +1210,9 @@ export type Database = {
           boundary: Json
           city: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           name: string
           status?: string
@@ -1216,6 +1222,9 @@ export type Database = {
           boundary?: Json
           city?: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           name?: string
           status?: string
@@ -1480,6 +1489,10 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      staff_soft_delete_zone: {
+        Args: { _reason: string; _zone_id: string }
+        Returns: undefined
+      }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
@@ -1490,6 +1503,10 @@ export type Database = {
       }
       staff_update_service_price: {
         Args: { _id: string; _payload: Json }
+        Returns: undefined
+      }
+      staff_update_zone: {
+        Args: { _payload: Json; _zone_id: string }
         Returns: undefined
       }
       staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
@@ -1537,6 +1554,7 @@ export type Database = {
         Args: { p_phone: string; p_pin: string }
         Returns: Json
       }
+      zone_delete_impact: { Args: { _zone_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

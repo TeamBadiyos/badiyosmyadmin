@@ -8,11 +8,16 @@ export type ZoneRow = {
   status: "active" | "inactive";
   assignedAreaPartnerId: string | null;
   assignedAreaPartnerName: string | null;
+  deletedAt: string | null;
+  deleteReason: string | null;
 };
 
 export const listZones = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ZoneRow[]> => {
+  .inputValidator((input?: { includeDeleted?: boolean } | null) => ({
+    includeDeleted: !!input?.includeDeleted,
+  }))
+  .handler(async ({ data, context }): Promise<ZoneRow[]> => {
     const { data: staff, error: staffErr } = await context.supabase
       .from("staff_users")
       .select("role, status, zone_id")
@@ -21,19 +26,24 @@ export const listZones = createServerFn({ method: "GET" })
     if (staffErr) throw new Error(staffErr.message);
     if (!staff || staff.status !== "active") throw new Error("Forbidden");
 
+    // Only super_admin may view soft-deleted zones.
+    const includeDeleted = data.includeDeleted && staff.role === "super_admin";
+
     let query = context.supabase
       .from("zones")
-      .select("id, name, city, status, assigned_area_partner_id")
+      .select("id, name, city, status, assigned_area_partner_id, deleted_at, delete_reason")
       .order("created_at", { ascending: false });
+
+    if (!includeDeleted) query = query.is("deleted_at", null);
 
     if (staff.role === "area_partner") {
       if (!staff.zone_id) return [];
       query = query.eq("id", staff.zone_id);
     }
 
-    const { data, error } = await query;
+    const { data: rows_, error } = await query;
     if (error) throw new Error(error.message);
-    const rows = data ?? [];
+    const rows = rows_ ?? [];
 
     const partnerIds = Array.from(
       new Set(
@@ -63,8 +73,78 @@ export const listZones = createServerFn({ method: "GET" })
         (z.assigned_area_partner_id &&
           partnerMap.get(z.assigned_area_partner_id as string)) ||
         null,
+      deletedAt: (z.deleted_at as string | null) ?? null,
+      deleteReason: (z.delete_reason as string | null) ?? null,
     }));
   });
+
+// NOTE: boundary polygons are intentionally not editable here. A separate
+// "Redraw Boundary" action can be added later if needed.
+export const updateZone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { zoneId: string; name: string; city: string; status: "active" | "inactive" }) => {
+    if (!input?.zoneId) throw new Error("zoneId required");
+    const name = input.name?.trim();
+    const city = input.city?.trim();
+    if (!name) throw new Error("Zone name is required");
+    if (!city) throw new Error("City is required");
+    if (input.status !== "active" && input.status !== "inactive") {
+      throw new Error("Invalid status");
+    }
+    return { zoneId: input.zoneId, name, city, status: input.status };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_update_zone", {
+      _zone_id: data.zoneId,
+      _payload: { name: data.name, city: data.city, status: data.status },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export type ZoneDeleteImpact = {
+  activeExperts: number;
+  hasPartner: boolean;
+  openBookings: number;
+};
+
+export const getZoneDeleteImpact = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { zoneId: string }) => {
+    if (!input?.zoneId) throw new Error("zoneId required");
+    return { zoneId: input.zoneId };
+  })
+  .handler(async ({ data, context }): Promise<ZoneDeleteImpact> => {
+    const { data: res, error } = await context.supabase.rpc("zone_delete_impact", {
+      _zone_id: data.zoneId,
+    });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = (res ?? {}) as any;
+    return {
+      activeExperts: Number(r.active_experts ?? 0),
+      hasPartner: !!r.has_partner,
+      openBookings: Number(r.open_bookings ?? 0),
+    };
+  });
+
+export const deleteZone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { zoneId: string; reason: string }) => {
+    if (!input?.zoneId) throw new Error("zoneId required");
+    const reason = input.reason?.trim();
+    if (!reason) throw new Error("A reason is required");
+    return { zoneId: input.zoneId, reason };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_soft_delete_zone", {
+      _zone_id: data.zoneId,
+      _reason: data.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 
 
 export type LatLng = { lat: number; lng: number };

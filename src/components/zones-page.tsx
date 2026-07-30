@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { LocateFixed, Map as MapIcon, Minus, Plus, X } from "lucide-react";
+import {
+  LocateFixed,
+  Map as MapIcon,
+  Minus,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   assignAreaPartner,
   createZone,
+  deleteZone,
+  getZoneDeleteImpact,
   listAreaPartners,
   listZones,
+  updateZone,
   type ZoneRow,
 } from "@/lib/zones.functions";
 
@@ -25,15 +36,22 @@ declare global {
 
 export function ZonesPage({ role }: { role: StaffRole | null }) {
   const fetchZones = useServerFn(listZones);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const canManage = role === "super_admin" || role === "ops_manager";
+  const canDelete = role === "super_admin";
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["zones", "list"],
-    queryFn: () => fetchZones(),
+    queryKey: ["zones", "list", showDeleted],
+    queryFn: () => fetchZones({ data: { includeDeleted: showDeleted } }),
     staleTime: 30_000,
   });
 
   const [drawOpen, setDrawOpen] = useState(false);
-  const canManage = role === "super_admin" || role === "ops_manager";
   const zones = data ?? [];
+
+  const cols = canManage
+    ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px_92px]"
+    : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]";
 
   return (
     <div className="space-y-6">
@@ -43,25 +61,39 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
             ? "Manage service zones and area partner assignments."
             : "Your assigned zone."}
         </p>
-        {canManage && (
-          <button
-            onClick={() => setDrawOpen(true)}
-            className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
-          >
-            <Plus size={18} />
-            Draw New Zone
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {canDelete && (
+            <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={(e) => setShowDeleted(e.target.checked)}
+                className="w-4 h-4 accent-[var(--color-primary,#00B97A)]"
+              />
+              Show deleted
+            </label>
+          )}
+          {canManage && (
+            <button
+              onClick={() => setDrawOpen(true)}
+              className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+            >
+              <Plus size={18} />
+              Draw New Zone
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className={`grid ${canManage ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px]" : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]"} gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
+        <div className={`grid ${cols} gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <span></span>
           <span>Name</span>
           <span>City</span>
           <span>Assigned Area Partner</span>
           <span>Status</span>
           {canManage && <span className="text-right">Actions</span>}
+          {canManage && <span className="text-right">Manage</span>}
         </div>
 
         {isLoading && (
@@ -79,7 +111,13 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
         )}
 
         {zones.map((z) => (
-          <ZoneRowItem key={z.id} zone={z} canManage={canManage} />
+          <ZoneRowItem
+            key={z.id}
+            zone={z}
+            canManage={canManage}
+            canDelete={canDelete}
+            cols={cols}
+          />
         ))}
       </div>
 
@@ -89,18 +127,32 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
   );
 }
 
-function ZoneRowItem({ zone, canManage }: { zone: ZoneRow; canManage: boolean }) {
+function ZoneRowItem({
+  zone,
+  canManage,
+  canDelete,
+  cols,
+}: {
+  zone: ZoneRow;
+  canManage: boolean;
+  canDelete: boolean;
+  cols: string;
+}) {
   const queryClient = useQueryClient();
   const fetchPartners = useServerFn(listAreaPartners);
   const assign = useServerFn(assignAreaPartner);
   const [selected, setSelected] = useState<string>(zone.assignedAreaPartnerId ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const isDeleted = !!zone.deletedAt;
 
   const { data: partners = [] } = useQuery({
     queryKey: ["area-partners", "active"],
     queryFn: () => fetchPartners(),
     staleTime: 60_000,
-    enabled: canManage,
+    enabled: canManage && !isDeleted,
   });
 
   const mutation = useMutation({
@@ -116,11 +168,27 @@ function ZoneRowItem({ zone, canManage }: { zone: ZoneRow; canManage: boolean })
   const dirty = (selected || null) !== (zone.assignedAreaPartnerId ?? null);
 
   return (
-    <div className={`grid ${canManage ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px]" : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]"} gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]`}>
+    <div
+      className={`grid ${cols} gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px] ${
+        isDeleted ? "opacity-60" : ""
+      }`}
+    >
       <div className="w-8 h-8 rounded-lg bg-primary-tint text-primary flex items-center justify-center">
         <MapIcon size={16} />
       </div>
-      <span className="font-semibold text-foreground truncate">{zone.name}</span>
+      <span className="font-semibold text-foreground truncate">
+        {zone.name}
+        {isDeleted && (
+          <span className="ml-2 text-[11px] font-bold uppercase tracking-wide text-destructive">
+            Deleted
+          </span>
+        )}
+        {isDeleted && zone.deleteReason && (
+          <span className="block text-[11px] font-normal text-muted-foreground truncate">
+            {zone.deleteReason}
+          </span>
+        )}
+      </span>
       <span className="text-muted-foreground truncate">{zone.city}</span>
       <span className="truncate">
         {zone.assignedAreaPartnerName ? (
@@ -142,36 +210,249 @@ function ZoneRowItem({ zone, canManage }: { zone: ZoneRow; canManage: boolean })
       </span>
       {canManage && (
         <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-2 w-full">
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={mutation.isPending}
-              className="flex-1 min-w-0 h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] text-foreground disabled:opacity-60"
-            >
-              <option value="">
-                {partners.length === 0 ? "No active partners" : "Unassigned"}
-              </option>
-              {partners.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => mutation.mutate(selected ? selected : null)}
-              disabled={!dirty || mutation.isPending}
-              className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold disabled:opacity-50"
-            >
-              {mutation.isPending ? "…" : "Save"}
-            </button>
-          </div>
-          {error && <p className="text-[11px] text-destructive">{error}</p>}
+          {isDeleted ? (
+            <span className="text-[12px] text-muted-foreground italic">—</span>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 w-full">
+                <select
+                  value={selected}
+                  onChange={(e) => setSelected(e.target.value)}
+                  disabled={mutation.isPending}
+                  className="flex-1 min-w-0 h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] text-foreground disabled:opacity-60"
+                >
+                  <option value="">
+                    {partners.length === 0 ? "No active partners" : "Unassigned"}
+                  </option>
+                  {partners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => mutation.mutate(selected ? selected : null)}
+                  disabled={!dirty || mutation.isPending}
+                  className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold disabled:opacity-50"
+                >
+                  {mutation.isPending ? "…" : "Save"}
+                </button>
+              </div>
+              {error && <p className="text-[11px] text-destructive">{error}</p>}
+            </>
+          )}
         </div>
       )}
+      {canManage && (
+        <div className="flex items-center justify-end gap-2">
+          {!isDeleted && (
+            <button
+              onClick={() => setEditOpen(true)}
+              title="Edit zone"
+              className="w-9 h-9 rounded-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+          {canDelete && !isDeleted && (
+            <button
+              onClick={() => setDeleteOpen(true)}
+              title="Delete zone"
+              className="w-9 h-9 rounded-[12px] border border-border text-destructive hover:bg-destructive/10 inline-flex items-center justify-center"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {editOpen && <EditZoneModal zone={zone} onClose={() => setEditOpen(false)} />}
+      {deleteOpen && <DeleteZoneModal zone={zone} onClose={() => setDeleteOpen(false)} />}
     </div>
   );
 }
+
+function EditZoneModal({ zone, onClose }: { zone: ZoneRow; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const save = useServerFn(updateZone);
+  const [name, setName] = useState(zone.name);
+  const [city, setCity] = useState(zone.city);
+  const [status, setStatus] = useState<"active" | "inactive">(zone.status);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({ data: { zoneId: zone.id, name, city, status } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["zones"] });
+      onClose();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Failed to save zone"),
+  });
+
+  return (
+    <ModalShell title="Edit Zone" onClose={onClose}>
+      <div className="space-y-4">
+        <Field label="Zone Name">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full h-[44px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
+          />
+        </Field>
+        <Field label="City">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="w-full h-[44px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
+          />
+        </Field>
+        <Field label="Status">
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as "active" | "inactive")}
+            className="w-full h-[44px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </Field>
+        <p className="text-[12px] text-muted-foreground">
+          The boundary polygon can't be changed here — a separate "Redraw Boundary" action
+          will handle that later.
+        </p>
+        {error && <p className="text-[12px] text-destructive">{error}</p>}
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            onClick={onClose}
+            className="h-[44px] px-4 rounded-[14px] border border-border text-[14px] font-semibold hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="h-[44px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold disabled:opacity-50"
+          >
+            {mutation.isPending ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function DeleteZoneModal({ zone, onClose }: { zone: ZoneRow; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const fetchImpact = useServerFn(getZoneDeleteImpact);
+  const remove = useServerFn(deleteZone);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: impact } = useQuery({
+    queryKey: ["zones", "delete-impact", zone.id],
+    queryFn: () => fetchImpact({ data: { zoneId: zone.id } }),
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => remove({ data: { zoneId: zone.id, reason } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["zones"] });
+      queryClient.invalidateQueries({ queryKey: ["experts"] });
+      onClose();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Failed to delete zone"),
+  });
+
+  const warn =
+    impact && (impact.activeExperts > 0 || impact.hasPartner || impact.openBookings > 0);
+
+  return (
+    <ModalShell title="Delete Zone" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-[14px] text-foreground">
+          Delete <span className="font-bold">{zone.name}</span>? The zone is archived, not
+          erased — historical bookings keep resolving correctly, but it's removed from all
+          active zone dropdowns.
+        </p>
+        {warn && (
+          <div className="rounded-[14px] border border-warning/40 bg-warning/10 p-3 text-[13px] text-foreground">
+            This zone has {impact!.activeExperts} active expert
+            {impact!.activeExperts === 1 ? "" : "s"}
+            {impact!.hasPartner ? " and an assigned partner" : ""}
+            {impact!.openBookings > 0
+              ? `, plus ${impact!.openBookings} open booking${impact!.openBookings === 1 ? "" : "s"}`
+              : ""}
+            {" "}— deleting will unassign them.
+          </div>
+        )}
+        <Field label="Reason (required)">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Zone merged into Latur Central"
+            className="w-full h-[44px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
+          />
+        </Field>
+        {error && <p className="text-[12px] text-destructive">{error}</p>}
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            onClick={onClose}
+            className="h-[44px] px-4 rounded-[14px] border border-border text-[14px] font-semibold hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!reason.trim() || mutation.isPending}
+            className="h-[44px] px-5 rounded-[14px] bg-destructive text-white text-[14px] font-bold disabled:opacity-50"
+          >
+            {mutation.isPending ? "Deleting…" : "Delete Zone"}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ModalShell({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[2000] bg-black/40 flex items-center justify-center p-4">
+      <div className="w-full max-w-[460px] bg-card rounded-[24px] border border-border shadow-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="text-[16px] font-bold text-foreground">{title}</h3>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
 
 
 function DrawZoneModal({ onClose }: { onClose: () => void }) {

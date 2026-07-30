@@ -195,6 +195,7 @@ export const listZoneOptions = createServerFn({ method: "GET" })
       .from("zones")
       .select("id, name")
       .eq("status", "active")
+      .is("deleted_at", null)
       .order("name");
     if (staff.role === "area_partner") {
       if (!staff.zone_id) return [];
