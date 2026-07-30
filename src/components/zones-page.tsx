@@ -450,12 +450,15 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
               </button>
             )}
           </div>
-          <div className="absolute bottom-6 left-4 flex flex-col gap-2">
+          <div
+            className="absolute bottom-10 left-4 flex flex-col gap-2 pointer-events-none"
+            style={{ zIndex: 1000002 }}
+          >
             <button
               onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) + 1)}
               aria-label="Zoom in"
               title="Zoom in"
-              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
             >
               <Plus size={18} />
             </button>
@@ -463,28 +466,32 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
               onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) - 1)}
               aria-label="Zoom out"
               title="Zoom out"
-              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
             >
               <Minus size={18} />
             </button>
           </div>
-          <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
-
+          <div
+            className="absolute bottom-10 right-4 flex flex-col items-end gap-2 pointer-events-none"
+            style={{ zIndex: 1000003 }}
+          >
             {locateError && (
               <span className="bg-card/95 backdrop-blur border border-border rounded-[10px] px-2 py-1 text-[11px] font-semibold text-destructive shadow-sm">
                 {locateError}
               </span>
             )}
             <button
+              type="button"
               onClick={handleLocate}
               disabled={locating}
               aria-label="Use my current location"
               title="Use my current location"
-              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-60"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-60"
             >
               <LocateFixed size={18} className={locating ? "animate-pulse text-primary" : ""} />
             </button>
           </div>
+
         </div>
         <div className="shrink-0 border-t border-border px-6 py-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
