@@ -829,3 +829,439 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
 }
 
 
+function polygonAreaKm2(pts: { lat: number; lng: number }[]): number {
+  if (pts.length < 3) return 0;
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const lat0 = toRad(pts.reduce((s, p) => s + p.lat, 0) / pts.length);
+  const xy = pts.map((p) => ({
+    x: R * toRad(p.lng) * Math.cos(lat0),
+    y: R * toRad(p.lat),
+  }));
+  let sum = 0;
+  for (let i = 0; i < xy.length; i++) {
+    const a = xy[i];
+    const b = xy[(i + 1) % xy.length];
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => void }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapObj = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existingPolyRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const polygonRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clickListenerRef = useRef<any>(null);
+
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [pointCount, setPointCount] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const [redrawing, setRedrawing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const queryClient = useQueryClient();
+  const fetchBoundary = useServerFn(getZoneBoundary);
+  const saveBoundary = useServerFn(redrawZoneBoundary);
+
+  const { data: existing } = useQuery({
+    queryKey: ["zones", "boundary", zone.id],
+    queryFn: () => fetchBoundary({ data: { zoneId: zone.id } }),
+    staleTime: 30_000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (boundary: { lat: number; lng: number }[]) =>
+      saveBoundary({ data: { zoneId: zone.id, boundary } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["zones"] });
+      onClose();
+    },
+    onError: (err: unknown) =>
+      setSaveError(err instanceof Error ? err.message : "Failed to save boundary"),
+  });
+
+  function clearMarkers() {
+    for (const m of markersRef.current) m.setMap(null);
+    markersRef.current = [];
+  }
+
+  function attachClickListener() {
+    const g = window.google?.maps;
+    const map = mapObj.current;
+    if (!g || !map || clickListenerRef.current) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clickListenerRef.current = map.addListener("click", (e: any) => {
+      if (!e?.latLng) return;
+      if (!polygonRef.current) {
+        polygonRef.current = new g.Polygon({
+          paths: [e.latLng],
+          fillColor: "#00B97A",
+          fillOpacity: 0.2,
+          strokeColor: "#00B97A",
+          strokeWeight: 2,
+          clickable: false,
+          editable: false,
+          zIndex: 2,
+          map,
+        });
+      } else {
+        polygonRef.current.getPath().push(e.latLng);
+      }
+      const marker = new g.Marker({
+        position: e.latLng,
+        map,
+        icon: {
+          path: g.SymbolPath.CIRCLE,
+          scale: 5,
+          fillColor: "#00B97A",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+      markersRef.current.push(marker);
+      setPointCount(polygonRef.current.getPath().getLength());
+    });
+  }
+
+  function startRedraw() {
+    if (existingPolyRef.current) {
+      existingPolyRef.current.setMap(null);
+      existingPolyRef.current = null;
+    }
+    clearPolygon();
+    setRedrawing(true);
+    attachClickListener();
+  }
+
+  function clearPolygon() {
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    clearMarkers();
+    setPointCount(0);
+    setFinished(false);
+    attachClickListener();
+  }
+
+  function finishDrawing() {
+    if (!polygonRef.current) return;
+    const path = polygonRef.current.getPath();
+    if (path.getLength() < 3) return;
+    polygonRef.current.setOptions({ editable: true });
+    if (clickListenerRef.current && window.google?.maps?.event) {
+      window.google.maps.event.removeListener(clickListenerRef.current);
+      clickListenerRef.current = null;
+    }
+    clearMarkers();
+    setFinished(true);
+  }
+
+  function extractBoundary(): { lat: number; lng: number }[] {
+    if (!polygonRef.current) return [];
+    const path = polygonRef.current.getPath();
+    const pts: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < path.getLength(); i++) {
+      const p = path.getAt(i);
+      pts.push({ lat: p.lat(), lng: p.lng() });
+    }
+    return pts;
+  }
+
+  function handleLocate() {
+    setLocateError(null);
+    if (!navigator.geolocation) {
+      setLocateError("Location unavailable");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const map = mapObj.current;
+        if (!map) return;
+        map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map.setZoom(14);
+      },
+      () => {
+        setLocating(false);
+        setLocateError("Location unavailable");
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
+  function attemptSave() {
+    setSaveError(null);
+    const boundary = extractBoundary();
+    if (boundary.length < 3) {
+      setSaveError("Draw a polygon with at least 3 points.");
+      return;
+    }
+    const oldArea = polygonAreaKm2(existing ?? []);
+    const newArea = polygonAreaKm2(boundary);
+    if (oldArea > 0 && Math.abs(newArea - oldArea) / oldArea > 0.5) {
+      setConfirmOpen(true);
+      return;
+    }
+    saveMutation.mutate(boundary);
+  }
+
+  // Map init
+  useEffect(() => {
+    const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
+      | string
+      | undefined;
+    if (!browserKey) {
+      setMapError("Google Maps key not configured.");
+      return;
+    }
+    let cancelled = false;
+    let iv = 0;
+
+    function initialize() {
+      if (cancelled || !mapRef.current || !window.google?.maps) return;
+      const g = window.google.maps;
+      mapObj.current = new g.Map(mapRef.current, {
+        center: LATUR_CENTER,
+        zoom: 13,
+        disableDefaultUI: true,
+        clickableIcons: false,
+        keyboardShortcuts: false,
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: g.ControlPosition.TOP_RIGHT },
+      });
+    }
+
+    if (window.google?.maps) {
+      initialize();
+    } else {
+      window.__badiyoInitMap = initialize;
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        'script[data-badiyo-gmaps="1"]',
+      );
+      if (existingScript) {
+        iv = window.setInterval(() => {
+          if (window.google?.maps) {
+            window.clearInterval(iv);
+            initialize();
+          }
+        }, 100);
+      } else {
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyoInitMap`;
+        script.async = true;
+        script.defer = true;
+        script.dataset.badiyoGmaps = "1";
+        script.onerror = () => setMapError("Failed to load Google Maps.");
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      if (iv) window.clearInterval(iv);
+      if (clickListenerRef.current && window.google?.maps?.event) {
+        window.google.maps.event.removeListener(clickListenerRef.current);
+        clickListenerRef.current = null;
+      }
+      clearMarkers();
+      if (polygonRef.current) polygonRef.current.setMap(null);
+      if (existingPolyRef.current) existingPolyRef.current.setMap(null);
+    };
+  }, []);
+
+  // Render existing boundary once map + data are ready
+  useEffect(() => {
+    const g = window.google?.maps;
+    const map = mapObj.current;
+    if (!g || !map || redrawing || !existing || existing.length < 3) return;
+    if (existingPolyRef.current) existingPolyRef.current.setMap(null);
+    existingPolyRef.current = new g.Polygon({
+      paths: existing,
+      fillColor: "#2563EB",
+      fillOpacity: 0.15,
+      strokeColor: "#2563EB",
+      strokeWeight: 2,
+      clickable: false,
+      zIndex: 1,
+      map,
+    });
+    const bounds = new g.LatLngBounds();
+    for (const p of existing) bounds.extend(p);
+    map.fitBounds(bounds);
+  }, [existing, redrawing, mapError]);
+
+  const saving = saveMutation.isPending;
+  const hasPolygon = pointCount >= 3 && finished;
+  const canFinish = pointCount >= 3 && !finished;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
+      <div className="bg-card w-full max-w-[1100px] h-[90vh] rounded-[24px] shadow-xl flex flex-col overflow-hidden">
+        <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border">
+          <div>
+            <h2 className="text-[18px] font-bold text-foreground">
+              Redraw Boundary — {zone.name}
+            </h2>
+            <p className="text-[12px] text-muted-foreground">
+              {redrawing
+                ? "Click on the map to add points (min 3). Press Finish Drawing to close the shape."
+                : "Current boundary shown in blue. Press Start Redraw to draw a new shape."}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 relative bg-muted min-h-0">
+          <div ref={mapRef} className="absolute inset-0" />
+          {mapError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <p className="text-[13px] text-destructive">{mapError}</p>
+            </div>
+          )}
+          <div className="absolute top-4 left-4 bg-card/95 backdrop-blur border border-border rounded-[12px] px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm">
+            Points: {pointCount}
+            {finished && <span className="ml-2 text-primary">• Closed</span>}
+          </div>
+          <div className="absolute top-4 right-16 flex gap-2" style={{ zIndex: 1000002 }}>
+            {!redrawing && (
+              <button
+                onClick={startRedraw}
+                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold shadow-sm hover:opacity-95"
+              >
+                Start Redraw
+              </button>
+            )}
+            {canFinish && (
+              <button
+                onClick={finishDrawing}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Finish Drawing
+              </button>
+            )}
+            {redrawing && pointCount > 0 && (
+              <button
+                onClick={clearPolygon}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div
+            className="absolute bottom-10 left-4 flex flex-col gap-2 pointer-events-none"
+            style={{ zIndex: 1000002 }}
+          >
+            <button
+              onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) + 1)}
+              aria-label="Zoom in"
+              title="Zoom in"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+            >
+              <Plus size={18} />
+            </button>
+            <button
+              onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) - 1)}
+              aria-label="Zoom out"
+              title="Zoom out"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+            >
+              <Minus size={18} />
+            </button>
+          </div>
+          <div
+            className="absolute bottom-10 right-4 flex flex-col items-end gap-2 pointer-events-none"
+            style={{ zIndex: 1000003 }}
+          >
+            {locateError && (
+              <span className="bg-card/95 backdrop-blur border border-border rounded-[10px] px-2 py-1 text-[11px] font-semibold text-destructive shadow-sm">
+                {locateError}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleLocate}
+              disabled={locating}
+              aria-label="Use my current location"
+              title="Use my current location"
+              className="pointer-events-auto w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              <LocateFixed size={18} className={locating ? "animate-pulse text-primary" : ""} />
+            </button>
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t border-border px-6 py-4 space-y-3">
+          <p className="text-[12px] text-muted-foreground">
+            Existing bookings and experts tied to this zone are unaffected — the zone ID doesn't
+            change. Only point-in-polygon resolution for new bookings will use the updated shape.
+          </p>
+          {saveError && <p className="text-[12px] text-destructive">{saveError}</p>}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="h-10 px-4 rounded-[14px] border border-border text-[13px] font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={attemptSave}
+              disabled={!hasPolygon || saving}
+              className="h-10 px-5 rounded-[14px] bg-primary text-white text-[13px] font-bold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save New Boundary"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-[60] bg-foreground/50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-[440px] rounded-[24px] shadow-xl p-6 space-y-4">
+            <h3 className="text-[16px] font-bold text-foreground">Significant size change</h3>
+            <p className="text-[13px] text-muted-foreground">
+              This new boundary is significantly different from the current one. Continue?
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="h-10 px-4 rounded-[14px] border border-border text-[13px] font-semibold text-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  saveMutation.mutate(extractBoundary());
+                }}
+                className="h-10 px-5 rounded-[14px] bg-primary text-white text-[13px] font-bold hover:opacity-95"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
