@@ -269,6 +269,7 @@ export const listAreaPartners = createServerFn({ method: "GET" })
       .from("area_partners")
       .select("id, name, phone")
       .eq("status", "active")
+      .is("deleted_at", null)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as AreaPartner[];

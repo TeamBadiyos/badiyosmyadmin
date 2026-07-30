@@ -260,7 +260,7 @@ function Shell() {
             initialOnlineOnly={expertsOnlineOnly}
           />
         ) : active === "partners" ? (
-          <AreaPartnersPage />
+          <AreaPartnersPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
         ) : active === "homepage" ? (
