@@ -144,10 +144,57 @@ export const deleteZone = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
-
-
-
 export type LatLng = { lat: number; lng: number };
+
+export const getZoneBoundary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { zoneId: string }) => {
+    if (!input?.zoneId) throw new Error("zoneId required");
+    return { zoneId: input.zoneId };
+  })
+  .handler(async ({ data, context }): Promise<LatLng[]> => {
+    const { data: row, error } = await context.supabase
+      .from("zones")
+      .select("boundary")
+      .eq("id", data.zoneId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (row?.boundary ?? []) as any[];
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((p) => ({ lat: Number(p?.lat), lng: Number(p?.lng) }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  });
+
+export const redrawZoneBoundary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { zoneId: string; boundary: LatLng[] }) => {
+    if (!input?.zoneId) throw new Error("zoneId required");
+    if (!Array.isArray(input?.boundary) || input.boundary.length < 3) {
+      throw new Error("Zone boundary must have at least 3 points");
+    }
+    const boundary = input.boundary.map((p) => {
+      const lat = Number(p?.lat);
+      const lng = Number(p?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error("Invalid boundary point");
+      }
+      return { lat, lng };
+    });
+    return { zoneId: input.zoneId, boundary };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_redraw_zone_boundary", {
+      _zone_id: data.zoneId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _boundary: data.boundary as any,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+
 
 export const createZone = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
