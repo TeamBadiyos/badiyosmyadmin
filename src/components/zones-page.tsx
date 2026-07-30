@@ -259,6 +259,15 @@ function ZoneRowItem({
               <Pencil size={15} />
             </button>
           )}
+          {!isDeleted && (
+            <button
+              onClick={() => setRedrawOpen(true)}
+              title="Redraw boundary"
+              className="w-9 h-9 rounded-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center"
+            >
+              <PenTool size={15} />
+            </button>
+          )}
           {canDelete && !isDeleted && (
             <button
               onClick={() => setDeleteOpen(true)}
@@ -272,6 +281,9 @@ function ZoneRowItem({
       )}
 
       {editOpen && <EditZoneModal zone={zone} onClose={() => setEditOpen(false)} />}
+      {redrawOpen && (
+        <RedrawBoundaryModal zone={zone} onClose={() => setRedrawOpen(false)} />
+      )}
       {deleteOpen && <DeleteZoneModal zone={zone} onClose={() => setDeleteOpen(false)} />}
     </div>
   );
