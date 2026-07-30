@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { LocateFixed, Map as MapIcon, Plus, X } from "lucide-react";
+import { LocateFixed, Map as MapIcon, Minus, Plus, X } from "lucide-react";
 import {
   assignAreaPartner,
   createZone,
