@@ -456,7 +456,26 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
               </button>
             )}
           </div>
+          <div className="absolute bottom-6 left-4 flex flex-col gap-2">
+            <button
+              onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) + 1)}
+              aria-label="Zoom in"
+              title="Zoom in"
+              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+            >
+              <Plus size={18} />
+            </button>
+            <button
+              onClick={() => mapObj.current?.setZoom((mapObj.current.getZoom() ?? 13) - 1)}
+              aria-label="Zoom out"
+              title="Zoom out"
+              className="w-10 h-10 rounded-full bg-card border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted"
+            >
+              <Minus size={18} />
+            </button>
+          </div>
           <div className="absolute bottom-6 right-4 flex flex-col items-end gap-2">
+
             {locateError && (
               <span className="bg-card/95 backdrop-blur border border-border rounded-[10px] px-2 py-1 text-[11px] font-semibold text-destructive shadow-sm">
                 {locateError}
