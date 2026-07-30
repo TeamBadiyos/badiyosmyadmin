@@ -53,7 +53,7 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
   const zones = data ?? [];
 
   const cols = canManage
-    ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px_92px]"
+    ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px_136px]"
     : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]";
 
   return (
