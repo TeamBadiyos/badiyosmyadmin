@@ -432,7 +432,7 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
             Points: {pointCount}
             {finished && <span className="ml-2 text-primary">• Closed</span>}
           </div>
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div className="absolute top-4 right-16 flex gap-2" style={{ zIndex: 1000002 }}>
             {canFinish && (
               <button
                 onClick={finishDrawing}
