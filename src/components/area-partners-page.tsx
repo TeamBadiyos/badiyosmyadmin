@@ -1,49 +1,85 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Check, Handshake } from "lucide-react";
+import { Plus, Handshake, Pencil, Trash2, UserRound, AlertTriangle } from "lucide-react";
 import {
   listAllAreaPartners,
-  upsertAreaPartner,
+  deleteAreaPartner,
   type AreaPartnerRow,
-  type UpsertAreaPartnerInput,
+  type PartnerKycStatus,
 } from "@/lib/area-partners.functions";
+import { AreaPartnerFormModal } from "@/components/area-partner-form-modal";
+import { AreaPartnerDetailsModal } from "@/components/area-partner-details-modal";
 
-export function AreaPartnersPage() {
+type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+
+const KYC_STYLES: Record<PartnerKycStatus, string> = {
+  pending: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-700",
+};
+
+const GRID =
+  "grid grid-cols-[48px_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.1fr)_120px_110px_110px_100px_92px] gap-4";
+
+export function AreaPartnersPage({ role = null }: { role?: StaffRole | null }) {
+  const canManage = role === "super_admin" || role === "ops_manager";
+  const canDelete = role === "super_admin";
+
+  const [showDeleted, setShowDeleted] = useState(false);
   const fetchPartners = useServerFn(listAllAreaPartners);
   const { data = [], isLoading, isError } = useQuery({
-    queryKey: ["area-partners", "list"],
-    queryFn: () => fetchPartners(),
+    queryKey: ["area-partners", "list", { showDeleted: canDelete && showDeleted }],
+    queryFn: () => fetchPartners({ data: { includeDeleted: canDelete && showDeleted } }),
     staleTime: 30_000,
   });
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<AreaPartnerRow | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<AreaPartnerRow | null>(null);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-[14px] text-muted-foreground">
-          Manage area partners. Zone assignment happens on the Zones page.
+          Manage area partners, KYC & payouts. Zone assignment happens on the Zones page.
         </p>
-        <button
-          onClick={() => { setEditing(null); setFormOpen(true); }}
-          className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
-        >
-          <Plus size={18} />
-          Add Area Partner
-        </button>
+        <div className="flex items-center gap-3">
+          {canDelete && (
+            <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={(e) => setShowDeleted(e.target.checked)}
+                className="w-4 h-4 accent-[var(--color-primary,#00B97A)]"
+              />
+              Show deleted
+            </label>
+          )}
+          {canManage && (
+            <button
+              onClick={() => { setEditId(null); setFormOpen(true); }}
+              className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+            >
+              <Plus size={18} />
+              Add Area Partner
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[40px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_130px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className={`${GRID} px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <span></span>
           <span>Name</span>
           <span>Phone</span>
           <span>Assigned Zone</span>
           <span>Setup Fee</span>
           <span className="text-right">Commission</span>
+          <span>KYC</span>
           <span>Status</span>
+          <span className="text-right">Actions</span>
         </div>
 
         {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
@@ -53,15 +89,25 @@ export function AreaPartnersPage() {
         )}
 
         {data.map((p) => (
-          <button
+          <div
             key={p.id}
-            onClick={() => { setEditing(p); setFormOpen(true); }}
-            className="w-full grid grid-cols-[40px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_130px_120px_100px] gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
+            className={`${GRID} items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px] hover:bg-muted/40 transition-colors ${p.deletedAt ? "opacity-60" : ""}`}
           >
-            <div className="w-8 h-8 rounded-lg bg-primary-tint text-primary flex items-center justify-center">
-              <Handshake size={16} />
-            </div>
-            <span className="font-semibold text-foreground truncate">{p.name}</span>
+            <button
+              onClick={() => setDetailsId(p.id)}
+              className="w-8 h-8 rounded-lg bg-primary-tint text-primary flex items-center justify-center overflow-hidden"
+              aria-label={`Open ${p.name}`}
+            >
+              {p.photoUrl ? <UserRound size={16} /> : <Handshake size={16} />}
+            </button>
+            <button onClick={() => setDetailsId(p.id)} className="text-left font-semibold text-foreground truncate">
+              {p.name}
+              {p.deletedAt && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-50 text-red-700">
+                  deleted
+                </span>
+              )}
+            </button>
             <span className="font-mono text-[13px] text-muted-foreground truncate">{p.phone}</span>
             <span className="truncate">
               {p.zoneName ? (
@@ -77,103 +123,126 @@ export function AreaPartnersPage() {
             </span>
             <span className="text-right font-semibold text-foreground">{p.commissionRate}%</span>
             <span>
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${KYC_STYLES[p.kycStatus]}`}>
+                {p.kycStatus}
+              </span>
+            </span>
+            <span>
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${p.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
                 {p.status}
               </span>
             </span>
-          </button>
+            <span className="flex items-center justify-end gap-1">
+              {canManage && !p.deletedAt && (
+                <button
+                  onClick={() => { setEditId(p.id); setFormOpen(true); }}
+                  aria-label={`Edit ${p.name}`}
+                  title="Edit"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
+              {canDelete && !p.deletedAt && (
+                <button
+                  onClick={() => setDeleting(p)}
+                  aria-label={`Delete ${p.name}`}
+                  title="Delete"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-destructive hover:bg-red-50"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </span>
+          </div>
         ))}
       </div>
 
-      {formOpen && (
+      {formOpen && canManage && (
         <AreaPartnerFormModal
-          existing={editing}
-          onClose={() => { setFormOpen(false); setEditing(null); }}
+          partnerId={editId}
+          onClose={() => { setFormOpen(false); setEditId(null); }}
         />
+      )}
+
+      {detailsId && (
+        <AreaPartnerDetailsModal
+          partnerId={detailsId}
+          role={role}
+          onClose={() => setDetailsId(null)}
+          onEdit={canManage ? () => { setEditId(detailsId); setFormOpen(true); setDetailsId(null); } : undefined}
+          onDelete={
+            canDelete
+              ? () => {
+                  const p = data.find((x) => x.id === detailsId) ?? null;
+                  setDetailsId(null);
+                  if (p) setDeleting(p);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {deleting && canDelete && (
+        <DeletePartnerModal partner={deleting} onClose={() => setDeleting(null)} />
       )}
     </div>
   );
 }
 
-function AreaPartnerFormModal({
-  existing,
+function DeletePartnerModal({
+  partner,
   onClose,
 }: {
-  existing: AreaPartnerRow | null;
+  partner: AreaPartnerRow;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const save = useServerFn(upsertAreaPartner);
-  const [name, setName] = useState(existing?.name ?? "");
-  const [phone, setPhone] = useState(existing?.phone ?? "");
-  const [fee, setFee] = useState<"pending" | "paid">(existing?.setupFeeStatus ?? "pending");
-  const [rate, setRate] = useState<string>(existing?.commissionRate?.toString() ?? "0");
-  const [status, setStatus] = useState<"active" | "inactive">(existing?.status ?? "active");
+  const remove = useServerFn(deleteAreaPartner);
+  const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => {
-      const payload: UpsertAreaPartnerInput = {
-        id: existing?.id ?? null,
-        name: name.trim(),
-        phone: phone.trim(),
-        setup_fee_status: fee,
-        commission_rate: Number(rate) || 0,
-        status,
-      };
-      return save({ data: payload });
-    },
+    mutationFn: () => remove({ data: { partnerId: partner.id, reason: reason.trim() } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["area-partners"] });
-      queryClient.invalidateQueries({ queryKey: ["zones", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["zones"] });
       onClose();
     },
-    onError: (e) => setError(e instanceof Error ? e.message : "Save failed"),
+    onError: (e) => setError(e instanceof Error ? e.message : "Delete failed"),
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-card w-full sm:max-w-[560px] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col">
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-[18px] font-bold text-foreground">
-            {existing ? "Edit Area Partner" : "Add Area Partner"}
-          </h2>
-          <button onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
-            <X size={20} />
-          </button>
+      <div onClick={(e) => e.stopPropagation()} className="bg-card w-full sm:max-w-[520px] sm:rounded-[24px] overflow-hidden shadow-xl">
+        <header className="px-6 py-4 border-b border-border">
+          <h2 className="text-[18px] font-bold text-foreground">Delete “{partner.name}”?</h2>
         </header>
         <div className="px-6 py-6 space-y-4">
-          <FormField label="Name">
-            <input value={name} onChange={(e) => setName(e.target.value)} className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]" />
-          </FormField>
-          <FormField label="Phone">
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]" />
-          </FormField>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Setup fee status">
-              <select value={fee} onChange={(e) => setFee(e.target.value as "pending" | "paid")} className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]">
-                <option value="pending">pending</option>
-                <option value="paid">paid</option>
-              </select>
-            </FormField>
-            <FormField label="Commission rate (%)">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step="0.1"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]"
-              />
-            </FormField>
+          <p className="text-[14px] text-muted-foreground">
+            This soft-deletes the partner. They will be hidden from active lists and dropdowns but
+            remain visible via “Show deleted”.
+          </p>
+          {partner.zoneName && (
+            <p className="text-[13px] text-amber-800 bg-amber-50 border border-amber-100 rounded-[12px] p-3 flex items-start gap-2">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <span>
+                This partner is assigned to Zone <strong>{partner.zoneName}</strong> — deleting will
+                leave the zone unassigned.
+              </span>
+            </p>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Reason *
+            </label>
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why is this partner being deleted?"
+              className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]"
+            />
           </div>
-          <FormField label="Status">
-            <select value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")} className="h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px]">
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-          </FormField>
           {error && <p className="text-[13px] text-destructive">{error}</p>}
         </div>
         <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
@@ -181,24 +250,15 @@ function AreaPartnerFormModal({
             Cancel
           </button>
           <button
-            disabled={!name.trim() || !phone.trim() || mutation.isPending}
+            disabled={!reason.trim() || mutation.isPending}
             onClick={() => { setError(null); mutation.mutate(); }}
-            className="h-11 px-5 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+            className="h-11 px-5 rounded-[14px] bg-destructive text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
           >
-            <Check size={16} />
-            {mutation.isPending ? "Saving…" : existing ? "Save changes" : "Create partner"}
+            <Trash2 size={16} />
+            {mutation.isPending ? "Deleting…" : "Delete partner"}
           </button>
         </footer>
       </div>
-    </div>
-  );
-}
-
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</label>
-      {children}
     </div>
   );
 }
