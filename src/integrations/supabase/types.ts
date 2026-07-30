@@ -117,31 +117,70 @@ export type Database = {
       }
       area_partners: {
         Row: {
+          address: string | null
+          bank_account_holder_name: string | null
+          bank_account_number: string | null
+          bank_ifsc: string | null
           commission_rate: number
           created_at: string
+          delete_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
+          kyc_aadhaar_url: string | null
+          kyc_address_proof_url: string | null
+          kyc_pan_url: string | null
+          kyc_rejection_reason: string | null
+          kyc_status: string
           name: string
           phone: string
+          photo_url: string | null
           setup_fee_status: string
           status: string
           zone_id: string | null
         }
         Insert: {
+          address?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
           commission_rate?: number
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          kyc_aadhaar_url?: string | null
+          kyc_address_proof_url?: string | null
+          kyc_pan_url?: string | null
+          kyc_rejection_reason?: string | null
+          kyc_status?: string
           name: string
           phone: string
+          photo_url?: string | null
           setup_fee_status?: string
           status?: string
           zone_id?: string | null
         }
         Update: {
+          address?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
           commission_rate?: number
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
+          kyc_aadhaar_url?: string | null
+          kyc_address_proof_url?: string | null
+          kyc_pan_url?: string | null
+          kyc_rejection_reason?: string | null
+          kyc_status?: string
           name?: string
           phone?: string
+          photo_url?: string | null
           setup_fee_status?: string
           status?: string
           zone_id?: string | null
@@ -1436,6 +1475,10 @@ export type Database = {
         Args: { _booking_id: string }
         Returns: undefined
       }
+      staff_area_partner_kyc_decision: {
+        Args: { _decision: string; _partner_id: string; _reason: string }
+        Returns: undefined
+      }
       staff_assign_area_partner: {
         Args: { _partner_id: string; _zone_id: string }
         Returns: undefined
@@ -1487,6 +1530,10 @@ export type Database = {
       }
       staff_set_homepage_section_active: {
         Args: { _active: boolean; _id: string }
+        Returns: undefined
+      }
+      staff_soft_delete_area_partner: {
+        Args: { _partner_id: string; _reason: string }
         Returns: undefined
       }
       staff_soft_delete_booking: {
