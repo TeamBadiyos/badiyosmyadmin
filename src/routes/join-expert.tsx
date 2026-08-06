@@ -6,13 +6,13 @@ import { LeadForm } from "@/components/marketing/lead-form";
 export const Route = createFileRoute("/join-expert")({
   head: () => ({
     meta: [
-      { title: "Join Badiyo as a Home Expert" },
+      { title: "Join Badiyos as a Home Expert" },
       {
         name: "description",
         content:
-          "Earn weekly, level up from Bronze to Diamond, and enjoy a minimum earnings guarantee — join Badiyo as a Home Expert today.",
+          "Earn weekly, level up from Bronze to Diamond, and enjoy a minimum earnings guarantee — join Badiyos as a Home Expert today.",
       },
-      { property: "og:title", content: "Join Badiyo as a Home Expert" },
+      { property: "og:title", content: "Join Badiyos as a Home Expert" },
       {
         property: "og:description",
         content: "Weekly payouts, Bronze to Diamond levels, minimum earnings guarantee.",
@@ -35,7 +35,7 @@ function JoinExpertPage() {
           Do what you love. Earn every week.
         </h1>
         <p className="mt-4 text-[16px] text-muted-foreground max-w-2xl">
-          Join Badiyo's network of trusted Home Experts. Weekly payouts, a clear
+          Join Badiyos's network of trusted Home Experts. Weekly payouts, a clear
           level system, and a guaranteed minimum so you're never left short.
         </p>
       </section>

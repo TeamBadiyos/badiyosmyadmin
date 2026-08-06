@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, Play } from "lucide-react";
-import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
@@ -23,7 +23,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       >
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center shrink-0">
-            <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto" />
+            <img src={badiyoLogo.url} alt="Badiyos" className="h-7 w-auto" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 text-[14px] font-semibold">
@@ -90,7 +90,7 @@ function MarketingFooter() {
     <footer className="border-t border-border bg-card">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto mb-3" />
+          <img src={badiyoLogo.url} alt="Badiyos" className="h-7 w-auto mb-3" />
           <p className="text-[13px] text-muted-foreground max-w-[240px]">
             हर घर का अपना साथी.
           </p>
@@ -108,7 +108,7 @@ function MarketingFooter() {
       </div>
       <div className="border-t border-border">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-4 text-[12px] text-muted-foreground text-center">
-          © {year} Badiyo. All rights reserved.
+          © {year} Badiyos. All rights reserved.
         </div>
       </div>
     </footer>
