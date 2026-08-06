@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/shell";
 import expertGreeting from "@/assets/expert-greeting.png.asset.json";
+import badiyosWhiteLogo from "@/assets/badiyos-white.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
