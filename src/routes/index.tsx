@@ -415,6 +415,11 @@ function DownloadApp() {
     <section id="download" className="w-full bg-card">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
         <div className="bg-foreground rounded-[24px] p-8 sm:p-14 text-center text-white">
+          <img
+            src={badiyosWhiteLogo.url}
+            alt="Badiyos"
+            className="h-8 w-auto mx-auto mb-5"
+          />
           <h2 className="text-[28px] sm:text-[36px] font-bold tracking-tight">
             Get the Badiyos app
           </h2>
