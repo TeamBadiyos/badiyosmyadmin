@@ -41,13 +41,13 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Badiyo Command Center" },
+      { title: "Badiyos Command Center" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -157,7 +157,7 @@ function Shell() {
         }`}
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-          <img src={badiyoLogo.url} alt="Badiyo" className="h-7 w-auto" />
+          <img src={badiyoLogo.url} alt="Badiyos" className="h-7 w-auto" />
           <button
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"

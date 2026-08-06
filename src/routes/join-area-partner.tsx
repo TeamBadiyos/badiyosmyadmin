@@ -6,13 +6,13 @@ import { LeadForm } from "@/components/marketing/lead-form";
 export const Route = createFileRoute("/join-area-partner")({
   head: () => ({
     meta: [
-      { title: "Become a Badiyo Area Partner" },
+      { title: "Become a Badiyos Area Partner" },
       {
         name: "description",
         content:
-          "Run the Badiyo franchise for your city. Exclusive per-area rights, one-time setup, and ongoing income from every home service in your zone.",
+          "Run the Badiyos franchise for your city. Exclusive per-area rights, one-time setup, and ongoing income from every home service in your zone.",
       },
-      { property: "og:title", content: "Become a Badiyo Area Partner" },
+      { property: "og:title", content: "Become a Badiyos Area Partner" },
       {
         property: "og:description",
         content: "Exclusive per-area franchise. Recruit and manage Home Experts, earn from every booking.",
@@ -32,10 +32,10 @@ function JoinAreaPartnerPage() {
           Area Partner Program
         </p>
         <h1 className="mt-2 text-[32px] sm:text-[48px] font-bold text-foreground tracking-tight max-w-2xl">
-          Own your city. Grow with Badiyo.
+          Own your city. Grow with Badiyos.
         </h1>
         <p className="mt-4 text-[16px] text-muted-foreground max-w-2xl">
-          Get exclusive rights to run Badiyo in your area. One-time setup, recruit
+          Get exclusive rights to run Badiyos in your area. One-time setup, recruit
           your own Home Experts, and earn a share on every service delivered in your zone.
         </p>
       </section>

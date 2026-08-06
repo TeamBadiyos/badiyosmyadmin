@@ -95,7 +95,7 @@ export function LeadForm({ kind }: { kind: Kind }) {
         {submitting ? "Submitting…" : "Submit"}
       </button>
       <p className="text-[12px] text-muted-foreground text-center">
-        By submitting, you agree to be contacted by the Badiyo team.
+        By submitting, you agree to be contacted by the Badiyos team.
       </p>
     </form>
   );

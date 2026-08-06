@@ -8,14 +8,14 @@ import { submitSupportInquiry } from "@/lib/public-leads.functions";
 export const Route = createFileRoute("/support")({
   head: () => ({
     meta: [
-      { title: "Support — Badiyo" },
+      { title: "Support — Badiyos" },
       {
         name: "description",
         content:
-          "Questions about a Badiyo booking, payment, or your account? Send us a message and our team will get back to you.",
+          "Questions about a Badiyos booking, payment, or your account? Send us a message and our team will get back to you.",
       },
-      { property: "og:title", content: "Support — Badiyo" },
-      { property: "og:description", content: "Get help with your Badiyo bookings and account." },
+      { property: "og:title", content: "Support — Badiyos" },
+      { property: "og:description", content: "Get help with your Badiyos bookings and account." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/support")({
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: "How do I book a service?",
-    a: "Download the Badiyo app, choose the service you need, pick a time slot, and pay online. A verified expert will be assigned to you.",
+    a: "Download the Badiyos app, choose the service you need, pick a time slot, and pay online. A verified expert will be assigned to you.",
   },
   {
     q: "Can I cancel or reschedule a booking?",
@@ -38,7 +38,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: "How do you verify Home Experts?",
-    a: "Every Home Expert on Badiyo goes through document verification, background checks, and ongoing quality reviews.",
+    a: "Every Home Expert on Badiyos goes through document verification, background checks, and ongoing quality reviews.",
   },
 ];
 

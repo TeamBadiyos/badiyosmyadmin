@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import badiyoLogo from "@/assets/badiyo-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — Badiyo Command Center" },
-      { name: "description", content: "Sign in to the Badiyo Command Center." },
+      { title: "Sign in — Badiyos Command Center" },
+      { name: "description", content: "Sign in to the Badiyos Command Center." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -59,7 +59,7 @@ function AuthPage() {
     <main className="min-h-screen w-full bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-[420px] bg-card rounded-[18px] border border-border p-8 sm:p-10">
         <div className="flex justify-center mb-8">
-          <img src={badiyoLogo.url} alt="Badiyo" className="h-10 w-auto" />
+          <img src={badiyoLogo.url} alt="Badiyos" className="h-10 w-auto" />
         </div>
         <h1 className="text-[22px] font-bold text-foreground text-center">Welcome back</h1>
         <p className="text-sm text-muted-foreground text-center mt-1">

@@ -21,18 +21,18 @@ import expertGreeting from "@/assets/expert-greeting.png.asset.json";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Badiyo — हर घर का अपना साथी" },
+      { title: "Badiyos — हर घर का अपना साथी" },
       {
         name: "description",
         content:
-          "Badiyo brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more.",
+          "Badiyos brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "Badiyo — हर घर का अपना साथी" },
+      { property: "og:title", content: "Badiyos — हर घर का अपना साथी" },
       {
         property: "og:description",
         content:
-          "Badiyo brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more.",
+          "Badiyos brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more.",
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -46,7 +46,7 @@ function HomePage() {
       <Hero />
       <Services />
       <HowItWorks />
-      <WhyBadiyo />
+      <WhyBadiyos />
       <FAQ />
       <DownloadApp />
     </MarketingShell>
@@ -114,7 +114,7 @@ function Hero() {
             <div className="relative w-full max-w-[520px]">
               <img
                 src={expertGreeting.url}
-                alt="A Badiyo home expert in uniform greeting with a namaste"
+                alt="A Badiyos home expert in uniform greeting with a namaste"
                 className="w-full h-auto rounded-[24px] shadow-[0_20px_60px_-20px_rgba(0,185,122,0.35)] object-cover"
                 loading="eager"
               />
@@ -240,7 +240,7 @@ function HowItWorks() {
   );
 }
 
-function WhyBadiyo() {
+function WhyBadiyos() {
   const smallCards = [
     {
       icon: ShieldCheck,
@@ -267,9 +267,9 @@ function WhyBadiyo() {
     <section id="why" className="w-full bg-card">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-24">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="text-[12px] font-bold uppercase tracking-widest text-primary">Why badiyo</p>
+          <p className="text-[12px] font-bold uppercase tracking-widest text-primary">Why badiyos</p>
           <h2 className="mt-2 text-[28px] sm:text-[38px] font-bold text-foreground">
-            Why Choose badiyo
+            Why Choose badiyos
           </h2>
         </div>
 
@@ -288,7 +288,7 @@ function WhyBadiyo() {
                 Trusted, Verified Experts
               </h3>
               <p className="mt-4 text-white/85 text-[15px] max-w-md">
-                Every Home Expert on Badiyo goes through Aadhaar &amp; PAN KYC
+                Every Home Expert on Badiyos goes through Aadhaar &amp; PAN KYC
                 and bank account verification before their first booking. Only
                 approved experts appear in your app.
               </p>
@@ -323,16 +323,16 @@ function WhyBadiyo() {
 
 const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   {
-    q: "What is badiyo?",
-    a: "Badiyo is a home-services app that connects you with verified Home Experts for everyday tasks like cleaning, dishwashing, laundry and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
+    q: "What is badiyos?",
+    a: "Badiyos is a home-services app that connects you with verified Home Experts for everyday tasks like cleaning, dishwashing, laundry and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
   },
   {
     q: "How do I book a service?",
-    a: "Download the Badiyo Android app, choose the service you need, pick a time slot that works for you, and complete the payment online. You'll get a confirmation once an expert is assigned.",
+    a: "Download the Badiyos Android app, choose the service you need, pick a time slot that works for you, and complete the payment online. You'll get a confirmation once an expert is assigned.",
   },
   {
     q: "What's included in a time slot?",
-    a: "Badiyo offers 1 hour, 2 hour and 4 hour time slots. The expert works on your selected tasks for the duration you book — you can choose the slot length that best matches the size of the job.",
+    a: "Badiyos offers 1 hour, 2 hour and 4 hour time slots. The expert works on your selected tasks for the duration you book — you can choose the slot length that best matches the size of the job.",
   },
   {
     q: "How are Home Experts verified?",
@@ -344,7 +344,7 @@ const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Which areas do you currently serve?",
-    a: "We're just getting started in Latur. More cities and neighbourhoods will be added as we grow — turn on notifications in the app to know when Badiyo launches near you.",
+    a: "We're just getting started in Latur. More cities and neighbourhoods will be added as we grow — turn on notifications in the app to know when Badiyos launches near you.",
   },
 ];
 
@@ -359,7 +359,7 @@ function FAQ() {
             Frequently Asked Questions
           </h2>
           <p className="mt-3 text-[15px] text-muted-foreground">
-            Everything you need to know about booking a Home Expert on Badiyo.
+            Everything you need to know about booking a Home Expert on Badiyos.
           </p>
         </div>
 
@@ -415,7 +415,7 @@ function DownloadApp() {
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
         <div className="bg-foreground rounded-[24px] p-8 sm:p-14 text-center text-white">
           <h2 className="text-[28px] sm:text-[36px] font-bold tracking-tight">
-            Get the Badiyo app
+            Get the Badiyos app
           </h2>
           <p className="mt-3 text-[15px] sm:text-[16px] text-white/70 max-w-xl mx-auto">
             Book, pay, and track your home services — all in one place.
