@@ -1171,6 +1171,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           price: number
+          service_category_id: string | null
           subtitle: string | null
         }
         Insert: {
@@ -1185,6 +1186,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           price: number
+          service_category_id?: string | null
           subtitle?: string | null
         }
         Update: {
@@ -1199,9 +1201,18 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           price?: number
+          service_category_id?: string | null
           subtitle?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_catalogue_config_service_category_id_fkey"
+            columns: ["service_category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_categories: {
         Row: {
@@ -1765,6 +1776,14 @@ export type Database = {
       }
       staff_cancel_booking: {
         Args: { _booking_id: string; _reason: string }
+        Returns: undefined
+      }
+      staff_create_service_catalogue_row: {
+        Args: { _payload: Json }
+        Returns: string
+      }
+      staff_delete_service_catalogue_row: {
+        Args: { _id: string }
         Returns: undefined
       }
       staff_edit_booking: {
