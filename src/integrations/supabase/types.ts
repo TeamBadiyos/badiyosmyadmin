@@ -1767,6 +1767,7 @@ export type Database = {
           longitude: number
         }[]
       }
+      get_broadcast_radius_km: { Args: never; Returns: number }
       get_eligible_experts_for_booking: {
         Args: { p_booking_id: string }
         Returns: {
