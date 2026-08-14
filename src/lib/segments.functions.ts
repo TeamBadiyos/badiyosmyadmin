@@ -8,7 +8,7 @@ export const DISPLAY_TEMPLATES = [
 ] as const;
 export type DisplayTemplate = (typeof DISPLAY_TEMPLATES)[number];
 
-export const VERTICAL_TYPES = ["SERVICE", "STORE"] as const;
+export const VERTICAL_TYPES = ["SERVICE", "CATALOG"] as const;
 export type VerticalType = (typeof VERTICAL_TYPES)[number];
 
 export type Segment = {
