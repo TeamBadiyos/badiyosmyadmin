@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   listServicePrices,
+  listServiceCategories,
   updateServicePrice,
+  createServicePriceRow,
+  deleteServicePriceRow,
   type ServicePriceRow,
 } from "@/lib/service-catalogue.functions";
 
@@ -22,17 +26,65 @@ export function ServiceCataloguePage() {
     staleTime: 15_000,
   });
 
+  const fetchCategories = useServerFn(listServiceCategories);
+  const { data: categories = [] } = useQuery({
+    queryKey: ["service-catalogue", "categories"],
+    queryFn: () => fetchCategories(),
+    staleTime: 60_000,
+  });
+
+  const queryClient = useQueryClient();
+  const removeRow = useServerFn(deleteServicePriceRow);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => removeRow({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Row removed (marked inactive)");
+      queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
+
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingRow = data.find((r) => r.id === editingId) ?? null;
+  const rows =
+    categoryFilter === "all"
+      ? data
+      : data.filter((r) => r.service_category_id === categoryFilter);
+  const defaultCategoryId =
+    categories.find((c) => c.slug === "home-cleaning")?.id ?? categories[0]?.id ?? null;
 
   return (
     <div className="space-y-6">
-      <p className="text-[14px] text-muted-foreground">
-        Customer prices and payout splits per service duration. Super admin only.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[14px] text-muted-foreground">
+          Customer prices and payout splits per service duration, per service category.
+        </p>
+        <div className="flex items-center gap-2">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] font-semibold text-foreground"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setCreating(true)}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] inline-flex items-center gap-1.5"
+          >
+            <Plus size={16} /> New row
+          </button>
+        </div>
+      </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_80px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_140px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Duration</span>
           <span className="text-right">Customer Price</span>
           <span className="text-right">Expert Payout</span>
@@ -48,14 +100,14 @@ export function ServiceCataloguePage() {
             {(error as Error)?.message ?? "Failed to load pricing."}
           </p>
         )}
-        {!isLoading && !isError && data.length === 0 && (
+        {!isLoading && !isError && rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">No pricing rows yet.</p>
         )}
 
-        {data.map((r) => (
+        {rows.map((r) => (
           <div
             key={r.id}
-            className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_80px] gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]"
+            className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_140px] gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]"
           >
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{r.duration_label}</p>
@@ -84,12 +136,28 @@ export function ServiceCataloguePage() {
                 {r.is_active ? "active" : "inactive"}
               </span>
             </span>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <button
                 onClick={() => setEditingId(r.id)}
                 className="h-9 px-3 rounded-[12px] border border-border text-foreground font-semibold text-[13px] inline-flex items-center gap-1 hover:bg-muted"
               >
                 <Pencil size={14} /> Edit
+              </button>
+              <button
+                aria-label={`Delete ${r.duration_label}`}
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Remove "${r.duration_label}"? It will be marked inactive and hidden from customers.`,
+                    )
+                  ) {
+                    deleteMutation.mutate(r.id);
+                  }
+                }}
+                className="h-9 w-9 rounded-[12px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10 disabled:opacity-50"
+              >
+                <Trash2 size={14} />
               </button>
             </div>
           </div>
@@ -98,6 +166,14 @@ export function ServiceCataloguePage() {
 
       {editingRow && (
         <EditPriceModal row={editingRow} onClose={() => setEditingId(null)} />
+      )}
+
+      {creating && (
+        <CreatePriceModal
+          categories={categories}
+          defaultCategoryId={defaultCategoryId}
+          onClose={() => setCreating(false)}
+        />
       )}
     </div>
   );
