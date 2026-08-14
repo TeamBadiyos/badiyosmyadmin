@@ -330,7 +330,38 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
   );
 }
 
+function TextField({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+        {required ? " *" : ""}
+      </label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+      />
+    </div>
+  );
+}
+
 function NumField({
+
   label,
   value,
   onChange,
