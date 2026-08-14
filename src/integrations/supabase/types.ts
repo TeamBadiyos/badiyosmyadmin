@@ -1428,6 +1428,57 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_requests: {
+        Row: {
+          address_text: string | null
+          city: string | null
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          segment_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          address_text?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          segment_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          address_text?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          segment_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_requests_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_ledger: {
         Row: {
           amount: number
