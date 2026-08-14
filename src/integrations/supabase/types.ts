@@ -122,6 +122,8 @@ export type Database = {
           bank_account_number: string | null
           bank_ifsc: string | null
           commission_rate: number
+          commission_type: string
+          commission_value: number
           created_at: string
           delete_reason: string | null
           deleted_at: string | null
@@ -145,6 +147,8 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           commission_rate?: number
+          commission_type?: string
+          commission_value?: number
           created_at?: string
           delete_reason?: string | null
           deleted_at?: string | null
@@ -168,6 +172,8 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           commission_rate?: number
+          commission_type?: string
+          commission_value?: number
           created_at?: string
           delete_reason?: string | null
           deleted_at?: string | null
@@ -633,6 +639,7 @@ export type Database = {
       experts: {
         Row: {
           address: string | null
+          approved_by: string | null
           auth_user_id: string | null
           bank_account_holder_name: string | null
           bank_account_number: string | null
@@ -651,9 +658,11 @@ export type Database = {
           level: string
           location_updated_at: string | null
           name: string
+          onboarded_by: string | null
           phone: string
           photo_url: string | null
           pin_hash: string | null
+          preferred_language: string
           security_deposit_status: string
           status: string
           wallet_balance: number
@@ -661,6 +670,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approved_by?: string | null
           auth_user_id?: string | null
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
@@ -679,9 +689,11 @@ export type Database = {
           level?: string
           location_updated_at?: string | null
           name: string
+          onboarded_by?: string | null
           phone: string
           photo_url?: string | null
           pin_hash?: string | null
+          preferred_language?: string
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
@@ -689,6 +701,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approved_by?: string | null
           auth_user_id?: string | null
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
@@ -707,15 +720,31 @@ export type Database = {
           level?: string
           location_updated_at?: string | null
           name?: string
+          onboarded_by?: string | null
           phone?: string
           photo_url?: string | null
           pin_hash?: string | null
+          preferred_language?: string
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "experts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experts_onboarded_by_fkey"
+            columns: ["onboarded_by"]
+            isOneToOne: false
+            referencedRelation: "area_partners"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "experts_zone_id_fkey"
             columns: ["zone_id"]
@@ -1319,6 +1348,7 @@ export type Database = {
           notification_preferences: Json
           phone: string | null
           pin_hash: string | null
+          preferred_language: string
           referral_code: string | null
           referral_count: number | null
           referred_by: string | null
@@ -1335,6 +1365,7 @@ export type Database = {
           notification_preferences?: Json
           phone?: string | null
           pin_hash?: string | null
+          preferred_language?: string
           referral_code?: string | null
           referral_count?: number | null
           referred_by?: string | null
@@ -1351,6 +1382,7 @@ export type Database = {
           notification_preferences?: Json
           phone?: string | null
           pin_hash?: string | null
+          preferred_language?: string
           referral_code?: string | null
           referral_count?: number | null
           referred_by?: string | null
@@ -1439,6 +1471,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           name: string
+          segment_id: string
           status: string
         }
         Insert: {
@@ -1451,6 +1484,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           name: string
+          segment_id: string
           status?: string
         }
         Update: {
@@ -1463,6 +1497,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           name?: string
+          segment_id?: string
           status?: string
         }
         Relationships: [
@@ -1471,6 +1506,13 @@ export type Database = {
             columns: ["assigned_area_partner_id"]
             isOneToOne: false
             referencedRelation: "area_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zones_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
             referencedColumns: ["id"]
           },
         ]

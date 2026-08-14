@@ -231,12 +231,21 @@ export const createZone = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: segment, error: segErr } = await supabaseAdmin
+      .from("segments")
+      .select("id")
+      .eq("slug", "clean")
+      .maybeSingle();
+    if (segErr) throw new Error(segErr.message);
+    if (!segment) throw new Error("Default segment not found");
+
     const { data: inserted, error: insErr } = await supabaseAdmin
       .from("zones")
       .insert({
         name: data.name,
         city: data.city,
         boundary: data.boundary,
+        segment_id: segment.id,
       })
       .select("id, name, city, boundary, status")
       .single();
