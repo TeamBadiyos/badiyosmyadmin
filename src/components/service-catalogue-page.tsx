@@ -182,6 +182,8 @@ export function ServiceCataloguePage() {
 function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () => void }) {
   const queryClient = useQueryClient();
   const save = useServerFn(updateServicePrice);
+  const [label, setLabel] = useState(row.duration_label);
+  const [sub, setSub] = useState(row.subtitle ?? "");
   const [price, setPrice] = useState(String(row.price));
   const [expert, setExpert] = useState(row.expert_payout != null ? String(row.expert_payout) : "");
   const [partner, setPartner] = useState(
@@ -204,9 +206,12 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
       try {
         const p = parseNonNeg(price);
         if (p == null) throw new Error("Customer price is required");
+        if (!label.trim()) throw new Error("Duration title is required");
         return save({
           data: {
             id: row.id,
+            duration_label: label.trim(),
+            subtitle: sub.trim() ? sub.trim() : null,
             price: p,
             expert_payout: parseNonNeg(expert),
             area_partner_payout: parseNonNeg(partner),
@@ -214,6 +219,7 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
             is_active: active,
           },
         });
+
       } catch (e) {
         return Promise.reject(e);
       }
