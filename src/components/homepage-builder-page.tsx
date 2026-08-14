@@ -6,13 +6,13 @@ import {
   X,
   Check,
   Pencil,
-  Trash2,
   GripVertical,
   Search,
   Gift,
-  Home,
   Sparkles,
   Tag,
+  Store,
+  LayoutGrid,
 } from "lucide-react";
 import {
   listHomepageSections,
@@ -22,33 +22,65 @@ import {
   type HomepageSection,
   type JsonRecord,
 } from "@/lib/homepage.functions";
+import {
+  listSegments,
+  listSegmentCategories,
+  upsertSegment,
+  setSegmentActive,
+  reorderSegments,
+  DISPLAY_TEMPLATES,
+  VERTICAL_TYPES,
+  type Segment,
+  type SegmentCategory,
+} from "@/lib/segments.functions";
 
-type SectionType = "promo_banner" | "search_bar" | "nav_item" | "category_tab";
-
-const SECTION_TYPES: { key: SectionType; label: string }[] = [
+/**
+ * Generic UI section types only. Segment-driven navigation (previously
+ * `category_tab` / `nav_item`) is now read from the `segments` table.
+ */
+const GENERIC_SECTION_TYPES: { key: string; label: string }[] = [
   { key: "promo_banner", label: "Promo banner" },
   { key: "search_bar", label: "Search bar" },
-  { key: "nav_item", label: "Nav item" },
-  { key: "category_tab", label: "Category tab" },
 ];
 
 export function HomepageBuilderPage() {
-  const fetchList = useServerFn(listHomepageSections);
-  const { data = [], isLoading, isError, error } = useQuery({
+  const fetchSections = useServerFn(listHomepageSections);
+  const fetchSegments = useServerFn(listSegments);
+  const fetchCategories = useServerFn(listSegmentCategories);
+
+  const sectionsQuery = useQuery({
     queryKey: ["homepage-sections", "list"],
-    queryFn: () => fetchList(),
+    queryFn: () => fetchSections(),
+    staleTime: 15_000,
+  });
+  const segmentsQuery = useQuery({
+    queryKey: ["segments", "list"],
+    queryFn: () => fetchSegments(),
+    staleTime: 15_000,
+  });
+  const categoriesQuery = useQuery({
+    queryKey: ["segments", "categories"],
+    queryFn: () => fetchCategories(),
     staleTime: 15_000,
   });
 
-  const [editing, setEditing] = useState<
-    | { mode: "create"; sectionType: SectionType }
+  const sections = sectionsQuery.data ?? [];
+  const segments = segmentsQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+
+  const [editingSection, setEditingSection] = useState<
+    | { mode: "create"; sectionType: string }
     | { mode: "edit"; section: HomepageSection }
     | null
+  >(null);
+  const [editingSegment, setEditingSegment] = useState<
+    { mode: "create" } | { mode: "edit"; segment: Segment } | null
   >(null);
 
   const groups = useMemo(() => {
     const map = new Map<string, HomepageSection[]>();
-    for (const s of data) {
+    for (const s of sections) {
+      if (!GENERIC_SECTION_TYPES.some((t) => t.key === s.section_type)) continue;
       const list = map.get(s.section_type) ?? [];
       list.push(s);
       map.set(s.section_type, list);
@@ -58,20 +90,35 @@ export function HomepageBuilderPage() {
       map.set(k, v);
     }
     return map;
-  }, [data]);
+  }, [sections]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-6">
       <div className="space-y-6 min-w-0">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[14px] text-muted-foreground">
-            Sections displayed on the Customer App home screen, grouped by type.
-          </p>
+        <p className="text-[14px] text-muted-foreground">
+          Segments drive the customer app segment bar and home feed. Generic UI
+          elements below are independent of segments.
+        </p>
+
+        <SegmentsPanel
+          segments={segments}
+          isLoading={segmentsQuery.isLoading}
+          error={segmentsQuery.error as Error | null}
+          onCreate={() => setEditingSegment({ mode: "create" })}
+          onEdit={(segment) => setEditingSegment({ mode: "edit", segment })}
+        />
+
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
+          <h2 className="text-[15px] font-bold text-foreground">
+            Generic home sections
+          </h2>
           <div className="flex flex-wrap gap-2">
-            {SECTION_TYPES.map((t) => (
+            {GENERIC_SECTION_TYPES.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setEditing({ mode: "create", sectionType: t.key })}
+                onClick={() =>
+                  setEditingSection({ mode: "create", sectionType: t.key })
+                }
                 className="h-10 px-3 rounded-[12px] bg-primary text-white text-[13px] font-bold inline-flex items-center gap-1 hover:opacity-95"
               >
                 <Plus size={14} />
@@ -81,52 +128,305 @@ export function HomepageBuilderPage() {
           </div>
         </div>
 
-        {isLoading && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
+        {sectionsQuery.isLoading && (
+          <p className="text-[13px] text-muted-foreground text-center py-10">
+            Loading…
+          </p>
         )}
-        {isError && (
+        {sectionsQuery.isError && (
           <p className="text-[13px] text-destructive text-center py-10">
-            {(error as Error)?.message ?? "Failed to load sections."}
+            {(sectionsQuery.error as Error)?.message ?? "Failed to load sections."}
           </p>
         )}
 
-        {SECTION_TYPES.map((t) => {
-          const rows = groups.get(t.key) ?? [];
-          return (
-            <SectionGroup
-              key={t.key}
-              type={t.key}
-              label={t.label}
-              rows={rows}
-              onEdit={(s) => setEditing({ mode: "edit", section: s })}
-            />
-          );
-        })}
-
-        {[...groups.keys()]
-          .filter((k) => !SECTION_TYPES.some((t) => t.key === k))
-          .map((k) => (
-            <SectionGroup
-              key={k}
-              type={k}
-              label={k}
-              rows={groups.get(k) ?? []}
-              onEdit={(s) => setEditing({ mode: "edit", section: s })}
-            />
-          ))}
+        {GENERIC_SECTION_TYPES.map((t) => (
+          <SectionGroup
+            key={t.key}
+            type={t.key}
+            label={t.label}
+            rows={groups.get(t.key) ?? []}
+            onEdit={(s) => setEditingSection({ mode: "edit", section: s })}
+          />
+        ))}
       </div>
 
-      <PreviewPane sections={data.filter((s) => s.is_active)} />
+      <PreviewPane
+        sections={sections.filter((s) => s.is_active)}
+        segments={segments.filter((s) => s.is_active)}
+        categories={categories.filter((c) => c.is_active)}
+      />
 
-      {editing && (
+      {editingSection && (
         <SectionFormModal
-          initial={editing}
-          onClose={() => setEditing(null)}
+          initial={editingSection}
+          onClose={() => setEditingSection(null)}
+        />
+      )}
+      {editingSegment && (
+        <SegmentFormModal
+          initial={editingSegment}
+          onClose={() => setEditingSegment(null)}
         />
       )}
     </div>
   );
 }
+
+// ---------------------- Segments ----------------------
+
+function SegmentsPanel({
+  segments,
+  isLoading,
+  error,
+  onCreate,
+  onEdit,
+}: {
+  segments: Segment[];
+  isLoading: boolean;
+  error: Error | null;
+  onCreate: () => void;
+  onEdit: (s: Segment) => void;
+}) {
+  const queryClient = useQueryClient();
+  const toggle = useServerFn(setSegmentActive);
+  const reorder = useServerFn(reorderSegments);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const toggleMutation = useMutation({
+    mutationFn: (payload: { id: string; active: boolean }) =>
+      toggle({ data: payload }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["segments"] }),
+  });
+  const reorderMutation = useMutation({
+    mutationFn: (orders: Array<{ id: string; rank: number }>) =>
+      reorder({ data: { orders } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["segments"] }),
+  });
+
+  function handleDrop(overId: string) {
+    if (!dragId || dragId === overId) return;
+    const ids = segments.map((s) => s.id);
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(overId);
+    if (from < 0 || to < 0) return;
+    const next = ids.slice();
+    next.splice(from, 1);
+    next.splice(to, 0, dragId);
+    reorderMutation.mutate(next.map((id, i) => ({ id, rank: i })));
+    setDragId(null);
+  }
+
+  return (
+    <section className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <header className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+        <div>
+          <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+            Segments
+          </h3>
+          <p className="text-[12px] text-muted-foreground">
+            Drag to reorder · order is saved to the segment rank
+          </p>
+        </div>
+        <button
+          onClick={onCreate}
+          className="h-10 px-3 rounded-[12px] bg-primary text-white text-[13px] font-bold inline-flex items-center gap-1 hover:opacity-95"
+        >
+          <Plus size={14} /> Segment
+        </button>
+      </header>
+
+      {isLoading && (
+        <p className="text-[13px] text-muted-foreground text-center py-6">
+          Loading…
+        </p>
+      )}
+      {error && (
+        <p className="text-[13px] text-destructive text-center py-6">
+          {error.message}
+        </p>
+      )}
+      {!isLoading && !error && segments.length === 0 && (
+        <p className="text-[13px] text-muted-foreground text-center py-6">
+          No segments yet.
+        </p>
+      )}
+
+      <ul>
+        {segments.map((s) => (
+          <li
+            key={s.id}
+            draggable
+            onDragStart={() => setDragId(s.id)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleDrop(s.id)}
+            className={`flex items-center gap-3 px-5 py-3 border-b border-border last:border-b-0 ${
+              dragId === s.id ? "opacity-50" : ""
+            }`}
+          >
+            <span
+              className="text-muted-foreground cursor-grab active:cursor-grabbing"
+              aria-hidden
+            >
+              <GripVertical size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-foreground truncate">
+                {s.name}
+              </p>
+              <p className="text-[12px] text-muted-foreground truncate">
+                {s.slug} · {s.vertical_type} · {s.display_template} · rank{" "}
+                {s.rank}
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={s.is_active}
+                onChange={(e) =>
+                  toggleMutation.mutate({ id: s.id, active: e.target.checked })
+                }
+                className="w-4 h-4 accent-primary"
+              />
+              Active
+            </label>
+            <button
+              onClick={() => onEdit(s)}
+              className="h-9 px-3 rounded-[12px] border border-border text-foreground font-semibold text-[13px] inline-flex items-center gap-1 hover:bg-muted"
+            >
+              <Pencil size={14} /> Edit
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function SegmentFormModal({
+  initial,
+  onClose,
+}: {
+  initial: { mode: "create" } | { mode: "edit"; segment: Segment };
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const save = useServerFn(upsertSegment);
+  const isEdit = initial.mode === "edit";
+  const seed = isEdit ? initial.segment : null;
+
+  const [name, setName] = useState(seed?.name ?? "");
+  const [slug, setSlug] = useState(seed?.slug ?? "");
+  const [verticalType, setVerticalType] = useState(
+    seed?.vertical_type ?? "SERVICE",
+  );
+  const [displayTemplate, setDisplayTemplate] = useState(
+    seed?.display_template ?? "CATEGORY_FIRST",
+  );
+  const [iconUrl, setIconUrl] = useState(seed?.icon_url ?? "");
+  const [isActive, setIsActive] = useState(seed?.is_active ?? true);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          id: isEdit ? initial.segment.id : null,
+          name,
+          slug,
+          vertical_type: verticalType,
+          display_template: displayTemplate,
+          icon_url: iconUrl,
+          is_active: isActive,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["segments"] });
+      onClose();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Save failed"),
+  });
+
+  return (
+    <ModalShell
+      eyebrow="Segment"
+      title={isEdit ? "Edit segment" : "Add segment"}
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={mutation.isPending}
+            onClick={() => {
+              setError(null);
+              mutation.mutate();
+            }}
+            className="h-11 px-5 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            <Check size={16} />
+            {mutation.isPending ? "Saving…" : isEdit ? "Save changes" : "Add segment"}
+          </button>
+        </>
+      }
+    >
+      <TextField
+        label="Name"
+        value={name}
+        onChange={(v) => {
+          setName(v);
+          if (!isEdit)
+            setSlug(
+              v
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, ""),
+            );
+        }}
+        placeholder="Grocery"
+      />
+      <TextField label="Slug" value={slug} onChange={setSlug} placeholder="grocery" />
+      <SelectField
+        label="Vertical type"
+        value={verticalType}
+        options={VERTICAL_TYPES as readonly string[]}
+        onChange={setVerticalType}
+      />
+      <SelectField
+        label="Display template"
+        value={displayTemplate}
+        options={DISPLAY_TEMPLATES as readonly string[]}
+        onChange={setDisplayTemplate}
+      />
+      <TextField
+        label="Icon URL"
+        value={iconUrl}
+        onChange={setIconUrl}
+        placeholder="https://…"
+      />
+      <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Active</p>
+          <p className="text-[12px] text-muted-foreground">
+            Only active segments show up in the app.
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+          className="w-5 h-5 accent-primary"
+        />
+      </label>
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
+    </ModalShell>
+  );
+}
+
+// ---------------------- Generic sections ----------------------
 
 function SectionGroup({
   type,
@@ -235,19 +535,15 @@ function SectionGroup({
 function summarizeSection(type: string, payload: JsonRecord): string {
   if (type === "promo_banner") return String(payload.text ?? "Promo banner");
   if (type === "search_bar") return String(payload.placeholder ?? "Search bar");
-  if (type === "nav_item") return String(payload.label ?? "Nav item");
-  if (type === "category_tab") return String(payload.label ?? "Category tab");
   return type;
 }
-
-// ---------------------- Form modal ----------------------
 
 function SectionFormModal({
   initial,
   onClose,
 }: {
   initial:
-    | { mode: "create"; sectionType: SectionType }
+    | { mode: "create"; sectionType: string }
     | { mode: "edit"; section: HomepageSection };
   onClose: () => void;
 }) {
@@ -255,7 +551,7 @@ function SectionFormModal({
   const save = useServerFn(upsertHomepageSection);
 
   const isEdit = initial.mode === "edit";
-  const sectionType = (isEdit ? initial.section.section_type : initial.sectionType) as SectionType;
+  const sectionType = isEdit ? initial.section.section_type : initial.sectionType;
   const seed: JsonRecord = isEdit ? { ...initial.section.payload } : {};
 
   const [payload, setPayload] = useState<JsonRecord>(seed);
@@ -281,54 +577,12 @@ function SectionFormModal({
   });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[560px] max-h-[100vh] sm:max-h-[92vh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
-      >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {sectionType}
-            </p>
-            <h2 className="text-[18px] font-bold text-foreground">
-              {isEdit ? "Edit section" : "Add section"}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
-          >
-            <X size={20} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-          <SectionFields sectionType={sectionType} payload={payload} onChange={setPayload} />
-
-          <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">Active</p>
-              <p className="text-[12px] text-muted-foreground">
-                Only active sections show up in the app.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="w-5 h-5 accent-primary"
-            />
-          </label>
-
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
-        </div>
-
-        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
+    <ModalShell
+      eyebrow={sectionType}
+      title={isEdit ? "Edit section" : "Add section"}
+      onClose={onClose}
+      footer={
+        <>
           <button
             onClick={onClose}
             className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
@@ -346,9 +600,26 @@ function SectionFormModal({
             <Check size={16} />
             {mutation.isPending ? "Saving…" : isEdit ? "Save changes" : "Add section"}
           </button>
-        </footer>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <SectionFields sectionType={sectionType} payload={payload} onChange={setPayload} />
+      <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Active</p>
+          <p className="text-[12px] text-muted-foreground">
+            Only active sections show up in the app.
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+          className="w-5 h-5 accent-primary"
+        />
+      </label>
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
+    </ModalShell>
   );
 }
 
@@ -357,38 +628,14 @@ function SectionFields({
   payload,
   onChange,
 }: {
-  sectionType: SectionType;
+  sectionType: string;
   payload: JsonRecord;
   onChange: (p: JsonRecord) => void;
 }) {
-  function set<K extends string>(key: K, value: string | boolean) {
+  function set(key: string, value: string | boolean) {
     onChange({ ...payload, [key]: value });
   }
 
-  if (sectionType === "promo_banner") {
-    return (
-      <>
-        <TextField
-          label="Text"
-          value={String(payload.text ?? "")}
-          onChange={(v) => set("text", v)}
-          placeholder="Complete missions and win rewards"
-        />
-        <TextField
-          label="Icon"
-          value={String(payload.icon ?? "")}
-          onChange={(v) => set("icon", v)}
-          placeholder="gift"
-        />
-        <TextField
-          label="CTA action"
-          value={String(payload.cta_action ?? "")}
-          onChange={(v) => set("cta_action", v)}
-          placeholder="navigate:rewards"
-        />
-      </>
-    );
-  }
   if (sectionType === "search_bar") {
     return (
       <TextField
@@ -399,38 +646,75 @@ function SectionFields({
       />
     );
   }
-  if (sectionType === "nav_item") {
-    return (
-      <>
-        <TextField label="Label" value={String(payload.label ?? "")} onChange={(v) => set("label", v)} placeholder="Home" />
-        <TextField label="Icon" value={String(payload.icon ?? "")} onChange={(v) => set("icon", v)} placeholder="home" />
-        <TextField
-          label="Target screen"
-          value={String(payload.target_screen ?? "")}
-          onChange={(v) => set("target_screen", v)}
-          placeholder="home"
-        />
-      </>
-    );
-  }
-  // category_tab
   return (
     <>
-      <TextField label="Label" value={String(payload.label ?? "")} onChange={(v) => set("label", v)} placeholder="Deep clean" />
-      <TextField label="Icon" value={String(payload.icon ?? "")} onChange={(v) => set("icon", v)} placeholder="sparkles" />
-      <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
-        <div>
-          <p className="text-[13px] font-semibold text-foreground">Visible</p>
-          <p className="text-[12px] text-muted-foreground">Show this category tab on the home screen.</p>
-        </div>
-        <input
-          type="checkbox"
-          checked={payload.is_visible !== false}
-          onChange={(e) => set("is_visible", e.target.checked)}
-          className="w-5 h-5 accent-primary"
-        />
-      </label>
+      <TextField
+        label="Text"
+        value={String(payload.text ?? "")}
+        onChange={(v) => set("text", v)}
+        placeholder="Complete missions and win rewards"
+      />
+      <TextField
+        label="Icon"
+        value={String(payload.icon ?? "")}
+        onChange={(v) => set("icon", v)}
+        placeholder="gift"
+      />
+      <TextField
+        label="CTA action"
+        value={String(payload.cta_action ?? "")}
+        onChange={(v) => set("cta_action", v)}
+        placeholder="navigate:rewards"
+      />
     </>
+  );
+}
+
+// ---------------------- Shared inputs ----------------------
+
+function ModalShell({
+  eyebrow,
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  eyebrow: string;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card w-full sm:max-w-[560px] max-h-[100vh] sm:max-h-[92vh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
+      >
+        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              {eyebrow}
+            </p>
+            <h2 className="text-[18px] font-bold text-foreground">{title}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
+          >
+            <X size={20} />
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">{children}</div>
+        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
+          {footer}
+        </footer>
+      </div>
+    </div>
   );
 }
 
@@ -460,28 +744,72 @@ function TextField({
   );
 }
 
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // ---------------------- Live preview ----------------------
 
-function PreviewPane({ sections }: { sections: HomepageSection[] }) {
-  const grouped = useMemo(() => {
-    const promo = sections
-      .filter((s) => s.section_type === "promo_banner")
-      .sort((a, b) => a.display_order - b.display_order);
-    const search = sections
-      .filter((s) => s.section_type === "search_bar")
-      .sort((a, b) => a.display_order - b.display_order);
-    const nav = sections
-      .filter((s) => s.section_type === "nav_item")
-      .sort((a, b) => a.display_order - b.display_order);
-    const cats = sections
-      .filter(
-        (s) =>
-          s.section_type === "category_tab" &&
-          s.payload.is_visible !== false,
-      )
-      .sort((a, b) => a.display_order - b.display_order);
-    return { promo, search, nav, cats };
-  }, [sections]);
+function PreviewPane({
+  sections,
+  segments,
+  categories,
+}: {
+  sections: HomepageSection[];
+  segments: Segment[];
+  categories: SegmentCategory[];
+}) {
+  const promo = sections
+    .filter((s) => s.section_type === "promo_banner")
+    .sort((a, b) => a.display_order - b.display_order);
+  const search = sections
+    .filter((s) => s.section_type === "search_bar")
+    .sort((a, b) => a.display_order - b.display_order);
+
+  const ordered = useMemo(
+    () => [...segments].sort((a, b) => a.rank - b.rank),
+    [segments],
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active =
+    ordered.find((s) => s.id === activeId) ?? ordered[0] ?? null;
+
+  const segmentCategories = active
+    ? categories
+        .filter(
+          (c) =>
+            c.segment_id === active.id &&
+            c.kind === (active.vertical_type === "STORE" ? "store" : "service"),
+        )
+        .sort((a, b) => a.rank - b.rank)
+    : [];
 
   return (
     <aside className="xl:sticky xl:top-6 h-max">
@@ -490,9 +818,30 @@ function PreviewPane({ sections }: { sections: HomepageSection[] }) {
           Live preview
         </h3>
         <div className="mx-auto w-[320px] rounded-[28px] border border-border bg-background overflow-hidden shadow-inner">
-          <div className="bg-foreground text-white text-[10px] text-center py-1">Customer App</div>
+          <div className="bg-foreground text-white text-[10px] text-center py-1">
+            Customer App
+          </div>
           <div className="p-4 space-y-3 min-h-[520px]">
-            {grouped.search.map((s) => (
+            {ordered.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {ordered.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveId(s.id)}
+                    className={`shrink-0 inline-flex items-center gap-1 px-3 h-8 rounded-full border text-[12px] ${
+                      active?.id === s.id
+                        ? "bg-primary text-white border-primary"
+                        : "bg-white text-foreground border-border"
+                    }`}
+                  >
+                    <SegmentIcon vertical={s.vertical_type} />
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {search.map((s) => (
               <div
                 key={s.section_id}
                 className="flex items-center gap-2 h-11 px-3 rounded-full bg-white border border-border"
@@ -504,7 +853,7 @@ function PreviewPane({ sections }: { sections: HomepageSection[] }) {
               </div>
             ))}
 
-            {grouped.promo.map((s) => (
+            {promo.map((s) => (
               <div
                 key={s.section_id}
                 className="flex items-center gap-2 rounded-[14px] bg-primary-tint text-primary px-3 py-2"
@@ -516,55 +865,113 @@ function PreviewPane({ sections }: { sections: HomepageSection[] }) {
               </div>
             ))}
 
-            {grouped.cats.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {grouped.cats.map((s) => (
-                  <span
-                    key={s.section_id}
-                    className="shrink-0 inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white border border-border text-[12px] text-foreground"
-                  >
-                    <PayloadIcon name={String(s.payload.icon ?? "")} />
-                    {String(s.payload.label ?? "Tab")}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 rounded-[14px] bg-white border border-border" />
-              ))}
-            </div>
-          </div>
-          <nav className="border-t border-border bg-white flex items-center justify-around py-2">
-            {grouped.nav.length === 0 ? (
-              <span className="text-[10px] text-muted-foreground">No nav items</span>
+            {active ? (
+              <TemplateRenderer segment={active} categories={segmentCategories} />
             ) : (
-              grouped.nav.map((s) => (
-                <div key={s.section_id} className="flex flex-col items-center text-muted-foreground">
-                  <PayloadIcon name={String(s.payload.icon ?? "")} size={16} />
-                  <span className="text-[10px] mt-0.5">{String(s.payload.label ?? "Item")}</span>
-                </div>
-              ))
+              <p className="text-[11px] text-muted-foreground text-center py-6">
+                No active segments.
+              </p>
             )}
-          </nav>
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground mt-3">
-          Only active sections are rendered. Reflect changes by saving them.
+          Segment bar and feed come from the segments table. Only active rows render.
         </p>
       </div>
     </aside>
   );
 }
 
+/** Exactly 3 display templates exist, by design. */
+function TemplateRenderer({
+  segment,
+  categories,
+}: {
+  segment: Segment;
+  categories: SegmentCategory[];
+}) {
+  const labels =
+    categories.length > 0
+      ? categories.map((c) => c.name)
+      : ["Category 1", "Category 2", "Category 3"];
+
+  switch (segment.display_template) {
+    case "STORE_FIRST":
+      return (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Stores near you
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {labels.slice(0, 4).map((l) => (
+              <div
+                key={l}
+                className="h-20 rounded-[14px] bg-white border border-border p-2 flex flex-col justify-end"
+              >
+                <Store size={14} className="text-muted-foreground" />
+                <span className="text-[11px] text-foreground truncate">{l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    case "SEARCH_FIRST":
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 h-11 px-3 rounded-[14px] bg-white border border-border">
+            <Search size={14} className="text-muted-foreground" />
+            <span className="text-[12px] text-muted-foreground truncate">
+              Search in {segment.name}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {labels.map((l) => (
+              <span
+                key={l}
+                className="px-3 h-7 inline-flex items-center rounded-full bg-white border border-border text-[11px]"
+              >
+                {l}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    case "CATEGORY_FIRST":
+    default:
+      return (
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {labels.map((l) => (
+              <span
+                key={l}
+                className="shrink-0 inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white border border-border text-[12px] text-foreground"
+              >
+                <LayoutGrid size={12} />
+                {l}
+              </span>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-16 rounded-[14px] bg-white border border-border"
+              />
+            ))}
+          </div>
+        </div>
+      );
+  }
+}
+
+function SegmentIcon({ vertical }: { vertical: string }) {
+  return vertical === "STORE" ? <Store size={12} /> : <Sparkles size={12} />;
+}
+
 function PayloadIcon({ name, size = 14 }: { name: string; size?: number }) {
   const n = name.toLowerCase();
-  if (n === "home") return <Home size={size} />;
   if (n === "gift" || n === "rewards") return <Gift size={size} />;
   if (n === "search") return <Search size={size} />;
   if (n === "sparkles" || n === "deep-clean") return <Sparkles size={size} />;
   return <Tag size={size} />;
 }
-
-// Not exported placeholder to silence unused warnings if a helper is stripped
-export const __homepageBuilderUnused = { Trash2 };
