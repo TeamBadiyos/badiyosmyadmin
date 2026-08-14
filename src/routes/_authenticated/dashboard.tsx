@@ -19,6 +19,8 @@ import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
 import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
+import { WaitlistPage } from "@/components/waitlist-page";
+
 
 import {
   LayoutDashboard,
@@ -65,6 +67,8 @@ const NAV_ITEMS = [
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
+  { key: "waitlist", label: "Waitlist", icon: ListChecks },
+
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
@@ -269,6 +273,9 @@ function Shell() {
           <AreaPartnersPage role={role} />
         ) : active === "skills" ? (
           <SkillApprovalsPage role={role} />
+        ) : active === "waitlist" ? (
+          <WaitlistPage role={role} />
+
         ) : active === "emergency" ? (
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
