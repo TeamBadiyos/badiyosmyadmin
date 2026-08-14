@@ -1617,6 +1617,10 @@ export type Database = {
         Args: { _booking_id: string; _radius?: number }
         Returns: number
       }
+      check_serviceability: {
+        Args: { _lat: number; _lng: number; _segment_id?: string }
+        Returns: Json
+      }
       claim_booking_as_expert: {
         Args: { p_booking_id: string }
         Returns: {
