@@ -264,6 +264,8 @@ function Shell() {
           />
         ) : active === "partners" ? (
           <AreaPartnersPage role={role} />
+        ) : active === "emergency" ? (
+          <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
         ) : active === "homepage" ? (
