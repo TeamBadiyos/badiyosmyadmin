@@ -91,3 +91,80 @@ export const updateServicePrice = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type ServiceCategoryOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export const listServiceCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ServiceCategoryOption[]> => {
+    await requireSuperAdmin(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("service_categories")
+      .select("id, name, slug")
+      .order("rank", { ascending: true });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({ id: r.id, name: r.name, slug: r.slug }));
+  });
+
+export type CreatePriceRowPayload = {
+  service_category_id: string | null;
+  duration_label: string;
+  duration_minutes: number;
+  subtitle: string | null;
+  price: number;
+  expert_payout: number | null;
+  area_partner_payout: number | null;
+  hq_revenue: number | null;
+};
+
+export const createServicePriceRow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: CreatePriceRowPayload) => {
+    if (!input?.duration_label?.trim()) throw new Error("Duration label is required");
+    if (!(input.duration_minutes > 0)) throw new Error("Duration minutes must be positive");
+    if (!(input.price >= 0)) throw new Error("Price must be non-negative");
+    for (const k of ["expert_payout", "area_partner_payout", "hq_revenue"] as const) {
+      const v = input[k];
+      if (v != null && !(v >= 0)) throw new Error(`${k} must be non-negative`);
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { data: id, error } = await context.supabase.rpc(
+      "staff_create_service_catalogue_row",
+      {
+        _payload: {
+          service_category_id: data.service_category_id,
+          duration_label: data.duration_label.trim(),
+          duration_minutes: data.duration_minutes,
+          subtitle: data.subtitle,
+          price: data.price,
+          expert_payout: data.expert_payout,
+          area_partner_payout: data.area_partner_payout,
+          hq_revenue: data.hq_revenue,
+          is_active: true,
+        },
+      },
+    );
+    if (error) throw new Error(error.message);
+    return { id: id as string };
+  });
+
+export const deleteServicePriceRow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_delete_service_catalogue_row", {
+      _id: data.id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
