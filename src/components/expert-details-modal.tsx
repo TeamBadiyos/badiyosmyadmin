@@ -8,6 +8,7 @@ import {
   signStorageUrl,
   type KycStatus,
 } from "@/lib/experts.functions";
+import { listExpertSkills } from "@/lib/partner-skills.functions";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -38,6 +39,14 @@ export function ExpertDetailsModal({
   const fetch = useServerFn(getExpert);
   const decide = useServerFn(kycDecision);
   const sign = useServerFn(signStorageUrl);
+  const fetchSkills = useServerFn(listExpertSkills);
+
+  const { data: skills = [] } = useQuery({
+    queryKey: ["partner-skills", "expert", expertId],
+    queryFn: () => fetchSkills({ data: { expertId } }),
+    staleTime: 30_000,
+  });
+  const approvedSkills = skills.filter((s) => s.status === "approved");
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["experts", "details", expertId],
@@ -144,7 +153,27 @@ export function ExpertDetailsModal({
                   <Badge className="bg-slate-100 text-slate-700">
                     Deposit {data.securityDepositStatus}
                   </Badge>
+                  <Badge className="bg-emerald-50 text-emerald-700">
+                    {approvedSkills.length} approved skill{approvedSkills.length === 1 ? "" : "s"}
+                  </Badge>
                 </div>
+              </section>
+
+              <section className="bg-background border border-border rounded-[18px] p-4">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                  Approved skills
+                </h3>
+                {approvedSkills.length === 0 ? (
+                  <p className="text-[13px] text-muted-foreground">No approved skills yet.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {approvedSkills.map((s) => (
+                      <Badge key={s.id} className="bg-emerald-50 text-emerald-700">
+                        {s.categoryName}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </section>
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -18,6 +18,7 @@ import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
 import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
+import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 
 import {
   LayoutDashboard,
@@ -33,6 +34,7 @@ import {
   BarChart3,
   ScrollText,
   Siren,
+  BadgeCheck,
   LogOut,
   Menu,
   X,
@@ -62,6 +64,7 @@ const NAV_ITEMS = [
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
+  { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
@@ -264,6 +267,8 @@ function Shell() {
           />
         ) : active === "partners" ? (
           <AreaPartnersPage role={role} />
+        ) : active === "skills" ? (
+          <SkillApprovalsPage role={role} />
         ) : active === "emergency" ? (
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
