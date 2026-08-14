@@ -806,7 +806,7 @@ function PreviewPane({
         .filter(
           (c) =>
             c.segment_id === active.id &&
-            c.kind === (active.vertical_type === "STORE" ? "store" : "service"),
+            c.kind === (active.vertical_type === "CATALOG" ? "store" : "service"),
         )
         .sort((a, b) => a.rank - b.rank)
     : [];
@@ -965,7 +965,7 @@ function TemplateRenderer({
 }
 
 function SegmentIcon({ vertical }: { vertical: string }) {
-  return vertical === "STORE" ? <Store size={12} /> : <Sparkles size={12} />;
+  return vertical === "CATALOG" ? <Store size={12} /> : <Sparkles size={12} />;
 }
 
 function PayloadIcon({ name, size = 14 }: { name: string; size?: number }) {
