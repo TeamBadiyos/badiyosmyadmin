@@ -14,6 +14,7 @@ export type VerticalType = (typeof VERTICAL_TYPES)[number];
 export type Segment = {
   id: string;
   name: string;
+  short_name: string | null;
   slug: string;
   vertical_type: string;
   display_template: string;
@@ -56,7 +57,7 @@ export const listSegments = createServerFn({ method: "GET" })
     await requireSegmentStaff(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("segments")
-      .select("id,name,slug,vertical_type,display_template,icon_url,rank,is_active")
+      .select("id,name,short_name,slug,vertical_type,display_template,icon_url,rank,is_active")
       .order("rank", { ascending: true })
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -90,6 +91,7 @@ export const listSegmentCategories = createServerFn({ method: "GET" })
 export type UpsertSegmentInput = {
   id?: string | null;
   name: string;
+  short_name?: string | null;
   slug: string;
   vertical_type: string;
   display_template: string;
@@ -115,6 +117,7 @@ export const upsertSegment = createServerFn({ method: "POST" })
     await requireSegmentStaff(context.supabase, context.userId);
     const row = {
       name: data.name.trim(),
+      short_name: data.short_name?.trim() ? data.short_name.trim() : null,
       slug: data.slug.trim(),
       vertical_type: data.vertical_type,
       display_template: data.display_template,

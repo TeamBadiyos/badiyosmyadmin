@@ -272,6 +272,11 @@ function SegmentsPanel({
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-foreground truncate">
                 {s.name}
+                {s.short_name ? (
+                  <span className="ml-2 text-[12px] font-medium text-muted-foreground">
+                    tab: {s.short_name}
+                  </span>
+                ) : null}
               </p>
               <p className="text-[12px] text-muted-foreground truncate">
                 {s.slug} · {s.vertical_type} · {s.display_template} · rank{" "}
@@ -315,6 +320,7 @@ function SegmentFormModal({
   const seed = isEdit ? initial.segment : null;
 
   const [name, setName] = useState(seed?.name ?? "");
+  const [shortName, setShortName] = useState(seed?.short_name ?? "");
   const [slug, setSlug] = useState(seed?.slug ?? "");
   const [verticalType, setVerticalType] = useState(
     seed?.vertical_type ?? "SERVICE",
@@ -332,6 +338,7 @@ function SegmentFormModal({
         data: {
           id: isEdit ? initial.segment.id : null,
           name,
+          short_name: shortName,
           slug,
           vertical_type: verticalType,
           display_template: displayTemplate,
@@ -386,6 +393,12 @@ function SegmentFormModal({
                 .replace(/^-|-$/g, ""),
             );
         }}
+        placeholder="Grocery"
+      />
+      <TextField
+        label="Short Name (tab label)"
+        value={shortName}
+        onChange={setShortName}
         placeholder="Grocery"
       />
       <TextField label="Slug" value={slug} onChange={setSlug} placeholder="grocery" />
@@ -835,7 +848,7 @@ function PreviewPane({
                     }`}
                   >
                     <SegmentIcon vertical={s.vertical_type} />
-                    {s.name}
+                    {s.short_name || s.name}
                   </button>
                 ))}
               </div>
