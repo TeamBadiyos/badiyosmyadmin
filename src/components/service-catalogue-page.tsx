@@ -264,7 +264,21 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
           </button>
         </header>
         <div className="px-6 py-6 space-y-4">
+          <TextField
+            label="Duration Title"
+            value={label}
+            onChange={setLabel}
+            required
+            placeholder="e.g. 3 Hours"
+          />
+          <TextField
+            label="Subtitle / Timing Note"
+            value={sub}
+            onChange={setSub}
+            placeholder="e.g. Complete Cleaning"
+          />
           <NumField label="Customer Price (₹)" value={price} onChange={setPrice} required />
+
           <div className="grid grid-cols-2 gap-4">
             <NumField label="Expert Payout (₹)" value={expert} onChange={setExpert} />
             <NumField
