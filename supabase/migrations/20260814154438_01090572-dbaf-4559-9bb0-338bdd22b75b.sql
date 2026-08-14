@@ -1,0 +1,2 @@
+revoke execute on function public.check_serviceability(numeric, numeric, uuid) from public, anon;
+grant execute on function public.check_serviceability(numeric, numeric, uuid) to authenticated, service_role;
