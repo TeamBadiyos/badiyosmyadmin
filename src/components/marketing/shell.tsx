@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, Play } from "lucide-react";
-import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);

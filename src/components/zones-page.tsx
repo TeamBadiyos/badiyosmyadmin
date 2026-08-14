@@ -33,7 +33,7 @@ declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     google?: any;
-    __badiyoInitMap?: () => void;
+    __badiyosInitMap?: () => void;
   }
 }
 
@@ -656,9 +656,9 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
       };
     }
 
-    window.__badiyoInitMap = initialize;
+    window.__badiyosInitMap = initialize;
     const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-badiyo-gmaps="1"]',
+      'script[data-badiyos-gmaps="1"]',
     );
     if (existing) {
       // Script may already be loaded but google not yet ready; poll briefly.
@@ -680,10 +680,10 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyoInitMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyosInitMap`;
     script.async = true;
     script.defer = true;
-    script.dataset.badiyoGmaps = "1";
+    script.dataset.badiyosGmaps = "1";
     script.onerror = () => setMapError("Failed to load Google Maps.");
     document.head.appendChild(script);
 
@@ -1064,9 +1064,9 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     if (window.google?.maps) {
       initialize();
     } else {
-      window.__badiyoInitMap = initialize;
+      window.__badiyosInitMap = initialize;
       const existingScript = document.querySelector<HTMLScriptElement>(
-        'script[data-badiyo-gmaps="1"]',
+        'script[data-badiyos-gmaps="1"]',
       );
       if (existingScript) {
         iv = window.setInterval(() => {
@@ -1077,10 +1077,10 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
         }, 100);
       } else {
         const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyoInitMap`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyosInitMap`;
         script.async = true;
         script.defer = true;
-        script.dataset.badiyoGmaps = "1";
+        script.dataset.badiyosGmaps = "1";
         script.onerror = () => setMapError("Failed to load Google Maps.");
         document.head.appendChild(script);
       }
