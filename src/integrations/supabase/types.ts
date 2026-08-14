@@ -1128,6 +1128,7 @@ export type Database = {
           is_active: boolean
           name: string
           rank: number
+          short_name: string | null
           slug: string
           updated_at: string
           vertical_type: string
@@ -1140,6 +1141,7 @@ export type Database = {
           is_active?: boolean
           name: string
           rank?: number
+          short_name?: string | null
           slug: string
           updated_at?: string
           vertical_type: string
@@ -1152,6 +1154,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           rank?: number
+          short_name?: string | null
           slug?: string
           updated_at?: string
           vertical_type?: string
