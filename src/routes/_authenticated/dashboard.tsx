@@ -48,7 +48,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({

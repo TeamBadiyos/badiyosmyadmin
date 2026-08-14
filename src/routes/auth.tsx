@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import badiyoLogo from "@/assets/badiyos-green.png.asset.json";
+import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -70,7 +70,7 @@ function AuthPage() {
           <Field
             label="Email"
             type="email"
-            placeholder="you@badiyo.com"
+            placeholder="you@badiyos.com"
             value={email}
             onChange={setEmail}
             autoComplete="email"
