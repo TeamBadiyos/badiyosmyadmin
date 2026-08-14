@@ -13,6 +13,7 @@ export type ServicePriceRow = {
   icon: string | null;
   display_order: number;
   is_active: boolean;
+  service_category_id: string | null;
 };
 
 async function requireSuperAdmin(
@@ -26,7 +27,11 @@ async function requireSuperAdmin(
     .eq("auth_user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data || data.status !== "active" || data.role !== "super_admin") {
+  if (
+    !data ||
+    data.status !== "active" ||
+    !["super_admin", "ops_manager"].includes(data.role)
+  ) {
     throw new Error("Forbidden");
   }
 }
@@ -54,6 +59,7 @@ export const listServicePrices = createServerFn({ method: "GET" })
       icon: r.icon ?? null,
       display_order: r.display_order ?? 0,
       is_active: r.is_active ?? true,
+      service_category_id: r.service_category_id ?? null,
     }));
   });
 
