@@ -17,6 +17,7 @@ import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
+import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 
 import {
   LayoutDashboard,
@@ -31,6 +32,7 @@ import {
   ShieldCheck,
   BarChart3,
   ScrollText,
+  Siren,
   LogOut,
   Menu,
   X,
