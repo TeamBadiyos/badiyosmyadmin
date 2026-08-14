@@ -38,7 +38,7 @@ export function ServiceCataloguePage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeRow({ data: { id } }),
     onSuccess: () => {
-      toast.success("Row removed (marked inactive)");
+      toast.success("Row permanently deleted");
       queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
@@ -149,12 +149,13 @@ export function ServiceCataloguePage() {
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Remove "${r.duration_label}"? It will be marked inactive and hidden from customers.`,
+                      `This will permanently delete "${r.duration_label}", are you sure? This cannot be undone.`,
                     )
                   ) {
                     deleteMutation.mutate(r.id);
                   }
                 }}
+
                 className="h-9 w-9 rounded-[12px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10 disabled:opacity-50"
               >
                 <Trash2 size={14} />
@@ -182,6 +183,8 @@ export function ServiceCataloguePage() {
 function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () => void }) {
   const queryClient = useQueryClient();
   const save = useServerFn(updateServicePrice);
+  const [label, setLabel] = useState(row.duration_label);
+  const [sub, setSub] = useState(row.subtitle ?? "");
   const [price, setPrice] = useState(String(row.price));
   const [expert, setExpert] = useState(row.expert_payout != null ? String(row.expert_payout) : "");
   const [partner, setPartner] = useState(
@@ -204,9 +207,12 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
       try {
         const p = parseNonNeg(price);
         if (p == null) throw new Error("Customer price is required");
+        if (!label.trim()) throw new Error("Duration title is required");
         return save({
           data: {
             id: row.id,
+            duration_label: label.trim(),
+            subtitle: sub.trim() ? sub.trim() : null,
             price: p,
             expert_payout: parseNonNeg(expert),
             area_partner_payout: parseNonNeg(partner),
@@ -214,6 +220,7 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
             is_active: active,
           },
         });
+
       } catch (e) {
         return Promise.reject(e);
       }
@@ -258,7 +265,21 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
           </button>
         </header>
         <div className="px-6 py-6 space-y-4">
+          <TextField
+            label="Duration Title"
+            value={label}
+            onChange={setLabel}
+            required
+            placeholder="e.g. 3 Hours"
+          />
+          <TextField
+            label="Subtitle / Timing Note"
+            value={sub}
+            onChange={setSub}
+            placeholder="e.g. Complete Cleaning"
+          />
           <NumField label="Customer Price (₹)" value={price} onChange={setPrice} required />
+
           <div className="grid grid-cols-2 gap-4">
             <NumField label="Expert Payout (₹)" value={expert} onChange={setExpert} />
             <NumField
@@ -310,7 +331,38 @@ function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () =>
   );
 }
 
+function TextField({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+        {required ? " *" : ""}
+      </label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+      />
+    </div>
+  );
+}
+
 function NumField({
+
   label,
   value,
   onChange,

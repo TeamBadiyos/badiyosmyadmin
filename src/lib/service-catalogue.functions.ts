@@ -65,6 +65,8 @@ export const listServicePrices = createServerFn({ method: "GET" })
 
 export type UpdatePricePayload = {
   id: string;
+  duration_label: string;
+  subtitle: string | null;
   price: number;
   expert_payout: number | null;
   area_partner_payout: number | null;
@@ -76,6 +78,7 @@ export const updateServicePrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: UpdatePricePayload) => {
     if (!input?.id) throw new Error("id required");
+    if (!input.duration_label?.trim()) throw new Error("Duration label is required");
     if (!(input.price >= 0)) throw new Error("Price must be non-negative");
     for (const k of ["expert_payout", "area_partner_payout", "hq_revenue"] as const) {
       const v = input[k];
@@ -87,6 +90,8 @@ export const updateServicePrice = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_service_price", {
       _id: data.id,
       _payload: {
+        duration_label: data.duration_label.trim(),
+        subtitle: data.subtitle?.trim() ? data.subtitle.trim() : null,
         price: data.price,
         expert_payout: data.expert_payout,
         area_partner_payout: data.area_partner_payout,
@@ -94,6 +99,7 @@ export const updateServicePrice = createServerFn({ method: "POST" })
         is_active: data.is_active,
       },
     });
+
     if (error) throw new Error(error.message);
     return { ok: true };
   });
