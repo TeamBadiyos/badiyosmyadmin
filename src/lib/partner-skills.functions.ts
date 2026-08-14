@@ -101,7 +101,7 @@ export const decidePartnerSkill = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_decide_partner_skill", {
       _skill_id: data.skillId,
       _decision: data.decision,
-      _notes: data.notes ?? null,
+      _notes: data.notes ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
