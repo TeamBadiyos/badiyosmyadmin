@@ -38,7 +38,7 @@ export function ServiceCataloguePage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeRow({ data: { id } }),
     onSuccess: () => {
-      toast.success("Row removed (marked inactive)");
+      toast.success("Row permanently deleted");
       queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
@@ -149,12 +149,13 @@ export function ServiceCataloguePage() {
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Remove "${r.duration_label}"? It will be marked inactive and hidden from customers.`,
+                      `This will permanently delete "${r.duration_label}", are you sure? This cannot be undone.`,
                     )
                   ) {
                     deleteMutation.mutate(r.id);
                   }
                 }}
+
                 className="h-9 w-9 rounded-[12px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10 disabled:opacity-50"
               >
                 <Trash2 size={14} />
