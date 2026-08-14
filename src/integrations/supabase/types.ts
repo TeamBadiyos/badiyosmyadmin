@@ -403,6 +403,36 @@ export type Database = {
           },
         ]
       }
+      device_sessions: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_label: string | null
+          id: string
+          last_active_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_label?: string | null
+          id?: string
+          last_active_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_label?: string | null
+          id?: string
+          last_active_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       device_tokens: {
         Row: {
           created_at: string
@@ -800,6 +830,58 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_skills: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          expert_id: string
+          id: string
+          service_category_id: string
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expert_id: string
+          id?: string
+          service_category_id: string
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expert_id?: string
+          id?: string
+          service_category_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_skills_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_skills_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_skills_service_category_id_fkey"
+            columns: ["service_category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payout_batch_items: {
         Row: {
           amount: number
@@ -983,6 +1065,45 @@ export type Database = {
           },
         ]
       }
+      segments: {
+        Row: {
+          created_at: string
+          display_template: string
+          icon_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          rank: number
+          slug: string
+          updated_at: string
+          vertical_type: string
+        }
+        Insert: {
+          created_at?: string
+          display_template: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          rank?: number
+          slug: string
+          updated_at?: string
+          vertical_type: string
+        }
+        Update: {
+          created_at?: string
+          display_template?: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          rank?: number
+          slug?: string
+          updated_at?: string
+          vertical_type?: string
+        }
+        Relationships: []
+      }
       service_catalogue_config: {
         Row: {
           area_partner_payout: number | null
@@ -1028,6 +1149,44 @@ export type Database = {
         }
         Relationships: []
       }
+      service_categories: {
+        Row: {
+          icon_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          rank: number
+          segment_id: string
+          slug: string
+        }
+        Insert: {
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          rank?: number
+          segment_id: string
+          slug: string
+        }
+        Update: {
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          rank?: number
+          segment_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_categories_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_users: {
         Row: {
           auth_user_id: string
@@ -1060,6 +1219,44 @@ export type Database = {
           zone_id?: string | null
         }
         Relationships: []
+      }
+      store_categories: {
+        Row: {
+          icon_url: string | null
+          id: string
+          is_active: boolean
+          name: string
+          rank: number
+          segment_id: string
+          slug: string
+        }
+        Insert: {
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          rank?: number
+          segment_id: string
+          slug: string
+        }
+        Update: {
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          rank?: number
+          segment_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_categories_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       support_inquiries: {
         Row: {
