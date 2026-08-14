@@ -100,7 +100,7 @@ export const acknowledgeEmergencyAlert = createServerFn({ method: "POST" })
     await assertActiveStaff(context);
     const { error } = await context.supabase.rpc(
       "staff_acknowledge_emergency_alert",
-      { _alert_id: data.alertId, _notes: data.notes },
+      { _alert_id: data.alertId, _notes: data.notes ?? undefined },
     );
     if (error) throw new Error(error.message);
     return { ok: true } as const;

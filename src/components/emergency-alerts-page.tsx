@@ -178,7 +178,7 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
               key={a.id}
               className={`rounded-[18px] border p-5 flex flex-col gap-3 ${
                 isOpen
-                  ? "border-destructive/50 bg-destructive/5 animate-pulse-none"
+                  ? "border-destructive/50 bg-destructive/5"
                   : "border-border bg-card"
               }`}
             >
