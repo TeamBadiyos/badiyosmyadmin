@@ -1747,6 +1747,10 @@ export type Database = {
         Args: { _booking_id: string }
         Returns: undefined
       }
+      staff_acknowledge_emergency_alert: {
+        Args: { _alert_id: string; _notes?: string }
+        Returns: undefined
+      }
       staff_area_partner_kyc_decision: {
         Args: { _decision: string; _partner_id: string; _reason: string }
         Returns: undefined

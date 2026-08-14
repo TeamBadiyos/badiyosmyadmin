@@ -17,6 +17,7 @@ import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
+import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 
 import {
   LayoutDashboard,
@@ -31,6 +32,7 @@ import {
   ShieldCheck,
   BarChart3,
   ScrollText,
+  Siren,
   LogOut,
   Menu,
   X,
@@ -60,6 +62,7 @@ const NAV_ITEMS = [
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
+  { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
@@ -261,6 +264,8 @@ function Shell() {
           />
         ) : active === "partners" ? (
           <AreaPartnersPage role={role} />
+        ) : active === "emergency" ? (
+          <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
         ) : active === "homepage" ? (
