@@ -1641,6 +1641,10 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      expert_request_skill: {
+        Args: { _service_category_id: string }
+        Returns: string
+      }
       expert_set_online: { Args: { _online: boolean }; Returns: undefined }
       expert_update_location: {
         Args: { p_lat: number; p_lng: number }
