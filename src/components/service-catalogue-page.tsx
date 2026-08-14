@@ -338,3 +338,216 @@ function NumField({
     </div>
   );
 }
+
+function CreatePriceModal({
+  categories,
+  defaultCategoryId,
+  onClose,
+}: {
+  categories: { id: string; name: string; slug: string }[];
+  defaultCategoryId: string | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const create = useServerFn(createServicePriceRow);
+  const [categoryId, setCategoryId] = useState(defaultCategoryId ?? "");
+  const [label, setLabel] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [price, setPrice] = useState("");
+  const [expert, setExpert] = useState("");
+  const [partner, setPartner] = useState("");
+  const [hq, setHq] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function parseNonNeg(v: string): number | null {
+    const t = v.trim();
+    if (!t) return null;
+    const n = Number(t);
+    if (!isFinite(n) || n < 0) throw new Error("Amounts must be positive numbers");
+    return n;
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      try {
+        const p = parseNonNeg(price);
+        if (p == null) throw new Error("Customer price is required");
+        const m = parseNonNeg(minutes);
+        if (!m) throw new Error("Duration in minutes is required");
+        if (!label.trim()) throw new Error("Duration label is required");
+        return create({
+          data: {
+            service_category_id: categoryId || null,
+            duration_label: label.trim(),
+            duration_minutes: Math.round(m),
+            subtitle: subtitle.trim() || null,
+            price: p,
+            expert_payout: parseNonNeg(expert),
+            area_partner_payout: parseNonNeg(partner),
+            hq_revenue: parseNonNeg(hq),
+          },
+        });
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    },
+    onSuccess: () => {
+      toast.success("Pricing row created");
+      queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
+      onClose();
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Create failed"),
+  });
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const field =
+    "w-full h-11 px-3 rounded-[12px] border border-border bg-card text-[14px] text-foreground";
+  const labelCls =
+    "block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card w-full sm:max-w-[560px] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col max-h-full"
+      >
+        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Service catalogue
+            </p>
+            <h2 className="text-[18px] font-bold text-foreground">New duration / price row</h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-muted"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
+          <div>
+            <label className={labelCls}>Service category</label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className={field}
+            >
+              {categories.length === 0 && <option value="">Home Cleaning (default)</option>}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Duration label</label>
+              <input
+                className={field}
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="3 Hours"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Duration (minutes)</label>
+              <input
+                className={field}
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                inputMode="numeric"
+                placeholder="180"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Subtitle (optional)</label>
+            <input
+              className={field}
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="Best for 2BHK"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Customer price</label>
+              <input
+                className={field}
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Expert payout</label>
+              <input
+                className={field}
+                value={expert}
+                onChange={(e) => setExpert(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Partner commission</label>
+              <input
+                className={field}
+                value={partner}
+                onChange={(e) => setPartner(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>HQ share</label>
+              <input
+                className={field}
+                value={hq}
+                onChange={(e) => setHq(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-[13px] text-destructive">{error}</p>}
+        </div>
+
+        <footer className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+          <button
+            onClick={onClose}
+            className="h-11 px-4 rounded-[12px] border border-border font-semibold text-[14px] hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={mutation.isPending}
+            onClick={() => {
+              setError(null);
+              mutation.mutate();
+            }}
+            className="h-11 px-5 rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] inline-flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Check size={16} /> Create row
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
