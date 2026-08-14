@@ -62,6 +62,7 @@ const NAV_ITEMS = [
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
+  { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
