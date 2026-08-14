@@ -37,6 +37,7 @@ import {
   ScrollText,
   Siren,
   BadgeCheck,
+  ListChecks,
   LogOut,
   Menu,
   X,
