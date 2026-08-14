@@ -275,11 +275,13 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          broadcast_started_at: string | null
           cancellation_fee: number | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string | null
+          current_search_radius_km: number | null
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -295,6 +297,7 @@ export type Database = {
           review_text: string | null
           scheduled_date: string | null
           scheduled_time_slot: string | null
+          service_category_id: string | null
           service_duration_minutes: number
           service_end_at: string | null
           service_label: string
@@ -311,11 +314,13 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          broadcast_started_at?: string | null
           cancellation_fee?: number | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string | null
+          current_search_radius_km?: number | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -331,6 +336,7 @@ export type Database = {
           review_text?: string | null
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
+          service_category_id?: string | null
           service_duration_minutes: number
           service_end_at?: string | null
           service_label: string
@@ -347,11 +353,13 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          broadcast_started_at?: string | null
           cancellation_fee?: number | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string | null
+          current_search_radius_km?: number | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
@@ -367,6 +375,7 @@ export type Database = {
           review_text?: string | null
           scheduled_date?: string | null
           scheduled_time_slot?: string | null
+          service_category_id?: string | null
           service_duration_minutes?: number
           service_end_at?: string | null
           service_label?: string
@@ -391,6 +400,13 @@ export type Database = {
             columns: ["assigned_expert_id"]
             isOneToOne: false
             referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_category_id_fkey"
+            columns: ["service_category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
             referencedColumns: ["id"]
           },
           {
@@ -479,6 +495,9 @@ export type Database = {
           city: string
           created_at: string
           id: string
+          radius_expand_after_seconds: number
+          radius_expand_max_km: number
+          radius_expand_step_km: number
           updated_at: string
         }
         Insert: {
@@ -487,6 +506,9 @@ export type Database = {
           city?: string
           created_at?: string
           id?: string
+          radius_expand_after_seconds?: number
+          radius_expand_max_km?: number
+          radius_expand_step_km?: number
           updated_at?: string
         }
         Update: {
@@ -495,6 +517,9 @@ export type Database = {
           city?: string
           created_at?: string
           id?: string
+          radius_expand_after_seconds?: number
+          radius_expand_max_km?: number
+          radius_expand_step_km?: number
           updated_at?: string
         }
         Relationships: []
@@ -1526,6 +1551,10 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
       }
+      broadcast_booking_to_experts: {
+        Args: { _booking_id: string; _radius?: number }
+        Returns: number
+      }
       claim_booking_as_expert: {
         Args: { p_booking_id: string }
         Returns: {
@@ -1533,11 +1562,13 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          broadcast_started_at: string | null
           cancellation_fee: number | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string | null
+          current_search_radius_km: number | null
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
@@ -1553,6 +1584,7 @@ export type Database = {
           review_text: string | null
           scheduled_date: string | null
           scheduled_time_slot: string | null
+          service_category_id: string | null
           service_duration_minutes: number
           service_end_at: string | null
           service_label: string
@@ -1586,6 +1618,7 @@ export type Database = {
         Returns: Json
       }
       ensure_start_otp: { Args: { _booking_id: string }; Returns: string }
+      expand_stale_broadcasts: { Args: never; Returns: number }
       expert_ensure_booking_codes: {
         Args: { _booking_id: string }
         Returns: {
