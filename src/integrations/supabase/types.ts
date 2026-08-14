@@ -1628,6 +1628,16 @@ export type Database = {
         }
         Returns: Json
       }
+      customer_list_devices: { Args: never; Returns: Json }
+      customer_register_device: {
+        Args: { _device_id: string; _device_label?: string }
+        Returns: Json
+      }
+      customer_revoke_device: {
+        Args: { _device_id: string }
+        Returns: undefined
+      }
+      customer_set_language: { Args: { _lang: string }; Returns: undefined }
       ensure_start_otp: { Args: { _booking_id: string }; Returns: string }
       expand_stale_broadcasts: { Args: never; Returns: number }
       expert_ensure_booking_codes: {
@@ -1637,6 +1647,10 @@ export type Database = {
           start_otp: string
         }[]
       }
+      expert_register_device: {
+        Args: { _device_id: string; _device_label?: string }
+        Returns: Json
+      }
       expert_reject_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
@@ -1645,6 +1659,8 @@ export type Database = {
         Args: { _service_category_id: string }
         Returns: string
       }
+      expert_revoke_device: { Args: { _device_id: string }; Returns: undefined }
+      expert_set_language: { Args: { _lang: string }; Returns: undefined }
       expert_set_online: { Args: { _online: boolean }; Returns: undefined }
       expert_update_location: {
         Args: { p_lat: number; p_lng: number }
