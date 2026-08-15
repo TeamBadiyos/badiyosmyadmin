@@ -1,0 +1,2 @@
+DROP TABLE public._deprecated_fcm_tokens;
+DROP TABLE public._deprecated_expert_push_tokens;
