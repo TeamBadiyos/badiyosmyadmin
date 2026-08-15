@@ -1069,9 +1069,11 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           onboarded_by: string | null
+          onboarding_step: number
           owner_name: string | null
           pan: string | null
           phone: string
+          pin_hash: string | null
           pincode: string | null
           segment_id: string | null
           shop_photo_url: string | null
@@ -1107,9 +1109,11 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           onboarded_by?: string | null
+          onboarding_step?: number
           owner_name?: string | null
           pan?: string | null
           phone: string
+          pin_hash?: string | null
           pincode?: string | null
           segment_id?: string | null
           shop_photo_url?: string | null
@@ -1145,9 +1149,11 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           onboarded_by?: string | null
+          onboarding_step?: number
           owner_name?: string | null
           pan?: string | null
           phone?: string
+          pin_hash?: string | null
           pincode?: string | null
           segment_id?: string | null
           shop_photo_url?: string | null
@@ -2198,6 +2204,14 @@ export type Database = {
         Returns: boolean
       }
       link_referral: { Args: { _code: string }; Returns: undefined }
+      merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
+      merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
+      merchant_submit_application: { Args: never; Returns: undefined }
+      merchant_verify_pin_internal: {
+        Args: { p_phone: string; p_pin: string }
+        Returns: Json
+      }
       notify_customer_push: {
         Args: {
           _body: string
