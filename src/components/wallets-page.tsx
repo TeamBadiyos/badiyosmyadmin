@@ -574,7 +574,12 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
           >
             <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {i.owner_type === "expert" ? "Expert" : "Partner"}
+              {i.owner_type === "expert"
+                ? "Expert"
+                : i.owner_type === "merchant"
+                  ? "Merchant"
+                  : "Partner"}
+
             </span>
             <span className="text-right font-semibold">{inr.format(i.amount)}</span>
             <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
