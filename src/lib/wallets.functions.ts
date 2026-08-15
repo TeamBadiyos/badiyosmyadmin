@@ -163,22 +163,28 @@ export const walletAdjust = createServerFn({ method: "POST" })
 
 export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<PayoutBatch[]> => {
+  .inputValidator((input: { batch_type?: "expert" | "merchant" } | undefined) => input ?? {})
+  .handler(async ({ data: input, context }): Promise<PayoutBatch[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { data, error } = await context.supabase
+    let q = context.supabase
       .from("payout_batches")
-      .select("id, week_start, week_end, status, total_amount, created_at")
+      .select("id, week_start, week_end, status, total_amount, created_at, batch_type")
       .order("week_start", { ascending: false });
+    if (input.batch_type) q = q.eq("batch_type", input.batch_type);
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({
       id: r.id,
       week_start: r.week_start,
       week_end: r.week_end,
       status: r.status as "pending" | "paid",
       total_amount: Number(r.total_amount ?? 0),
       created_at: r.created_at,
+      batch_type: (r.batch_type ?? "expert") as "expert" | "merchant",
     }));
   });
+
 
 export const listPayoutItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
