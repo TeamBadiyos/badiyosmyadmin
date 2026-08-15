@@ -2631,12 +2631,17 @@ export type Database = {
       }
       staff_generate_merchant_payout_batch: { Args: never; Returns: string }
       staff_generate_payout_batch: { Args: never; Returns: string }
+      staff_generate_subscription_invoices: { Args: never; Returns: Json }
       staff_mark_payout_batch_paid: {
         Args: { _batch_id: string }
         Returns: undefined
       }
       staff_mark_payout_item_paid: {
         Args: { _item_id: string; _paid: boolean }
+        Returns: undefined
+      }
+      staff_mark_subscription_invoice_paid: {
+        Args: { _invoice_id: string; _paid: boolean }
         Returns: undefined
       }
       staff_reassign_expert: {
@@ -2661,6 +2666,10 @@ export type Database = {
       }
       staff_set_homepage_section_active: {
         Args: { _active: boolean; _id: string }
+        Returns: undefined
+      }
+      staff_set_merchant_fee_tier: {
+        Args: { _fee_tier_id: string; _merchant_id: string }
         Returns: undefined
       }
       staff_soft_delete_area_partner: {
@@ -2693,6 +2702,7 @@ export type Database = {
       }
       staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
       staff_upsert_expert: { Args: { _payload: Json }; Returns: string }
+      staff_upsert_fee_tier: { Args: { _payload: Json }; Returns: string }
       staff_upsert_homepage_section: {
         Args: { _payload: Json }
         Returns: string
