@@ -2287,6 +2287,10 @@ export type Database = {
         Args: { _payload: Json }
         Returns: string
       }
+      staff_decide_merchant: {
+        Args: { _decision: string; _merchant_id: string; _notes?: string }
+        Returns: undefined
+      }
       staff_decide_partner_skill: {
         Args: { _decision: string; _notes?: string; _skill_id: string }
         Returns: undefined
