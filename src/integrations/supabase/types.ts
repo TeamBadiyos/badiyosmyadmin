@@ -868,6 +868,27 @@ export type Database = {
           },
         ]
       }
+      merchant_fee_tiers: {
+        Row: {
+          id: string
+          is_active: boolean
+          monthly_fee: number
+          name: string
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          monthly_fee: number
+          name: string
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          monthly_fee?: number
+          name?: string
+        }
+        Relationships: []
+      }
       merchant_order_items: {
         Row: {
           id: string
@@ -996,6 +1017,38 @@ export type Database = {
           },
         ]
       }
+      merchant_schedule_overrides: {
+        Row: {
+          id: string
+          is_closed: boolean
+          merchant_id: string
+          note: string | null
+          override_date: string
+        }
+        Insert: {
+          id?: string
+          is_closed?: boolean
+          merchant_id: string
+          note?: string | null
+          override_date: string
+        }
+        Update: {
+          id?: string
+          is_closed?: boolean
+          merchant_id?: string
+          note?: string | null
+          override_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_schedule_overrides_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_staff: {
         Row: {
           auth_user_id: string | null
@@ -1044,6 +1097,89 @@ export type Database = {
           },
         ]
       }
+      merchant_store_hours: {
+        Row: {
+          close_time: string | null
+          day_of_week: number
+          id: string
+          is_closed: boolean
+          merchant_id: string
+          open_time: string | null
+        }
+        Insert: {
+          close_time?: string | null
+          day_of_week: number
+          id?: string
+          is_closed?: boolean
+          merchant_id: string
+          open_time?: string | null
+        }
+        Update: {
+          close_time?: string | null
+          day_of_week?: number
+          id?: string
+          is_closed?: boolean
+          merchant_id?: string
+          open_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_store_hours_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_subscription_invoices: {
+        Row: {
+          amount: number
+          billing_month: string
+          created_at: string
+          fee_tier_id: string | null
+          id: string
+          merchant_id: string
+          paid_at: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          billing_month: string
+          created_at?: string
+          fee_tier_id?: string | null
+          id?: string
+          merchant_id: string
+          paid_at?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          billing_month?: string
+          created_at?: string
+          fee_tier_id?: string | null
+          id?: string
+          merchant_id?: string
+          paid_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_subscription_invoices_fee_tier_id_fkey"
+            columns: ["fee_tier_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_fee_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_subscription_invoices_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchants: {
         Row: {
           address: string | null
@@ -1059,6 +1195,7 @@ export type Database = {
           country: string | null
           created_at: string
           delivery_fee_payer: string
+          fee_tier_id: string | null
           fulfillment_mode: string
           gst_legal_name: string | null
           gst_status: string | null
@@ -1099,6 +1236,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           delivery_fee_payer?: string
+          fee_tier_id?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
           gst_status?: string | null
@@ -1139,6 +1277,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           delivery_fee_payer?: string
+          fee_tier_id?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
           gst_status?: string | null
@@ -1174,6 +1313,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "merchants_fee_tier_id_fkey"
+            columns: ["fee_tier_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_fee_tiers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "merchants_onboarded_by_fkey"
             columns: ["onboarded_by"]
             isOneToOne: false
@@ -1199,6 +1345,120 @@ export type Database = {
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offline_sale_items: {
+        Row: {
+          gst_rate: number
+          hsn_sac_snapshot: string | null
+          id: string
+          price_snapshot: number
+          product_id: string
+          product_name_snapshot: string
+          quantity: number
+          sale_id: string
+        }
+        Insert: {
+          gst_rate?: number
+          hsn_sac_snapshot?: string | null
+          id?: string
+          price_snapshot: number
+          product_id: string
+          product_name_snapshot: string
+          quantity: number
+          sale_id: string
+        }
+        Update: {
+          gst_rate?: number
+          hsn_sac_snapshot?: string | null
+          id?: string
+          price_snapshot?: number
+          product_id?: string
+          product_name_snapshot?: string
+          quantity?: number
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offline_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "offline_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offline_sales: {
+        Row: {
+          amount_due: number
+          cgst_amount: number
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          discount_amount: number
+          id: string
+          invoice_number: string
+          merchant_id: string
+          payment_mode_id: string
+          payment_status: string
+          sgst_amount: number
+          subtotal: number
+          total_amount: number
+        }
+        Insert: {
+          amount_due?: number
+          cgst_amount?: number
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number
+          id?: string
+          invoice_number: string
+          merchant_id: string
+          payment_mode_id: string
+          payment_status?: string
+          sgst_amount?: number
+          subtotal: number
+          total_amount: number
+        }
+        Update: {
+          amount_due?: number
+          cgst_amount?: number
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount_amount?: number
+          id?: string
+          invoice_number?: string
+          merchant_id?: string
+          payment_mode_id?: string
+          payment_status?: string
+          sgst_amount?: number
+          subtotal?: number
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_sales_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offline_sales_payment_mode_id_fkey"
+            columns: ["payment_mode_id"]
+            isOneToOne: false
+            referencedRelation: "payment_modes"
             referencedColumns: ["id"]
           },
         ]
@@ -1302,6 +1562,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_modes: {
+        Row: {
+          id: string
+          is_active: boolean
+          is_credit_type: boolean
+          name: string
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          is_credit_type?: boolean
+          name: string
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          is_credit_type?: boolean
+          name?: string
+        }
+        Relationships: []
       }
       payout_batch_items: {
         Row: {
@@ -1409,6 +1690,7 @@ export type Database = {
           category_label: string | null
           created_at: string
           description: string | null
+          hsn_sac_code: string | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -1423,6 +1705,7 @@ export type Database = {
           category_label?: string | null
           created_at?: string
           description?: string | null
+          hsn_sac_code?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -1437,6 +1720,7 @@ export type Database = {
           category_label?: string | null
           created_at?: string
           description?: string | null
+          hsn_sac_code?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
