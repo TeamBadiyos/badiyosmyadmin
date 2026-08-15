@@ -2519,7 +2519,15 @@ export type Database = {
       }
       merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_is_currently_open: {
+        Args: { _merchant_id: string }
+        Returns: boolean
+      }
       merchant_my_context: { Args: never; Returns: Json }
+      merchant_set_accepting_orders: {
+        Args: { _accepting: boolean }
+        Returns: boolean
+      }
       merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
       merchant_submit_application: { Args: never; Returns: undefined }
       merchant_verify_pin_internal: {
