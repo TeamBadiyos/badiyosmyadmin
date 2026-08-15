@@ -39,6 +39,7 @@ import {
   Siren,
   BadgeCheck,
   ListChecks,
+  Store,
   LogOut,
   Menu,
   X,
