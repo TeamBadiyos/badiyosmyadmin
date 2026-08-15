@@ -391,19 +391,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ============ Payouts tab ============
 
-function PayoutsTab() {
+function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
   const queryClient = useQueryClient();
   const fetchBatches = useServerFn(listPayoutBatches);
-  const gen = useServerFn(generatePayoutBatch);
+  const genExpert = useServerFn(generatePayoutBatch);
+  const genMerchant = useServerFn(generateMerchantPayoutBatch);
   const { data = [], isLoading } = useQuery({
-    queryKey: ["wallets", "batches"],
-    queryFn: () => fetchBatches(),
+    queryKey: ["wallets", "batches", mode],
+    queryFn: () => fetchBatches({ data: { batch_type: mode } }),
   });
   const [openBatch, setOpenBatch] = useState<PayoutBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generate = useMutation({
-    mutationFn: () => gen(),
+    mutationFn: () => (mode === "merchant" ? genMerchant() : genExpert()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] }),
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
@@ -416,7 +417,9 @@ function PayoutsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[14px] text-muted-foreground">
-          Weekly payout batches to experts and area partners.
+          {mode === "merchant"
+            ? "Weekly merchant payout batches from completed order earnings."
+            : "Weekly payout batches to experts and area partners."}
         </p>
         <button
           disabled={generate.isPending}
@@ -429,6 +432,7 @@ function PayoutsTab() {
           <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
         </button>
       </div>
+
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
