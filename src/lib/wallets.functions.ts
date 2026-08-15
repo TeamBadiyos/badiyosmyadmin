@@ -43,18 +43,20 @@ export type PayoutBatch = {
   status: "pending" | "paid";
   total_amount: number;
   created_at: string;
+  batch_type: "expert" | "merchant";
 };
 
 export type PayoutItem = {
   id: string;
   batch_id: string;
-  owner_type: "expert" | "area_partner";
+  owner_type: "expert" | "area_partner" | "merchant";
   owner_id: string;
   owner_name: string;
   amount: number;
   paid: boolean;
   paid_at: string | null;
 };
+
 
 // ---------- Balances / ledger ----------
 
