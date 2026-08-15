@@ -506,6 +506,8 @@ function PayoutsTab({ range }: { range: ReportRange }) {
                       status: r.status,
                       total_amount: r.totalAmount,
                       created_at: r.weekStart,
+                      batch_type: "expert",
+
                     })
                   }
                   className="h-8 px-3 rounded-[10px] border border-border font-semibold text-[12px] hover:bg-muted"

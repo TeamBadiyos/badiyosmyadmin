@@ -9,6 +9,8 @@ import {
   listPayoutBatches,
   listPayoutItems,
   generatePayoutBatch,
+  generateMerchantPayoutBatch,
+
   markPayoutItemPaid,
   markPayoutBatchPaid,
   type WalletOwner,
@@ -24,7 +26,7 @@ const inr = new Intl.NumberFormat("en-IN", {
 type Role = "super_admin" | "ops_manager" | "area_partner" | null;
 
 export function WalletsPage({ role }: { role: Role }) {
-  const [tab, setTab] = useState<"balances" | "payouts">("balances");
+  const [tab, setTab] = useState<"balances" | "payouts" | "merchant_payouts">("balances");
   return (
     <div className="space-y-6">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
@@ -34,11 +36,17 @@ export function WalletsPage({ role }: { role: Role }) {
         <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")}>
           Payouts
         </TabBtn>
+        <TabBtn active={tab === "merchant_payouts"} onClick={() => setTab("merchant_payouts")}>
+          Merchant Payouts
+        </TabBtn>
       </div>
-      {tab === "balances" ? <BalancesTab role={role} /> : <PayoutsTab />}
+      {tab === "balances" && <BalancesTab role={role} />}
+      {tab === "payouts" && <PayoutsTab mode="expert" />}
+      {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
     </div>
   );
 }
+
 
 function TabBtn({
   active,
@@ -385,19 +393,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ============ Payouts tab ============
 
-function PayoutsTab() {
+function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
   const queryClient = useQueryClient();
   const fetchBatches = useServerFn(listPayoutBatches);
-  const gen = useServerFn(generatePayoutBatch);
+  const genExpert = useServerFn(generatePayoutBatch);
+  const genMerchant = useServerFn(generateMerchantPayoutBatch);
   const { data = [], isLoading } = useQuery({
-    queryKey: ["wallets", "batches"],
-    queryFn: () => fetchBatches(),
+    queryKey: ["wallets", "batches", mode],
+    queryFn: () => fetchBatches({ data: { batch_type: mode } }),
   });
   const [openBatch, setOpenBatch] = useState<PayoutBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generate = useMutation({
-    mutationFn: () => gen(),
+    mutationFn: () => (mode === "merchant" ? genMerchant() : genExpert()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] }),
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
@@ -410,7 +419,9 @@ function PayoutsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[14px] text-muted-foreground">
-          Weekly payout batches to experts and area partners.
+          {mode === "merchant"
+            ? "Weekly merchant payout batches from completed order earnings."
+            : "Weekly payout batches to experts and area partners."}
         </p>
         <button
           disabled={generate.isPending}
@@ -423,6 +434,7 @@ function PayoutsTab() {
           <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
         </button>
       </div>
+
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
@@ -562,7 +574,12 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
           >
             <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {i.owner_type === "expert" ? "Expert" : "Partner"}
+              {i.owner_type === "expert"
+                ? "Expert"
+                : i.owner_type === "merchant"
+                  ? "Merchant"
+                  : "Partner"}
+
             </span>
             <span className="text-right font-semibold">{inr.format(i.amount)}</span>
             <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">

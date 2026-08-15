@@ -43,18 +43,20 @@ export type PayoutBatch = {
   status: "pending" | "paid";
   total_amount: number;
   created_at: string;
+  batch_type: "expert" | "merchant";
 };
 
 export type PayoutItem = {
   id: string;
   batch_id: string;
-  owner_type: "expert" | "area_partner";
+  owner_type: "expert" | "area_partner" | "merchant";
   owner_id: string;
   owner_name: string;
   amount: number;
   paid: boolean;
   paid_at: string | null;
 };
+
 
 // ---------- Balances / ledger ----------
 
@@ -161,22 +163,28 @@ export const walletAdjust = createServerFn({ method: "POST" })
 
 export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<PayoutBatch[]> => {
+  .inputValidator((input: { batch_type?: "expert" | "merchant" } | undefined) => input ?? {})
+  .handler(async ({ data: input, context }): Promise<PayoutBatch[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const { data, error } = await context.supabase
+    let q = context.supabase
       .from("payout_batches")
-      .select("id, week_start, week_end, status, total_amount, created_at")
+      .select("id, week_start, week_end, status, total_amount, created_at, batch_type")
       .order("week_start", { ascending: false });
+    if (input.batch_type) q = q.eq("batch_type", input.batch_type);
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({
       id: r.id,
       week_start: r.week_start,
       week_end: r.week_end,
       status: r.status as "pending" | "paid",
       total_amount: Number(r.total_amount ?? 0),
       created_at: r.created_at,
+      batch_type: (r.batch_type ?? "expert") as "expert" | "merchant",
     }));
   });
+
 
 export const listPayoutItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -197,26 +205,35 @@ export const listPayoutItems = createServerFn({ method: "GET" })
     const expertIds = items?.filter((i) => i.owner_type === "expert").map((i) => i.owner_id) ?? [];
     const partnerIds =
       items?.filter((i) => i.owner_type === "area_partner").map((i) => i.owner_id) ?? [];
+    const merchantIds =
+      items?.filter((i) => i.owner_type === "merchant").map((i) => i.owner_id) ?? [];
 
-    const [expertsRes, partnersRes] = await Promise.all([
+    const [expertsRes, partnersRes, merchantsRes] = await Promise.all([
       expertIds.length
         ? db.from("experts").select("id, name").in("id", expertIds)
         : Promise.resolve({ data: [], error: null }),
       partnerIds.length
         ? db.from("area_partners").select("id, name").in("id", partnerIds)
         : Promise.resolve({ data: [], error: null }),
+      merchantIds.length
+        ? db.from("merchants").select("id, store_name, owner_name, phone").in("id", merchantIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (expertsRes.error) throw new Error(expertsRes.error.message);
     if (partnersRes.error) throw new Error(partnersRes.error.message);
+    if (merchantsRes.error) throw new Error(merchantsRes.error.message);
 
     const nameMap = new Map<string, string>();
     for (const e of expertsRes.data ?? []) nameMap.set(`expert:${e.id}`, e.name);
     for (const p of partnersRes.data ?? []) nameMap.set(`area_partner:${p.id}`, p.name);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const m of (merchantsRes.data ?? []) as any[])
+      nameMap.set(`merchant:${m.id}`, m.store_name || m.owner_name || m.phone);
 
     return (items ?? []).map((r) => ({
       id: r.id,
       batch_id: r.batch_id,
-      owner_type: r.owner_type as "expert" | "area_partner",
+      owner_type: r.owner_type as "expert" | "area_partner" | "merchant",
       owner_id: r.owner_id,
       owner_name: nameMap.get(`${r.owner_type}:${r.owner_id}`) ?? "Unknown",
       amount: Number(r.amount ?? 0),
@@ -232,6 +249,15 @@ export const generatePayoutBatch = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { batchId: data as string };
   });
+
+export const generateMerchantPayoutBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("staff_generate_merchant_payout_batch");
+    if (error) throw new Error(error.message);
+    return { batchId: data as string };
+  });
+
 
 export const markPayoutItemPaid = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
