@@ -2452,6 +2452,10 @@ export type Database = {
         }
         Returns: string
       }
+      generate_offline_invoice_number: {
+        Args: { _merchant_id: string }
+        Returns: string
+      }
       generate_otp4: { Args: never; Returns: string }
       get_assigned_expert_public: {
         Args: { _booking_id: string }
