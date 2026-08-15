@@ -1406,6 +1406,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          low_stock_threshold: number
           merchant_id: string
           name: string
           price: number
@@ -1419,6 +1420,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          low_stock_threshold?: number
           merchant_id: string
           name: string
           price: number
@@ -1432,6 +1434,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          low_stock_threshold?: number
           merchant_id?: string
           name?: string
           price?: number
@@ -2204,8 +2207,18 @@ export type Database = {
         Returns: boolean
       }
       link_referral: { Args: { _code: string }; Returns: undefined }
+      merchant_advance_order: {
+        Args: { _new_status: string; _order_id: string }
+        Returns: undefined
+      }
+      merchant_claim_staff_invite: { Args: never; Returns: string }
+      merchant_decide_order: {
+        Args: { _decision: string; _order_id: string }
+        Returns: undefined
+      }
       merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_my_context: { Args: never; Returns: Json }
       merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
       merchant_submit_application: { Args: never; Returns: undefined }
       merchant_verify_pin_internal: {
