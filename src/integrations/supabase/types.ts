@@ -1690,6 +1690,7 @@ export type Database = {
           category_label: string | null
           created_at: string
           description: string | null
+          gst_rate: number | null
           hsn_sac_code: string | null
           id: string
           image_url: string | null
@@ -1705,6 +1706,7 @@ export type Database = {
           category_label?: string | null
           created_at?: string
           description?: string | null
+          gst_rate?: number | null
           hsn_sac_code?: string | null
           id?: string
           image_url?: string | null
@@ -1720,6 +1722,7 @@ export type Database = {
           category_label?: string | null
           created_at?: string
           description?: string | null
+          gst_rate?: number | null
           hsn_sac_code?: string | null
           id?: string
           image_url?: string | null
@@ -2506,6 +2509,10 @@ export type Database = {
         Returns: undefined
       }
       merchant_claim_staff_invite: { Args: never; Returns: string }
+      merchant_create_offline_sale: {
+        Args: { _payload: Json }
+        Returns: string
+      }
       merchant_decide_order: {
         Args: { _decision: string; _order_id: string }
         Returns: undefined
