@@ -1310,6 +1310,7 @@ export type Database = {
           booking_ids: string[]
           created_at: string
           id: string
+          ledger_ids: string[]
           owner_id: string
           owner_type: string
           paid: boolean
@@ -1321,6 +1322,7 @@ export type Database = {
           booking_ids?: string[]
           created_at?: string
           id?: string
+          ledger_ids?: string[]
           owner_id: string
           owner_type: string
           paid?: boolean
@@ -1332,6 +1334,7 @@ export type Database = {
           booking_ids?: string[]
           created_at?: string
           id?: string
+          ledger_ids?: string[]
           owner_id?: string
           owner_type?: string
           paid?: boolean
@@ -1349,6 +1352,7 @@ export type Database = {
       }
       payout_batches: {
         Row: {
+          batch_type: string
           created_at: string
           id: string
           paid_at: string | null
@@ -1358,6 +1362,7 @@ export type Database = {
           week_start: string
         }
         Insert: {
+          batch_type?: string
           created_at?: string
           id?: string
           paid_at?: string | null
@@ -1367,6 +1372,7 @@ export type Database = {
           week_start: string
         }
         Update: {
+          batch_type?: string
           created_at?: string
           id?: string
           paid_at?: string | null
@@ -2320,6 +2326,7 @@ export type Database = {
         Args: { _decision: string; _expert_id: string; _reason: string }
         Returns: undefined
       }
+      staff_generate_merchant_payout_batch: { Args: never; Returns: string }
       staff_generate_payout_batch: { Args: never; Returns: string }
       staff_mark_payout_batch_paid: {
         Args: { _batch_id: string }
