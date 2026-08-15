@@ -51,7 +51,7 @@ export const upsertFeeTier = createServerFn({ method: "POST" })
     (input: { id?: string | null; name?: string; monthlyFee?: number; isActive?: boolean }) => input,
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
-    const payload: Record<string, unknown> = {};
+    const payload: Record<string, string | number | boolean> = {};
     if (data.id) payload["id"] = data.id;
     if (data.name !== undefined) payload["name"] = data.name;
     if (data.monthlyFee !== undefined) payload["monthly_fee"] = data.monthlyFee;
@@ -89,7 +89,7 @@ export const setMerchantFeeTier = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { error } = await context.supabase.rpc("staff_set_merchant_fee_tier", {
       _merchant_id: data.merchantId,
-      _fee_tier_id: data.feeTierId,
+      _fee_tier_id: data.feeTierId as string,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
