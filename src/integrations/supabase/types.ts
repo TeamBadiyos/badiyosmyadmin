@@ -2519,7 +2519,15 @@ export type Database = {
       }
       merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_is_currently_open: {
+        Args: { _merchant_id: string }
+        Returns: boolean
+      }
       merchant_my_context: { Args: never; Returns: Json }
+      merchant_set_accepting_orders: {
+        Args: { _accepting: boolean }
+        Returns: boolean
+      }
       merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
       merchant_submit_application: { Args: never; Returns: undefined }
       merchant_verify_pin_internal: {
@@ -2623,12 +2631,17 @@ export type Database = {
       }
       staff_generate_merchant_payout_batch: { Args: never; Returns: string }
       staff_generate_payout_batch: { Args: never; Returns: string }
+      staff_generate_subscription_invoices: { Args: never; Returns: Json }
       staff_mark_payout_batch_paid: {
         Args: { _batch_id: string }
         Returns: undefined
       }
       staff_mark_payout_item_paid: {
         Args: { _item_id: string; _paid: boolean }
+        Returns: undefined
+      }
+      staff_mark_subscription_invoice_paid: {
+        Args: { _invoice_id: string; _paid: boolean }
         Returns: undefined
       }
       staff_reassign_expert: {
@@ -2653,6 +2666,10 @@ export type Database = {
       }
       staff_set_homepage_section_active: {
         Args: { _active: boolean; _id: string }
+        Returns: undefined
+      }
+      staff_set_merchant_fee_tier: {
+        Args: { _fee_tier_id: string; _merchant_id: string }
         Returns: undefined
       }
       staff_soft_delete_area_partner: {
@@ -2685,6 +2702,7 @@ export type Database = {
       }
       staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
       staff_upsert_expert: { Args: { _payload: Json }; Returns: string }
+      staff_upsert_fee_tier: { Args: { _payload: Json }; Returns: string }
       staff_upsert_homepage_section: {
         Args: { _payload: Json }
         Returns: string

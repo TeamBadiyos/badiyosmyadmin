@@ -21,6 +21,7 @@ import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { WaitlistPage } from "@/components/waitlist-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
+import { MerchantBillingPage } from "@/components/merchant-billing-page";
 
 
 import {
@@ -40,6 +41,7 @@ import {
   BadgeCheck,
   ListChecks,
   Store,
+  Receipt,
   LogOut,
   Menu,
   X,
@@ -71,6 +73,7 @@ const NAV_ITEMS = [
   { key: "partners", label: "Area Partners", icon: Handshake },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "merchants", label: "Merchant Approvals", icon: Store },
+  { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
@@ -279,6 +282,8 @@ function Shell() {
           <SkillApprovalsPage role={role} />
         ) : active === "merchants" ? (
           <MerchantApprovalsPage role={role} />
+        ) : active === "merchant-billing" ? (
+          <MerchantBillingPage role={role} />
         ) : active === "waitlist" ? (
           <WaitlistPage role={role} />
 
