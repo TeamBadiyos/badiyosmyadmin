@@ -2087,6 +2087,7 @@ export type Database = {
         Args: { _booking_id: string }
         Returns: undefined
       }
+      current_merchant_id: { Args: never; Returns: string }
       customer_cancel_booking_apply: {
         Args: {
           _booking_id: string
