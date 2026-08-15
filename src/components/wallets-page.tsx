@@ -24,7 +24,7 @@ const inr = new Intl.NumberFormat("en-IN", {
 type Role = "super_admin" | "ops_manager" | "area_partner" | null;
 
 export function WalletsPage({ role }: { role: Role }) {
-  const [tab, setTab] = useState<"balances" | "payouts">("balances");
+  const [tab, setTab] = useState<"balances" | "payouts" | "merchant_payouts">("balances");
   return (
     <div className="space-y-6">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
@@ -34,11 +34,17 @@ export function WalletsPage({ role }: { role: Role }) {
         <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")}>
           Payouts
         </TabBtn>
+        <TabBtn active={tab === "merchant_payouts"} onClick={() => setTab("merchant_payouts")}>
+          Merchant Payouts
+        </TabBtn>
       </div>
-      {tab === "balances" ? <BalancesTab role={role} /> : <PayoutsTab />}
+      {tab === "balances" && <BalancesTab role={role} />}
+      {tab === "payouts" && <PayoutsTab mode="expert" />}
+      {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
     </div>
   );
 }
+
 
 function TabBtn({
   active,
