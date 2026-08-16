@@ -777,6 +777,47 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_pages: {
+        Row: {
+          content: string
+          effective_date: string | null
+          id: string
+          is_active: boolean
+          last_updated_at: string
+          slug: string
+          title: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: string
+          effective_date?: string | null
+          id?: string
+          is_active?: boolean
+          last_updated_at?: string
+          slug: string
+          title: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          effective_date?: string | null
+          id?: string
+          is_active?: boolean
+          last_updated_at?: string
+          slug?: string
+          title?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_pages_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_documents: {
         Row: {
           doc_type: string
