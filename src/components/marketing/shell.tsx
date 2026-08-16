@@ -105,6 +105,12 @@ function MarketingFooter() {
         <FooterCol title="Help">
           <Link to="/support" className="hover:text-foreground">Contact support</Link>
         </FooterCol>
+        <FooterCol title="Legal">
+          <Link to="/privacy-policy" className="hover:text-foreground">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-foreground">Terms &amp; Conditions</Link>
+          <Link to="/refund-policy" className="hover:text-foreground">Refund &amp; Cancellation Policy</Link>
+          <Link to="/shipping-policy" className="hover:text-foreground">Shipping &amp; Delivery Policy</Link>
+        </FooterCol>
       </div>
       <div className="border-t border-border">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-4 text-[12px] text-muted-foreground text-center">

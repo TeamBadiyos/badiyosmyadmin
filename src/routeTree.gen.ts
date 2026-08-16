@@ -9,7 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as MyadminRouteImport } from './routes/myadmin'
 import { Route as JoinExpertRouteImport } from './routes/join-expert'
 import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
@@ -19,9 +23,29 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
+  id: '/shipping-policy',
+  path: '/shipping-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyadminRoute = MyadminRouteImport.update({
@@ -70,7 +94,11 @@ export interface FileRoutesByFullPath {
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/myadmin': typeof MyadminRouteWithChildren
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
 }
@@ -80,7 +108,11 @@ export interface FileRoutesByTo {
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/myadmin': typeof MyadminRouteWithChildren
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
 }
@@ -92,7 +124,11 @@ export interface FileRoutesById {
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/myadmin': typeof MyadminRouteWithChildren
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
 }
@@ -104,7 +140,11 @@ export interface FileRouteTypes {
     | '/join-area-partner'
     | '/join-expert'
     | '/myadmin'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/support'
+    | '/terms'
     | '/dashboard'
     | '/myadmin/login'
   fileRoutesByTo: FileRoutesByTo
@@ -114,7 +154,11 @@ export interface FileRouteTypes {
     | '/join-area-partner'
     | '/join-expert'
     | '/myadmin'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/support'
+    | '/terms'
     | '/dashboard'
     | '/myadmin/login'
   id:
@@ -125,7 +169,11 @@ export interface FileRouteTypes {
     | '/join-area-partner'
     | '/join-expert'
     | '/myadmin'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/shipping-policy'
     | '/support'
+    | '/terms'
     | '/_authenticated/dashboard'
     | '/myadmin/login'
   fileRoutesById: FileRoutesById
@@ -137,16 +185,48 @@ export interface RootRouteChildren {
   JoinAreaPartnerRoute: typeof JoinAreaPartnerRoute
   JoinExpertRoute: typeof JoinExpertRoute
   MyadminRoute: typeof MyadminRouteWithChildren
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
+  ShippingPolicyRoute: typeof ShippingPolicyRoute
   SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/support': {
       id: '/support'
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-policy': {
+      id: '/shipping-policy'
+      path: '/shipping-policy'
+      fullPath: '/shipping-policy'
+      preLoaderRoute: typeof ShippingPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/myadmin': {
@@ -237,7 +317,11 @@ const rootRouteChildren: RootRouteChildren = {
   JoinAreaPartnerRoute: JoinAreaPartnerRoute,
   JoinExpertRoute: JoinExpertRoute,
   MyadminRoute: MyadminRouteWithChildren,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
+  ShippingPolicyRoute: ShippingPolicyRoute,
   SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
