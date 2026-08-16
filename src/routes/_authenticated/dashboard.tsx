@@ -25,7 +25,6 @@ import { WaitlistPage } from "@/components/waitlist-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
-import { TaskDetailsPage } from "@/components/task-details-page";
 import { NotificationSoundsPage } from "@/components/notification-sounds-page";
 
 
@@ -98,7 +97,6 @@ const NAV_ITEMS = [
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
-  { key: "task-details", label: "Task Details", icon: ListChecks },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
 ] as const;
@@ -134,7 +132,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["roles", "legal", "task-details", "notification-sounds", "audit"],
+    keys: ["roles", "legal", "notification-sounds", "audit"],
   },
 ] as const;
 
@@ -425,9 +423,7 @@ function Shell() {
           <RolesPage />
         ) : active === "legal" ? (
           <LegalPagesPage role={role} />
-        ) : active === "task-details" ? (
-          <TaskDetailsPage role={role} />
-        ) : active === "notification-sounds" ? (
+                ) : active === "notification-sounds" ? (
           <NotificationSoundsPage role={role} />
         ) : active === "audit" ? (
           <AuditLogsPage />
