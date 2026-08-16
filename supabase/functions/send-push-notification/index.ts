@@ -131,9 +131,14 @@ async function sendToToken(
 ): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string }> {
   // High-attention "new job" pushes get an urgent Android config so the OS
   // shows a heads-up notification with sound + vibration even when the app
-  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'.
+  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'
+  // or an urgent alert_type in the data payload.
+  const d = (data ?? {}) as Record<string, unknown>;
   const isUrgentBroadcast =
-    !!data && (data as Record<string, unknown>).type === "new_booking_broadcast";
+    d.type === "new_booking_broadcast" ||
+    d.alert_type === "new_order" ||
+    d.alert_type === "extension_request";
+
 
   const androidConfig = isUrgentBroadcast
     ? {
