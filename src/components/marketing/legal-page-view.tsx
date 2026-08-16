@@ -36,7 +36,7 @@ export function LegalPageView({ slug, fallbackTitle }: { slug: string; fallbackT
           ) : !data ? (
             <p className="text-[15px] text-muted-foreground">This policy is not published yet.</p>
           ) : (
-            <MarkdownView source={data.content} />
+            <MarkdownView source={data.content.replace(/^# .*$\n?/m, "")} />
           )}
         </div>
       </article>
