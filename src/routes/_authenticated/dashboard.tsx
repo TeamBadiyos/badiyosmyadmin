@@ -59,6 +59,9 @@ import {
   Users,
   Sprout,
   Volume2,
+  TrendingUp,
+  Boxes,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
@@ -101,7 +104,40 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
-const SETTINGS_KEYS = ["roles", "legal", "task-details", "notification-sounds", "audit"] as const;
+const NAV_GROUPS = [
+  {
+    id: "partners",
+    label: "Partners & Merchants",
+    icon: Users,
+    keys: ["experts", "partners", "skills", "merchants", "merchant-billing"],
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    icon: TrendingUp,
+    keys: ["waitlist", "interest-leads", "referrals"],
+  },
+  {
+    id: "catalog",
+    label: "Catalog",
+    icon: Boxes,
+    keys: ["zones", "catalogue", "homepage"],
+  },
+  {
+    id: "finance",
+    label: "Finance & Reports",
+    icon: Landmark,
+    keys: ["wallets", "reports"],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    keys: ["roles", "legal", "task-details", "notification-sounds", "audit"],
+  },
+] as const;
+
+const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -118,7 +154,7 @@ function Shell() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NavKey>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [bookingsInitial, setBookingsInitial] = useState<
     { status?: string; from?: string; to?: string } | null
@@ -158,17 +194,18 @@ function Shell() {
   const role = (staff?.role as StaffRole | undefined) ?? null;
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
-  const topLevelItems = visibleItems.filter(
-    (n) => !(SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
-  );
-  const settingsItems = visibleItems.filter((n) =>
-    (SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
-  );
-  const settingsActive = (SETTINGS_KEYS as ReadonlyArray<string>).includes(active);
+  const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
+    isActive: (g.keys as ReadonlyArray<string>).includes(active),
+  })).filter((g) => g.items.length > 0);
 
   useEffect(() => {
-    if (settingsActive) setSettingsOpen(true);
-  }, [settingsActive]);
+    const g = NAV_GROUPS.find((grp) => (grp.keys as ReadonlyArray<string>).includes(active));
+    if (g) setOpenGroups((prev) => (prev[g.id] ? prev : { ...prev, [g.id]: true }));
+  }, [active]);
+
 
   useEffect(() => {
     if (role && !allowedKeys.includes(active)) {
@@ -237,57 +274,62 @@ function Shell() {
             );
           })}
 
-          {settingsItems.length > 0 && (
-            <div>
-              <button
-                onClick={() => setSettingsOpen((o) => !o)}
-                aria-expanded={settingsOpen}
-                className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
-                  settingsActive && !settingsOpen
-                    ? "border-primary bg-primary-tint text-foreground font-semibold"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                <Settings
-                  size={18}
-                  strokeWidth={settingsActive ? 2.25 : 2}
-                  className={settingsActive ? "text-primary" : ""}
-                />
-                <span className="flex-1 text-left">Settings</span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`}
-                />
-              </button>
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = !!openGroups[group.id];
+            return (
+              <div key={group.id}>
+                <button
+                  onClick={() => setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }))}
+                  aria-expanded={open}
+                  className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                    group.isActive && !open
+                      ? "border-primary bg-primary-tint text-foreground font-semibold"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <GroupIcon
+                    size={18}
+                    strokeWidth={group.isActive ? 2.25 : 2}
+                    className={group.isActive ? "text-primary" : ""}
+                  />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-              {settingsOpen &&
-                settingsItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = item.key === active;
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        setActive(item.key);
-                        setMobileOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 pl-11 pr-4 py-2 text-[13px] font-medium transition-colors border-l-[3px] ${
-                        isActive
-                          ? "border-primary bg-primary-tint text-foreground font-semibold"
-                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Icon
-                        size={16}
-                        strokeWidth={isActive ? 2.25 : 2}
-                        className={isActive ? "text-primary" : ""}
-                      />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          )}
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = item.key === active;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => {
+                          setActive(item.key);
+                          setMobileOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 pl-11 pr-4 py-2 text-[13px] font-medium transition-colors border-l-[3px] ${
+                          isActive
+                            ? "border-primary bg-primary-tint text-foreground font-semibold"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Icon
+                          size={16}
+                          strokeWidth={isActive ? 2.25 : 2}
+                          className={isActive ? "text-primary" : ""}
+                        />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
         </nav>
       </aside>
 
