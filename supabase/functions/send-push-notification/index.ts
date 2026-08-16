@@ -131,9 +131,14 @@ async function sendToToken(
 ): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string }> {
   // High-attention "new job" pushes get an urgent Android config so the OS
   // shows a heads-up notification with sound + vibration even when the app
-  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'.
+  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'
+  // or an urgent alert_type in the data payload.
+  const d = (data ?? {}) as Record<string, unknown>;
   const isUrgentBroadcast =
-    !!data && (data as Record<string, unknown>).type === "new_booking_broadcast";
+    d.type === "new_booking_broadcast" ||
+    d.alert_type === "new_order" ||
+    d.alert_type === "extension_request";
+
 
   const androidConfig = isUrgentBroadcast
     ? {
@@ -223,6 +228,7 @@ Deno.serve(async (req) => {
     user_id?: string;
     title?: string;
     body?: string;
+    alert_type?: string;
     data?: Record<string, unknown>;
   };
   try {
@@ -231,7 +237,7 @@ Deno.serve(async (req) => {
     return json(400, { error: "Invalid JSON body" });
   }
 
-  const { user_type, user_id, title, body, data } = payload;
+  const { user_type, user_id, title, body, alert_type } = payload;
   if (
     !user_type ||
     !["customer", "expert", "staff"].includes(user_type) ||
@@ -245,6 +251,35 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // Event-driven custom alert audio: resolve the configured sound for this
+  // alert_type + app and hand the app a signed URL it can play in-app.
+  const data: Record<string, unknown> = { ...(payload.data ?? {}) };
+  const effectiveAlertType =
+    alert_type ?? (typeof data.alert_type === "string" ? (data.alert_type as string) : undefined);
+  if (effectiveAlertType) data.alert_type = effectiveAlertType;
+
+  if (effectiveAlertType && (user_type === "expert" || user_type === "customer")) {
+    const app = user_type === "expert" ? "partner" : "customer";
+    try {
+      const { data: sound } = await admin
+        .from("notification_sounds")
+        .select("audio_url, applies_to, is_active")
+        .eq("event_key", effectiveAlertType)
+        .eq("is_active", true)
+        .maybeSingle();
+      const appliesTo: string[] = Array.isArray(sound?.applies_to) ? sound!.applies_to : [];
+      if (sound?.audio_url && appliesTo.includes(app)) {
+        const signed = await admin.storage
+          .from("notification-sounds")
+          .createSignedUrl(sound.audio_url, 60 * 60 * 24);
+        if (signed.data?.signedUrl) data.sound_url = signed.data.signedUrl;
+      }
+    } catch (e) {
+      console.warn("[push] sound resolution failed", String(e));
+    }
+  }
+
 
   const { data: tokens, error: tokErr } = await admin
     .from("device_tokens")
