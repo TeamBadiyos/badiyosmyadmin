@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { OG_IMAGE, SITE_URL } from "@/lib/brand";
 import { CalendarClock, Gem, ShieldCheck } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/shell";
 import { LeadForm } from "@/components/marketing/lead-form";
@@ -18,8 +19,12 @@ export const Route = createFileRoute("/join-expert")({
         content: "Weekly payouts, Bronze to Diamond levels, minimum earnings guarantee.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: `${SITE_URL}/join-expert` },
+      { property: "og:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/join-expert` }],
   }),
   component: JoinExpertPage,
 });

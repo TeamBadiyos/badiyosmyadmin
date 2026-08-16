@@ -87,8 +87,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Badiyos — हर घर का अपना साथी" },
       { name: "twitter:description", content: "Badiyos brings trusted home services to your doorstep. Book a verified home expert in minutes — cleaning, dishwashing, laundry and more." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/KRj2zBthzuR9e3YIrkADruXsjuJ2/social-images/social-1784996761379-badiyo_site.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/KRj2zBthzuR9e3YIrkADruXsjuJ2/social-images/social-1784996761379-badiyo_site.webp" },
     ],
     links: [
       { rel: "icon", type: "image/png", href: "/favicon.png" },
