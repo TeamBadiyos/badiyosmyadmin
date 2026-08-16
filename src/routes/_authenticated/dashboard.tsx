@@ -101,7 +101,40 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
-const SETTINGS_KEYS = ["roles", "legal", "task-details", "notification-sounds", "audit"] as const;
+const NAV_GROUPS = [
+  {
+    id: "partners",
+    label: "Partners & Merchants",
+    icon: Users,
+    keys: ["experts", "partners", "skills", "merchants", "merchant-billing"],
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    icon: TrendingUp,
+    keys: ["waitlist", "interest-leads", "referrals"],
+  },
+  {
+    id: "catalog",
+    label: "Catalog",
+    icon: Boxes,
+    keys: ["zones", "catalogue", "homepage"],
+  },
+  {
+    id: "finance",
+    label: "Finance & Reports",
+    icon: Landmark,
+    keys: ["wallets", "reports"],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    keys: ["roles", "legal", "task-details", "notification-sounds", "audit"],
+  },
+] as const;
+
+const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
