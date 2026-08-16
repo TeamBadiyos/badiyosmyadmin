@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { OG_IMAGE, SITE_URL } from "@/lib/brand";
 import { Building2, Trophy, Users } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/shell";
 import { LeadForm } from "@/components/marketing/lead-form";
@@ -18,8 +19,12 @@ export const Route = createFileRoute("/join-area-partner")({
         content: "Exclusive per-area franchise. Recruit and manage Home Experts, earn from every booking.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: `${SITE_URL}/join-area-partner` },
+      { property: "og:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/join-area-partner` }],
   }),
   component: JoinAreaPartnerPage,
 });

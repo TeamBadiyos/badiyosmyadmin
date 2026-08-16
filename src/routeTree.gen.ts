@@ -15,6 +15,7 @@ import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as MyadminRouteImport } from './routes/myadmin'
+import { Route as JoinMerchantRouteImport } from './routes/join-merchant'
 import { Route as JoinExpertRouteImport } from './routes/join-expert'
 import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -51,6 +52,11 @@ const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
 const MyadminRoute = MyadminRouteImport.update({
   id: '/myadmin',
   path: '/myadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinMerchantRoute = JoinMerchantRouteImport.update({
+  id: '/join-merchant',
+  path: '/join-merchant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinExpertRoute = JoinExpertRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
+  '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
     | '/refund-policy'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
     | '/refund-policy'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/join-area-partner'
     | '/join-expert'
+    | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
     | '/refund-policy'
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   JoinAreaPartnerRoute: typeof JoinAreaPartnerRoute
   JoinExpertRoute: typeof JoinExpertRoute
+  JoinMerchantRoute: typeof JoinMerchantRoute
   MyadminRoute: typeof MyadminRouteWithChildren
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/myadmin'
       fullPath: '/myadmin'
       preLoaderRoute: typeof MyadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-merchant': {
+      id: '/join-merchant'
+      path: '/join-merchant'
+      fullPath: '/join-merchant'
+      preLoaderRoute: typeof JoinMerchantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join-expert': {
@@ -316,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   JoinAreaPartnerRoute: JoinAreaPartnerRoute,
   JoinExpertRoute: JoinExpertRoute,
+  JoinMerchantRoute: JoinMerchantRoute,
   MyadminRoute: MyadminRouteWithChildren,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   RefundPolicyRoute: RefundPolicyRoute,

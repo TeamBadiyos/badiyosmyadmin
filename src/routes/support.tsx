@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { OG_IMAGE, SITE_URL } from "@/lib/brand";
 import { useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, ChevronDown } from "lucide-react";
@@ -17,8 +18,12 @@ export const Route = createFileRoute("/support")({
       { property: "og:title", content: "Support — Badiyos" },
       { property: "og:description", content: "Get help with your Badiyos bookings and account." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: `${SITE_URL}/support` },
+      { property: "og:image", content: OG_IMAGE },
+      { name: "twitter:image", content: OG_IMAGE },
     ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/support` }],
   }),
   component: SupportPage,
 });

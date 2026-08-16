@@ -425,6 +425,60 @@ export type Database = {
           },
         ]
       }
+      business_interest_leads: {
+        Row: {
+          business_name: string | null
+          category_interested: string
+          city: string
+          created_at: string
+          id: string
+          owner_name: string
+          phone: string
+        }
+        Insert: {
+          business_name?: string | null
+          category_interested: string
+          city?: string
+          created_at?: string
+          id?: string
+          owner_name: string
+          phone: string
+        }
+        Update: {
+          business_name?: string | null
+          category_interested?: string
+          city?: string
+          created_at?: string
+          id?: string
+          owner_name?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      city_interest_leads: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          name: string
+          phone: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       device_sessions: {
         Row: {
           created_at: string
