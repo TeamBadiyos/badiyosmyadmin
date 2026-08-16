@@ -53,6 +53,7 @@ import {
   CheckCircle2,
   Clock,
   Users,
+  Sprout,
   type LucideIcon,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
