@@ -19,6 +19,7 @@ import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
 import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
+import { InterestLeadsPage } from "@/components/interest-leads-page";
 import { WaitlistPage } from "@/components/waitlist-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
@@ -77,6 +78,7 @@ const NAV_ITEMS = [
   { key: "merchants", label: "Merchant Approvals", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
+  { key: "interest-leads", label: "Business Interest", icon: Sprout },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
@@ -289,6 +291,8 @@ function Shell() {
           <MerchantBillingPage role={role} />
         ) : active === "waitlist" ? (
           <WaitlistPage role={role} />
+        ) : active === "interest-leads" ? (
+          <InterestLeadsPage role={role} />
 
         ) : active === "emergency" ? (
           <EmergencyAlertsPage role={role} />

@@ -129,7 +129,7 @@ function WhatsAppFab() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Badiyos on WhatsApp"
-      className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 h-13 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-[0_12px_28px_-10px_rgba(0,185,122,0.7)] hover:brightness-95 hover:-translate-y-0.5 transition"
+      className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-[0_12px_28px_-10px_rgba(0,185,122,0.7)] hover:brightness-95 hover:-translate-y-0.5 transition"
     >
       <MessageCircle size={20} />
       <span className="hidden sm:inline text-[14px] font-bold">Chat with us</span>
