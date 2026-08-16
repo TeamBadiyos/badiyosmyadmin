@@ -2,9 +2,8 @@
  * Shared brand + contact constants for the public marketing site.
  */
 
-// TODO(badiyos): confirm the official WhatsApp support number (AiSensy line).
 // Digits only, with country code, no "+" — used to build wa.me links.
-export const SUPPORT_WHATSAPP_NUMBER = "919000000000";
+export const SUPPORT_WHATSAPP_NUMBER = "918007444464";
 
 export const SUPPORT_WHATSAPP_MESSAGE =
   "Hi Badiyos! I'd like to know more about your home services.";
