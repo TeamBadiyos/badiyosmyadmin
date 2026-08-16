@@ -70,3 +70,46 @@ async function squareCompress(file: File, size = 600): Promise<Blob> {
     canvas.toBlob((b) => resolve(b ?? file), "image/jpeg", 0.82),
   );
 }
+
+/** Uploads a compressed square image for a catalogue item (price option). */
+export async function uploadItemImage(optionId: string, file: File): Promise<string> {
+  const blob = await squareCompress(file);
+  const path = `items/${optionId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+  const { error } = await supabase.storage
+    .from(SERVICE_IMAGE_BUCKET)
+    .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+/** Uploads a short item video as-is and returns the storage path. */
+export async function uploadItemVideo(optionId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+  const path = `items/${optionId}/video-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(SERVICE_IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type || "video/mp4", upsert: true });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+/** Renders a private-bucket item video via a short-lived signed URL. */
+export function ServiceVideo({ path, className = "" }: { path: string | null; className?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setUrl(null);
+    if (!path) return;
+    supabase.storage
+      .from(SERVICE_IMAGE_BUCKET)
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (!cancelled) setUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+  if (!path || !url) return null;
+  return <video src={url} controls className={className} />;
+}
