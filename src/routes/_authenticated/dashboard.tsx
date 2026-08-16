@@ -151,6 +151,17 @@ function Shell() {
   const role = (staff?.role as StaffRole | undefined) ?? null;
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
+  const topLevelItems = visibleItems.filter(
+    (n) => !(SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
+  );
+  const settingsItems = visibleItems.filter((n) =>
+    (SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
+  );
+  const settingsActive = (SETTINGS_KEYS as ReadonlyArray<string>).includes(active);
+
+  useEffect(() => {
+    if (settingsActive) setSettingsOpen(true);
+  }, [settingsActive]);
 
   useEffect(() => {
     if (role && !allowedKeys.includes(active)) {
