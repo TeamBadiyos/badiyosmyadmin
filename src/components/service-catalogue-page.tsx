@@ -26,6 +26,11 @@ import {
   type CatalogueSegment,
   type CatalogueService,
   type PricingType,
+  listTaskTypes,
+  listItemTaskTypes,
+  setItemTaskTypes,
+  type TaskType,
+  type ItemTaskTypeLink,
 } from "@/lib/catalogue.functions";
 import {
   ServiceImage,
@@ -54,6 +59,21 @@ export function ServiceCataloguePage() {
     queryFn: () => fetchTree(),
     staleTime: 15_000,
   });
+
+  const fetchTaskTypes = useServerFn(listTaskTypes);
+  const fetchLinks = useServerFn(listItemTaskTypes);
+  const { data: taskTypesData } = useQuery({
+    queryKey: ["task-types"],
+    queryFn: () => fetchTaskTypes(),
+    staleTime: 15_000,
+  });
+  const { data: linksData } = useQuery({
+    queryKey: ["catalogue", "item-task-types"],
+    queryFn: () => fetchLinks(),
+    staleTime: 15_000,
+  });
+  const taskTypes: TaskType[] = taskTypesData ?? [];
+  const itemLinks: ItemTaskTypeLink[] = linksData ?? [];
 
   const segments = data?.segments ?? [];
   const categories = data?.categories ?? [];
@@ -246,6 +266,8 @@ export function ServiceCataloguePage() {
         categories={categories}
         services={services}
         options={priceOptions}
+        taskTypes={taskTypes}
+        itemLinks={itemLinks}
       />
 
       {categoryModal && (
@@ -266,6 +288,15 @@ export function ServiceCataloguePage() {
         <PriceOptionModal
           service={optionModal.service}
           option={optionModal.option}
+          taskTypes={taskTypes}
+          linkedTaskTypeIds={
+            optionModal.option
+              ? itemLinks
+                  .filter((l) => l.price_option_id === optionModal.option!.id)
+                  .sort((a, b) => a.display_order - b.display_order)
+                  .map((l) => l.task_type_id)
+              : []
+          }
           onClose={() => setOptionModal(null)}
         />
       )}
@@ -666,14 +697,21 @@ function ServiceModal({
 function PriceOptionModal({
   service,
   option,
+  taskTypes,
+  linkedTaskTypeIds,
   onClose,
 }: {
   service: CatalogueService;
   option: CataloguePriceOption | null;
+  taskTypes: TaskType[];
+  linkedTaskTypeIds: string[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const save = useServerFn(upsertPriceOption);
+  const saveLinks = useServerFn(setItemTaskTypes);
+  const [selectedTaskTypes, setSelectedTaskTypes] =
+    useState<string[]>(linkedTaskTypeIds);
   const [label, setLabel] = useState(option?.label ?? "");
   const [minutes, setMinutes] = useState(
     option?.duration_minutes != null ? String(option.duration_minutes) : "",
@@ -706,8 +744,8 @@ function PriceOptionModal({
   const optNum = (v: string) => (v.trim() === "" ? null : Number(v));
 
   const mutation = useMutation({
-    mutationFn: () =>
-      save({
+    mutationFn: async () => {
+      const res = await save({
         data: {
           id: option?.id ?? null,
           service_id: service.id,
@@ -729,7 +767,12 @@ function PriceOptionModal({
           inclusions,
           exclusions,
         },
-      }),
+      });
+      await saveLinks({
+        data: { price_option_id: res.id, task_type_ids: selectedTaskTypes },
+      });
+      return res;
+    },
 
     onSuccess: () => {
       toast.success(option ? "Price option updated" : "Price option added");
@@ -1001,6 +1044,12 @@ function PriceOptionModal({
           </>
         )}
 
+        <TaskTypeSelector
+          taskTypes={taskTypes}
+          selected={selectedTaskTypes}
+          onChange={setSelectedTaskTypes}
+        />
+
         <Field label="Description (detail page only)">
           <textarea
             className="w-full min-h-24 p-3 rounded-[12px] border border-border bg-background text-[14px]"
@@ -1089,12 +1138,22 @@ function PreviewPane({
   categories,
   services,
   options,
+  taskTypes,
+  itemLinks,
 }: {
   segments: CatalogueSegment[];
   categories: CatalogueCategory[];
   services: CatalogueService[];
   options: CataloguePriceOption[];
+  taskTypes: TaskType[];
+  itemLinks: ItemTaskTypeLink[];
 }) {
+  const taskTypeNames = (optionId: string) =>
+    itemLinks
+      .filter((l) => l.price_option_id === optionId)
+      .sort((a, b) => a.display_order - b.display_order)
+      .map((l) => taskTypes.find((t) => t.id === l.task_type_id)?.name)
+      .filter(Boolean) as string[];
   const activeSegments = segments.filter((s) => s.is_active);
   const [selected, setSelected] = useState<string | null>(null);
   const segId = selected ?? activeSegments[0]?.id ?? null;
@@ -1180,8 +1239,11 @@ function PreviewPane({
                           </p>
                         )}
                         <div className="mt-1 space-y-0.5">
-                          {opts.map((o) => (
-                            <p key={o.id} className="text-[10px] text-muted-foreground truncate">
+                          {opts.map((o) => {
+                            const names = taskTypeNames(o.id);
+                            return (
+                            <div key={o.id}>
+                            <p className="text-[10px] text-muted-foreground truncate">
                               {o.label}
                               {richBadge(o) ? (
                                 <span className="ml-1 text-primary font-semibold">
@@ -1191,7 +1253,15 @@ function PreviewPane({
                                 <span className="ml-1">· basic</span>
                               )}
                             </p>
-                          ))}
+                            {names.length > 0 && (
+                              <p className="text-[10px] text-foreground truncate">
+                                {names.length} task type{names.length === 1 ? "" : "s"}:{" "}
+                                {names.join(", ")}
+                              </p>
+                            )}
+                            </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -1203,5 +1273,95 @@ function PreviewPane({
         })}
       </div>
     </aside>
+  );
+}
+
+function TaskTypeSelector({
+  taskTypes,
+  selected,
+  onChange,
+}: {
+  taskTypes: TaskType[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const move = (i: number, dir: -1 | 1) => {
+    const next = [...selected];
+    const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+  const chosen = selected
+    .map((id) => taskTypes.find((t) => t.id === id))
+    .filter(Boolean) as TaskType[];
+
+  return (
+    <div className="space-y-2">
+      <span className="text-[12px] font-semibold text-muted-foreground">
+        Task types included
+      </span>
+      {taskTypes.length === 0 && (
+        <p className="text-[12px] text-muted-foreground">
+          No task types yet — create them in the Task Types screen.
+        </p>
+      )}
+      <div className="space-y-1">
+        {taskTypes.map((t) => (
+          <label
+            key={t.id}
+            className="flex items-center gap-2 text-[13px] text-foreground"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(t.id)}
+              onChange={(e) =>
+                onChange(
+                  e.target.checked
+                    ? [...selected, t.id]
+                    : selected.filter((id) => id !== t.id),
+                )
+              }
+            />
+            {t.name}
+            {!t.is_active && (
+              <span className="text-[10px] uppercase font-bold text-muted-foreground">
+                inactive
+              </span>
+            )}
+          </label>
+        ))}
+      </div>
+      {chosen.length > 1 && (
+        <div className="space-y-1 pt-1">
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            Display order
+          </span>
+          {chosen.map((t, i) => (
+            <div key={t.id} className="flex items-center gap-2">
+              <span className="text-[12px] text-foreground flex-1 truncate">
+                {i + 1}. {t.name}
+              </span>
+              <button
+                type="button"
+                aria-label={`Move ${t.name} up`}
+                onClick={() => move(i, -1)}
+                className="h-7 w-7 rounded-[8px] border border-border text-[12px] hover:bg-muted"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                aria-label={`Move ${t.name} down`}
+                onClick={() => move(i, 1)}
+                className="h-7 w-7 rounded-[8px] border border-border text-[12px] hover:bg-muted"
+              >
+                ↓
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
