@@ -27,7 +27,13 @@ import {
   type CatalogueService,
   type PricingType,
 } from "@/lib/catalogue.functions";
-import { ServiceImage, uploadServiceImage } from "@/components/service-image";
+import {
+  ServiceImage,
+  ServiceVideo,
+  uploadServiceImage,
+  uploadItemImage,
+  uploadItemVideo,
+} from "@/components/service-image";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -735,7 +741,7 @@ function PriceOptionModal({
 
   return (
     <Modal
-      title={`${option ? "Edit" : "New"} price option · ${PRICING_LABELS[service.pricing_type]}`}
+      title={`${option ? "Edit" : "New"} item · ${PRICING_LABELS[service.pricing_type]}`}
       onClose={onClose}
     >
       <Field
@@ -1024,6 +1030,60 @@ function PriceOptionModal({
   );
 }
 
+function richBadge(o: CataloguePriceOption): string {
+  const parts: string[] = [];
+  if (o.description?.trim()) parts.push("+ description");
+  const imgs = (o.image_url ? 1 : 0) + (o.gallery_urls?.length ?? 0);
+  if (imgs) parts.push(`${imgs} image${imgs === 1 ? "" : "s"}`);
+  if (o.video_url) parts.push("video");
+  if (o.inclusions?.length) parts.push(`${o.inclusions.length} inclusions`);
+  if (o.exclusions?.length) parts.push(`${o.exclusions.length} exclusions`);
+  return parts.join(", ");
+}
+
+function ListEditor({
+  label,
+  items,
+  onChange,
+}: {
+  label: string;
+  items: string[];
+  onChange: (v: string[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <span className="text-[12px] font-semibold text-muted-foreground">{label}</span>
+      {items.map((t, i) => (
+        <div key={i} className="flex gap-2">
+          <input
+            className={inputCls}
+            value={t}
+            placeholder={`${label.slice(0, -1)} ${i + 1}`}
+            onChange={(e) =>
+              onChange(items.map((v, j) => (j === i ? e.target.value : v)))
+            }
+          />
+          <button
+            type="button"
+            aria-label={`Remove ${label} row ${i + 1}`}
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+            className="h-10 w-10 shrink-0 rounded-[12px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="h-9 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+      >
+        <Plus size={12} /> Add {label.slice(0, -1).toLowerCase()}
+      </button>
+    </div>
+  );
+}
+
 function PreviewPane({
   segments,
   categories,
@@ -1116,9 +1176,23 @@ function PreviewPane({
                         )}
                         {opts.length > 1 && (
                           <p className="text-[11px] text-muted-foreground">
-                            {opts.length} options
+                            {opts.length} items
                           </p>
                         )}
+                        <div className="mt-1 space-y-0.5">
+                          {opts.map((o) => (
+                            <p key={o.id} className="text-[10px] text-muted-foreground truncate">
+                              {o.label}
+                              {richBadge(o) ? (
+                                <span className="ml-1 text-primary font-semibold">
+                                  {richBadge(o)}
+                                </span>
+                              ) : (
+                                <span className="ml-1">· basic</span>
+                              )}
+                            </p>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   );
