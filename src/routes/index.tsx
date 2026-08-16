@@ -32,7 +32,7 @@ import {
   BusinessInterestDialog,
   CityInterestDialog,
 } from "@/components/marketing/interest-dialogs";
-import expertGreeting from "@/assets/expert-greeting.png.asset.json";
+import expertGreeting from "@/assets/hero-expert.png.asset.json";
 import badiyosWhiteLogo from "@/assets/badiyos-wordmark-white.png.asset.json";
 import { OG_IMAGE, SITE_URL } from "@/lib/brand";
 
@@ -189,8 +189,6 @@ function Hero({ onCityInterest }: { onCityInterest: () => void }) {
               />
             </div>
             <div className="relative w-full max-w-[520px] hero-float">
-              {/* TODO(brand): replace this hero photo — the uniform in the current
-                  shot shows inconsistent wordmarks ("badiyo" vs "badiyos"). */}
               <img
                 src={expertGreeting.url}
                 alt="A Badiyos home expert in uniform greeting with a namaste"
