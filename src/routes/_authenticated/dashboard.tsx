@@ -274,57 +274,62 @@ function Shell() {
             );
           })}
 
-          {settingsItems.length > 0 && (
-            <div>
-              <button
-                onClick={() => setSettingsOpen((o) => !o)}
-                aria-expanded={settingsOpen}
-                className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
-                  settingsActive && !settingsOpen
-                    ? "border-primary bg-primary-tint text-foreground font-semibold"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                <Settings
-                  size={18}
-                  strokeWidth={settingsActive ? 2.25 : 2}
-                  className={settingsActive ? "text-primary" : ""}
-                />
-                <span className="flex-1 text-left">Settings</span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`}
-                />
-              </button>
+          {groups.map((group) => {
+            const GroupIcon = group.icon;
+            const open = !!openGroups[group.id];
+            return (
+              <div key={group.id}>
+                <button
+                  onClick={() => setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }))}
+                  aria-expanded={open}
+                  className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                    group.isActive && !open
+                      ? "border-primary bg-primary-tint text-foreground font-semibold"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <GroupIcon
+                    size={18}
+                    strokeWidth={group.isActive ? 2.25 : 2}
+                    className={group.isActive ? "text-primary" : ""}
+                  />
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-              {settingsOpen &&
-                settingsItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = item.key === active;
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        setActive(item.key);
-                        setMobileOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 pl-11 pr-4 py-2 text-[13px] font-medium transition-colors border-l-[3px] ${
-                        isActive
-                          ? "border-primary bg-primary-tint text-foreground font-semibold"
-                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Icon
-                        size={16}
-                        strokeWidth={isActive ? 2.25 : 2}
-                        className={isActive ? "text-primary" : ""}
-                      />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          )}
+                {open &&
+                  group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = item.key === active;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => {
+                          setActive(item.key);
+                          setMobileOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 pl-11 pr-4 py-2 text-[13px] font-medium transition-colors border-l-[3px] ${
+                          isActive
+                            ? "border-primary bg-primary-tint text-foreground font-semibold"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Icon
+                          size={16}
+                          strokeWidth={isActive ? 2.25 : 2}
+                          className={isActive ? "text-primary" : ""}
+                        />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            );
+          })}
+
         </nav>
       </aside>
 
