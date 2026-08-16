@@ -291,9 +291,24 @@ export type PipelineBooking = {
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<PipelineBooking[]> => {
+  .inputValidator((input?: { segmentId?: string | null }) => ({
+    segmentId: input?.segmentId ?? null,
+  }))
+  .handler(async ({ data, context }): Promise<PipelineBooking[]> => {
     await assertActiveStaff(context);
     const db = context.supabase;
+
+    let categoryIds: string[] | null = null;
+    if (data.segmentId) {
+      const { data: cats, error } = await db
+        .from("service_categories")
+        .select("id")
+        .eq("segment_id", data.segmentId);
+      if (error) throw new Error(error.message);
+      categoryIds = (cats ?? []).map((c) => c.id as string);
+      if (categoryIds.length === 0) return [];
+    }
+
 
     const now = new Date();
     const startOfDay = new Date(
