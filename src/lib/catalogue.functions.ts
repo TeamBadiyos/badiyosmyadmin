@@ -377,3 +377,156 @@ export const deletePriceOption = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------------- Task types ----------------
+
+export type TaskType = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  inclusions: string[];
+  exclusions: string[];
+  rank: number;
+  is_active: boolean;
+};
+
+export type ItemTaskTypeLink = {
+  price_option_id: string;
+  task_type_id: string;
+  display_order: number;
+};
+
+export const listTaskTypes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TaskType[]> => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("task_types")
+      .select("id,name,slug,description,image_url,inclusions,exclusions,rank,is_active")
+      .order("rank", { ascending: true });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      description: r.description ?? null,
+      image_url: r.image_url ?? null,
+      inclusions: (r.inclusions ?? []) as string[],
+      exclusions: (r.exclusions ?? []) as string[],
+      rank: r.rank ?? 0,
+      is_active: r.is_active ?? true,
+    }));
+  });
+
+export const listItemTaskTypes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ItemTaskTypeLink[]> => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("item_task_types")
+      .select("price_option_id,task_type_id,display_order")
+      .order("display_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({
+      price_option_id: r.price_option_id,
+      task_type_id: r.task_type_id,
+      display_order: r.display_order ?? 0,
+    }));
+  });
+
+export type UpsertTaskTypeInput = {
+  id?: string | null;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  inclusions?: string[];
+  exclusions?: string[];
+  rank?: number | null;
+  is_active: boolean;
+};
+
+export const upsertTaskType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpsertTaskTypeInput) => {
+    if (!input?.name?.trim()) throw new Error("Name is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const base = {
+      name: data.name.trim(),
+      description: data.description?.trim() ? data.description.trim() : null,
+      image_url: data.image_url?.trim() ? data.image_url.trim() : null,
+      inclusions: (data.inclusions ?? []).map((t) => t.trim()).filter(Boolean),
+      exclusions: (data.exclusions ?? []).map((t) => t.trim()).filter(Boolean),
+      rank: data.rank ?? 0,
+      is_active: data.is_active,
+    };
+    if (data.id) {
+      const { error } = await context.supabase
+        .from("task_types")
+        .update(base)
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    let slug = slugify(data.name);
+    const { data: clash } = await context.supabase
+      .from("task_types")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (clash) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    const { data: created, error } = await context.supabase
+      .from("task_types")
+      .insert({ ...base, slug })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: created.id as string };
+  });
+
+export const deleteTaskType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("task_types")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setItemTaskTypes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { price_option_id: string; task_type_ids: string[] }) => {
+    if (!input?.price_option_id) throw new Error("price_option_id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error: delErr } = await context.supabase
+      .from("item_task_types")
+      .delete()
+      .eq("price_option_id", data.price_option_id);
+    if (delErr) throw new Error(delErr.message);
+    const rows = (data.task_type_ids ?? []).map((id, i) => ({
+      price_option_id: data.price_option_id,
+      task_type_id: id,
+      display_order: i,
+    }));
+    if (rows.length) {
+      const { error } = await context.supabase.from("item_task_types").insert(rows);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
