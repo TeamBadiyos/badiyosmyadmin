@@ -237,8 +237,9 @@ export function PipelineKanban({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-4">
         <div className="min-w-0">
           <h2 className="text-[16px] font-bold text-foreground">
-            Booking Pipeline
+            Service Operations
           </h2>
+
           <p className="text-[12px] text-muted-foreground mt-1">
             Live board — cards move as statuses change.
           </p>
