@@ -24,6 +24,7 @@ import { WaitlistPage } from "@/components/waitlist-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
+import { TaskDetailsPage } from "@/components/task-details-page";
 
 
 import {
@@ -91,12 +92,13 @@ const NAV_ITEMS = [
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
+  { key: "task-details", label: "Task Details", icon: ListChecks },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
-const SETTINGS_KEYS = ["roles", "legal", "audit"] as const;
+const SETTINGS_KEYS = ["roles", "legal", "task-details", "audit"] as const;
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -377,6 +379,8 @@ function Shell() {
           <RolesPage />
         ) : active === "legal" ? (
           <LegalPagesPage role={role} />
+        ) : active === "task-details" ? (
+          <TaskDetailsPage role={role} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
