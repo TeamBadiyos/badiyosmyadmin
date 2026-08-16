@@ -154,7 +154,7 @@ function Shell() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NavKey>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [bookingsInitial, setBookingsInitial] = useState<
     { status?: string; from?: string; to?: string } | null
