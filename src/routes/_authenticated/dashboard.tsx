@@ -45,6 +45,8 @@ import {
   Store,
   Receipt,
   Scale,
+  Settings,
+  ChevronDown,
   LogOut,
   Menu,
   X,
@@ -94,6 +96,8 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
+const SETTINGS_KEYS = ["roles", "legal", "audit"] as const;
+
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
@@ -109,6 +113,7 @@ function Shell() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NavKey>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [bookingsInitial, setBookingsInitial] = useState<
     { status?: string; from?: string; to?: string } | null
@@ -148,6 +153,17 @@ function Shell() {
   const role = (staff?.role as StaffRole | undefined) ?? null;
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
+  const topLevelItems = visibleItems.filter(
+    (n) => !(SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
+  );
+  const settingsItems = visibleItems.filter((n) =>
+    (SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
+  );
+  const settingsActive = (SETTINGS_KEYS as ReadonlyArray<string>).includes(active);
+
+  useEffect(() => {
+    if (settingsActive) setSettingsOpen(true);
+  }, [settingsActive]);
 
   useEffect(() => {
     if (role && !allowedKeys.includes(active)) {
@@ -190,7 +206,7 @@ function Shell() {
           </button>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
-          {visibleItems.map((item) => {
+          {topLevelItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.key === active;
             return (
@@ -215,6 +231,58 @@ function Shell() {
               </button>
             );
           })}
+
+          {settingsItems.length > 0 && (
+            <div>
+              <button
+                onClick={() => setSettingsOpen((o) => !o)}
+                aria-expanded={settingsOpen}
+                className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                  settingsActive && !settingsOpen
+                    ? "border-primary bg-primary-tint text-foreground font-semibold"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <Settings
+                  size={18}
+                  strokeWidth={settingsActive ? 2.25 : 2}
+                  className={settingsActive ? "text-primary" : ""}
+                />
+                <span className="flex-1 text-left">Settings</span>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {settingsOpen &&
+                settingsItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.key === active;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        setActive(item.key);
+                        setMobileOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 pl-11 pr-4 py-2 text-[13px] font-medium transition-colors border-l-[3px] ${
+                        isActive
+                          ? "border-primary bg-primary-tint text-foreground font-semibold"
+                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Icon
+                        size={16}
+                        strokeWidth={isActive ? 2.25 : 2}
+                        className={isActive ? "text-primary" : ""}
+                      />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          )}
         </nav>
       </aside>
 
