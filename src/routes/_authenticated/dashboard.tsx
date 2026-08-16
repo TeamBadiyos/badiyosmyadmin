@@ -194,17 +194,18 @@ function Shell() {
   const role = (staff?.role as StaffRole | undefined) ?? null;
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
-  const topLevelItems = visibleItems.filter(
-    (n) => !(SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
-  );
-  const settingsItems = visibleItems.filter((n) =>
-    (SETTINGS_KEYS as ReadonlyArray<string>).includes(n.key),
-  );
-  const settingsActive = (SETTINGS_KEYS as ReadonlyArray<string>).includes(active);
+  const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
+    isActive: (g.keys as ReadonlyArray<string>).includes(active),
+  })).filter((g) => g.items.length > 0);
 
   useEffect(() => {
-    if (settingsActive) setSettingsOpen(true);
-  }, [settingsActive]);
+    const g = NAV_GROUPS.find((grp) => (grp.keys as ReadonlyArray<string>).includes(active));
+    if (g) setOpenGroups((prev) => (prev[g.id] ? prev : { ...prev, [g.id]: true }));
+  }, [active]);
+
 
   useEffect(() => {
     if (role && !allowedKeys.includes(active)) {
