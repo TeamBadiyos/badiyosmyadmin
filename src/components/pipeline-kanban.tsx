@@ -105,7 +105,13 @@ function stopBeep(ref: React.MutableRefObject<AudioHandle | null>) {
   ref.current = null;
 }
 
-export function PipelineKanban({ role }: { role: StaffRole | null }) {
+export function PipelineKanban({
+  role,
+  segmentId = null,
+}: {
+  role: StaffRole | null;
+  segmentId?: string | null;
+}) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
@@ -113,11 +119,12 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["pipeline", "board"],
-    queryFn: () => fetchPipeline(),
+    queryKey: ["pipeline", "board", segmentId],
+    queryFn: () => fetchPipeline({ data: { segmentId } }),
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
+
 
   const dispatchConfigQuery = useQuery({
     queryKey: ["dispatch-config"],
