@@ -817,18 +817,209 @@ function PriceOptionModal({
         </Field>
       </div>
 
+      <div className="border-t border-border pt-4 space-y-4">
+        <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+          Item detail
+        </p>
+
+        {!option && (
+          <p className="text-[12px] text-muted-foreground">
+            Save the item first to upload images and video.
+          </p>
+        )}
+
+        {option && (
+          <>
+            <Field label="Primary image">
+              <div className="flex items-center gap-3">
+                <ServiceImage
+                  path={image}
+                  alt={label || "item"}
+                  className="h-16 w-16 rounded-[12px]"
+                />
+                <input
+                  ref={imgRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setBusy(true);
+                    try {
+                      setImage(await uploadItemImage(option.id, f));
+                      toast.success("Image uploaded");
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Upload failed");
+                    } finally {
+                      setBusy(false);
+                      if (imgRef.current) imgRef.current.value = "";
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => imgRef.current?.click()}
+                  className="h-9 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted disabled:opacity-50"
+                >
+                  <Upload size={12} /> Upload
+                </button>
+                {image && (
+                  <button
+                    type="button"
+                    onClick={() => setImage(null)}
+                    className="h-9 px-3 rounded-[10px] border border-border text-[12px] text-destructive font-semibold hover:bg-destructive/10"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </Field>
+
+            <Field label="Gallery images">
+              <div className="flex flex-wrap gap-2">
+                {gallery.map((g, i) => (
+                  <div key={g} className="relative">
+                    <ServiceImage
+                      path={g}
+                      alt={`gallery ${i + 1}`}
+                      className="h-14 w-14 rounded-[10px]"
+                    />
+                    <div className="absolute -top-2 -right-2 flex gap-1">
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          aria-label="Move left"
+                          onClick={() =>
+                            setGallery((g0) => {
+                              const n = [...g0];
+                              [n[i - 1], n[i]] = [n[i], n[i - 1]];
+                              return n;
+                            })
+                          }
+                          className="h-5 w-5 rounded-full bg-muted text-[10px] font-bold"
+                        >
+                          ‹
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Remove image"
+                        onClick={() => setGallery((g0) => g0.filter((_, j) => j !== i))}
+                        className="h-5 w-5 rounded-full bg-destructive text-primary-foreground text-[10px] font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <input
+                  ref={galRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (!files.length) return;
+                    setBusy(true);
+                    try {
+                      const paths: string[] = [];
+                      for (const f of files) paths.push(await uploadItemImage(option.id, f));
+                      setGallery((g0) => [...g0, ...paths]);
+                      toast.success(`${paths.length} image(s) added`);
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Upload failed");
+                    } finally {
+                      setBusy(false);
+                      if (galRef.current) galRef.current.value = "";
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => galRef.current?.click()}
+                  className="h-14 w-14 rounded-[10px] border border-dashed border-border text-muted-foreground inline-flex items-center justify-center disabled:opacity-50"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </Field>
+
+            <Field label="Video (optional)">
+              <div className="space-y-2">
+                <ServiceVideo path={video} className="w-full rounded-[12px] max-h-48" />
+                <div className="flex gap-2">
+                  <input
+                    ref={vidRef}
+                    type="file"
+                    accept="video/*"
+                    hidden
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setBusy(true);
+                      try {
+                        setVideo(await uploadItemVideo(option.id, f));
+                        toast.success("Video uploaded");
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Upload failed");
+                      } finally {
+                        setBusy(false);
+                        if (vidRef.current) vidRef.current.value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => vidRef.current?.click()}
+                    className="h-9 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted disabled:opacity-50"
+                  >
+                    <Upload size={12} /> {video ? "Replace video" : "Upload video"}
+                  </button>
+                  {video && (
+                    <button
+                      type="button"
+                      onClick={() => setVideo(null)}
+                      className="h-9 px-3 rounded-[10px] border border-border text-[12px] text-destructive font-semibold hover:bg-destructive/10"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Field>
+          </>
+        )}
+
+        <Field label="Description (detail page only)">
+          <textarea
+            className="w-full min-h-24 p-3 rounded-[12px] border border-border bg-background text-[14px]"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </Field>
+
+        <ListEditor label="Inclusions" items={inclusions} onChange={setInclusions} />
+        <ListEditor label="Exclusions" items={exclusions} onChange={setExclusions} />
+      </div>
+
       <label className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
         Active
       </label>
 
       <button
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || busy}
         onClick={() => mutation.mutate()}
         className="h-10 w-full rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
       >
-        {mutation.isPending ? "Saving…" : "Save price option"}
+        {mutation.isPending ? "Saving…" : "Save item"}
       </button>
+
     </Modal>
   );
 }
