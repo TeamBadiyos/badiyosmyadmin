@@ -164,7 +164,7 @@ export function LegalPagesPage({ role }: { role: StaffRole | null }) {
               </p>
             )}
             <div className="mt-4">
-              <MarkdownView source={content} />
+              <MarkdownView source={content.replace(/^# .*$\n?/m, "")} />
             </div>
           </div>
         </div>
