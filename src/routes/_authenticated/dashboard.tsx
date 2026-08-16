@@ -96,6 +96,8 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
+const SETTINGS_KEYS = ["roles", "legal", "audit"] as const;
+
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
