@@ -45,6 +45,8 @@ import {
   Store,
   Receipt,
   Scale,
+  Settings,
+  ChevronDown,
   LogOut,
   Menu,
   X,
