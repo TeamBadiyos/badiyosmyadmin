@@ -46,6 +46,12 @@ export type CataloguePriceOption = {
   hq_share: number | null;
   display_order: number;
   is_active: boolean;
+  image_url: string | null;
+  gallery_urls: string[];
+  video_url: string | null;
+  description: string | null;
+  inclusions: string[];
+  exclusions: string[];
 };
 
 export type CatalogueTree = {
@@ -110,7 +116,7 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
       context.supabase
         .from("service_price_options")
         .select(
-          "id,service_id,label,duration_minutes,unit_label,customer_price,strikethrough_price,expert_payout,partner_commission,hq_share,display_order,is_active",
+          "id,service_id,label,duration_minutes,unit_label,customer_price,strikethrough_price,expert_payout,partner_commission,hq_share,display_order,is_active,image_url,gallery_urls,video_url,description,inclusions,exclusions",
         )
         .order("display_order", { ascending: true }),
     ]);
@@ -131,6 +137,12 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
       hq_share: num(r.hq_share),
       display_order: r.display_order ?? 0,
       is_active: r.is_active ?? true,
+      image_url: r.image_url ?? null,
+      gallery_urls: (r.gallery_urls ?? []) as string[],
+      video_url: r.video_url ?? null,
+      description: r.description ?? null,
+      inclusions: (r.inclusions ?? []) as string[],
+      exclusions: (r.exclusions ?? []) as string[],
     });
     return {
       segments: (segs.data ?? []) as CatalogueSegment[],
@@ -285,6 +297,12 @@ export type UpsertPriceOptionInput = {
   hq_share: number | null;
   display_order?: number | null;
   is_active: boolean;
+  image_url?: string | null;
+  gallery_urls?: string[];
+  video_url?: string | null;
+  description?: string | null;
+  inclusions?: string[];
+  exclusions?: string[];
 };
 
 export const upsertPriceOption = createServerFn({ method: "POST" })
@@ -320,6 +338,12 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
       hq_share: data.hq_share,
       display_order: data.display_order ?? 0,
       is_active: data.is_active,
+      image_url: data.image_url?.trim() ? data.image_url.trim() : null,
+      gallery_urls: (data.gallery_urls ?? []).filter((u) => !!u?.trim()),
+      video_url: data.video_url?.trim() ? data.video_url.trim() : null,
+      description: data.description?.trim() ? data.description.trim() : null,
+      inclusions: (data.inclusions ?? []).map((t) => t.trim()).filter(Boolean),
+      exclusions: (data.exclusions ?? []).map((t) => t.trim()).filter(Boolean),
     };
     if (data.id) {
       const { error } = await context.supabase
