@@ -686,6 +686,16 @@ function PriceOptionModal({
   const [hq, setHq] = useState(option?.hq_share != null ? String(option.hq_share) : "");
   const [order, setOrder] = useState(String(option?.display_order ?? 0));
   const [active, setActive] = useState(option?.is_active ?? true);
+  const [image, setImage] = useState<string | null>(option?.image_url ?? null);
+  const [gallery, setGallery] = useState<string[]>(option?.gallery_urls ?? []);
+  const [video, setVideo] = useState<string | null>(option?.video_url ?? null);
+  const [description, setDescription] = useState(option?.description ?? "");
+  const [inclusions, setInclusions] = useState<string[]>(option?.inclusions ?? []);
+  const [exclusions, setExclusions] = useState<string[]>(option?.exclusions ?? []);
+  const [busy, setBusy] = useState(false);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const galRef = useRef<HTMLInputElement>(null);
+  const vidRef = useRef<HTMLInputElement>(null);
 
   const optNum = (v: string) => (v.trim() === "" ? null : Number(v));
 
@@ -706,8 +716,15 @@ function PriceOptionModal({
           hq_share: optNum(hq),
           display_order: Number(order) || 0,
           is_active: active,
+          image_url: image,
+          gallery_urls: gallery,
+          video_url: video,
+          description,
+          inclusions,
+          exclusions,
         },
       }),
+
     onSuccess: () => {
       toast.success(option ? "Price option updated" : "Price option added");
       queryClient.invalidateQueries({ queryKey: ["catalogue"] });
