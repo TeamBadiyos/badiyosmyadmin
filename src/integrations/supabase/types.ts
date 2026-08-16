@@ -2004,6 +2004,50 @@ export type Database = {
           },
         ]
       }
+      service_task_details: {
+        Row: {
+          excluded_items: string[]
+          icon_url: string | null
+          id: string
+          included_items: string[]
+          is_active: boolean
+          rank: number
+          segment_id: string
+          task_name: string
+          task_slug: string
+        }
+        Insert: {
+          excluded_items: string[]
+          icon_url?: string | null
+          id?: string
+          included_items: string[]
+          is_active?: boolean
+          rank?: number
+          segment_id: string
+          task_name: string
+          task_slug: string
+        }
+        Update: {
+          excluded_items?: string[]
+          icon_url?: string | null
+          id?: string
+          included_items?: string[]
+          is_active?: boolean
+          rank?: number
+          segment_id?: string
+          task_name?: string
+          task_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_task_details_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_users: {
         Row: {
           auth_user_id: string
