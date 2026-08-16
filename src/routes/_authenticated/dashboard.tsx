@@ -22,6 +22,7 @@ import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { WaitlistPage } from "@/components/waitlist-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
+import { LegalPagesPage } from "@/components/legal-pages-page";
 
 
 import {
@@ -42,6 +43,7 @@ import {
   ListChecks,
   Store,
   Receipt,
+  Scale,
   LogOut,
   Menu,
   X,
@@ -83,6 +85,7 @@ const NAV_ITEMS = [
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "reports", label: "Reports", icon: BarChart3 },
+  { key: "legal", label: "Legal", icon: Scale },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
 ] as const;
 
@@ -299,6 +302,8 @@ function Shell() {
           <ReferralsPage />
         ) : active === "roles" ? (
           <RolesPage />
+        ) : active === "legal" ? (
+          <LegalPagesPage role={role} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
