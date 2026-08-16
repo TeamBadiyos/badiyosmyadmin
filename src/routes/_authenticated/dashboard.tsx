@@ -59,6 +59,9 @@ import {
   Users,
   Sprout,
   Volume2,
+  TrendingUp,
+  Boxes,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
