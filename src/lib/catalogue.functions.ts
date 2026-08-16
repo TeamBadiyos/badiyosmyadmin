@@ -1,0 +1,355 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+export const PRICING_TYPES = ["duration", "flat", "quantity"] as const;
+export type PricingType = (typeof PRICING_TYPES)[number];
+
+export type CatalogueSegment = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  slug: string;
+  rank: number;
+  is_active: boolean;
+  icon_url: string | null;
+};
+
+export type CatalogueCategory = {
+  id: string;
+  segment_id: string;
+  name: string;
+  slug: string;
+  rank: number;
+  is_active: boolean;
+};
+
+export type CatalogueService = {
+  id: string;
+  category_id: string;
+  name: string;
+  image_url: string | null;
+  pricing_type: PricingType;
+  display_order: number;
+  is_active: boolean;
+};
+
+export type CataloguePriceOption = {
+  id: string;
+  service_id: string;
+  label: string;
+  duration_minutes: number | null;
+  unit_label: string | null;
+  customer_price: number;
+  strikethrough_price: number | null;
+  expert_payout: number | null;
+  partner_commission: number | null;
+  hq_share: number | null;
+  display_order: number;
+  is_active: boolean;
+};
+
+export type CatalogueTree = {
+  segments: CatalogueSegment[];
+  categories: CatalogueCategory[];
+  services: CatalogueService[];
+  priceOptions: CataloguePriceOption[];
+};
+
+async function requireCatalogueStaff(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("staff_users")
+    .select("role, status")
+    .eq("auth_user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (
+    !data ||
+    data.status !== "active" ||
+    !["super_admin", "ops_manager"].includes(data.role)
+  ) {
+    throw new Error("Forbidden");
+  }
+}
+
+function slugify(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function num(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export const listCatalogueTree = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CatalogueTree> => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const [segs, cats, svcs, opts] = await Promise.all([
+      context.supabase
+        .from("segments")
+        .select("id,name,short_name,slug,rank,is_active,icon_url")
+        .order("rank", { ascending: true }),
+      context.supabase
+        .from("service_categories")
+        .select("id,segment_id,name,slug,rank,is_active")
+        .order("rank", { ascending: true }),
+      context.supabase
+        .from("services")
+        .select("id,category_id,name,image_url,pricing_type,display_order,is_active")
+        .order("display_order", { ascending: true }),
+      context.supabase
+        .from("service_price_options")
+        .select(
+          "id,service_id,label,duration_minutes,unit_label,customer_price,strikethrough_price,expert_payout,partner_commission,hq_share,display_order,is_active",
+        )
+        .order("display_order", { ascending: true }),
+    ]);
+    for (const r of [segs, cats, svcs, opts]) {
+      if (r.error) throw new Error(r.error.message);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mapOpt = (r: any): CataloguePriceOption => ({
+      id: r.id,
+      service_id: r.service_id,
+      label: r.label,
+      duration_minutes: r.duration_minutes ?? null,
+      unit_label: r.unit_label ?? null,
+      customer_price: Number(r.customer_price ?? 0),
+      strikethrough_price: num(r.strikethrough_price),
+      expert_payout: num(r.expert_payout),
+      partner_commission: num(r.partner_commission),
+      hq_share: num(r.hq_share),
+      display_order: r.display_order ?? 0,
+      is_active: r.is_active ?? true,
+    });
+    return {
+      segments: (segs.data ?? []) as CatalogueSegment[],
+      categories: (cats.data ?? []) as CatalogueCategory[],
+      services: (svcs.data ?? []) as CatalogueService[],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      priceOptions: ((opts.data ?? []) as any[]).map(mapOpt),
+    };
+  });
+
+// ---------------- Categories ----------------
+
+export type UpsertCategoryInput = {
+  id?: string | null;
+  segment_id: string;
+  name: string;
+  rank?: number | null;
+  is_active: boolean;
+};
+
+export const upsertCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpsertCategoryInput) => {
+    if (!input?.name?.trim()) throw new Error("Name is required");
+    if (!input?.segment_id) throw new Error("Segment is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const base = {
+      segment_id: data.segment_id,
+      name: data.name.trim(),
+      is_active: data.is_active,
+      rank: data.rank ?? 0,
+    };
+    if (data.id) {
+      const { error } = await context.supabase
+        .from("service_categories")
+        .update(base)
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    let slug = slugify(data.name);
+    const { data: clash } = await context.supabase
+      .from("service_categories")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (clash) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    const { data: created, error } = await context.supabase
+      .from("service_categories")
+      .insert({ ...base, slug })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: created.id as string };
+  });
+
+export const setCategoryActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; active: boolean }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("service_categories")
+      .update({ is_active: data.active })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------------- Services ----------------
+
+export type UpsertServiceInput = {
+  id?: string | null;
+  category_id: string;
+  name: string;
+  image_url: string | null;
+  pricing_type: PricingType;
+  display_order?: number | null;
+  is_active: boolean;
+};
+
+export const upsertService = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpsertServiceInput) => {
+    if (!input?.name?.trim()) throw new Error("Name is required");
+    if (!input?.category_id) throw new Error("Category is required");
+    if (!(PRICING_TYPES as readonly string[]).includes(input.pricing_type))
+      throw new Error("Invalid pricing type");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const row = {
+      category_id: data.category_id,
+      name: data.name.trim(),
+      image_url: data.image_url?.trim() ? data.image_url.trim() : null,
+      pricing_type: data.pricing_type,
+      display_order: data.display_order ?? 0,
+      is_active: data.is_active,
+    };
+    if (data.id) {
+      const { error } = await context.supabase
+        .from("services")
+        .update(row)
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    const { data: created, error } = await context.supabase
+      .from("services")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: created.id as string };
+  });
+
+export const deleteService = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("services")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------------- Price options ----------------
+
+export type UpsertPriceOptionInput = {
+  id?: string | null;
+  service_id: string;
+  label: string;
+  duration_minutes: number | null;
+  unit_label: string | null;
+  customer_price: number;
+  strikethrough_price: number | null;
+  expert_payout: number | null;
+  partner_commission: number | null;
+  hq_share: number | null;
+  display_order?: number | null;
+  is_active: boolean;
+};
+
+export const upsertPriceOption = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpsertPriceOptionInput) => {
+    if (!input?.service_id) throw new Error("Service is required");
+    if (!input?.label?.trim()) throw new Error("Label is required");
+    if (!(input.customer_price >= 0)) throw new Error("Customer price must be non-negative");
+    for (const k of [
+      "strikethrough_price",
+      "expert_payout",
+      "partner_commission",
+      "hq_share",
+    ] as const) {
+      const v = input[k];
+      if (v != null && !(v >= 0)) throw new Error(`${k} must be non-negative`);
+    }
+    if (input.duration_minutes != null && !(input.duration_minutes > 0))
+      throw new Error("Duration minutes must be positive");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const row = {
+      service_id: data.service_id,
+      label: data.label.trim(),
+      duration_minutes: data.duration_minutes,
+      unit_label: data.unit_label?.trim() ? data.unit_label.trim() : null,
+      customer_price: data.customer_price,
+      strikethrough_price: data.strikethrough_price,
+      expert_payout: data.expert_payout,
+      partner_commission: data.partner_commission,
+      hq_share: data.hq_share,
+      display_order: data.display_order ?? 0,
+      is_active: data.is_active,
+    };
+    if (data.id) {
+      const { error } = await context.supabase
+        .from("service_price_options")
+        .update(row)
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    const { data: created, error } = await context.supabase
+      .from("service_price_options")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: created.id as string };
+  });
+
+export const deletePriceOption = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("service_price_options")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
