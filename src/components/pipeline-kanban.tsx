@@ -105,7 +105,13 @@ function stopBeep(ref: React.MutableRefObject<AudioHandle | null>) {
   ref.current = null;
 }
 
-export function PipelineKanban({ role }: { role: StaffRole | null }) {
+export function PipelineKanban({
+  role,
+  segmentId = null,
+}: {
+  role: StaffRole | null;
+  segmentId?: string | null;
+}) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
@@ -113,11 +119,12 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["pipeline", "board"],
-    queryFn: () => fetchPipeline(),
+    queryKey: ["pipeline", "board", segmentId],
+    queryFn: () => fetchPipeline({ data: { segmentId } }),
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
+
 
   const dispatchConfigQuery = useQuery({
     queryKey: ["dispatch-config"],
@@ -230,8 +237,9 @@ export function PipelineKanban({ role }: { role: StaffRole | null }) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-4">
         <div className="min-w-0">
           <h2 className="text-[16px] font-bold text-foreground">
-            Booking Pipeline
+            Service Operations
           </h2>
+
           <p className="text-[12px] text-muted-foreground mt-1">
             Live board — cards move as statuses change.
           </p>

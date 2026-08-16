@@ -291,9 +291,24 @@ export type PipelineBooking = {
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<PipelineBooking[]> => {
+  .inputValidator((input?: { segmentId?: string | null }) => ({
+    segmentId: input?.segmentId ?? null,
+  }))
+  .handler(async ({ data, context }): Promise<PipelineBooking[]> => {
     await assertActiveStaff(context);
     const db = context.supabase;
+
+    let categoryIds: string[] | null = null;
+    if (data.segmentId) {
+      const { data: cats, error } = await db
+        .from("service_categories")
+        .select("id")
+        .eq("segment_id", data.segmentId);
+      if (error) throw new Error(error.message);
+      categoryIds = (cats ?? []).map((c) => c.id as string);
+      if (categoryIds.length === 0) return [];
+    }
+
 
     const now = new Date();
     const startOfDay = new Date(
@@ -304,32 +319,29 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
 
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
-    const [openRes, completedRes] = await Promise.all([
-      db
-        .from("bookings")
-        .select(
-          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at",
-        )
-        .in("status", [
-          "confirmed",
-          "accepted",
-          "expert_assigned",
-          "in_progress",
-        ])
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(200),
-      db
-        .from("bookings")
-        .select(
-          "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at",
-        )
-        .eq("status", "completed")
-        .is("deleted_at", null)
-        .gte("created_at", startOfDay)
-        .order("created_at", { ascending: false })
-        .limit(200),
-    ]);
+    const cols =
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at";
+    let openQ = db
+      .from("bookings")
+      .select(cols)
+      .in("status", ["confirmed", "accepted", "expert_assigned", "in_progress"])
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    let completedQ = db
+      .from("bookings")
+      .select(cols)
+      .eq("status", "completed")
+      .is("deleted_at", null)
+      .gte("created_at", startOfDay)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (categoryIds) {
+      openQ = openQ.in("service_category_id", categoryIds);
+      completedQ = completedQ.in("service_category_id", categoryIds);
+    }
+    const [openRes, completedRes] = await Promise.all([openQ, completedQ]);
+
     if (openRes.error) throw new Error(openRes.error.message);
     if (completedRes.error) throw new Error(completedRes.error.message);
 

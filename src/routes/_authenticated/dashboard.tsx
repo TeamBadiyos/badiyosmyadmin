@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { PipelineKanban } from "@/components/pipeline-kanban";
+import { CommerceKanban } from "@/components/commerce-kanban";
 
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
@@ -462,26 +463,47 @@ function DashboardHome({
 }) {
   const fetchStats = useServerFn(getDashboardStats);
   const queryClient = useQueryClient();
+  const [segmentId, setSegmentId] = useState<string | null>(null);
+
+  const segmentsQuery = useQuery({
+    queryKey: ["segments", "filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("segments")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("rank", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["dashboard", "stats"],
-    queryFn: () => fetchStats(),
+    queryKey: ["dashboard", "stats", segmentId],
+    queryFn: () => fetchStats({ data: { segmentId } }),
     refetchInterval: 60_000, // safety-net poll; realtime below drives normal refreshes
     refetchOnWindowFocus: false,
   });
 
-  // Realtime: any change to bookings or experts.is_online invalidates the stats.
+  // Realtime: any change to bookings, experts, merchant orders or POS sales
+  // invalidates the unified stats.
   useEffect(() => {
+    const invalidate = () =>
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
     const channel = supabase
       .channel("dashboard-stats")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, invalidate)
+      .on("postgres_changes", { event: "*", schema: "public", table: "experts" }, invalidate)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "bookings" },
-        () => queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] }),
+        { event: "*", schema: "public", table: "merchant_orders" },
+        invalidate,
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "experts" },
-        () => queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] }),
+        { event: "*", schema: "public", table: "offline_sales" },
+        invalidate,
       )
       .subscribe();
     return () => {
@@ -496,45 +518,53 @@ function DashboardHome({
   });
 
   const today = new Date().toISOString().slice(0, 10);
+  const showCommerce = role === "super_admin" || role === "ops_manager";
   const cards: Array<{
     label: string;
     value: string;
+    hint?: string;
     icon: LucideIcon;
     onClick?: () => void;
   }> = [
     {
-      label: "Today's Bookings",
-      value: String(data?.todayBookings ?? 0),
-      icon: CalendarCheck,
-      onClick: () => onGoBookings({ from: today, to: today }),
-    },
-    {
       label: "Today's Revenue",
       value: inr.format(data?.todayRevenue ?? 0),
+      hint: "Bookings + online orders + POS",
       icon: IndianRupee,
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },
     {
-      label: "Active Bookings",
-      value: String(data?.activeBookings ?? 0),
+      label: "Today's Transactions",
+      value: String(data?.todayTransactions ?? 0),
+      hint: `${data?.todayBookings ?? 0} bookings · ${data?.todayOrders ?? 0} orders`,
+      icon: CalendarCheck,
+      onClick: () => onGoBookings({ from: today, to: today }),
+    },
+    {
+      label: "Active Right Now",
+      value: String(data?.activeNow ?? 0),
+      hint: "In progress + being prepared",
       icon: Activity,
       onClick: () => onGoBookings({ status: "active" }),
     },
     {
       label: "Completed Today",
       value: String(data?.completedToday ?? 0),
+      hint: "Bookings + orders",
       icon: CheckCircle2,
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },
     {
-      label: "Pending Assignment",
-      value: String(data?.pendingAssignment ?? 0),
+      label: "Pending Action",
+      value: String(data?.pendingAction ?? 0),
+      hint: "Needs expert + needs merchant",
       icon: Clock,
       onClick: () => onGoBookings({ status: "accepted" }),
     },
     {
-      label: "Online Experts",
-      value: String(data?.onlineExperts ?? 0),
+      label: "Online Right Now",
+      value: String(data?.onlineNow ?? 0),
+      hint: `${data?.onlineExperts ?? 0} experts · ${data?.openMerchants ?? 0} stores`,
       icon: Users,
       onClick: () => onGoExperts(true),
     },
@@ -542,9 +572,31 @@ function DashboardHome({
 
   return (
     <div className="w-full space-y-6">
-      {isError && (
-        <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {isError ? (
+          <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">
+            Unified view across service bookings and merchant commerce.
+          </p>
+        )}
+        <label className="flex items-center gap-2 text-[13px]">
+          <span className="text-muted-foreground font-medium">Segment</span>
+          <select
+            value={segmentId ?? ""}
+            onChange={(e) => setSegmentId(e.target.value || null)}
+            className="h-9 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <option value="">All Segments</option>
+            {(segmentsQuery.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 xl:gap-6">
         {cards.map((card) => {
           const Icon = card.icon;
@@ -562,6 +614,11 @@ function DashboardHome({
                 <p className="mt-2 text-[26px] leading-none font-bold text-foreground truncate">
                   {isLoading && !data ? "—" : card.value}
                 </p>
+                {card.hint && (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground truncate">
+                    {card.hint}
+                  </p>
+                )}
               </div>
               <div className="w-9 h-9 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
                 <Icon size={18} />
@@ -570,8 +627,13 @@ function DashboardHome({
           );
         })}
       </div>
-      <PipelineKanban role={role} />
+
+      <div className={showCommerce ? "grid gap-6 2xl:grid-cols-2" : ""}>
+        <PipelineKanban role={role} segmentId={segmentId} />
+        {showCommerce && <CommerceKanban segmentId={segmentId} />}
+      </div>
     </div>
   );
 }
+
 
