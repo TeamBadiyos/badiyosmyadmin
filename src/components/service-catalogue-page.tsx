@@ -1,16 +1,33 @@
-import { useEffect, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Upload,
+  Layers,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
-  listServicePrices,
-  listServiceCategories,
-  updateServicePrice,
-  createServicePriceRow,
-  deleteServicePriceRow,
-  type ServicePriceRow,
-} from "@/lib/service-catalogue.functions";
+  listCatalogueTree,
+  upsertCategory,
+  setCategoryActive,
+  upsertService,
+  deleteService,
+  upsertPriceOption,
+  deletePriceOption,
+  PRICING_TYPES,
+  type CatalogueCategory,
+  type CataloguePriceOption,
+  type CatalogueSegment,
+  type CatalogueService,
+  type PricingType,
+} from "@/lib/catalogue.functions";
+import { ServiceImage, uploadServiceImage } from "@/components/service-image";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -18,588 +35,891 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+const PRICING_LABELS: Record<PricingType, string> = {
+  duration: "Duration-based",
+  flat: "Flat price",
+  quantity: "Quantity-based",
+};
+
 export function ServiceCataloguePage() {
-  const fetchRows = useServerFn(listServicePrices);
-  const { data = [], isLoading, isError, error } = useQuery({
-    queryKey: ["service-catalogue", "list"],
-    queryFn: () => fetchRows(),
+  const fetchTree = useServerFn(listCatalogueTree);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["catalogue", "tree"],
+    queryFn: () => fetchTree(),
     staleTime: 15_000,
   });
 
-  const fetchCategories = useServerFn(listServiceCategories);
-  const { data: categories = [] } = useQuery({
-    queryKey: ["service-catalogue", "categories"],
-    queryFn: () => fetchCategories(),
-    staleTime: 60_000,
-  });
+  const segments = data?.segments ?? [];
+  const categories = data?.categories ?? [];
+  const services = data?.services ?? [];
+  const priceOptions = data?.priceOptions ?? [];
 
-  const queryClient = useQueryClient();
-  const removeRow = useServerFn(deleteServicePriceRow);
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => removeRow({ data: { id } }),
-    onSuccess: () => {
-      toast.success("Row permanently deleted");
-      queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
-  });
+  const [openSegments, setOpenSegments] = useState<Record<string, boolean>>({});
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [categoryModal, setCategoryModal] = useState<
+    { segment: CatalogueSegment; category: CatalogueCategory | null } | null
+  >(null);
+  const [serviceModal, setServiceModal] = useState<
+    { category: CatalogueCategory; service: CatalogueService | null } | null
+  >(null);
+  const [optionModal, setOptionModal] = useState<
+    { service: CatalogueService; option: CataloguePriceOption | null } | null
+  >(null);
 
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const editingRow = data.find((r) => r.id === editingId) ?? null;
-  const rows =
-    categoryFilter === "all"
-      ? data
-      : data.filter((r) => r.service_category_id === categoryFilter);
-  const defaultCategoryId =
-    categories.find((c) => c.slug === "home-cleaning")?.id ?? categories[0]?.id ?? null;
+  const catsBySegment = useMemo(() => {
+    const m = new Map<string, CatalogueCategory[]>();
+    for (const c of categories) {
+      const list = m.get(c.segment_id) ?? [];
+      list.push(c);
+      m.set(c.segment_id, list);
+    }
+    return m;
+  }, [categories]);
+
+  const servicesByCategory = useMemo(() => {
+    const m = new Map<string, CatalogueService[]>();
+    for (const s of services) {
+      const list = m.get(s.category_id) ?? [];
+      list.push(s);
+      m.set(s.category_id, list);
+    }
+    return m;
+  }, [services]);
+
+  const optionsByService = useMemo(() => {
+    const m = new Map<string, CataloguePriceOption[]>();
+    for (const o of priceOptions) {
+      const list = m.get(o.service_id) ?? [];
+      list.push(o);
+      m.set(o.service_id, list);
+    }
+    return m;
+  }, [priceOptions]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
+      <div className="space-y-4 min-w-0">
         <p className="text-[14px] text-muted-foreground">
-          Customer prices and payout splits per service duration, per service category.
+          Segment → Category → Service → Price options. Pricing can be
+          duration-based, flat, or quantity-based per service.
         </p>
-        <div className="flex items-center gap-2">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] font-semibold text-foreground"
-          >
-            <option value="all">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setCreating(true)}
-            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] inline-flex items-center gap-1.5"
-          >
-            <Plus size={16} /> New row
-          </button>
-        </div>
-      </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_140px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Duration</span>
-          <span className="text-right">Customer Price</span>
-          <span className="text-right">Expert Payout</span>
-          <span className="text-right">Partner Commission</span>
-          <span className="text-right">HQ Share</span>
-          <span>Status</span>
-          <span></span>
-        </div>
-
-        {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
+        {isLoading && (
+          <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
+        )}
         {isError && (
           <p className="text-[13px] text-destructive text-center py-10">
-            {(error as Error)?.message ?? "Failed to load pricing."}
+            {(error as Error)?.message ?? "Failed to load catalogue."}
           </p>
         )}
-        {!isLoading && !isError && rows.length === 0 && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">No pricing rows yet.</p>
-        )}
 
-        {rows.map((r) => (
-          <div
-            key={r.id}
-            className="grid grid-cols-[minmax(0,1.2fr)_120px_120px_140px_120px_100px_140px] gap-4 items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px]"
-          >
-            <div className="min-w-0">
-              <p className="font-semibold text-foreground truncate">{r.duration_label}</p>
-              <p className="text-[12px] text-muted-foreground">
-                {r.duration_minutes} min{r.subtitle ? ` · ${r.subtitle}` : ""}
-              </p>
-            </div>
-            <span className="text-right font-semibold">{inr.format(r.price)}</span>
-            <span className="text-right">
-              {r.expert_payout != null ? inr.format(r.expert_payout) : "—"}
-            </span>
-            <span className="text-right">
-              {r.area_partner_payout != null ? inr.format(r.area_partner_payout) : "—"}
-            </span>
-            <span className="text-right">
-              {r.hq_revenue != null ? inr.format(r.hq_revenue) : "—"}
-            </span>
-            <span>
-              <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${
-                  r.is_active
-                    ? "bg-primary-tint text-primary"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {r.is_active ? "active" : "inactive"}
-              </span>
-            </span>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setEditingId(r.id)}
-                className="h-9 px-3 rounded-[12px] border border-border text-foreground font-semibold text-[13px] inline-flex items-center gap-1 hover:bg-muted"
-              >
-                <Pencil size={14} /> Edit
-              </button>
-              <button
-                aria-label={`Delete ${r.duration_label}`}
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `This will permanently delete "${r.duration_label}", are you sure? This cannot be undone.`,
-                    )
-                  ) {
-                    deleteMutation.mutate(r.id);
-                  }
-                }}
+        {segments.map((seg) => {
+          const open = openSegments[seg.id] ?? true;
+          const cats = catsBySegment.get(seg.id) ?? [];
+          return (
+            <section
+              key={seg.id}
+              className="bg-card border border-border rounded-[18px] overflow-hidden"
+            >
+              <header className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+                <button
+                  onClick={() => setOpenSegments((s) => ({ ...s, [seg.id]: !open }))}
+                  className="inline-flex items-center gap-2 text-left"
+                >
+                  {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <Layers size={16} className="text-primary" />
+                  <span className="text-[15px] font-bold text-foreground">{seg.name}</span>
+                  {!seg.is_active && (
+                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                      inactive
+                    </span>
+                  )}
+                  <span className="text-[12px] text-muted-foreground">
+                    {cats.length} categor{cats.length === 1 ? "y" : "ies"}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setCategoryModal({ segment: seg, category: null })}
+                  className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
+                >
+                  <Plus size={14} /> Category
+                </button>
+              </header>
 
-                className="h-9 w-9 rounded-[12px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10 disabled:opacity-50"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
+              {open && (
+                <div className="divide-y divide-border">
+                  {cats.length === 0 && (
+                    <p className="text-[13px] text-muted-foreground px-5 py-6">
+                      No categories yet.
+                    </p>
+                  )}
+                  {cats.map((cat) => {
+                    const catOpen = openCategories[cat.id] ?? true;
+                    const svcs = servicesByCategory.get(cat.id) ?? [];
+                    return (
+                      <div key={cat.id} className="px-5 py-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <button
+                            onClick={() =>
+                              setOpenCategories((s) => ({ ...s, [cat.id]: !catOpen }))
+                            }
+                            className="inline-flex items-center gap-2"
+                          >
+                            {catOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span className="text-[14px] font-semibold text-foreground">
+                              {cat.name}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                cat.is_active
+                                  ? "bg-primary-tint text-primary"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {cat.is_active ? "active" : "inactive"}
+                            </span>
+                            <span className="text-[12px] text-muted-foreground">
+                              {svcs.length} service{svcs.length === 1 ? "" : "s"}
+                            </span>
+                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                setCategoryModal({ segment: seg, category: cat })
+                              }
+                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+                            >
+                              <Pencil size={12} /> Edit
+                            </button>
+                            <button
+                              onClick={() => setServiceModal({ category: cat, service: null })}
+                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+                            >
+                              <Plus size={12} /> Service
+                            </button>
+                          </div>
+                        </div>
+
+                        {catOpen && (
+                          <div className="mt-3 space-y-3 pl-6">
+                            {svcs.length === 0 && (
+                              <p className="text-[12px] text-muted-foreground">
+                                No services yet.
+                              </p>
+                            )}
+                            {svcs.map((svc) => (
+                              <ServiceRow
+                                key={svc.id}
+                                service={svc}
+                                options={optionsByService.get(svc.id) ?? []}
+                                onEdit={() =>
+                                  setServiceModal({ category: cat, service: svc })
+                                }
+                                onAddOption={() =>
+                                  setOptionModal({ service: svc, option: null })
+                                }
+                                onEditOption={(o) =>
+                                  setOptionModal({ service: svc, option: o })
+                                }
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
 
-      {editingRow && (
-        <EditPriceModal row={editingRow} onClose={() => setEditingId(null)} />
-      )}
+      <PreviewPane
+        segments={segments}
+        categories={categories}
+        services={services}
+        options={priceOptions}
+      />
 
-      {creating && (
-        <CreatePriceModal
-          categories={categories}
-          defaultCategoryId={defaultCategoryId}
-          onClose={() => setCreating(false)}
+      {categoryModal && (
+        <CategoryModal
+          segment={categoryModal.segment}
+          category={categoryModal.category}
+          onClose={() => setCategoryModal(null)}
+        />
+      )}
+      {serviceModal && (
+        <ServiceModal
+          category={serviceModal.category}
+          service={serviceModal.service}
+          onClose={() => setServiceModal(null)}
+        />
+      )}
+      {optionModal && (
+        <PriceOptionModal
+          service={optionModal.service}
+          option={optionModal.option}
+          onClose={() => setOptionModal(null)}
         />
       )}
     </div>
   );
 }
 
-function EditPriceModal({ row, onClose }: { row: ServicePriceRow; onClose: () => void }) {
+function ServiceRow({
+  service,
+  options,
+  onEdit,
+  onAddOption,
+  onEditOption,
+}: {
+  service: CatalogueService;
+  options: CataloguePriceOption[];
+  onEdit: () => void;
+  onAddOption: () => void;
+  onEditOption: (o: CataloguePriceOption) => void;
+}) {
   const queryClient = useQueryClient();
-  const save = useServerFn(updateServicePrice);
-  const [label, setLabel] = useState(row.duration_label);
-  const [sub, setSub] = useState(row.subtitle ?? "");
-  const [price, setPrice] = useState(String(row.price));
-  const [expert, setExpert] = useState(row.expert_payout != null ? String(row.expert_payout) : "");
-  const [partner, setPartner] = useState(
-    row.area_partner_payout != null ? String(row.area_partner_payout) : "",
-  );
-  const [hq, setHq] = useState(row.hq_revenue != null ? String(row.hq_revenue) : "");
-  const [active, setActive] = useState(row.is_active);
-  const [error, setError] = useState<string | null>(null);
+  const removeService = useServerFn(deleteService);
+  const removeOption = useServerFn(deletePriceOption);
 
-  function parseNonNeg(v: string): number | null {
-    const t = v.trim();
-    if (!t) return null;
-    const n = Number(t);
-    if (!isFinite(n) || n < 0) throw new Error("Prices must be positive numbers");
-    return n;
-  }
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      try {
-        const p = parseNonNeg(price);
-        if (p == null) throw new Error("Customer price is required");
-        if (!label.trim()) throw new Error("Duration title is required");
-        return save({
-          data: {
-            id: row.id,
-            duration_label: label.trim(),
-            subtitle: sub.trim() ? sub.trim() : null,
-            price: p,
-            expert_payout: parseNonNeg(expert),
-            area_partner_payout: parseNonNeg(partner),
-            hq_revenue: parseNonNeg(hq),
-            is_active: active,
-          },
-        });
-
-      } catch (e) {
-        return Promise.reject(e);
-      }
-    },
+  const delService = useMutation({
+    mutationFn: (id: string) => removeService({ data: { id } }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
-      onClose();
+      toast.success("Service deleted");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
     },
-    onError: (e) => setError(e instanceof Error ? e.message : "Save failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
+  const delOption = useMutation({
+    mutationFn: (id: string) => removeOption({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Price option deleted");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
   });
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[520px] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
-      >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Edit pricing
+    <div className="border border-border rounded-[14px] p-3">
+      <div className="flex items-start gap-3">
+        <ServiceImage
+          path={service.image_url}
+          alt={service.name}
+          className="h-14 w-14 rounded-[12px] shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[14px] font-semibold text-foreground truncate">
+              {service.name}
             </p>
-            <h2 className="text-[18px] font-bold text-foreground">{row.duration_label}</h2>
+            <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold uppercase text-muted-foreground">
+              {PRICING_LABELS[service.pricing_type]}
+            </span>
+            {!service.is_active && (
+              <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                inactive
+              </span>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
-          >
-            <X size={20} />
-          </button>
-        </header>
-        <div className="px-6 py-6 space-y-4">
-          <TextField
-            label="Duration Title"
-            value={label}
-            onChange={setLabel}
-            required
-            placeholder="e.g. 3 Hours"
-          />
-          <TextField
-            label="Subtitle / Timing Note"
-            value={sub}
-            onChange={setSub}
-            placeholder="e.g. Complete Cleaning"
-          />
-          <NumField label="Customer Price (₹)" value={price} onChange={setPrice} required />
-
-          <div className="grid grid-cols-2 gap-4">
-            <NumField label="Expert Payout (₹)" value={expert} onChange={setExpert} />
-            <NumField
-              label="Partner Commission (₹)"
-              value={partner}
-              onChange={setPartner}
-            />
+          <div className="mt-2 space-y-1">
+            {options.length === 0 && (
+              <p className="text-[12px] text-muted-foreground">No price options yet.</p>
+            )}
+            {options.map((o) => (
+              <div
+                key={o.id}
+                className="flex items-center gap-2 text-[13px] flex-wrap"
+              >
+                <span className="font-medium text-foreground">{o.label}</span>
+                {o.duration_minutes != null && (
+                  <span className="text-[12px] text-muted-foreground">
+                    {o.duration_minutes} min
+                  </span>
+                )}
+                {o.unit_label && (
+                  <span className="text-[12px] text-muted-foreground">{o.unit_label}</span>
+                )}
+                <span className="font-semibold">{inr.format(o.customer_price)}</span>
+                {o.strikethrough_price != null && (
+                  <span className="text-[12px] text-muted-foreground line-through">
+                    {inr.format(o.strikethrough_price)}
+                  </span>
+                )}
+                <span className="text-[11px] text-muted-foreground">
+                  E {o.expert_payout != null ? inr.format(o.expert_payout) : "—"} · P{" "}
+                  {o.partner_commission != null ? inr.format(o.partner_commission) : "—"} · HQ{" "}
+                  {o.hq_share != null ? inr.format(o.hq_share) : "—"}
+                </span>
+                <button
+                  onClick={() => onEditOption(o)}
+                  className="h-7 px-2 rounded-[8px] border border-border text-[11px] font-semibold hover:bg-muted"
+                >
+                  Edit
+                </button>
+                <button
+                  aria-label={`Delete ${o.label}`}
+                  onClick={() => {
+                    if (window.confirm(`Permanently delete "${o.label}"?`))
+                      delOption.mutate(o.id);
+                  }}
+                  className="h-7 w-7 rounded-[8px] border border-border text-destructive inline-flex items-center justify-center hover:bg-destructive/10"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
           </div>
-          <NumField label="HQ Share (₹)" value={hq} onChange={setHq} />
-
-          <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">Active</p>
-              <p className="text-[12px] text-muted-foreground">
-                Only active durations show up as bookable slots.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              className="w-5 h-5 accent-primary"
-            />
-          </label>
-
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
         </div>
-        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
+        <div className="flex flex-col gap-2 shrink-0">
           <button
-            onClick={onClose}
-            className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+            onClick={onEdit}
+            className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
           >
-            Cancel
+            <Pencil size={12} /> Edit
           </button>
           <button
-            disabled={mutation.isPending}
+            onClick={onAddOption}
+            className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+          >
+            <Plus size={12} /> Price
+          </button>
+          <button
+            aria-label={`Delete ${service.name}`}
             onClick={() => {
-              setError(null);
-              mutation.mutate();
+              if (
+                window.confirm(
+                  `This will permanently delete "${service.name}" and its price options. Continue?`,
+                )
+              )
+                delService.mutate(service.id);
             }}
-            className="h-11 px-5 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+            className="h-8 px-3 rounded-[10px] border border-border text-destructive text-[12px] inline-flex items-center justify-center hover:bg-destructive/10"
           >
-            <Check size={16} />
-            {mutation.isPending ? "Saving…" : "Save changes"}
+            <Trash2 size={12} />
           </button>
-        </footer>
+        </div>
       </div>
     </div>
   );
 }
 
-function TextField({
-  label,
-  value,
-  onChange,
-  required,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-        {required ? " *" : ""}
-      </label>
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-      />
-    </div>
-  );
-}
-
-function NumField({
-
-  label,
-  value,
-  onChange,
-  required,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-        {required ? " *" : ""}
-      </label>
-      <input
-        type="number"
-        min={0}
-        step="1"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-      />
-    </div>
-  );
-}
-
-function CreatePriceModal({
-  categories,
-  defaultCategoryId,
+function Modal({
+  title,
   onClose,
+  children,
 }: {
-  categories: { id: string; name: string; slug: string }[];
-  defaultCategoryId: string | null;
+  title: string;
   onClose: () => void;
+  children: React.ReactNode;
 }) {
-  const queryClient = useQueryClient();
-  const create = useServerFn(createServicePriceRow);
-  const [categoryId, setCategoryId] = useState(defaultCategoryId ?? "");
-  const [label, setLabel] = useState("");
-  const [minutes, setMinutes] = useState("");
-  const [subtitle, setSubtitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [expert, setExpert] = useState("");
-  const [partner, setPartner] = useState("");
-  const [hq, setHq] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  function parseNonNeg(v: string): number | null {
-    const t = v.trim();
-    if (!t) return null;
-    const n = Number(t);
-    if (!isFinite(n) || n < 0) throw new Error("Amounts must be positive numbers");
-    return n;
-  }
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      try {
-        const p = parseNonNeg(price);
-        if (p == null) throw new Error("Customer price is required");
-        const m = parseNonNeg(minutes);
-        if (!m) throw new Error("Duration in minutes is required");
-        if (!label.trim()) throw new Error("Duration label is required");
-        return create({
-          data: {
-            service_category_id: categoryId || null,
-            duration_label: label.trim(),
-            duration_minutes: Math.round(m),
-            subtitle: subtitle.trim() || null,
-            price: p,
-            expert_payout: parseNonNeg(expert),
-            area_partner_payout: parseNonNeg(partner),
-            hq_revenue: parseNonNeg(hq),
-          },
-        });
-      } catch (e) {
-        return Promise.reject(e);
-      }
-    },
-    onSuccess: () => {
-      toast.success("Pricing row created");
-      queryClient.invalidateQueries({ queryKey: ["service-catalogue"] });
-      onClose();
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : "Create failed"),
-  });
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const field =
-    "w-full h-11 px-3 rounded-[12px] border border-border bg-card text-[14px] text-foreground";
-  const labelCls =
-    "block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5";
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[560px] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col max-h-full"
-      >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Service catalogue
-            </p>
-            <h2 className="text-[18px] font-bold text-foreground">New duration / price row</h2>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="h-9 w-9 rounded-full inline-flex items-center justify-center hover:bg-muted"
-          >
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <header className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground">
             <X size={18} />
           </button>
         </header>
-
-        <div className="px-6 py-5 space-y-4 overflow-y-auto">
-          <div>
-            <label className={labelCls}>Service category</label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className={field}
-            >
-              {categories.length === 0 && <option value="">Home Cleaning (default)</option>}
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Duration label</label>
-              <input
-                className={field}
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="3 Hours"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Duration (minutes)</label>
-              <input
-                className={field}
-                value={minutes}
-                onChange={(e) => setMinutes(e.target.value)}
-                inputMode="numeric"
-                placeholder="180"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Subtitle (optional)</label>
-            <input
-              className={field}
-              value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Best for 2BHK"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Customer price</label>
-              <input
-                className={field}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Expert payout</label>
-              <input
-                className={field}
-                value={expert}
-                onChange={(e) => setExpert(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Partner commission</label>
-              <input
-                className={field}
-                value={partner}
-                onChange={(e) => setPartner(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>HQ share</label>
-              <input
-                className={field}
-                value={hq}
-                onChange={(e) => setHq(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-          </div>
-
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
-        </div>
-
-        <footer className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="h-11 px-4 rounded-[12px] border border-border font-semibold text-[14px] hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={mutation.isPending}
-            onClick={() => {
-              setError(null);
-              mutation.mutate();
-            }}
-            className="h-11 px-5 rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] inline-flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Check size={16} /> Create row
-          </button>
-        </footer>
+        <div className="p-5 space-y-4">{children}</div>
       </div>
     </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-[12px] font-semibold text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputCls =
+  "w-full h-10 px-3 rounded-[12px] border border-border bg-background text-[14px] text-foreground";
+
+function CategoryModal({
+  segment,
+  category,
+  onClose,
+}: {
+  segment: CatalogueSegment;
+  category: CatalogueCategory | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const save = useServerFn(upsertCategory);
+  const toggle = useServerFn(setCategoryActive);
+  const [name, setName] = useState(category?.name ?? "");
+  const [rank, setRank] = useState(String(category?.rank ?? 0));
+  const [active, setActive] = useState(category?.is_active ?? true);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await save({
+        data: {
+          id: category?.id ?? null,
+          segment_id: segment.id,
+          name,
+          rank: Number(rank) || 0,
+          is_active: active,
+        },
+      });
+      if (category) await toggle({ data: { id: category.id, active } });
+    },
+    onSuccess: () => {
+      toast.success(category ? "Category updated" : "Category created");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
+  });
+
+  return (
+    <Modal title={category ? "Edit category" : `New category in ${segment.name}`} onClose={onClose}>
+      <Field label="Name">
+        <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label="Display order">
+        <input
+          className={inputCls}
+          value={rank}
+          inputMode="numeric"
+          onChange={(e) => setRank(e.target.value)}
+        />
+      </Field>
+      <label className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        Active
+      </label>
+      <button
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="h-10 w-full rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
+      >
+        {mutation.isPending ? "Saving…" : "Save category"}
+      </button>
+    </Modal>
+  );
+}
+
+function ServiceModal({
+  category,
+  service,
+  onClose,
+}: {
+  category: CatalogueCategory;
+  service: CatalogueService | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const save = useServerFn(upsertService);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState(service?.name ?? "");
+  const [pricingType, setPricingType] = useState<PricingType>(
+    service?.pricing_type ?? "duration",
+  );
+  const [order, setOrder] = useState(String(service?.display_order ?? 0));
+  const [active, setActive] = useState(service?.is_active ?? true);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  function pickFile(f: File | null) {
+    setFile(f);
+    setPreviewUrl(f ? URL.createObjectURL(f) : null);
+  }
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await save({
+        data: {
+          id: service?.id ?? null,
+          category_id: category.id,
+          name,
+          image_url: service?.image_url ?? null,
+          pricing_type: pricingType,
+          display_order: Number(order) || 0,
+          is_active: active,
+        },
+      });
+      if (file) {
+        const path = await uploadServiceImage(res.id, file);
+        await save({
+          data: {
+            id: res.id,
+            category_id: category.id,
+            name,
+            image_url: path,
+            pricing_type: pricingType,
+            display_order: Number(order) || 0,
+            is_active: active,
+          },
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success(service ? "Service updated" : "Service created");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
+  });
+
+  return (
+    <Modal title={service ? "Edit service" : `New service in ${category.name}`} onClose={onClose}>
+      <Field label="Name">
+        <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+
+      <div className="space-y-1">
+        <span className="text-[12px] font-semibold text-muted-foreground">Image</span>
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const f = e.dataTransfer.files?.[0];
+            if (f) pickFile(f);
+          }}
+          onClick={() => fileRef.current?.click()}
+          className="border border-dashed border-border rounded-[14px] p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40"
+        >
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="h-16 w-16 rounded-[12px] object-cover"
+            />
+          ) : (
+            <ServiceImage
+              path={service?.image_url ?? null}
+              alt={service?.name ?? "Service"}
+              className="h-16 w-16 rounded-[12px]"
+            />
+          )}
+          <span className="text-[12px] text-muted-foreground inline-flex items-center gap-1">
+            <Upload size={14} /> Drop an image or click to choose (square crop, compressed)
+          </span>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+        />
+      </div>
+
+      <Field label="Pricing type">
+        <select
+          className={inputCls}
+          value={pricingType}
+          onChange={(e) => setPricingType(e.target.value as PricingType)}
+        >
+          {PRICING_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {PRICING_LABELS[t]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Display order">
+        <input
+          className={inputCls}
+          value={order}
+          inputMode="numeric"
+          onChange={(e) => setOrder(e.target.value)}
+        />
+      </Field>
+
+      <label className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        Active
+      </label>
+
+      <button
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="h-10 w-full rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
+      >
+        {mutation.isPending ? "Saving…" : "Save service"}
+      </button>
+    </Modal>
+  );
+}
+
+function PriceOptionModal({
+  service,
+  option,
+  onClose,
+}: {
+  service: CatalogueService;
+  option: CataloguePriceOption | null;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const save = useServerFn(upsertPriceOption);
+  const [label, setLabel] = useState(option?.label ?? "");
+  const [minutes, setMinutes] = useState(
+    option?.duration_minutes != null ? String(option.duration_minutes) : "",
+  );
+  const [unit, setUnit] = useState(option?.unit_label ?? "");
+  const [price, setPrice] = useState(option ? String(option.customer_price) : "");
+  const [wasPrice, setWasPrice] = useState(
+    option?.strikethrough_price != null ? String(option.strikethrough_price) : "",
+  );
+  const [expert, setExpert] = useState(
+    option?.expert_payout != null ? String(option.expert_payout) : "",
+  );
+  const [partner, setPartner] = useState(
+    option?.partner_commission != null ? String(option.partner_commission) : "",
+  );
+  const [hq, setHq] = useState(option?.hq_share != null ? String(option.hq_share) : "");
+  const [order, setOrder] = useState(String(option?.display_order ?? 0));
+  const [active, setActive] = useState(option?.is_active ?? true);
+
+  const optNum = (v: string) => (v.trim() === "" ? null : Number(v));
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          id: option?.id ?? null,
+          service_id: service.id,
+          label,
+          duration_minutes:
+            service.pricing_type === "duration" ? optNum(minutes) : null,
+          unit_label: service.pricing_type === "quantity" ? unit : null,
+          customer_price: Number(price) || 0,
+          strikethrough_price: optNum(wasPrice),
+          expert_payout: optNum(expert),
+          partner_commission: optNum(partner),
+          hq_share: optNum(hq),
+          display_order: Number(order) || 0,
+          is_active: active,
+        },
+      }),
+    onSuccess: () => {
+      toast.success(option ? "Price option updated" : "Price option added");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
+  });
+
+  return (
+    <Modal
+      title={`${option ? "Edit" : "New"} price option · ${PRICING_LABELS[service.pricing_type]}`}
+      onClose={onClose}
+    >
+      <Field
+        label={
+          service.pricing_type === "duration"
+            ? "Label (e.g. 1 Hour)"
+            : service.pricing_type === "quantity"
+              ? "Label (e.g. Per Room)"
+              : "Label (e.g. Basic Wash)"
+        }
+      >
+        <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} />
+      </Field>
+
+      {service.pricing_type === "duration" && (
+        <Field label="Duration minutes">
+          <input
+            className={inputCls}
+            value={minutes}
+            inputMode="numeric"
+            onChange={(e) => setMinutes(e.target.value)}
+          />
+        </Field>
+      )}
+      {service.pricing_type === "quantity" && (
+        <Field label="Unit label (e.g. per room)">
+          <input className={inputCls} value={unit} onChange={(e) => setUnit(e.target.value)} />
+        </Field>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Customer price">
+          <input
+            className={inputCls}
+            value={price}
+            inputMode="decimal"
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </Field>
+        <Field label="Was price (optional)">
+          <input
+            className={inputCls}
+            value={wasPrice}
+            inputMode="decimal"
+            onChange={(e) => setWasPrice(e.target.value)}
+          />
+        </Field>
+        <Field label="Expert payout">
+          <input
+            className={inputCls}
+            value={expert}
+            inputMode="decimal"
+            onChange={(e) => setExpert(e.target.value)}
+          />
+        </Field>
+        <Field label="Partner commission">
+          <input
+            className={inputCls}
+            value={partner}
+            inputMode="decimal"
+            onChange={(e) => setPartner(e.target.value)}
+          />
+        </Field>
+        <Field label="HQ share">
+          <input
+            className={inputCls}
+            value={hq}
+            inputMode="decimal"
+            onChange={(e) => setHq(e.target.value)}
+          />
+        </Field>
+        <Field label="Display order">
+          <input
+            className={inputCls}
+            value={order}
+            inputMode="numeric"
+            onChange={(e) => setOrder(e.target.value)}
+          />
+        </Field>
+      </div>
+
+      <label className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        Active
+      </label>
+
+      <button
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="h-10 w-full rounded-[12px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
+      >
+        {mutation.isPending ? "Saving…" : "Save price option"}
+      </button>
+    </Modal>
+  );
+}
+
+function PreviewPane({
+  segments,
+  categories,
+  services,
+  options,
+}: {
+  segments: CatalogueSegment[];
+  categories: CatalogueCategory[];
+  services: CatalogueService[];
+  options: CataloguePriceOption[];
+}) {
+  const activeSegments = segments.filter((s) => s.is_active);
+  const [selected, setSelected] = useState<string | null>(null);
+  const segId = selected ?? activeSegments[0]?.id ?? null;
+  const cats = categories.filter((c) => c.is_active && c.segment_id === segId);
+
+  return (
+    <aside className="xl:sticky xl:top-6 h-fit bg-card border border-border rounded-[18px] p-4 space-y-4">
+      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+        Live preview
+      </h3>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {activeSegments.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSelected(s.id)}
+            className={`shrink-0 h-9 px-3 rounded-full text-[12px] font-bold ${
+              s.id === segId
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {s.short_name || s.name}
+          </button>
+        ))}
+        {activeSegments.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">No active segments.</p>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {cats.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">No active categories.</p>
+        )}
+        {cats.map((cat) => {
+          const svcs = services.filter((s) => s.is_active && s.category_id === cat.id);
+          return (
+            <div key={cat.id} className="space-y-2">
+              <p className="text-[13px] font-bold text-foreground">{cat.name}</p>
+              {svcs.length === 0 && (
+                <p className="text-[12px] text-muted-foreground">No active services.</p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {svcs.map((svc) => {
+                  const opts = options
+                    .filter((o) => o.is_active && o.service_id === svc.id)
+                    .sort((a, b) => a.display_order - b.display_order);
+                  const first = opts[0];
+                  return (
+                    <div
+                      key={svc.id}
+                      className="border border-border rounded-[14px] overflow-hidden"
+                    >
+                      <ServiceImage
+                        path={svc.image_url}
+                        alt={svc.name}
+                        className="w-full aspect-square"
+                      />
+                      <div className="p-2">
+                        <p className="text-[12px] font-semibold text-foreground truncate">
+                          {svc.name}
+                        </p>
+                        {first ? (
+                          <p className="text-[12px] text-foreground">
+                            <span className="font-bold">{inr.format(first.customer_price)}</span>
+                            {first.strikethrough_price != null && (
+                              <span className="ml-1 text-muted-foreground line-through">
+                                {inr.format(first.strikethrough_price)}
+                              </span>
+                            )}
+                            {first.unit_label && (
+                              <span className="ml-1 text-muted-foreground">
+                                {first.unit_label}
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">No price set</p>
+                        )}
+                        {opts.length > 1 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {opts.length} options
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
