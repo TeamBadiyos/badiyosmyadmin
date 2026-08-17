@@ -33,7 +33,11 @@ import {
   setItemTaskTypes,
   type TaskType,
   type ItemTaskTypeLink,
+  listAvailabilityOverrides,
+  type AvailabilityOverride,
 } from "@/lib/catalogue.functions";
+import { AvailabilityModal, AvailabilityBadge } from "@/components/availability-modal";
+
 import {
   ServiceImage,
   ServiceVideo,
