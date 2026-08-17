@@ -62,6 +62,35 @@ export function ExpertDetailsModal({
   const canManage = role === "super_admin" || role === "ops_manager";
   const canReset = role === "super_admin";
 
+  const fetchCategories = useServerFn(listActiveServiceCategories);
+  const assignSkill = useServerFn(assignPartnerSkill);
+  const decideSkill = useServerFn(decidePartnerSkill);
+  const [pickedCategory, setPickedCategory] = useState("");
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["service-categories", "active"],
+    queryFn: () => fetchCategories({ data: undefined }),
+    staleTime: 60_000,
+    enabled: canManage,
+  });
+  const assignable = categories.filter(
+    (c) => !approvedSkills.some((s) => s.categoryId === c.id),
+  );
+
+  const skillMutation = useMutation({
+    mutationFn: (p: { type: "add"; categoryId: string } | { type: "remove"; skillId: string }) =>
+      p.type === "add"
+        ? assignSkill({ data: { expertId, serviceCategoryId: p.categoryId } })
+        : decideSkill({ data: { skillId: p.skillId, decision: "rejected" } }),
+    onSuccess: () => {
+      setPickedCategory("");
+      setActionError(null);
+      queryClient.invalidateQueries({ queryKey: ["partner-skills"] });
+    },
+    onError: (e) => setActionError(e instanceof Error ? e.message : "Action failed"),
+  });
+
+
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
