@@ -326,13 +326,16 @@ function BoardCard({
   booking,
   role,
   broadcastTimeoutSeconds,
+  noExpertTimeoutMinutes,
   onOpen,
 }: {
   booking: PipelineBooking;
   role: StaffRole | null;
   broadcastTimeoutSeconds: number;
+  noExpertTimeoutMinutes: number;
   onOpen: () => void;
 }) {
+
   const canAct = role === "super_admin" || role === "ops_manager";
   const isBroadcasting = booking.status === "accepted";
 
@@ -350,6 +353,20 @@ function BoardCard({
     ? Math.max(0, Math.floor((nowMs - acceptedAtMs) / 1000))
     : 0;
   const timedOut = isBroadcasting && elapsedSec > broadcastTimeoutSeconds;
+
+  // Countdown to the automatic no-expert refund (dispatch start + timeout).
+  const dispatchStartMs = booking.broadcastStartedAt
+    ? new Date(booking.broadcastStartedAt).getTime()
+    : new Date(booking.createdAt).getTime();
+  const autoCancelMinsLeft = isBroadcasting
+    ? Math.max(
+        0,
+        Math.ceil(
+          (dispatchStartMs + noExpertTimeoutMinutes * 60_000 - nowMs) / 60_000,
+        ),
+      )
+    : null;
+
 
   // Eligible experts count for accepted (broadcasting) cards.
   const fetchCount = useServerFn(countEligibleExperts);
