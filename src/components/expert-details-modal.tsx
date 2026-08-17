@@ -78,10 +78,15 @@ export function ExpertDetailsModal({
   );
 
   const skillMutation = useMutation({
-    mutationFn: (p: { type: "add"; categoryId: string } | { type: "remove"; skillId: string }) =>
-      p.type === "add"
-        ? assignSkill({ data: { expertId, serviceCategoryId: p.categoryId } })
-        : decideSkill({ data: { skillId: p.skillId, decision: "rejected" } }),
+    mutationFn: async (
+      p: { type: "add"; categoryId: string } | { type: "remove"; skillId: string },
+    ): Promise<void> => {
+      if (p.type === "add") {
+        await assignSkill({ data: { expertId, serviceCategoryId: p.categoryId } });
+      } else {
+        await decideSkill({ data: { skillId: p.skillId, decision: "rejected" } });
+      }
+    },
     onSuccess: () => {
       setPickedCategory("");
       setActionError(null);
