@@ -204,11 +204,23 @@ export function ServiceCataloguePage() {
                             >
                               {cat.is_active ? "active" : "inactive"}
                             </span>
+                            <AvailabilityBadge
+                              override={overrides.find(
+                                (o) =>
+                                  o.target_type === "category" && o.target_id === cat.id,
+                              )}
+                            />
                             <span className="text-[12px] text-muted-foreground">
                               {svcs.length} service{svcs.length === 1 ? "" : "s"}
                             </span>
                           </button>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => setAvailabilityModal({ category: cat })}
+                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+                            >
+                              <CalendarClock size={12} /> Availability
+                            </button>
                             <button
                               onClick={() =>
                                 setCategoryModal({ segment: seg, category: cat })
@@ -224,6 +236,7 @@ export function ServiceCataloguePage() {
                               <Plus size={12} /> Service
                             </button>
                           </div>
+
                         </div>
 
                         {catOpen && (
