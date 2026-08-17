@@ -385,6 +385,12 @@ function ServiceRow({
                 className="flex items-center gap-2 text-[13px] flex-wrap"
               >
                 <span className="font-medium text-foreground">{o.label}</span>
+                <AvailabilityBadge
+                  override={overrides.find(
+                    (ov) => ov.target_type === "item" && ov.target_id === o.id,
+                  )}
+                />
+
                 {o.duration_minutes != null && (
                   <span className="text-[12px] text-muted-foreground">
                     {o.duration_minutes} min
