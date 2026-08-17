@@ -24,6 +24,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
+import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -99,6 +100,12 @@ const ApiPublicServiceImageRoute = ApiPublicServiceImageRouteImport.update({
   path: '/api/public/service-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksExpireStaleBookingsRoute =
+  ApiPublicHooksExpireStaleBookingsRouteImport.update({
+    id: '/api/public/hooks/expire-stale-bookings',
+    path: '/api/public/hooks/expire-stale-bookings',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/expire-stale-bookings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/expire-stale-bookings'
   id:
     | '__root__'
     | '/'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/expire-stale-bookings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -216,6 +229,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
+  ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -325,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicServiceImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/expire-stale-bookings': {
+      id: '/api/public/hooks/expire-stale-bookings'
+      path: '/api/public/hooks/expire-stale-bookings'
+      fullPath: '/api/public/hooks/expire-stale-bookings'
+      preLoaderRoute: typeof ApiPublicHooksExpireStaleBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -364,6 +385,8 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
+  ApiPublicHooksExpireStaleBookingsRoute:
+    ApiPublicHooksExpireStaleBookingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
