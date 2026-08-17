@@ -2968,6 +2968,10 @@ export type Database = {
         Args: { _booking_id: string; _expert_id: string }
         Returns: undefined
       }
+      staff_assign_partner_skill: {
+        Args: { _expert_id: string; _service_category_id: string }
+        Returns: string
+      }
       staff_cancel_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
