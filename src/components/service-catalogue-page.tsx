@@ -322,16 +322,19 @@ export function ServiceCataloguePage() {
 function ServiceRow({
   service,
   options,
+  overrides,
   onEdit,
   onAddOption,
   onEditOption,
 }: {
   service: CatalogueService;
   options: CataloguePriceOption[];
+  overrides: AvailabilityOverride[];
   onEdit: () => void;
   onAddOption: () => void;
   onEditOption: (o: CataloguePriceOption) => void;
 }) {
+
   const queryClient = useQueryClient();
   const removeService = useServerFn(deleteService);
   const removeOption = useServerFn(deletePriceOption);
