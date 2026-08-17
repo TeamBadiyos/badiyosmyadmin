@@ -330,7 +330,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at";
     let openQ = db
       .from("bookings")
       .select(cols)
@@ -412,6 +412,15 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         : null,
       createdAt: r.created_at as string,
       updatedAt: (r.updated_at as string | null) ?? (r.created_at as string),
+      broadcastStartedAt:
+        ((r as Record<string, unknown>)["broadcast_started_at"] as
+          | string
+          | null) ?? null,
+      dispatchExhaustedAt:
+        ((r as Record<string, unknown>)["dispatch_exhausted_at"] as
+          | string
+          | null) ?? null,
+
     }));
   });
 
