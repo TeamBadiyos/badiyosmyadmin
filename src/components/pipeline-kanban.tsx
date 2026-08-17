@@ -133,6 +133,9 @@ export function PipelineKanban({
   });
   const broadcastTimeoutSeconds =
     dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
+  const noExpertTimeoutMinutes =
+    dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
+
 
   // Realtime subscription: any booking status change refreshes the board.
   useEffect(() => {
@@ -301,6 +304,8 @@ export function PipelineKanban({
                     booking={b}
                     role={role}
                     broadcastTimeoutSeconds={broadcastTimeoutSeconds}
+                    noExpertTimeoutMinutes={noExpertTimeoutMinutes}
+
                     onOpen={() => setOpenId(b.id)}
                   />
                 ))}
