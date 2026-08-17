@@ -68,31 +68,83 @@ export const listExpertSkills = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ id: string; categoryName: string; status: SkillStatus }[]> => {
+    }): Promise<
+      {
+        id: string;
+        categoryId: string;
+        categoryName: string;
+        status: SkillStatus;
+        approvedByName: string | null;
+        approvedAt: string | null;
+      }[]
+    > => {
       const db = context.supabase;
       const { data: rows, error } = await db
         .from("partner_skills")
-        .select("id, service_category_id, status")
+        .select("id, service_category_id, status, approved_by, approved_at")
         .eq("expert_id", data.expertId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw = (rows ?? []) as any[];
       if (!raw.length) return [];
-      const { data: cats } = await db
-        .from("service_categories")
-        .select("id, name")
-        .in("id", Array.from(new Set(raw.map((r) => r.service_category_id))));
+      const staffIds = Array.from(new Set(raw.map((r) => r.approved_by).filter(Boolean)));
+      const [{ data: cats }, staffRes] = await Promise.all([
+        db
+          .from("service_categories")
+          .select("id, name")
+          .in("id", Array.from(new Set(raw.map((r) => r.service_category_id)))),
+        staffIds.length
+          ? db.from("staff_users").select("id, name").in("id", staffIds)
+          : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      ]);
       const catMap = new Map(
         ((cats ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
       );
+      const staffMap = new Map(
+        (((staffRes as { data: { id: string; name: string }[] | null }).data ?? [])).map((s) => [
+          s.id,
+          s.name,
+        ]),
+      );
       return raw.map((r) => ({
         id: r.id,
+        categoryId: r.service_category_id,
         categoryName: catMap.get(r.service_category_id) ?? "—",
         status: r.status as SkillStatus,
+        approvedByName: r.approved_by ? staffMap.get(r.approved_by) ?? null : null,
+        approvedAt: r.approved_at ?? null,
       }));
     },
   );
+
+export const listActiveServiceCategories = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ id: string; name: string }[]> => {
+    const { data, error } = await context.supabase
+      .from("service_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("rank", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; name: string }[];
+  });
+
+export const assignPartnerSkill = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { expertId: string; serviceCategoryId: string }) => {
+    if (!input?.expertId || !input?.serviceCategoryId) throw new Error("Missing input");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ id: string }> => {
+    const { data: id, error } = await context.supabase.rpc("staff_assign_partner_skill", {
+      _expert_id: data.expertId,
+      _service_category_id: data.serviceCategoryId,
+    });
+    if (error) throw new Error(error.message);
+    return { id: id as string };
+  });
+
 
 export const decidePartnerSkill = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
