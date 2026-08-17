@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, ExternalLink, Check, Ban, RotateCcw, Pencil, UserRound } from "lucide-react";
+import { X, ExternalLink, Check, Ban, RotateCcw, Pencil, UserRound, Plus } from "lucide-react";
 import {
   getExpert,
   kycDecision,
   signStorageUrl,
   type KycStatus,
 } from "@/lib/experts.functions";
-import { listExpertSkills } from "@/lib/partner-skills.functions";
+import {
+  listExpertSkills,
+  listActiveServiceCategories,
+  assignPartnerSkill,
+  decidePartnerSkill,
+} from "@/lib/partner-skills.functions";
+
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
