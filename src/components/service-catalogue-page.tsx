@@ -285,6 +285,15 @@ export function ServiceCataloguePage() {
         itemLinks={itemLinks}
       />
 
+      {availabilityModal && (
+        <AvailabilityModal
+          category={availabilityModal.category}
+          services={servicesByCategory.get(availabilityModal.category.id) ?? []}
+          options={priceOptions}
+          overrides={overrides}
+          onClose={() => setAvailabilityModal(null)}
+        />
+      )}
       {categoryModal && (
         <CategoryModal
           segment={categoryModal.segment}
@@ -292,6 +301,7 @@ export function ServiceCataloguePage() {
           onClose={() => setCategoryModal(null)}
         />
       )}
+
       {serviceModal && (
         <ServiceModal
           category={serviceModal.category}
