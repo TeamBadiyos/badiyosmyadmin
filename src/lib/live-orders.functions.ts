@@ -197,6 +197,7 @@ export const listActiveExperts = createServerFn({ method: "POST" })
 export type DispatchConfig = {
   broadcastRadiusKm: number;
   broadcastTimeoutSeconds: number;
+  noExpertTimeoutMinutes: number;
 };
 
 export const getDispatchConfig = createServerFn({ method: "GET" })
@@ -205,15 +206,21 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
     await assertActiveStaff(context);
     const { data, error } = await context.supabase
       .from("dispatch_config")
-      .select("broadcast_radius_km, broadcast_timeout_seconds")
+      .select(
+        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes",
+      )
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = (data ?? null) as any;
     return {
-      broadcastRadiusKm: Number(data?.broadcast_radius_km ?? 5),
-      broadcastTimeoutSeconds: Number(data?.broadcast_timeout_seconds ?? 90),
+      broadcastRadiusKm: Number(row?.broadcast_radius_km ?? 5),
+      broadcastTimeoutSeconds: Number(row?.broadcast_timeout_seconds ?? 90),
+      noExpertTimeoutMinutes: Number(row?.no_expert_timeout_minutes ?? 30),
     };
   });
+
 
 export const countEligibleExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -287,7 +294,10 @@ export type PipelineBooking = {
   assignedExpertName: string | null;
   createdAt: string;
   updatedAt: string;
+  broadcastStartedAt: string | null;
+  dispatchExhaustedAt: string | null;
 };
+
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -320,7 +330,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at";
     let openQ = db
       .from("bookings")
       .select(cols)
@@ -402,6 +412,15 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         : null,
       createdAt: r.created_at as string,
       updatedAt: (r.updated_at as string | null) ?? (r.created_at as string),
+      broadcastStartedAt:
+        ((r as Record<string, unknown>)["broadcast_started_at"] as
+          | string
+          | null) ?? null,
+      dispatchExhaustedAt:
+        ((r as Record<string, unknown>)["dispatch_exhausted_at"] as
+          | string
+          | null) ?? null,
+
     }));
   });
 

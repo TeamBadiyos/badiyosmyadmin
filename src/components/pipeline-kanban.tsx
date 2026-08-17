@@ -133,6 +133,9 @@ export function PipelineKanban({
   });
   const broadcastTimeoutSeconds =
     dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
+  const noExpertTimeoutMinutes =
+    dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
+
 
   // Realtime subscription: any booking status change refreshes the board.
   useEffect(() => {
@@ -301,6 +304,8 @@ export function PipelineKanban({
                     booking={b}
                     role={role}
                     broadcastTimeoutSeconds={broadcastTimeoutSeconds}
+                    noExpertTimeoutMinutes={noExpertTimeoutMinutes}
+
                     onOpen={() => setOpenId(b.id)}
                   />
                 ))}
@@ -326,13 +331,16 @@ function BoardCard({
   booking,
   role,
   broadcastTimeoutSeconds,
+  noExpertTimeoutMinutes,
   onOpen,
 }: {
   booking: PipelineBooking;
   role: StaffRole | null;
   broadcastTimeoutSeconds: number;
+  noExpertTimeoutMinutes: number;
   onOpen: () => void;
 }) {
+
   const canAct = role === "super_admin" || role === "ops_manager";
   const isBroadcasting = booking.status === "accepted";
 
@@ -350,6 +358,20 @@ function BoardCard({
     ? Math.max(0, Math.floor((nowMs - acceptedAtMs) / 1000))
     : 0;
   const timedOut = isBroadcasting && elapsedSec > broadcastTimeoutSeconds;
+
+  // Countdown to the automatic no-expert refund (dispatch start + timeout).
+  const dispatchStartMs = booking.broadcastStartedAt
+    ? new Date(booking.broadcastStartedAt).getTime()
+    : new Date(booking.createdAt).getTime();
+  const autoCancelMinsLeft = isBroadcasting
+    ? Math.max(
+        0,
+        Math.ceil(
+          (dispatchStartMs + noExpertTimeoutMinutes * 60_000 - nowMs) / 60_000,
+        ),
+      )
+    : null;
+
 
   // Eligible experts count for accepted (broadcasting) cards.
   const fetchCount = useServerFn(countEligibleExperts);
@@ -429,6 +451,22 @@ function BoardCard({
           </span>
         </div>
       )}
+
+      {isBroadcasting && booking.dispatchExhaustedAt && (
+        <div className="mt-1.5 rounded-[10px] px-2 py-1.5 text-[11px] font-semibold border border-destructive text-destructive bg-destructive/10">
+          <span className="block">
+            Search radius maxed out — no qualified expert found
+          </span>
+          <span className="block font-normal">
+            {autoCancelMinsLeft == null
+              ? "Auto-refund pending"
+              : autoCancelMinsLeft > 0
+                ? `Auto-refund in ${autoCancelMinsLeft} min — assign manually to prevent it`
+                : "Auto-refund processing…"}
+          </span>
+        </div>
+      )}
+
 
       {canAct && booking.status === "confirmed" && (
         <ConfirmedActions bookingId={booking.id} />

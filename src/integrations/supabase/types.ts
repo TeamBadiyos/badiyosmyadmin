@@ -335,6 +335,7 @@ export type Database = {
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
+          dispatch_exhausted_at: string | null
           end_otp: string | null
           id: string
           price: number
@@ -375,6 +376,7 @@ export type Database = {
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          dispatch_exhausted_at?: string | null
           end_otp?: string | null
           id?: string
           price: number
@@ -415,6 +417,7 @@ export type Database = {
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          dispatch_exhausted_at?: string | null
           end_otp?: string | null
           id?: string
           price?: number
@@ -602,6 +605,7 @@ export type Database = {
           city: string
           created_at: string
           id: string
+          no_expert_timeout_minutes: number
           radius_expand_after_seconds: number
           radius_expand_max_km: number
           radius_expand_step_km: number
@@ -613,6 +617,7 @@ export type Database = {
           city?: string
           created_at?: string
           id?: string
+          no_expert_timeout_minutes?: number
           radius_expand_after_seconds?: number
           radius_expand_max_km?: number
           radius_expand_step_km?: number
@@ -624,6 +629,7 @@ export type Database = {
           city?: string
           created_at?: string
           id?: string
+          no_expert_timeout_minutes?: number
           radius_expand_after_seconds?: number
           radius_expand_max_km?: number
           radius_expand_step_km?: number
@@ -2684,6 +2690,7 @@ export type Database = {
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
+          dispatch_exhausted_at: string | null
           end_otp: string | null
           id: string
           price: number
@@ -3047,6 +3054,14 @@ export type Database = {
         Args: { _id: string }
         Returns: undefined
       }
+      staff_dispatch_failure_stats: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          day: string
+          failures: number
+          refunded: number
+        }[]
+      }
       staff_edit_booking: {
         Args: { _booking_id: string; _payload: Json }
         Returns: undefined
@@ -3176,6 +3191,25 @@ export type Database = {
       system_accept_booking_after_payment: {
         Args: { _booking_id: string }
         Returns: undefined
+      }
+      system_auto_cancel_booking_no_expert: {
+        Args: {
+          _booking_id: string
+          _refund_amount: number
+          _refund_id: string
+          _refund_status: string
+        }
+        Returns: Json
+      }
+      system_list_expired_unassigned_bookings: {
+        Args: never
+        Returns: {
+          broadcast_started_at: string
+          created_at: string
+          id: string
+          price: number
+          razorpay_payment_id: string
+        }[]
       }
       verify_login_pin: {
         Args: { p_phone: string; p_pin: string; p_user_type: string }
