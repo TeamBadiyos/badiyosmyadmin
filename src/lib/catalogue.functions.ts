@@ -530,3 +530,115 @@ export const setItemTaskTypes = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+// ---------------- Availability overrides ----------------
+
+export type AvailabilityTargetType = "category" | "item";
+
+export type AvailabilityOverride = {
+  id: string;
+  target_type: AvailabilityTargetType;
+  target_id: string;
+  is_unavailable: boolean;
+  unavailable_from: string | null;
+  unavailable_until: string | null;
+  reason: string | null;
+  updated_at: string | null;
+};
+
+export function isEffectivelyUnavailable(
+  o: AvailabilityOverride | undefined | null,
+  now: Date = new Date(),
+): boolean {
+  if (!o) return false;
+  if (o.is_unavailable) return true;
+  if (o.unavailable_from && o.unavailable_until) {
+    const from = new Date(o.unavailable_from).getTime();
+    const until = new Date(o.unavailable_until).getTime();
+    const t = now.getTime();
+    return t >= from && t < until;
+  }
+  return false;
+}
+
+export const listAvailabilityOverrides = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AvailabilityOverride[]> => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("availability_overrides")
+      .select(
+        "id,target_type,target_id,is_unavailable,unavailable_from,unavailable_until,reason,updated_at",
+      );
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      target_type: r.target_type as AvailabilityTargetType,
+      target_id: r.target_id,
+      is_unavailable: !!r.is_unavailable,
+      unavailable_from: r.unavailable_from ?? null,
+      unavailable_until: r.unavailable_until ?? null,
+      reason: r.reason ?? null,
+      updated_at: r.updated_at ?? null,
+    }));
+  });
+
+export type SetAvailabilityInput = {
+  target_type: AvailabilityTargetType;
+  target_ids: string[];
+  is_unavailable: boolean;
+  unavailable_from: string | null;
+  unavailable_until: string | null;
+  reason: string | null;
+};
+
+export const setAvailabilityOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: SetAvailabilityInput) => {
+    if (!input?.target_ids?.length) throw new Error("Select at least one target");
+    if (input.target_type !== "category" && input.target_type !== "item")
+      throw new Error("Invalid target type");
+    if (input.unavailable_from && input.unavailable_until) {
+      if (new Date(input.unavailable_until) <= new Date(input.unavailable_from))
+        throw new Error("End time must be after start time");
+    } else if (!!input.unavailable_from !== !!input.unavailable_until) {
+      throw new Error("Provide both start and end of the schedule");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    for (const id of data.target_ids) {
+      const { error } = await context.supabase.rpc("staff_set_availability_override", {
+        _target_type: data.target_type,
+        _target_id: id,
+        _is_unavailable: data.is_unavailable,
+        _unavailable_from: data.unavailable_from,
+        _unavailable_until: data.unavailable_until,
+        _reason: data.reason,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: data.target_ids.length };
+  });
+
+export const clearAvailabilityOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { target_type: AvailabilityTargetType; target_ids: string[] }) => {
+    if (!input?.target_ids?.length) throw new Error("Select at least one target");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    for (const id of data.target_ids) {
+      const { error } = await context.supabase.rpc("staff_clear_availability_override", {
+        _target_type: data.target_type,
+        _target_id: id,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });

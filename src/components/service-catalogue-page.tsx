@@ -10,7 +10,9 @@ import {
   ChevronDown,
   Upload,
   Layers,
+  CalendarClock,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import {
   listCatalogueTree,
@@ -31,7 +33,11 @@ import {
   setItemTaskTypes,
   type TaskType,
   type ItemTaskTypeLink,
+  listAvailabilityOverrides,
+  type AvailabilityOverride,
 } from "@/lib/catalogue.functions";
+import { AvailabilityModal, AvailabilityBadge } from "@/components/availability-modal";
+
 import {
   ServiceImage,
   ServiceVideo,
@@ -91,6 +97,19 @@ export function ServiceCataloguePage() {
   const [optionModal, setOptionModal] = useState<
     { service: CatalogueService; option: CataloguePriceOption | null } | null
   >(null);
+  const [availabilityModal, setAvailabilityModal] = useState<
+    { category: CatalogueCategory } | null
+  >(null);
+
+  const fetchOverrides = useServerFn(listAvailabilityOverrides);
+  const { data: overridesData } = useQuery({
+    queryKey: ["catalogue", "availability"],
+    queryFn: () => fetchOverrides(),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+  const overrides: AvailabilityOverride[] = overridesData ?? [];
+
 
   const catsBySegment = useMemo(() => {
     const m = new Map<string, CatalogueCategory[]>();
@@ -204,11 +223,23 @@ export function ServiceCataloguePage() {
                             >
                               {cat.is_active ? "active" : "inactive"}
                             </span>
+                            <AvailabilityBadge
+                              override={overrides.find(
+                                (o) =>
+                                  o.target_type === "category" && o.target_id === cat.id,
+                              )}
+                            />
                             <span className="text-[12px] text-muted-foreground">
                               {svcs.length} service{svcs.length === 1 ? "" : "s"}
                             </span>
                           </button>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => setAvailabilityModal({ category: cat })}
+                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
+                            >
+                              <CalendarClock size={12} /> Availability
+                            </button>
                             <button
                               onClick={() =>
                                 setCategoryModal({ segment: seg, category: cat })
@@ -224,6 +255,7 @@ export function ServiceCataloguePage() {
                               <Plus size={12} /> Service
                             </button>
                           </div>
+
                         </div>
 
                         {catOpen && (
@@ -237,7 +269,9 @@ export function ServiceCataloguePage() {
                               <ServiceRow
                                 key={svc.id}
                                 service={svc}
+                                overrides={overrides}
                                 options={optionsByService.get(svc.id) ?? []}
+
                                 onEdit={() =>
                                   setServiceModal({ category: cat, service: svc })
                                 }
@@ -270,6 +304,15 @@ export function ServiceCataloguePage() {
         itemLinks={itemLinks}
       />
 
+      {availabilityModal && (
+        <AvailabilityModal
+          category={availabilityModal.category}
+          services={servicesByCategory.get(availabilityModal.category.id) ?? []}
+          options={priceOptions}
+          overrides={overrides}
+          onClose={() => setAvailabilityModal(null)}
+        />
+      )}
       {categoryModal && (
         <CategoryModal
           segment={categoryModal.segment}
@@ -277,6 +320,7 @@ export function ServiceCataloguePage() {
           onClose={() => setCategoryModal(null)}
         />
       )}
+
       {serviceModal && (
         <ServiceModal
           category={serviceModal.category}
@@ -307,16 +351,19 @@ export function ServiceCataloguePage() {
 function ServiceRow({
   service,
   options,
+  overrides,
   onEdit,
   onAddOption,
   onEditOption,
 }: {
   service: CatalogueService;
   options: CataloguePriceOption[];
+  overrides: AvailabilityOverride[];
   onEdit: () => void;
   onAddOption: () => void;
   onEditOption: (o: CataloguePriceOption) => void;
 }) {
+
   const queryClient = useQueryClient();
   const removeService = useServerFn(deleteService);
   const removeOption = useServerFn(deletePriceOption);
@@ -370,6 +417,12 @@ function ServiceRow({
                 className="flex items-center gap-2 text-[13px] flex-wrap"
               >
                 <span className="font-medium text-foreground">{o.label}</span>
+                <AvailabilityBadge
+                  override={overrides.find(
+                    (ov) => ov.target_type === "item" && ov.target_id === o.id,
+                  )}
+                />
+
                 {o.duration_minutes != null && (
                   <span className="text-[12px] text-muted-foreground">
                     {o.duration_minutes} min
