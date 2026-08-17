@@ -20,12 +20,14 @@ export type RewardTriggerType = {
   display_order: number;
 };
 
+export type RewardCondition = Record<string, string | number | boolean | null>;
+
 export type RewardProgram = {
   id: string;
   name: string;
   actor_type: string;
   trigger_type: string;
-  condition: Record<string, unknown>;
+  condition: RewardCondition;
   reward_type: string;
   reward_value: number;
   recurrence: string;
@@ -100,7 +102,7 @@ export const upsertRewardProgram = createServerFn({ method: "POST" })
       name: string;
       actor_type: string;
       trigger_type: string;
-      condition: Record<string, unknown>;
+      condition: RewardCondition;
       reward_type: string;
       reward_value: number;
       recurrence: string;
