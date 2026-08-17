@@ -617,7 +617,9 @@ export const setAvailabilityOverride = createServerFn({ method: "POST" })
         _unavailable_from: data.unavailable_from,
         _unavailable_until: data.unavailable_until,
         _reason: data.reason,
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
       if (error) throw new Error(error.message);
     }
     return { ok: true, count: data.target_ids.length };
