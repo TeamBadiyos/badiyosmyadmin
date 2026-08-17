@@ -430,6 +430,22 @@ function BoardCard({
         </div>
       )}
 
+      {isBroadcasting && booking.dispatchExhaustedAt && (
+        <div className="mt-1.5 rounded-[10px] px-2 py-1.5 text-[11px] font-semibold border border-destructive text-destructive bg-destructive/10">
+          <span className="block">
+            Search radius maxed out — no qualified expert found
+          </span>
+          <span className="block font-normal">
+            {autoCancelMinsLeft == null
+              ? "Auto-refund pending"
+              : autoCancelMinsLeft > 0
+                ? `Auto-refund in ${autoCancelMinsLeft} min — assign manually to prevent it`
+                : "Auto-refund processing…"}
+          </span>
+        </div>
+      )}
+
+
       {canAct && booking.status === "confirmed" && (
         <ConfirmedActions bookingId={booking.id} />
       )}
