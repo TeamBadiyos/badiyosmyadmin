@@ -93,6 +93,19 @@ export function ServiceCataloguePage() {
   const [optionModal, setOptionModal] = useState<
     { service: CatalogueService; option: CataloguePriceOption | null } | null
   >(null);
+  const [availabilityModal, setAvailabilityModal] = useState<
+    { category: CatalogueCategory } | null
+  >(null);
+
+  const fetchOverrides = useServerFn(listAvailabilityOverrides);
+  const { data: overridesData } = useQuery({
+    queryKey: ["catalogue", "availability"],
+    queryFn: () => fetchOverrides(),
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+  const overrides: AvailabilityOverride[] = overridesData ?? [];
+
 
   const catsBySegment = useMemo(() => {
     const m = new Map<string, CatalogueCategory[]>();
