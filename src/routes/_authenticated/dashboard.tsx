@@ -16,6 +16,7 @@ import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
+import { RewardsPage } from "@/components/rewards-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
@@ -30,6 +31,7 @@ import { NotificationSoundsPage } from "@/components/notification-sounds-page";
 
 
 import {
+  Award,
   LayoutDashboard,
   CalendarCheck,
   Map,
@@ -97,6 +99,7 @@ const NAV_ITEMS = [
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
   { key: "referrals", label: "Referrals", icon: Gift },
+  { key: "rewards", label: "Rewards", icon: Award },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
@@ -117,7 +120,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["waitlist", "interest-leads", "referrals"],
+    keys: ["waitlist", "interest-leads", "referrals", "rewards"],
   },
   {
     id: "catalog",
@@ -146,7 +149,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "catalogue" && k !== "referrals",
+    (k) => k !== "roles" && k !== "catalogue" && k !== "referrals" && k !== "rewards",
   ),
   area_partner: ["dashboard", "bookings", "experts", "reports"],
 };
@@ -424,6 +427,8 @@ function Shell() {
           <WalletsPage role={role} />
         ) : active === "referrals" ? (
           <ReferralsPage />
+        ) : active === "rewards" ? (
+          <RewardsPage />
         ) : active === "roles" ? (
           <RolesPage />
         ) : active === "legal" ? (
