@@ -237,7 +237,9 @@ export function ServiceCataloguePage() {
                               <ServiceRow
                                 key={svc.id}
                                 service={svc}
+                                overrides={overrides}
                                 options={optionsByService.get(svc.id) ?? []}
+
                                 onEdit={() =>
                                   setServiceModal({ category: cat, service: svc })
                                 }
