@@ -160,21 +160,74 @@ export function ExpertDetailsModal({
               </section>
 
               <section className="bg-background border border-border rounded-[18px] p-4">
-                <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                  Approved skills
-                </h3>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Skills / Categories
+                  </h3>
+                  {canManage && (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={pickedCategory}
+                        onChange={(e) => setPickedCategory(e.target.value)}
+                        className="h-9 px-2 rounded-[12px] border border-border bg-card text-[13px] min-w-[160px]"
+                      >
+                        <option value="">Select category…</option>
+                        {assignable.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        disabled={!pickedCategory || skillMutation.isPending}
+                        onClick={() =>
+                          skillMutation.mutate({ type: "add", categoryId: pickedCategory })
+                        }
+                        className="h-9 px-3 rounded-[12px] bg-primary text-white font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Plus size={14} /> Add Skill
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {approvedSkills.length === 0 ? (
                   <p className="text-[13px] text-muted-foreground">No approved skills yet.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {approvedSkills.map((s) => (
-                      <Badge key={s.id} className="bg-emerald-50 text-emerald-700">
-                        {s.categoryName}
-                      </Badge>
+                      <div
+                        key={s.id}
+                        className="rounded-[14px] border border-emerald-200 bg-emerald-50 px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-emerald-800">
+                            {s.categoryName}
+                          </span>
+                          {canManage && (
+                            <button
+                              aria-label={`Remove ${s.categoryName}`}
+                              disabled={skillMutation.isPending}
+                              onClick={() =>
+                                skillMutation.mutate({ type: "remove", skillId: s.id })
+                              }
+                              className="text-emerald-700 hover:text-destructive disabled:opacity-50"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                          {s.approvedByName ? `By ${s.approvedByName}` : "By —"}
+                          {s.approvedAt
+                            ? ` · ${new Date(s.approvedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
+                            : ""}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 )}
               </section>
+
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card title="Contact">
