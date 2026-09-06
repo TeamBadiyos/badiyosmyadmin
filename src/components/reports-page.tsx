@@ -249,8 +249,39 @@ function RevenueTab({ range }: { range: ReportRange }) {
           </ResponsiveContainer>
         </div>
       </Card>
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-4">
+          Revenue by category
+        </h3>
+        {data.byCategory.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">No paid bookings in this range.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_140px] gap-4 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span>Category</span>
+              <span>Segment</span>
+              <span className="text-right">Bookings</span>
+              <span className="text-right">Revenue</span>
+            </div>
+            {data.byCategory.map((c) => (
+              <div
+                key={c.categoryId ?? "none"}
+                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_140px] gap-4 py-2.5 text-[14px]"
+              >
+                <span className="font-semibold text-foreground truncate">{c.categoryName}</span>
+                <span className="text-muted-foreground truncate">{c.segmentName}</span>
+                <span className="text-right text-muted-foreground">{c.bookings}</span>
+                <span className="text-right font-bold text-foreground">
+                  {inr.format(c.revenue)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
+
 }
 
 // ============ Bookings ============
