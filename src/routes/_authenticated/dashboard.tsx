@@ -68,6 +68,7 @@ import {
   Boxes,
   Landmark,
   type LucideIcon,
+  LifeBuoy,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
