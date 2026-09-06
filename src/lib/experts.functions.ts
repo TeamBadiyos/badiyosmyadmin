@@ -18,6 +18,7 @@ export type ExpertRow = {
   status: ActiveStatus;
   isOnline: boolean;
   isBusy: boolean;
+  lastSeenAt: string | null;
 };
 
 export type ExpertDetails = ExpertRow & {
@@ -112,6 +113,7 @@ export const listExperts = createServerFn({ method: "POST" })
       status: r.status as ActiveStatus,
       isOnline: !!r.is_online,
       isBusy: !!r.is_busy,
+      lastSeenAt: r.location_updated_at ?? null,
     }));
   });
 
@@ -155,6 +157,7 @@ export const getExpert = createServerFn({ method: "POST" })
       status: e.status as ActiveStatus,
       isOnline: !!e.is_online,
       isBusy: !!e.is_busy,
+      lastSeenAt: e.location_updated_at ?? null,
       address: e.address ?? null,
       bankAccountNumber: e.bank_account_number ?? null,
       bankIfsc: e.bank_ifsc ?? null,
@@ -222,7 +225,22 @@ export const kycDecision = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const forceExpertOffline = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { expertId: string }) => {
+    if (!input?.expertId) throw new Error("expertId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_force_expert_offline", {
+      _expert_id: data.expertId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const signStorageUrl = createServerFn({ method: "POST" })
+
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { bucket: string; path: string }) => {
     if (!input?.bucket || !input?.path) throw new Error("bucket and path required");

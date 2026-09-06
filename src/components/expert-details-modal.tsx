@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { X, ExternalLink, Check, Ban, RotateCcw, Pencil, UserRound, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   getExpert,
   kycDecision,
   signStorageUrl,
+  forceExpertOffline,
   type KycStatus,
 } from "@/lib/experts.functions";
 import {
@@ -46,6 +48,16 @@ export function ExpertDetailsModal({
   const decide = useServerFn(kycDecision);
   const sign = useServerFn(signStorageUrl);
   const fetchSkills = useServerFn(listExpertSkills);
+  const forceOffline = useServerFn(forceExpertOffline);
+
+  const offlineMut = useMutation({
+    mutationFn: () => forceOffline({ data: { expertId } }),
+    onSuccess: () => {
+      toast.success("Expert forced offline");
+      queryClient.invalidateQueries({ queryKey: ["experts"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   const { data: skills = [] } = useQuery({
     queryKey: ["partner-skills", "expert", expertId],
@@ -196,7 +208,45 @@ export function ExpertDetailsModal({
                   <Badge className="bg-emerald-50 text-emerald-700">
                     {approvedSkills.length} approved skill{approvedSkills.length === 1 ? "" : "s"}
                   </Badge>
+                  <Badge
+                    className={
+                      data.isOnline
+                        ? data.isBusy
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-emerald-50 text-emerald-700"
+                        : "bg-muted text-muted-foreground"
+                    }
+                  >
+                    {data.isOnline ? (data.isBusy ? "Online — busy" : "Online") : "Offline"}
+                  </Badge>
                 </div>
+              </section>
+
+              <section className="bg-background border border-border rounded-[18px] p-4 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Last seen
+                  </h3>
+                  <p className="text-[14px] text-foreground mt-1">
+                    {data.lastSeenAt
+                      ? new Date(data.lastSeenAt).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "No location ping yet"}
+                  </p>
+                </div>
+                {canManage && data.isOnline && (
+                  <button
+                    onClick={() => offlineMut.mutate()}
+                    disabled={offlineMut.isPending}
+                    className="h-10 px-4 rounded-[12px] border border-destructive text-destructive text-[13px] font-bold hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {offlineMut.isPending ? "…" : "Force offline"}
+                  </button>
+                )}
               </section>
 
               <section className="bg-background border border-border rounded-[18px] p-4">
