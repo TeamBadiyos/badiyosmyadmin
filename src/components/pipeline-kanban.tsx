@@ -488,7 +488,6 @@ function formatElapsed(sec: number): string {
 
 function ConfirmedActions({ bookingId }: { bookingId: string }) {
   const queryClient = useQueryClient();
-  const acceptFn = useServerFn(acceptPendingBooking);
   const rejectFn = useServerFn(rejectPendingBooking);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState<RejectReason | "">("");
@@ -498,15 +497,6 @@ function ConfirmedActions({ bookingId }: { bookingId: string }) {
     queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
     queryClient.invalidateQueries({ queryKey: ["live-orders"] });
   };
-
-  const acceptMut = useMutation({
-    mutationFn: () => acceptFn({ data: { bookingId } }),
-    onSuccess: () => {
-      toast.success("Booking accepted");
-      invalidate();
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
 
   const rejectMut = useMutation({
     mutationFn: (r: RejectReason) =>
@@ -527,23 +517,19 @@ function ConfirmedActions({ bookingId }: { bookingId: string }) {
     >
       {!rejectOpen ? (
         <div className="flex items-center gap-2">
-          <button
-            disabled={acceptMut.isPending}
-            onClick={() => acceptMut.mutate()}
-            className="flex-1 h-8 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50"
-          >
-            <Check size={13} />
-            Accept
-          </button>
+          <span className="flex-1 text-[11px] font-semibold text-muted-foreground">
+            Auto-dispatches on payment
+          </span>
           <button
             onClick={() => setRejectOpen(true)}
-            className="flex-1 h-8 rounded-[10px] border border-destructive text-destructive text-[12px] font-bold inline-flex items-center justify-center gap-1 hover:bg-red-50"
+            className="h-8 px-3 rounded-[10px] border border-destructive text-destructive text-[12px] font-bold inline-flex items-center justify-center gap-1 hover:bg-red-50"
           >
             <X size={13} />
             Reject
           </button>
         </div>
       ) : (
+
         <div className="space-y-2">
           <select
             value={reason}
