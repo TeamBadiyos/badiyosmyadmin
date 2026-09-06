@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { X, ExternalLink, Check, Ban, RotateCcw, Pencil, Trash2, UserRound } from "lucide-react";
+import { toast } from "sonner";
 import {
   getAreaPartner,
   areaPartnerKycDecision,
   signPartnerStorageUrl,
+  setPartnerZones,
   type PartnerKycStatus,
 } from "@/lib/area-partners.functions";
+import { listZoneOptions } from "@/lib/bookings.functions";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -34,6 +37,25 @@ export function AreaPartnerDetailsModal({
   const fetch = useServerFn(getAreaPartner);
   const decide = useServerFn(areaPartnerKycDecision);
   const sign = useServerFn(signPartnerStorageUrl);
+  const fetchZones = useServerFn(listZoneOptions);
+  const saveZones = useServerFn(setPartnerZones);
+  const [zoneSel, setZoneSel] = useState<string[] | null>(null);
+
+  const { data: allZones = [] } = useQuery({
+    queryKey: ["zones", "options"],
+    queryFn: () => fetchZones(),
+    staleTime: 60_000,
+  });
+
+  const zonesMut = useMutation({
+    mutationFn: (ids: string[]) => saveZones({ data: { partnerId, zoneIds: ids } }),
+    onSuccess: () => {
+      toast.success("Zones updated");
+      queryClient.invalidateQueries({ queryKey: ["area-partners"] });
+      queryClient.invalidateQueries({ queryKey: ["zones"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["area-partners", "details", partnerId],
@@ -162,13 +184,62 @@ export function AreaPartnerDetailsModal({
                 <Card title="Contact">
                   <Row label="Phone" value={data.phone} mono />
                   <Row label="Address" value={data.address ?? "—"} />
-                  <Row label="Zone" value={data.zoneName ?? "Unassigned"} />
+                  <Row
+                    label="Zones"
+                    value={data.zoneNames.length ? data.zoneNames.join(", ") : "Unassigned"}
+                  />
                 </Card>
                 <Card title="Bank">
                   <Row label="Holder" value={data.bankAccountHolderName ?? "—"} />
                   <Row label="Account" value={data.bankAccountNumber ?? "—"} mono />
                   <Row label="IFSC" value={data.bankIfsc ?? "—"} mono />
                 </Card>
+              </section>
+
+              <section className="bg-background border border-border rounded-[18px] p-4">
+                <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                  <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Assigned zones
+                  </h3>
+                  {canManage && (
+                    <button
+                      onClick={() => zonesMut.mutate(zoneSel ?? data.zoneIds)}
+                      disabled={zonesMut.isPending}
+                      className="h-9 px-4 rounded-[12px] bg-primary text-white text-[12px] font-bold disabled:opacity-50"
+                    >
+                      {zonesMut.isPending ? "Saving…" : "Save zones"}
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {allZones.length === 0 && (
+                    <p className="text-[13px] text-muted-foreground">No zones available.</p>
+                  )}
+                  {allZones.map((z) => {
+                    const selected = (zoneSel ?? data.zoneIds).includes(z.id);
+                    return (
+                      <label
+                        key={z.id}
+                        className="flex items-center gap-2 text-[13px] text-foreground"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={!canManage}
+                          onChange={(e) => {
+                            const base = zoneSel ?? data.zoneIds;
+                            setZoneSel(
+                              e.target.checked
+                                ? Array.from(new Set([...base, z.id]))
+                                : base.filter((id) => id !== z.id),
+                            );
+                          }}
+                        />
+                        {z.name}
+                      </label>
+                    );
+                  })}
+                </div>
               </section>
 
               <section className="bg-background border border-border rounded-[18px] p-4">
