@@ -3166,6 +3166,13 @@ export type Database = {
         Args: { p_fcm_token: string; p_platform: string }
         Returns: string
       }
+      resolve_booking_payouts: {
+        Args: { _booking_id: string }
+        Returns: {
+          area_partner_payout: number
+          expert_payout: number
+        }[]
+      }
       resolve_caller_identity: {
         Args: { _auth_uid: string }
         Returns: {
