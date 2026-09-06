@@ -222,7 +222,22 @@ export const kycDecision = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const forceExpertOffline = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { expertId: string }) => {
+    if (!input?.expertId) throw new Error("expertId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_force_expert_offline", {
+      _expert_id: data.expertId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const signStorageUrl = createServerFn({ method: "POST" })
+
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { bucket: string; path: string }) => {
     if (!input?.bucket || !input?.path) throw new Error("bucket and path required");
