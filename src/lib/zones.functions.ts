@@ -1,6 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Returns the project's own Google Maps browser key (stored as the
+// GOOGLE_API_KEY secret) to active staff only. The key itself is a
+// referrer-restricted browser key for Maps JS API, safe to load in the
+// browser on badiyos.com domains, but we never hardcode it in source.
+export const getMapsBrowserKey = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<string> => {
+    const { data: staff } = await context.supabase
+      .from("staff_users")
+      .select("status")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+    if (!staff || staff.status !== "active") throw new Error("Forbidden");
+    const key = process.env.GOOGLE_API_KEY;
+    if (!key) throw new Error("Google Maps key not configured.");
+    return key;
+  });
+
+
 export type ZoneRow = {
   id: string;
   name: string;
