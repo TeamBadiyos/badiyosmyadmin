@@ -28,6 +28,7 @@ import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
 import { NotificationSoundsPage } from "@/components/notification-sounds-page";
+import { SupportTicketsPage } from "@/components/support-tickets-page";
 
 
 import {
@@ -104,6 +105,7 @@ const NAV_ITEMS = [
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
+  { key: "support", label: "Support Tickets", icon: LifeBuoy },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
 ] as const;
 
@@ -138,7 +140,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["roles", "legal", "notification-sounds", "audit"],
+    keys: ["roles", "legal", "notification-sounds", "support", "audit"],
   },
 ] as const;
 
@@ -435,6 +437,8 @@ function Shell() {
           <LegalPagesPage role={role} />
                 ) : active === "notification-sounds" ? (
           <NotificationSoundsPage role={role} />
+        ) : active === "support" ? (
+          <SupportTicketsPage role={role} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
