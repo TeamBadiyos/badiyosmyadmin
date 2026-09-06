@@ -110,8 +110,9 @@ export function AreaPartnersPage({ role = null }: { role?: StaffRole | null }) {
             </button>
             <span className="font-mono text-[13px] text-muted-foreground truncate">{p.phone}</span>
             <span className="truncate">
-              {p.zoneName ? (
-                <span className="text-foreground">{p.zoneName}</span>
+              {p.zoneNames.length > 0 ? (
+                <span className="text-foreground">{p.zoneNames.join(", ")}</span>
+
               ) : (
                 <span className="italic text-muted-foreground">Unassigned</span>
               )}
