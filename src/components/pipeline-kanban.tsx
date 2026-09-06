@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, X, UserPlus, Volume2, VolumeX } from "lucide-react";
+import { X, UserPlus, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  acceptPendingBooking,
+
   assignExpertToBooking,
   countEligibleExperts,
   getDispatchConfig,
@@ -22,7 +22,7 @@ import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
-  { key: "confirmed", label: "Confirmed" },
+  { key: "confirmed", label: "Awaiting Payment" },
   { key: "accepted", label: "Needs Expert" },
   { key: "expert_assigned", label: "Expert Assigned" },
   { key: "in_progress", label: "In Progress" },
