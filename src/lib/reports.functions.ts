@@ -62,6 +62,13 @@ export type RevenueReport = {
     avgDaily: number;
   };
   daily: Array<{ date: string; revenue: number; bookings: number }>;
+  byCategory: Array<{
+    categoryId: string | null;
+    categoryName: string;
+    segmentName: string;
+    revenue: number;
+    bookings: number;
+  }>;
 };
 
 export const getRevenueReport = createServerFn({ method: "POST" })
@@ -70,11 +77,16 @@ export const getRevenueReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<RevenueReport> => {
     const scope = await getScope(context.supabase, context.userId);
     const zone = scopeZone(scope, data.zoneId);
-    if (zone === "empty") return { summary: { totalRevenue: 0, paidBookings: 0, avgDaily: 0 }, daily: [] };
+    if (zone === "empty")
+      return {
+        summary: { totalRevenue: 0, paidBookings: 0, avgDaily: 0 },
+        daily: [],
+        byCategory: [],
+      };
 
     let q = context.supabase
       .from("bookings")
-      .select("price, created_at, razorpay_payment_id, zone_id")
+      .select("price, created_at, razorpay_payment_id, zone_id, service_category_id")
       .is("deleted_at", null)
       .not("razorpay_payment_id", "is", null)
       .gte("created_at", rangeFrom(data.from))
@@ -92,7 +104,12 @@ export const getRevenueReport = createServerFn({ method: "POST" })
     }
     let total = 0;
     let count = 0;
-    for (const r of (rows ?? []) as Array<{ price: number | null; created_at: string }>) {
+    const catMap = new Map<string, { revenue: number; bookings: number }>();
+    for (const r of (rows ?? []) as Array<{
+      price: number | null;
+      created_at: string;
+      service_category_id: string | null;
+    }>) {
       const day = r.created_at.slice(0, 10);
       const bucket = map.get(day) ?? { revenue: 0, bookings: 0 };
       const p = Number(r.price ?? 0);
@@ -101,7 +118,39 @@ export const getRevenueReport = createServerFn({ method: "POST" })
       map.set(day, bucket);
       total += p;
       count += 1;
+      const key = r.service_category_id ?? "__none__";
+      const cb = catMap.get(key) ?? { revenue: 0, bookings: 0 };
+      cb.revenue += p;
+      cb.bookings += 1;
+      catMap.set(key, cb);
     }
+
+    const catIds = Array.from(catMap.keys()).filter((k) => k !== "__none__");
+    const catNames = new Map<string, { name: string; segment: string }>();
+    if (catIds.length) {
+      const { data: cats } = await context.supabase
+        .from("service_categories")
+        .select("id, name, segments(name)")
+        .in("id", catIds);
+      for (const c of (cats ?? []) as Array<{
+        id: string;
+        name: string;
+        segments: { name: string } | null;
+      }>) {
+        catNames.set(c.id, { name: c.name, segment: c.segments?.name ?? "—" });
+      }
+    }
+
+    const byCategory = Array.from(catMap.entries())
+      .map(([key, v]) => ({
+        categoryId: key === "__none__" ? null : key,
+        categoryName: catNames.get(key)?.name ?? "Uncategorised",
+        segmentName: catNames.get(key)?.segment ?? "—",
+        revenue: v.revenue,
+        bookings: v.bookings,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
     const daily = Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, v]) => ({ date, revenue: v.revenue, bookings: v.bookings }));
@@ -109,8 +158,10 @@ export const getRevenueReport = createServerFn({ method: "POST" })
     return {
       summary: { totalRevenue: total, paidBookings: count, avgDaily: total / days },
       daily,
+      byCategory,
     };
   });
+
 
 // ============ Bookings Report ============
 export type BookingsReport = {
