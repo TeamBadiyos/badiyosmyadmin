@@ -10,6 +10,8 @@ export type AreaPartnerRow = {
   photoUrl: string | null;
   zoneId: string | null;
   zoneName: string | null;
+  zoneIds: string[];
+  zoneNames: string[];
   setupFeeStatus: "pending" | "paid";
   commissionRate: number;
   kycStatus: PartnerKycStatus;
@@ -78,7 +80,7 @@ export const listAllAreaPartners = createServerFn({ method: "POST" })
 
     // Zones assigned via zones.assigned_area_partner_id (source of truth on Zones page)
     const partnerIds = raw.map((r) => r.id);
-    const zoneByPartner = new Map<string, { id: string; name: string }>();
+    const zoneByPartner = new Map<string, Array<{ id: string; name: string }>>();
     if (partnerIds.length) {
       const { data: zones } = await context.supabase
         .from("zones")
@@ -89,12 +91,15 @@ export const listAllAreaPartners = createServerFn({ method: "POST" })
         name: string;
         assigned_area_partner_id: string;
       }[]) {
-        zoneByPartner.set(z.assigned_area_partner_id, { id: z.id, name: z.name });
+        const list = zoneByPartner.get(z.assigned_area_partner_id) ?? [];
+        list.push({ id: z.id, name: z.name });
+        zoneByPartner.set(z.assigned_area_partner_id, list);
       }
     }
 
     return raw.map((r) => {
-      const assigned = zoneByPartner.get(r.id) ?? null;
+      const assignedList = zoneByPartner.get(r.id) ?? [];
+      const assigned = assignedList[0] ?? null;
       return {
         id: r.id,
         name: r.name,
@@ -102,6 +107,8 @@ export const listAllAreaPartners = createServerFn({ method: "POST" })
         photoUrl: r.photo_url ?? null,
         zoneId: assigned?.id ?? r.zone_id ?? null,
         zoneName: assigned?.name ?? null,
+        zoneIds: assignedList.map((z) => z.id),
+        zoneNames: assignedList.map((z) => z.name),
         setupFeeStatus: r.setup_fee_status,
         commissionRate: r.commission_rate != null ? Number(r.commission_rate) : 0,
         kycStatus: (r.kyc_status ?? "pending") as PartnerKycStatus,
@@ -132,15 +139,16 @@ export const getAreaPartner = createServerFn({ method: "POST" })
 
     let zoneId: string | null = r.zone_id ?? null;
     let zoneName: string | null = null;
-    const { data: z } = await context.supabase
+    const { data: zs } = await context.supabase
       .from("zones")
       .select("id, name")
       .eq("assigned_area_partner_id", data.id)
       .is("deleted_at", null)
-      .maybeSingle();
-    if (z) {
-      zoneId = (z as { id: string }).id;
-      zoneName = (z as { name: string }).name;
+      .order("name");
+    const zoneList = (zs ?? []) as Array<{ id: string; name: string }>;
+    if (zoneList.length) {
+      zoneId = zoneList[0].id;
+      zoneName = zoneList[0].name;
     }
 
     return {
@@ -150,6 +158,8 @@ export const getAreaPartner = createServerFn({ method: "POST" })
       photoUrl: r.photo_url ?? null,
       zoneId,
       zoneName,
+      zoneIds: zoneList.map((z) => z.id),
+      zoneNames: zoneList.map((z) => z.name),
       setupFeeStatus: r.setup_fee_status,
       commissionRate: r.commission_rate != null ? Number(r.commission_rate) : 0,
       kycStatus: (r.kyc_status ?? "pending") as PartnerKycStatus,
@@ -261,4 +271,19 @@ export const signPartnerStorageUrl = createServerFn({ method: "POST" })
       .createSignedUrl(data.path, 60 * 10);
     if (error) throw new Error(error.message);
     return { url: signed.signedUrl };
+  });
+
+export const setPartnerZones = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { partnerId: string; zoneIds: string[] }) => {
+    if (!input?.partnerId) throw new Error("partnerId required");
+    return { partnerId: input.partnerId, zoneIds: input.zoneIds ?? [] };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_set_partner_zones", {
+      _partner_id: data.partnerId,
+      _zone_ids: data.zoneIds,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

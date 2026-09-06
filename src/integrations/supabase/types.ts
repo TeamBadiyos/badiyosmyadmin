@@ -3417,6 +3417,10 @@ export type Database = {
         Args: { _key: string; _value: string }
         Returns: undefined
       }
+      staff_set_partner_zones: {
+        Args: { _partner_id: string; _zone_ids: string[] }
+        Returns: undefined
+      }
       staff_set_reward_program_active: {
         Args: { _id: string; _is_active: boolean }
         Returns: undefined
