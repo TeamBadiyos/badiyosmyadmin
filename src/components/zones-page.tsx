@@ -15,6 +15,7 @@ import {
   assignAreaPartner,
   createZone,
   deleteZone,
+  getMapsBrowserKey,
   getZoneBoundary,
   getZoneDeleteImpact,
   listAreaPartners,
@@ -35,6 +36,46 @@ declare global {
     google?: any;
     __badiyosInitMap?: () => void;
   }
+}
+
+// Loads the Maps JS API once, using the project's own browser key fetched
+// from the server (never hardcoded). Consumers poll window.google.maps.
+let mapsLoadPromise: Promise<void> | null = null;
+function loadGoogleMaps(): Promise<void> {
+  if (typeof window !== "undefined" && window.google?.maps) {
+    return Promise.resolve();
+  }
+  if (mapsLoadPromise) return mapsLoadPromise;
+  mapsLoadPromise = (async () => {
+    const key = await getMapsBrowserKey();
+    if (window.google?.maps) return;
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>(
+        'script[data-badiyos-gmaps="1"]',
+      );
+      if (existing) {
+        const iv = window.setInterval(() => {
+          if (window.google?.maps) {
+            window.clearInterval(iv);
+            resolve();
+          }
+        }, 100);
+        return;
+      }
+      window.__badiyosInitMap = () => resolve();
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&callback=__badiyosInitMap`;
+      script.async = true;
+      script.defer = true;
+      script.dataset.badiyosGmaps = "1";
+      script.onerror = () => reject(new Error("Failed to load Google Maps."));
+      document.head.appendChild(script);
+    });
+  })().catch((err) => {
+    mapsLoadPromise = null;
+    throw err;
+  });
+  return mapsLoadPromise;
 }
 
 export function ZonesPage({ role }: { role: StaffRole | null }) {
@@ -585,15 +626,8 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
-    const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-      | string
-      | undefined;
-    if (!browserKey) {
-      setMapError("Google Maps key not configured.");
-      return;
-    }
-
     let cancelled = false;
+    let iv = 0;
 
     function initialize() {
       if (cancelled || !mapRef.current || !window.google?.maps) return;
@@ -646,49 +680,22 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
 
     if (window.google?.maps) {
       initialize();
-      return () => {
-        cancelled = true;
-        if (clickListenerRef.current && window.google?.maps?.event) {
-          window.google.maps.event.removeListener(clickListenerRef.current);
-        }
-        clearMarkers();
-        if (polygonRef.current) polygonRef.current.setMap(null);
-      };
-    }
-
-    window.__badiyosInitMap = initialize;
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-badiyos-gmaps="1"]',
-    );
-    if (existing) {
-      // Script may already be loaded but google not yet ready; poll briefly.
-      const iv = window.setInterval(() => {
+    } else {
+      loadGoogleMaps().catch(() => {
+        if (!cancelled) setMapError("Failed to load Google Maps.");
+      });
+      iv = window.setInterval(() => {
         if (window.google?.maps) {
           window.clearInterval(iv);
+          iv = 0;
           initialize();
         }
       }, 100);
-      return () => {
-        cancelled = true;
-        window.clearInterval(iv);
-        if (clickListenerRef.current && window.google?.maps?.event) {
-          window.google.maps.event.removeListener(clickListenerRef.current);
-        }
-        clearMarkers();
-        if (polygonRef.current) polygonRef.current.setMap(null);
-      };
     }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyosInitMap`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.badiyosGmaps = "1";
-    script.onerror = () => setMapError("Failed to load Google Maps.");
-    document.head.appendChild(script);
 
     return () => {
       cancelled = true;
+      if (iv) window.clearInterval(iv);
       if (clickListenerRef.current && window.google?.maps?.event) {
         window.google.maps.event.removeListener(clickListenerRef.current);
       }
@@ -1037,13 +1044,6 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
 
   // Map init
   useEffect(() => {
-    const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-      | string
-      | undefined;
-    if (!browserKey) {
-      setMapError("Google Maps key not configured.");
-      return;
-    }
     let cancelled = false;
     let iv = 0;
 
@@ -1064,26 +1064,16 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     if (window.google?.maps) {
       initialize();
     } else {
-      window.__badiyosInitMap = initialize;
-      const existingScript = document.querySelector<HTMLScriptElement>(
-        'script[data-badiyos-gmaps="1"]',
-      );
-      if (existingScript) {
-        iv = window.setInterval(() => {
-          if (window.google?.maps) {
-            window.clearInterval(iv);
-            initialize();
-          }
-        }, 100);
-      } else {
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${browserKey}&loading=async&callback=__badiyosInitMap`;
-        script.async = true;
-        script.defer = true;
-        script.dataset.badiyosGmaps = "1";
-        script.onerror = () => setMapError("Failed to load Google Maps.");
-        document.head.appendChild(script);
-      }
+      loadGoogleMaps().catch(() => {
+        if (!cancelled) setMapError("Failed to load Google Maps.");
+      });
+      iv = window.setInterval(() => {
+        if (window.google?.maps) {
+          window.clearInterval(iv);
+          iv = 0;
+          initialize();
+        }
+      }, 100);
     }
 
     return () => {
