@@ -118,7 +118,13 @@ export const listSupportTickets = createServerFn({ method: "POST" })
 
 export const updateSupportTicket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { ticketId: string; status: TicketStatus; note?: string | null }) => {
+  .inputValidator(
+    (input: {
+      ticketId: string;
+      status: TicketStatus;
+      note?: string | null;
+      resolution?: string | null;
+    }) => {
     if (!input?.ticketId) throw new Error("ticketId required");
     if (!["open", "in_progress", "resolved"].includes(input.status))
       throw new Error("Invalid status");
