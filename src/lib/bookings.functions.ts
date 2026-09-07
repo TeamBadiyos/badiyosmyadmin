@@ -95,7 +95,7 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
         ),
         { count: "exact" },
       )
