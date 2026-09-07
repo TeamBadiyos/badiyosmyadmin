@@ -393,6 +393,21 @@ function Shell() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <NotificationBell
+            onOpenTarget={(a) => {
+              setActive(
+                a.target === "support"
+                  ? "support"
+                  : a.target === "emergency"
+                    ? "emergency"
+                    : a.target === "bookings"
+                      ? "bookings"
+                      : "dashboard",
+              );
+              if (a.target === "support") setOpenGroups((p) => ({ ...p, settings: true }));
+            }}
+          />
+
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm shrink-0">
               {initials}
