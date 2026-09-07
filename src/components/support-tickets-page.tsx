@@ -137,7 +137,14 @@ function TicketCard({ ticket }: { ticket: SupportTicket }) {
 
   const mut = useMutation({
     mutationFn: (status: TicketStatus) =>
-      updateFn({ data: { ticketId: ticket.id, status, note } }),
+      updateFn({
+        data: {
+          ticketId: ticket.id,
+          status,
+          note,
+          resolution: status === "resolved" ? note : null,
+        },
+      }),
     onSuccess: () => {
       toast.success("Ticket updated");
       queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
