@@ -171,24 +171,67 @@ export const listBookings = createServerFn({ method: "POST" })
       ]),
     );
 
-    const out: BookingRow[] = raw.map((r) => ({
-      id: r.id,
-      customerName: userMap.get(r.user_id) ?? "—",
-      serviceLabel: r.service_label ?? null,
-      scheduledDate: r.scheduled_date ?? null,
-      scheduledTimeSlot: r.scheduled_time_slot ?? null,
-      zoneId: r.zone_id ?? null,
-      zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
-      assignedExpertId: r.assigned_expert_id ?? null,
-      assignedExpertName: r.assigned_expert_id
-        ? expertMap.get(r.assigned_expert_id) ?? null
-        : null,
-      status: r.status as BookingStatus,
-      paid: !!r.razorpay_payment_id,
-      createdAt: r.created_at,
-      deletedAt: r.deleted_at ?? null,
+    const bookingIds = raw.map((r) => r.id);
+    const extByBooking = new Map<
+      string,
+      { minutes: number; amount: number; pending: boolean }
+    >();
+    if (bookingIds.length) {
+      const { data: exts } = await context.supabase
+        .from("booking_extensions")
+        .select("booking_id, extra_minutes, price, approval_status")
+        .in("booking_id", bookingIds);
+      for (const e of (exts ?? []) as Array<{
+        booking_id: string;
+        extra_minutes: number | null;
+        price: number | null;
+        approval_status: string | null;
+      }>) {
+        const cur = extByBooking.get(e.booking_id) ?? {
+          minutes: 0,
+          amount: 0,
+          pending: false,
+        };
+        if (e.approval_status === "approved") {
+          cur.minutes += Number(e.extra_minutes ?? 0);
+          cur.amount += Number(e.price ?? 0);
+        } else if (e.approval_status === "pending") {
+          cur.pending = true;
+        }
+        extByBooking.set(e.booking_id, cur);
+      }
+    }
 
-    }));
+    const out: BookingRow[] = raw.map((r) => {
+      const ext = extByBooking.get(r.id);
+      const paymentStatus: PaymentStatus = r.refund_status
+        ? "refunded"
+        : r.razorpay_payment_id
+          ? "paid"
+          : "unpaid";
+      return {
+        id: r.id,
+        customerName: userMap.get(r.user_id) ?? "—",
+        serviceLabel: r.service_label ?? null,
+        scheduledDate: r.scheduled_date ?? null,
+        scheduledTimeSlot: r.scheduled_time_slot ?? null,
+        zoneId: r.zone_id ?? null,
+        zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
+        assignedExpertId: r.assigned_expert_id ?? null,
+        assignedExpertName: r.assigned_expert_id
+          ? expertMap.get(r.assigned_expert_id) ?? null
+          : null,
+        status: r.status as BookingStatus,
+        paid: !!r.razorpay_payment_id,
+        paymentStatus,
+        extensionMinutes: ext?.minutes ?? 0,
+        extensionAmount: ext?.amount ?? 0,
+        extensionPending: ext?.pending ?? false,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at ?? null,
+      };
+    });
+
 
     return { rows: out, total: count ?? out.length, page, pageSize };
   });
