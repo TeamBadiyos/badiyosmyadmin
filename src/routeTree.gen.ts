@@ -21,6 +21,7 @@ import { Route as MyadminRouteImport } from './routes/myadmin'
 import { Route as JoinMerchantRouteImport } from './routes/join-merchant'
 import { Route as JoinExpertRouteImport } from './routes/join-expert'
 import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
+import { Route as DeleteAccountRouteImport } from './routes/delete-account'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -90,6 +91,11 @@ const JoinAreaPartnerRoute = JoinAreaPartnerRouteImport.update({
   path: '/join-area-partner',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeleteAccountRoute = DeleteAccountRouteImport.update({
+  id: '/delete-account',
+  path: '/delete-account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -129,6 +135,7 @@ const ApiPublicHooksExpireStaleBookingsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/delete-account': typeof DeleteAccountRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/join-merchant': typeof JoinMerchantRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/delete-account': typeof DeleteAccountRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/join-merchant': typeof JoinMerchantRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/delete-account': typeof DeleteAccountRoute
   '/join-area-partner': typeof JoinAreaPartnerRoute
   '/join-expert': typeof JoinExpertRoute
   '/join-merchant': typeof JoinMerchantRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/delete-account'
     | '/join-area-partner'
     | '/join-expert'
     | '/join-merchant'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/delete-account'
     | '/join-area-partner'
     | '/join-expert'
     | '/join-merchant'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/delete-account'
     | '/join-area-partner'
     | '/join-expert'
     | '/join-merchant'
@@ -256,6 +268,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DeleteAccountRoute: typeof DeleteAccountRoute
   JoinAreaPartnerRoute: typeof JoinAreaPartnerRoute
   JoinExpertRoute: typeof JoinExpertRoute
   JoinMerchantRoute: typeof JoinMerchantRoute
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinAreaPartnerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delete-account': {
+      id: '/delete-account'
+      path: '/delete-account'
+      fullPath: '/delete-account'
+      preLoaderRoute: typeof DeleteAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -436,6 +456,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DeleteAccountRoute: DeleteAccountRoute,
   JoinAreaPartnerRoute: JoinAreaPartnerRoute,
   JoinExpertRoute: JoinExpertRoute,
   JoinMerchantRoute: JoinMerchantRoute,

@@ -29,6 +29,7 @@ import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
 import { NotificationSoundsPage } from "@/components/notification-sounds-page";
 import { SupportTicketsPage } from "@/components/support-tickets-page";
+import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
@@ -73,6 +74,7 @@ import {
   Landmark,
   type LucideIcon,
   LifeBuoy,
+  UserMinus,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,6 +113,7 @@ const NAV_ITEMS = [
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
   { key: "support", label: "Support Tickets", icon: LifeBuoy },
+  { key: "deletion-requests", label: "Deletion Requests", icon: UserMinus },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
 ] as const;
 
@@ -145,7 +148,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["roles", "legal", "notification-sounds", "support", "audit"],
+    keys: ["roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
   },
 ] as const;
 
@@ -484,6 +487,8 @@ function Shell() {
           <NotificationSoundsPage role={role} />
         ) : active === "support" ? (
           <SupportTicketsPage role={role} />
+        ) : active === "deletion-requests" ? (
+          <DeletionRequestsPage role={role} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
