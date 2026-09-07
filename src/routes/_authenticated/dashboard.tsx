@@ -317,7 +317,12 @@ function Shell() {
                     className={group.isActive ? "text-primary" : ""}
                   />
                   <span className="flex-1 text-left">{group.label}</span>
-                  {!open && group.keys.includes("support") && openTickets > 0 && (
+                  {!open &&
+                    (group.keys as readonly string[]).includes("support") &&
+                    openTickets > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
+                    )}
+
                     <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
                   )}
 
