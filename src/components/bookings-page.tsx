@@ -26,7 +26,20 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
   rejected: "bg-red-50 text-red-700",
 };
 
+const PAYMENT_STYLES: Record<string, string> = {
+  paid: "bg-emerald-50 text-emerald-700",
+  refunded: "bg-amber-50 text-amber-700",
+  unpaid: "bg-muted text-muted-foreground",
+};
+
+function fmtDuration(mins: number) {
+  if (mins >= 60 && mins % 60 === 0) return `${mins / 60}hr`;
+  if (mins > 60) return `${Math.floor(mins / 60)}hr ${mins % 60}m`;
+  return `${mins}m`;
+}
+
 function fmtDateTime(iso: string) {
+
   const d = new Date(iso);
   return d.toLocaleString("en-IN", {
     day: "2-digit",
