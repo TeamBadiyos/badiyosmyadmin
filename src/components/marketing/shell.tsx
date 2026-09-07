@@ -171,6 +171,7 @@ function MarketingFooter() {
           <Link to="/terms" className="hover:text-foreground">Terms &amp; Conditions</Link>
           <Link to="/refund-policy" className="hover:text-foreground">Refund &amp; Cancellation Policy</Link>
           <Link to="/shipping-policy" className="hover:text-foreground">Shipping &amp; Delivery Policy</Link>
+          <Link to="/delete-account" className="hover:text-foreground">Delete My Account</Link>
         </FooterCol>
       </div>
       <div className="border-t border-border">
