@@ -135,8 +135,8 @@ export const updateSupportTicket = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_support_ticket", {
       _ticket_id: data.ticketId,
       _status: data.status,
-      _note: data.note?.trim() ? data.note.trim() : null,
-      _resolution: data.resolution?.trim() ? data.resolution.trim() : null,
+      _note: data.note?.trim() ? data.note.trim() : undefined,
+      _resolution: data.resolution?.trim() ? data.resolution.trim() : undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
