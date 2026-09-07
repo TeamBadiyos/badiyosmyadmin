@@ -308,7 +308,19 @@ function BookingRowItem({
         </div>
       </td>
       <td className="px-4 py-3 text-muted-foreground">
-        <div className="text-foreground">{row.serviceLabel ?? "—"}</div>
+        <div className="text-foreground flex items-center gap-2 flex-wrap">
+          <span>{row.serviceLabel ?? "—"}</span>
+          {row.extensionMinutes > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700">
+              Extended +{fmtDuration(row.extensionMinutes)}
+            </span>
+          )}
+          {row.extensionPending && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
+              Extension pending
+            </span>
+          )}
+        </div>
         <div className="text-[11px]">
           {row.scheduledDate ?? ""}
           {row.scheduledTimeSlot ? ` · ${row.scheduledTimeSlot}` : ""}
@@ -333,11 +345,17 @@ function BookingRowItem({
       </td>
       <td className="px-4 py-3">
         <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${row.paid ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${PAYMENT_STYLES[row.paymentStatus]}`}
         >
-          {row.paid ? "Paid" : "Unpaid"}
+          {row.paymentStatus}
         </span>
+        {row.extensionAmount > 0 && (
+          <div className="mt-1 text-[10px] text-muted-foreground">
+            +₹{row.extensionAmount.toFixed(0)} extension
+          </div>
+        )}
       </td>
+
       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
         {fmtDateTime(row.createdAt)}
       </td>
