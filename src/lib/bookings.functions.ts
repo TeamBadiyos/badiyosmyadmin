@@ -21,6 +21,16 @@ export const BOOKING_STATUSES: BookingStatus[] = [
 ];
 
 
+export type PaymentStatus = "paid" | "refunded" | "unpaid";
+
+export type BookingExtension = {
+  id: string;
+  extraMinutes: number;
+  price: number;
+  approvalStatus: string;
+  createdAt: string;
+};
+
 export type BookingRow = {
   id: string;
   customerName: string;
@@ -33,9 +43,14 @@ export type BookingRow = {
   assignedExpertName: string | null;
   status: BookingStatus;
   paid: boolean;
+  paymentStatus: PaymentStatus;
+  extensionMinutes: number;
+  extensionAmount: number;
+  extensionPending: boolean;
   createdAt: string;
   deletedAt: string | null;
 };
+
 
 export type ListBookingsInput = {
   status?: string | null;
