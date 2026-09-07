@@ -204,7 +204,18 @@ function Shell() {
   });
 
   const role = (staff?.role as StaffRole | undefined) ?? null;
+
+  const fetchAlerts = useServerFn(getStaffAlerts);
+  const { data: alerts } = useQuery({
+    queryKey: ["staff", "alerts"],
+    queryFn: () => fetchAlerts(),
+    refetchInterval: 60_000,
+    staleTime: 20_000,
+  });
+  const openTickets = alerts?.openTickets ?? 0;
+
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
+
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
   const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
   const groups = NAV_GROUPS.map((g) => ({
