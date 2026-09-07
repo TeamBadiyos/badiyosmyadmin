@@ -345,6 +345,28 @@ async function loadBookingDetails(
       : Promise.resolve({ data: null }),
   ]);
 
+  const { data: extRows } = await supabase
+    .from("booking_extensions")
+    .select("id, extra_minutes, price, approval_status, created_at")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: true });
+  const extensions: BookingExtension[] = (
+    (extRows ?? []) as Array<{
+      id: string;
+      extra_minutes: number | null;
+      price: number | null;
+      approval_status: string | null;
+      created_at: string;
+    }>
+  ).map((e) => ({
+    id: e.id,
+    extraMinutes: Number(e.extra_minutes ?? 0),
+    price: Number(e.price ?? 0),
+    approvalStatus: e.approval_status ?? "pending",
+    createdAt: e.created_at,
+  }));
+  const approved = extensions.filter((e) => e.approvalStatus === "approved");
+
   return {
     id: b.id,
     status: b.status as BookingStatus,
@@ -355,8 +377,14 @@ async function loadBookingDetails(
     slotType: b.slot_type ?? null,
     price: b.price != null ? Number(b.price) : null,
     paid: !!b.razorpay_payment_id,
+    paymentStatus: b.refund_status ? "refunded" : b.razorpay_payment_id ? "paid" : "unpaid",
+    refundStatus: b.refund_status ?? null,
+    extensions,
+    extensionMinutes: approved.reduce((s, e) => s + e.extraMinutes, 0),
+    extensionAmount: approved.reduce((s, e) => s + e.price, 0),
     razorpayPaymentId: b.razorpay_payment_id ?? null,
     razorpayOrderId: b.razorpay_order_id ?? null,
+
     createdAt: b.created_at,
     updatedAt: b.updated_at ?? null,
     rating: b.rating ?? null,
