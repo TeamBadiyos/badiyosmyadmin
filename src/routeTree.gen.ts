@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
+import { Route as ShippingDeliveryPolicyRouteImport } from './routes/shipping-delivery-policy'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as RefundCancellationPolicyRouteImport } from './routes/refund-cancellation-policy'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as MyadminRouteImport } from './routes/myadmin'
 import { Route as JoinMerchantRouteImport } from './routes/join-merchant'
@@ -26,6 +29,11 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
 
+const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
+  id: '/terms-and-conditions',
+  path: '/terms-and-conditions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -41,11 +49,22 @@ const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
   path: '/shipping-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShippingDeliveryPolicyRoute = ShippingDeliveryPolicyRouteImport.update({
+  id: '/shipping-delivery-policy',
+  path: '/shipping-delivery-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RefundPolicyRoute = RefundPolicyRouteImport.update({
   id: '/refund-policy',
   path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundCancellationPolicyRoute =
+  RefundCancellationPolicyRouteImport.update({
+    id: '/refund-cancellation-policy',
+    path: '/refund-cancellation-policy',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   id: '/privacy-policy',
   path: '/privacy-policy',
@@ -115,10 +134,13 @@ export interface FileRoutesByFullPath {
   '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-cancellation-policy': typeof RefundCancellationPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-delivery-policy': typeof ShippingDeliveryPolicyRoute
   '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
@@ -132,10 +154,13 @@ export interface FileRoutesByTo {
   '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-cancellation-policy': typeof RefundCancellationPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-delivery-policy': typeof ShippingDeliveryPolicyRoute
   '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
@@ -151,10 +176,13 @@ export interface FileRoutesById {
   '/join-merchant': typeof JoinMerchantRoute
   '/myadmin': typeof MyadminRouteWithChildren
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-cancellation-policy': typeof RefundCancellationPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/shipping-delivery-policy': typeof ShippingDeliveryPolicyRoute
   '/shipping-policy': typeof ShippingPolicyRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
@@ -170,10 +198,13 @@ export interface FileRouteTypes {
     | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
+    | '/refund-cancellation-policy'
     | '/refund-policy'
+    | '/shipping-delivery-policy'
     | '/shipping-policy'
     | '/support'
     | '/terms'
+    | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
@@ -187,10 +218,13 @@ export interface FileRouteTypes {
     | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
+    | '/refund-cancellation-policy'
     | '/refund-policy'
+    | '/shipping-delivery-policy'
     | '/shipping-policy'
     | '/support'
     | '/terms'
+    | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
@@ -205,10 +239,13 @@ export interface FileRouteTypes {
     | '/join-merchant'
     | '/myadmin'
     | '/privacy-policy'
+    | '/refund-cancellation-policy'
     | '/refund-policy'
+    | '/shipping-delivery-policy'
     | '/shipping-policy'
     | '/support'
     | '/terms'
+    | '/terms-and-conditions'
     | '/_authenticated/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
@@ -224,16 +261,26 @@ export interface RootRouteChildren {
   JoinMerchantRoute: typeof JoinMerchantRoute
   MyadminRoute: typeof MyadminRouteWithChildren
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  RefundCancellationPolicyRoute: typeof RefundCancellationPolicyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
+  ShippingDeliveryPolicyRoute: typeof ShippingDeliveryPolicyRoute
   ShippingPolicyRoute: typeof ShippingPolicyRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  TermsAndConditionsRoute: typeof TermsAndConditionsRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms-and-conditions': {
+      id: '/terms-and-conditions'
+      path: '/terms-and-conditions'
+      fullPath: '/terms-and-conditions'
+      preLoaderRoute: typeof TermsAndConditionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -255,11 +302,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShippingPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shipping-delivery-policy': {
+      id: '/shipping-delivery-policy'
+      path: '/shipping-delivery-policy'
+      fullPath: '/shipping-delivery-policy'
+      preLoaderRoute: typeof ShippingDeliveryPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/refund-policy': {
       id: '/refund-policy'
       path: '/refund-policy'
       fullPath: '/refund-policy'
       preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-cancellation-policy': {
+      id: '/refund-cancellation-policy'
+      path: '/refund-cancellation-policy'
+      fullPath: '/refund-cancellation-policy'
+      preLoaderRoute: typeof RefundCancellationPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy-policy': {
@@ -380,10 +441,13 @@ const rootRouteChildren: RootRouteChildren = {
   JoinMerchantRoute: JoinMerchantRoute,
   MyadminRoute: MyadminRouteWithChildren,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  RefundCancellationPolicyRoute: RefundCancellationPolicyRoute,
   RefundPolicyRoute: RefundPolicyRoute,
+  ShippingDeliveryPolicyRoute: ShippingDeliveryPolicyRoute,
   ShippingPolicyRoute: ShippingPolicyRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  TermsAndConditionsRoute: TermsAndConditionsRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
   ApiPublicHooksExpireStaleBookingsRoute:
     ApiPublicHooksExpireStaleBookingsRoute,
