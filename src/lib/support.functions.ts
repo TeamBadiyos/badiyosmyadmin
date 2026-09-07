@@ -125,16 +125,18 @@ export const updateSupportTicket = createServerFn({ method: "POST" })
       note?: string | null;
       resolution?: string | null;
     }) => {
-    if (!input?.ticketId) throw new Error("ticketId required");
-    if (!["open", "in_progress", "resolved"].includes(input.status))
-      throw new Error("Invalid status");
-    return input;
-  })
+      if (!input?.ticketId) throw new Error("ticketId required");
+      if (!["open", "in_progress", "resolved"].includes(input.status))
+        throw new Error("Invalid status");
+      return input;
+    },
+  )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("staff_update_support_ticket", {
       _ticket_id: data.ticketId,
       _status: data.status,
-      _note: data.note?.trim() ? data.note.trim() : undefined,
+      _note: data.note?.trim() ? data.note.trim() : null,
+      _resolution: data.resolution?.trim() ? data.resolution.trim() : null,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
