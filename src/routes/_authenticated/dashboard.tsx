@@ -317,6 +317,10 @@ function Shell() {
                     className={group.isActive ? "text-primary" : ""}
                   />
                   <span className="flex-1 text-left">{group.label}</span>
+                  {!open && group.keys.includes("support") && openTickets > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
+                  )}
+
                   <ChevronDown
                     size={16}
                     className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
