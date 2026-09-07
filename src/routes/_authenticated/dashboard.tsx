@@ -346,6 +346,12 @@ function Shell() {
                           className={isActive ? "text-primary" : ""}
                         />
                         <span>{item.label}</span>
+                        {item.key === "support" && openTickets > 0 && (
+                          <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                            {openTickets > 9 ? "9+" : openTickets}
+                          </span>
+                        )}
+
                       </button>
                     );
                   })}
