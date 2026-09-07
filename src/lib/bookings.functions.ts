@@ -21,6 +21,16 @@ export const BOOKING_STATUSES: BookingStatus[] = [
 ];
 
 
+export type PaymentStatus = "paid" | "refunded" | "unpaid";
+
+export type BookingExtension = {
+  id: string;
+  extraMinutes: number;
+  price: number;
+  approvalStatus: string;
+  createdAt: string;
+};
+
 export type BookingRow = {
   id: string;
   customerName: string;
@@ -33,9 +43,14 @@ export type BookingRow = {
   assignedExpertName: string | null;
   status: BookingStatus;
   paid: boolean;
+  paymentStatus: PaymentStatus;
+  extensionMinutes: number;
+  extensionAmount: number;
+  extensionPending: boolean;
   createdAt: string;
   deletedAt: string | null;
 };
+
 
 export type ListBookingsInput = {
   status?: string | null;
@@ -80,7 +95,7 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
         ),
         { count: "exact" },
       )
@@ -156,24 +171,67 @@ export const listBookings = createServerFn({ method: "POST" })
       ]),
     );
 
-    const out: BookingRow[] = raw.map((r) => ({
-      id: r.id,
-      customerName: userMap.get(r.user_id) ?? "—",
-      serviceLabel: r.service_label ?? null,
-      scheduledDate: r.scheduled_date ?? null,
-      scheduledTimeSlot: r.scheduled_time_slot ?? null,
-      zoneId: r.zone_id ?? null,
-      zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
-      assignedExpertId: r.assigned_expert_id ?? null,
-      assignedExpertName: r.assigned_expert_id
-        ? expertMap.get(r.assigned_expert_id) ?? null
-        : null,
-      status: r.status as BookingStatus,
-      paid: !!r.razorpay_payment_id,
-      createdAt: r.created_at,
-      deletedAt: r.deleted_at ?? null,
+    const bookingIds = raw.map((r) => r.id);
+    const extByBooking = new Map<
+      string,
+      { minutes: number; amount: number; pending: boolean }
+    >();
+    if (bookingIds.length) {
+      const { data: exts } = await context.supabase
+        .from("booking_extensions")
+        .select("booking_id, extra_minutes, price, approval_status")
+        .in("booking_id", bookingIds);
+      for (const e of (exts ?? []) as Array<{
+        booking_id: string;
+        extra_minutes: number | null;
+        price: number | null;
+        approval_status: string | null;
+      }>) {
+        const cur = extByBooking.get(e.booking_id) ?? {
+          minutes: 0,
+          amount: 0,
+          pending: false,
+        };
+        if (e.approval_status === "approved") {
+          cur.minutes += Number(e.extra_minutes ?? 0);
+          cur.amount += Number(e.price ?? 0);
+        } else if (e.approval_status === "pending") {
+          cur.pending = true;
+        }
+        extByBooking.set(e.booking_id, cur);
+      }
+    }
 
-    }));
+    const out: BookingRow[] = raw.map((r) => {
+      const ext = extByBooking.get(r.id);
+      const paymentStatus: PaymentStatus = r.refund_status
+        ? "refunded"
+        : r.razorpay_payment_id
+          ? "paid"
+          : "unpaid";
+      return {
+        id: r.id,
+        customerName: userMap.get(r.user_id) ?? "—",
+        serviceLabel: r.service_label ?? null,
+        scheduledDate: r.scheduled_date ?? null,
+        scheduledTimeSlot: r.scheduled_time_slot ?? null,
+        zoneId: r.zone_id ?? null,
+        zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
+        assignedExpertId: r.assigned_expert_id ?? null,
+        assignedExpertName: r.assigned_expert_id
+          ? expertMap.get(r.assigned_expert_id) ?? null
+          : null,
+        status: r.status as BookingStatus,
+        paid: !!r.razorpay_payment_id,
+        paymentStatus,
+        extensionMinutes: ext?.minutes ?? 0,
+        extensionAmount: ext?.amount ?? 0,
+        extensionPending: ext?.pending ?? false,
+        createdAt: r.created_at,
+        deletedAt: r.deleted_at ?? null,
+      };
+    });
+
 
     return { rows: out, total: count ?? out.length, page, pageSize };
   });
@@ -216,8 +274,14 @@ export type BookingDetails = {
   slotType: string | null;
   price: number | null;
   paid: boolean;
+  paymentStatus: PaymentStatus;
+  refundStatus: string | null;
+  extensions: BookingExtension[];
+  extensionMinutes: number;
+  extensionAmount: number;
   razorpayPaymentId: string | null;
   razorpayOrderId: string | null;
+
   createdAt: string;
   updatedAt: string | null;
   rating: number | null;
@@ -248,7 +312,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -281,6 +345,28 @@ async function loadBookingDetails(
       : Promise.resolve({ data: null }),
   ]);
 
+  const { data: extRows } = await supabase
+    .from("booking_extensions")
+    .select("id, extra_minutes, price, approval_status, created_at")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: true });
+  const extensions: BookingExtension[] = (
+    (extRows ?? []) as Array<{
+      id: string;
+      extra_minutes: number | null;
+      price: number | null;
+      approval_status: string | null;
+      created_at: string;
+    }>
+  ).map((e) => ({
+    id: e.id,
+    extraMinutes: Number(e.extra_minutes ?? 0),
+    price: Number(e.price ?? 0),
+    approvalStatus: e.approval_status ?? "pending",
+    createdAt: e.created_at,
+  }));
+  const approved = extensions.filter((e) => e.approvalStatus === "approved");
+
   return {
     id: b.id,
     status: b.status as BookingStatus,
@@ -291,8 +377,14 @@ async function loadBookingDetails(
     slotType: b.slot_type ?? null,
     price: b.price != null ? Number(b.price) : null,
     paid: !!b.razorpay_payment_id,
+    paymentStatus: b.refund_status ? "refunded" : b.razorpay_payment_id ? "paid" : "unpaid",
+    refundStatus: b.refund_status ?? null,
+    extensions,
+    extensionMinutes: approved.reduce((s, e) => s + e.extraMinutes, 0),
+    extensionAmount: approved.reduce((s, e) => s + e.price, 0),
     razorpayPaymentId: b.razorpay_payment_id ?? null,
     razorpayOrderId: b.razorpay_order_id ?? null,
+
     createdAt: b.created_at,
     updatedAt: b.updated_at ?? null,
     rating: b.rating ?? null,

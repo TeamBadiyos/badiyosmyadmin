@@ -29,6 +29,10 @@ import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
 import { NotificationSoundsPage } from "@/components/notification-sounds-page";
 import { SupportTicketsPage } from "@/components/support-tickets-page";
+import { NotificationBell } from "@/components/notification-bell";
+import { getStaffAlerts } from "@/lib/alerts.functions";
+
+
 
 
 import {
@@ -200,7 +204,18 @@ function Shell() {
   });
 
   const role = (staff?.role as StaffRole | undefined) ?? null;
+
+  const fetchAlerts = useServerFn(getStaffAlerts);
+  const { data: alerts } = useQuery({
+    queryKey: ["staff", "alerts"],
+    queryFn: () => fetchAlerts(),
+    refetchInterval: 60_000,
+    staleTime: 20_000,
+  });
+  const openTickets = alerts?.openTickets ?? 0;
+
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
+
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
   const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
   const groups = NAV_GROUPS.map((g) => ({
@@ -302,6 +317,14 @@ function Shell() {
                     className={group.isActive ? "text-primary" : ""}
                   />
                   <span className="flex-1 text-left">{group.label}</span>
+                  {!open &&
+                    (group.keys as readonly string[]).includes("support") &&
+                    openTickets > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
+                    )}
+
+
+
                   <ChevronDown
                     size={16}
                     className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -331,6 +354,12 @@ function Shell() {
                           className={isActive ? "text-primary" : ""}
                         />
                         <span>{item.label}</span>
+                        {item.key === "support" && openTickets > 0 && (
+                          <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                            {openTickets > 9 ? "9+" : openTickets}
+                          </span>
+                        )}
+
                       </button>
                     );
                   })}
@@ -364,6 +393,21 @@ function Shell() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <NotificationBell
+            onOpenTarget={(a) => {
+              setActive(
+                a.target === "support"
+                  ? "support"
+                  : a.target === "emergency"
+                    ? "emergency"
+                    : a.target === "bookings"
+                      ? "bookings"
+                      : "dashboard",
+              );
+              if (a.target === "support") setOpenGroups((p) => ({ ...p, settings: true }));
+            }}
+          />
+
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm shrink-0">
               {initials}

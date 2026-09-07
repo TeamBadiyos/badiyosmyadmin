@@ -475,14 +475,46 @@ export function BookingDetailsModal({
                     label="Price"
                     value={data.price != null ? inr.format(data.price) : "—"}
                   />
+                  {data.extensionMinutes > 0 && (
+                    <Field
+                      label="Extension"
+                      value={`+${
+                        data.extensionMinutes % 60 === 0
+                          ? `${data.extensionMinutes / 60}hr`
+                          : `${data.extensionMinutes} min`
+                      } · ${inr.format(data.extensionAmount)}`}
+                    />
+                  )}
+                  {data.extensionMinutes > 0 && data.price != null && (
+                    <Field
+                      label="Total"
+                      value={inr.format(data.price + data.extensionAmount)}
+                    />
+                  )}
+                  {data.extensions.some((e) => e.approvalStatus === "pending") && (
+                    <div className="flex items-center gap-2 py-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground w-28 shrink-0">
+                        Extension
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
+                        Awaiting expert approval
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 py-1">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground w-28 shrink-0">
                       Status
                     </span>
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${data.paid ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+                        data.paymentStatus === "paid"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : data.paymentStatus === "refunded"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-muted text-muted-foreground"
+                      }`}
                     >
-                      {data.paid ? "Paid" : "Unpaid"}
+                      {data.paymentStatus}
                     </span>
                   </div>
                   <Field
@@ -496,6 +528,7 @@ export function BookingDetailsModal({
                     mono
                   />
                 </Card>
+
                 <Card title="Assigned Expert">
                   {data.expert.id ? (
                     <>
