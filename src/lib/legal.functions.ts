@@ -56,8 +56,9 @@ export const getLegalPage = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<LegalPage | null> => {
     const { createClient } = await import("@supabase/supabase-js");
     const db = createClient(
-      process.env["VITE_SUPABASE_URL"]!,
-      process.env["VITE_SUPABASE_PUBLISHABLE_KEY"]!,
+      (process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"])!,
+      (process.env["SUPABASE_PUBLISHABLE_KEY"] ??
+        process.env["VITE_SUPABASE_PUBLISHABLE_KEY"])!,
       { auth: { persistSession: false } },
     );
     const { data: row, error } = await db
