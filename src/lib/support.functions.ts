@@ -64,7 +64,42 @@ export const listSupportTickets = createServerFn({ method: "POST" })
         full_name: string | null;
         phone: string | null;
       }>) {
-        userMap.set(u.id, { name: u.full_name, phone: u.phone });
+        if (u.full_name || u.phone) userMap.set(u.id, { name: u.full_name, phone: u.phone });
+      }
+
+      // Partner-app tickets carry the expert's auth user id; merchant-app the merchant's.
+      const missing = userIds.filter((id) => !userMap.get(id)?.name);
+      if (missing.length) {
+        const { data: experts } = await context.supabase
+          .from("experts")
+          .select("auth_user_id, name, phone")
+          .in("auth_user_id", missing);
+        for (const e of (experts ?? []) as Array<{
+          auth_user_id: string | null;
+          name: string | null;
+          phone: string | null;
+        }>) {
+          if (e.auth_user_id) userMap.set(e.auth_user_id, { name: e.name, phone: e.phone });
+        }
+        const stillMissing = missing.filter((id) => !userMap.get(id)?.name);
+        if (stillMissing.length) {
+          const { data: merchants } = await context.supabase
+            .from("merchants")
+            .select("auth_user_id, store_name, owner_name, phone")
+            .in("auth_user_id", stillMissing);
+          for (const m of (merchants ?? []) as Array<{
+            auth_user_id: string | null;
+            store_name: string | null;
+            owner_name: string | null;
+            phone: string | null;
+          }>) {
+            if (m.auth_user_id)
+              userMap.set(m.auth_user_id, {
+                name: m.owner_name ?? m.store_name,
+                phone: m.phone,
+              });
+          }
+        }
       }
     }
 
@@ -83,17 +118,25 @@ export const listSupportTickets = createServerFn({ method: "POST" })
 
 export const updateSupportTicket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { ticketId: string; status: TicketStatus; note?: string | null }) => {
-    if (!input?.ticketId) throw new Error("ticketId required");
-    if (!["open", "in_progress", "resolved"].includes(input.status))
-      throw new Error("Invalid status");
-    return input;
-  })
+  .inputValidator(
+    (input: {
+      ticketId: string;
+      status: TicketStatus;
+      note?: string | null;
+      resolution?: string | null;
+    }) => {
+      if (!input?.ticketId) throw new Error("ticketId required");
+      if (!["open", "in_progress", "resolved"].includes(input.status))
+        throw new Error("Invalid status");
+      return input;
+    },
+  )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("staff_update_support_ticket", {
       _ticket_id: data.ticketId,
       _status: data.status,
       _note: data.note?.trim() ? data.note.trim() : undefined,
+      _resolution: data.resolution?.trim() ? data.resolution.trim() : undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
