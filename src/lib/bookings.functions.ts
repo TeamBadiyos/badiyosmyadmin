@@ -274,8 +274,14 @@ export type BookingDetails = {
   slotType: string | null;
   price: number | null;
   paid: boolean;
+  paymentStatus: PaymentStatus;
+  refundStatus: string | null;
+  extensions: BookingExtension[];
+  extensionMinutes: number;
+  extensionAmount: number;
   razorpayPaymentId: string | null;
   razorpayOrderId: string | null;
+
   createdAt: string;
   updatedAt: string | null;
   rating: number | null;
