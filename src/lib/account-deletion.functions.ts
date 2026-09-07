@@ -103,7 +103,7 @@ export const updateDeletionRequest = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_deletion_request", {
       _request_id: data.requestId,
       _status: data.status,
-      _note: data.note ?? null,
+      _note: data.note ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
