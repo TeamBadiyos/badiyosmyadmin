@@ -154,15 +154,31 @@ export const setRewardProgramActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const archiveRewardProgram = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; archived: boolean }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("staff_archive_reward_program", {
+      _id: data.id,
+      _archived: data.archived,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteRewardProgram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
+  .inputValidator((input: { id: string; force?: boolean }) => {
     if (!input?.id) throw new Error("id required");
     return input;
   })
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).rpc("staff_delete_reward_program", {
       _id: data.id,
+      _force: data.force ?? false,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
