@@ -34,6 +34,7 @@ export type RewardProgram = {
   valid_from: string | null;
   valid_until: string | null;
   is_active: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -78,13 +79,17 @@ export const listRewardTriggerTypes = createServerFn({ method: "GET" })
 
 export const listRewardPrograms = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { actor_type?: string | null } | undefined) => input ?? {})
+  .inputValidator(
+    (input: { actor_type?: string | null; archived?: boolean } | undefined) => input ?? {},
+  )
   .handler(async ({ data, context }): Promise<RewardProgram[]> => {
     let q = (context.supabase as any)
       .from("reward_programs")
       .select("*")
       .order("created_at", { ascending: false });
     if (data?.actor_type) q = q.eq("actor_type", data.actor_type);
+    if (data?.archived) q = q.not("archived_at", "is", null);
+    else q = q.is("archived_at", null);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r: any) => ({

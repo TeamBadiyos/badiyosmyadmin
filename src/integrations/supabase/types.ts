@@ -2196,7 +2196,8 @@ export type Database = {
           credited_at: string
           id: string
           notes: string | null
-          program_id: string
+          program_id: string | null
+          program_name: string | null
           reversal_reason: string | null
           reversed_at: string | null
           reversed_by: string | null
@@ -2211,7 +2212,8 @@ export type Database = {
           credited_at?: string
           id?: string
           notes?: string | null
-          program_id: string
+          program_id?: string | null
+          program_name?: string | null
           reversal_reason?: string | null
           reversed_at?: string | null
           reversed_by?: string | null
@@ -2226,7 +2228,8 @@ export type Database = {
           credited_at?: string
           id?: string
           notes?: string | null
-          program_id?: string
+          program_id?: string | null
+          program_name?: string | null
           reversal_reason?: string | null
           reversed_at?: string | null
           reversed_by?: string | null
@@ -2255,6 +2258,7 @@ export type Database = {
       reward_programs: {
         Row: {
           actor_type: string
+          archived_at: string | null
           condition: Json
           created_at: string
           created_by: string | null
@@ -2271,6 +2275,7 @@ export type Database = {
         }
         Insert: {
           actor_type: string
+          archived_at?: string | null
           condition?: Json
           created_at?: string
           created_by?: string | null
@@ -2287,6 +2292,7 @@ export type Database = {
         }
         Update: {
           actor_type?: string
+          archived_at?: string | null
           condition?: Json
           created_at?: string
           created_by?: string | null
@@ -3469,6 +3475,10 @@ export type Database = {
         Args: { _alert_id: string; _notes?: string }
         Returns: undefined
       }
+      staff_archive_reward_program: {
+        Args: { _archived?: boolean; _id: string }
+        Returns: undefined
+      }
       staff_area_partner_kyc_decision: {
         Args: { _decision: string; _partner_id: string; _reason: string }
         Returns: undefined
@@ -3505,7 +3515,10 @@ export type Database = {
         Args: { _decision: string; _notes?: string; _skill_id: string }
         Returns: undefined
       }
-      staff_delete_reward_program: { Args: { _id: string }; Returns: undefined }
+      staff_delete_reward_program: {
+        Args: { _force?: boolean; _id: string }
+        Returns: undefined
+      }
       staff_delete_service_catalogue_row: {
         Args: { _id: string }
         Returns: undefined
@@ -3746,6 +3759,10 @@ export type Database = {
           _refund_status: string
         }
         Returns: Json
+      }
+      system_credit_referral_for_booking: {
+        Args: { _booking_id: string }
+        Returns: undefined
       }
       system_fulfill_payment_intent: {
         Args: { _order_id: string; _payment_id: string }
