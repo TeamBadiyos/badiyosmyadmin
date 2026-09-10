@@ -400,9 +400,8 @@ function Shell() {
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <NotificationBell
             onOpenTarget={(a) => {
-              const key = NAV_ITEMS.some((n) => n.key === a.target)
-                ? a.target
-                : "dashboard";
+              const match = NAV_ITEMS.find((n) => n.key === a.target);
+              const key = match ? match.key : ("dashboard" as const);
               setActive(key);
               setNavNonce((n) => n + 1);
               const group = NAV_GROUPS.find((g) =>
