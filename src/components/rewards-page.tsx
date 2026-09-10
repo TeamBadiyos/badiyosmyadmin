@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X, Archive, ArchiveRestore } from "lucide-react";
 import {
   listRewardTriggerTypes,
   listRewardPrograms,
   upsertRewardProgram,
   setRewardProgramActive,
+  archiveRewardProgram,
   deleteRewardProgram,
   getRewardProgramStats,
   searchRewardLedger,
