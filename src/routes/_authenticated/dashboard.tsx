@@ -24,6 +24,7 @@ import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { InterestLeadsPage } from "@/components/interest-leads-page";
 import { WaitlistPage } from "@/components/waitlist-page";
+import { UsersPage } from "@/components/users-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
 import { LegalPagesPage } from "@/components/legal-pages-page";
@@ -98,6 +99,7 @@ const NAV_ITEMS = [
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "merchants", label: "Merchant Approvals", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
+  { key: "users", label: "Users", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Interest", icon: Sprout },
 
@@ -130,7 +132,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["waitlist", "interest-leads", "referrals", "rewards"],
+    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards"],
   },
   {
     id: "catalog",
@@ -460,6 +462,8 @@ function Shell() {
           <MerchantApprovalsPage role={role} />
         ) : active === "merchant-billing" ? (
           <MerchantBillingPage role={role} />
+        ) : active === "users" ? (
+          <UsersPage onSelectBooking={setSelectedBookingId} />
         ) : active === "waitlist" ? (
           <WaitlistPage role={role} />
         ) : active === "interest-leads" ? (
