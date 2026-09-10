@@ -57,8 +57,8 @@ export function RewardsPage() {
   });
 
   const { data: programs = [], isLoading } = useQuery({
-    queryKey: ["rewards", "programs", actor],
-    queryFn: () => fetchPrograms({ data: { actor_type: actor } }),
+    queryKey: ["rewards", "programs", actor, showArchived],
+    queryFn: () => fetchPrograms({ data: { actor_type: actor, archived: showArchived } }),
   });
 
   const { data: stats = [] } = useQuery({
