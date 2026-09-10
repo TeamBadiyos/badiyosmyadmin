@@ -4,8 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type DeletionRequestStatus = "pending" | "in_progress" | "completed" | "rejected";
 
+export type DeletionAccountType = "customer" | "expert" | "merchant";
+
 export type DeletionRequest = {
   id: string;
+  accountType: DeletionAccountType;
   phone: string;
   email: string | null;
   reason: string | null;
