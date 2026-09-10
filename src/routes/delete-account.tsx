@@ -183,6 +183,28 @@ function DeletionForm() {
       onSubmit={handleSubmit}
       className="bg-card rounded-[18px] border border-border p-6 sm:p-8 space-y-4"
     >
+      <div>
+        <span className="block text-[13px] font-semibold text-foreground mb-1.5">
+          Which account do you want to delete? <span className="text-primary">*</span>
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {ACCOUNT_TYPES.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setAccountType(t.key)}
+              aria-pressed={accountType === t.key}
+              className={`h-[44px] px-4 rounded-[14px] border text-[14px] font-semibold transition ${
+                accountType === t.key
+                  ? "border-primary bg-primary-tint text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/40"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="block">
         <span className="block text-[13px] font-semibold text-foreground mb-1.5">
           Registered phone number <span className="text-primary">*</span>
