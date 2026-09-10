@@ -212,8 +212,8 @@ function Shell() {
 
   const fetchAlerts = useServerFn(getStaffAlerts);
   const { data: alerts } = useQuery({
-    queryKey: ["staff", "alerts"],
-    queryFn: () => fetchAlerts(),
+    queryKey: ["staff", "alerts", "unread"],
+    queryFn: () => fetchAlerts({ data: { filter: "unread" as const } }),
     refetchInterval: 60_000,
     staleTime: 20_000,
   });
@@ -400,16 +400,15 @@ function Shell() {
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <NotificationBell
             onOpenTarget={(a) => {
-              setActive(
-                a.target === "support"
-                  ? "support"
-                  : a.target === "emergency"
-                    ? "emergency"
-                    : a.target === "bookings"
-                      ? "bookings"
-                      : "dashboard",
+              const match = NAV_ITEMS.find((n) => n.key === a.target);
+              const key = match ? match.key : ("dashboard" as const);
+              setActive(key);
+              setNavNonce((n) => n + 1);
+              const group = NAV_GROUPS.find((g) =>
+                (g.keys as ReadonlyArray<string>).includes(key),
               );
-              if (a.target === "support") setOpenGroups((p) => ({ ...p, settings: true }));
+              if (group) setOpenGroups((p) => ({ ...p, [group.id]: true }));
+              if (key === "bookings" && a.targetId) setSelectedBookingId(a.targetId);
             }}
           />
 
