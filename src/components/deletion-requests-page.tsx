@@ -45,10 +45,12 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const fetchRequests = useServerFn(listDeletionRequests);
   const [status, setStatus] = useState("");
+  const [accountType, setAccountType] = useState("");
 
   const { data: requests = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["deletion-requests", status],
-    queryFn: () => fetchRequests({ data: { status: status || null } }),
+    queryKey: ["deletion-requests", status, accountType],
+    queryFn: () =>
+      fetchRequests({ data: { status: status || null, accountType: accountType || null } }),
     staleTime: 10_000,
     enabled: canManage,
   });
