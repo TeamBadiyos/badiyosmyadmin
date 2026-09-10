@@ -2623,6 +2623,77 @@ export type Database = {
           },
         ]
       }
+      staff_notification_state: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          dismissed_at: string | null
+          notification_id: string
+          read_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          dismissed_at?: string | null
+          notification_id: string
+          read_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          dismissed_at?: string | null
+          notification_id?: string
+          read_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notification_state_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "staff_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_notifications: {
+        Row: {
+          created_at: string
+          detail: string | null
+          event_at: string
+          id: string
+          kind: string
+          notif_key: string
+          target: string
+          target_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          event_at?: string
+          id?: string
+          kind: string
+          notif_key: string
+          target?: string
+          target_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          event_at?: string
+          id?: string
+          kind?: string
+          notif_key?: string
+          target?: string
+          target_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       staff_users: {
         Row: {
           auth_user_id: string
@@ -3503,6 +3574,7 @@ export type Database = {
         Args: { _target_id: string; _target_type: string }
         Returns: boolean
       }
+      staff_clear_notifications: { Args: never; Returns: undefined }
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
         Returns: string
@@ -3521,6 +3593,10 @@ export type Database = {
       }
       staff_delete_service_catalogue_row: {
         Args: { _id: string }
+        Returns: undefined
+      }
+      staff_dismiss_notification: {
+        Args: { _dismissed?: boolean; _id: string }
         Returns: undefined
       }
       staff_dispatch_failure_stats: {
@@ -3546,6 +3622,27 @@ export type Database = {
       staff_generate_merchant_payout_batch: { Args: never; Returns: string }
       staff_generate_payout_batch: { Args: never; Returns: string }
       staff_generate_subscription_invoices: { Args: never; Returns: Json }
+      staff_list_notifications: {
+        Args: { _filter?: string }
+        Returns: {
+          detail: string
+          dismissed_at: string
+          event_at: string
+          id: string
+          kind: string
+          notif_key: string
+          read_at: string
+          target: string
+          target_id: string
+          title: string
+          unread_total: number
+        }[]
+      }
+      staff_mark_all_notifications_read: { Args: never; Returns: undefined }
+      staff_mark_notification_read: {
+        Args: { _id: string; _read?: boolean }
+        Returns: undefined
+      }
       staff_mark_payout_batch_paid: {
         Args: { _batch_id: string }
         Returns: undefined
@@ -3666,6 +3763,7 @@ export type Database = {
         Args: { _reason: string; _zone_id: string }
         Returns: undefined
       }
+      staff_sync_notifications: { Args: never; Returns: undefined }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
