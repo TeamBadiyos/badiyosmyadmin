@@ -97,6 +97,21 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
             <option value="rejected">Rejected</option>
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Account type
+          </label>
+          <select
+            value={accountType}
+            onChange={(e) => setAccountType(e.target.value)}
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[160px]"
+          >
+            <option value="">All types</option>
+            <option value="customer">Customer</option>
+            <option value="expert">Expert</option>
+            <option value="merchant">Merchant</option>
+          </select>
+        </div>
       </div>
 
       {isLoading && <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>}
