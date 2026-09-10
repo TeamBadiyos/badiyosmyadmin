@@ -366,6 +366,57 @@ export type Database = {
           },
         ]
       }
+      booking_tips: {
+        Row: {
+          amount: number
+          booking_id: string
+          created_at: string
+          expert_id: string | null
+          id: string
+          razorpay_payment_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          created_at?: string
+          expert_id?: string | null
+          id?: string
+          razorpay_payment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          created_at?: string
+          expert_id?: string | null
+          id?: string
+          razorpay_payment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_tips_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_tips_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           address_id: string | null
@@ -384,6 +435,8 @@ export type Database = {
           deleted_by: string | null
           dispatch_exhausted_at: string | null
           end_otp: string | null
+          gst_amount: number
+          gst_percent: number
           id: string
           price: number
           rating: number | null
@@ -404,6 +457,7 @@ export type Database = {
           start_otp: string | null
           started_at: string | null
           status: string
+          total_amount: number
           updated_at: string | null
           user_id: string | null
           zone_id: string | null
@@ -425,6 +479,8 @@ export type Database = {
           deleted_by?: string | null
           dispatch_exhausted_at?: string | null
           end_otp?: string | null
+          gst_amount?: number
+          gst_percent?: number
           id?: string
           price: number
           rating?: number | null
@@ -445,6 +501,7 @@ export type Database = {
           start_otp?: string | null
           started_at?: string | null
           status?: string
+          total_amount?: number
           updated_at?: string | null
           user_id?: string | null
           zone_id?: string | null
@@ -466,6 +523,8 @@ export type Database = {
           deleted_by?: string | null
           dispatch_exhausted_at?: string | null
           end_otp?: string | null
+          gst_amount?: number
+          gst_percent?: number
           id?: string
           price?: number
           rating?: number | null
@@ -486,6 +545,7 @@ export type Database = {
           start_otp?: string | null
           started_at?: string | null
           status?: string
+          total_amount?: number
           updated_at?: string | null
           user_id?: string | null
           zone_id?: string | null
@@ -3010,6 +3070,8 @@ export type Database = {
           deleted_by: string | null
           dispatch_exhausted_at: string | null
           end_otp: string | null
+          gst_amount: number
+          gst_percent: number
           id: string
           price: number
           rating: number | null
@@ -3030,6 +3092,7 @@ export type Database = {
           start_otp: string | null
           started_at: string | null
           status: string
+          total_amount: number
           updated_at: string | null
           user_id: string | null
           zone_id: string | null
@@ -3175,6 +3238,17 @@ export type Database = {
           name: string
         }[]
       }
+      get_assigned_expert_profile: {
+        Args: { _booking_id: string }
+        Returns: {
+          avg_rating: number
+          id: string
+          name: string
+          phone: string
+          photo_url: string
+          review_count: number
+        }[]
+      }
       get_assigned_expert_public: {
         Args: { _booking_id: string }
         Returns: {
@@ -3213,6 +3287,7 @@ export type Database = {
         }[]
       }
       get_expert_id_for_auth: { Args: { _auth_uid: string }; Returns: string }
+      get_gst_percent: { Args: never; Returns: number }
       has_login_pin: { Args: { p_phone: string }; Returns: boolean }
       haversine_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
@@ -3330,6 +3405,14 @@ export type Database = {
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
+      }
+      record_booking_tip: {
+        Args: {
+          _amount: number
+          _booking_id: string
+          _razorpay_payment_id: string
+        }
+        Returns: string
       }
       register_device_token: {
         Args: { p_fcm_token: string; p_platform: string }
