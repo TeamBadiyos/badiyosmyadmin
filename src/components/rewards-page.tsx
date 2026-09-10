@@ -183,7 +183,9 @@ export function RewardsPage() {
           )}
           {!isLoading && programs.length === 0 && (
             <p className="text-[13px] text-muted-foreground text-center py-10">
-              No reward programs for this actor type yet.
+              {showArchived
+                ? "No archived reward programs for this actor type."
+                : "No reward programs for this actor type yet."}
             </p>
           )}
           {programs.map((p) => {
