@@ -141,10 +141,19 @@ function DeletionForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!accountType) {
+      setError("Please choose which account you want to delete.");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitFn({
-        data: { phone: phone.trim(), email: email.trim(), reason: reason.trim() },
+        data: {
+          accountType,
+          phone: phone.trim(),
+          email: email.trim(),
+          reason: reason.trim(),
+        },
       });
       setDone(true);
     } catch {
