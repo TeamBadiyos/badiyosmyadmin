@@ -282,6 +282,55 @@ export function RewardsPage() {
           onClose={() => setEditing(null)}
         />
       )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 grid place-items-center p-4">
+          <div className="bg-card border border-border rounded-[18px] w-full max-w-[460px] p-6 space-y-4">
+            <h3 className="text-[16px] font-bold">Delete “{deleting.name}” permanently?</h3>
+            <p className="text-[13px] text-muted-foreground">
+              This removes the program for good. Rewards already given stay in the history
+              under this name. If you only want to stop it from running, use Archive instead.
+            </p>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Type DELETE to confirm</label>
+              <input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className={inputCls}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setDeleting(null);
+                  setConfirmText("");
+                }}
+                className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  archive.mutate({ id: deleting.id, archived: true });
+                  setDeleting(null);
+                  setConfirmText("");
+                }}
+                className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+              >
+                Archive instead
+              </button>
+              <button
+                onClick={() => remove.mutate({ id: deleting.id, force: true })}
+                disabled={remove.isPending || confirmText.trim().toUpperCase() !== "DELETE"}
+                className="h-10 px-4 rounded-[12px] bg-destructive text-destructive-foreground text-[13px] font-semibold disabled:opacity-60"
+              >
+                Delete forever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
