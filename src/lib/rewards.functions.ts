@@ -34,6 +34,7 @@ export type RewardProgram = {
   valid_from: string | null;
   valid_until: string | null;
   is_active: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
