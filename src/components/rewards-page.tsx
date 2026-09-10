@@ -220,26 +220,43 @@ export function RewardsPage() {
                 <span className="text-[13px] text-muted-foreground">{p.recurrence}</span>
                 <span className="text-right font-semibold">{st?.times_triggered ?? 0}</span>
                 <div className="flex items-center justify-end gap-2">
+                  {p.archived_at ? (
+                    <span className="h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-muted-foreground grid place-items-center">
+                      Archived
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => toggle.mutate({ id: p.id, is_active: !p.is_active })}
+                      className={`h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+                        p.is_active
+                          ? "bg-primary-tint text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {p.is_active ? "Active" : "Paused"}
+                    </button>
+                  )}
+                  {!p.archived_at && (
+                    <button
+                      onClick={() => setEditing(p)}
+                      aria-label="Edit program"
+                      className="h-8 w-8 rounded-[10px] border border-border grid place-items-center hover:bg-muted"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
                   <button
-                    onClick={() => toggle.mutate({ id: p.id, is_active: !p.is_active })}
-                    className={`h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
-                      p.is_active
-                        ? "bg-primary-tint text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {p.is_active ? "Active" : "Paused"}
-                  </button>
-                  <button
-                    onClick={() => setEditing(p)}
-                    aria-label="Edit program"
+                    onClick={() => archive.mutate({ id: p.id, archived: !p.archived_at })}
+                    aria-label={p.archived_at ? "Restore program" : "Archive program"}
+                    title={p.archived_at ? "Restore program" : "Archive (keeps history, stops triggering)"}
                     className="h-8 w-8 rounded-[10px] border border-border grid place-items-center hover:bg-muted"
                   >
-                    <Pencil size={14} />
+                    {p.archived_at ? <ArchiveRestore size={14} /> : <Archive size={14} />}
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Delete "${p.name}"?`)) remove.mutate(p.id);
+                      setConfirmText("");
+                      setDeleting(p);
                     }}
                     aria-label="Delete program"
                     className="h-8 w-8 rounded-[10px] border border-destructive/40 text-destructive grid place-items-center hover:bg-destructive/5"
