@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X, Archive, ArchiveRestore } from "lucide-react";
 import {
   listRewardTriggerTypes,
   listRewardPrograms,
   upsertRewardProgram,
   setRewardProgramActive,
+  archiveRewardProgram,
   deleteRewardProgram,
   getRewardProgramStats,
   searchRewardLedger,
@@ -35,13 +36,17 @@ const labelCls = "text-[11px] font-bold uppercase tracking-wider text-muted-fore
 export function RewardsPage() {
   const [actor, setActor] = useState<string>("customer");
   const [tab, setTab] = useState<"programs" | "reports">("programs");
+  const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<RewardProgram | "new" | null>(null);
+  const [deleting, setDeleting] = useState<RewardProgram | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
   const qc = useQueryClient();
   const fetchTriggers = useServerFn(listRewardTriggerTypes);
   const fetchPrograms = useServerFn(listRewardPrograms);
   const fetchStats = useServerFn(getRewardProgramStats);
   const toggleFn = useServerFn(setRewardProgramActive);
+  const archiveFn = useServerFn(archiveRewardProgram);
   const deleteFn = useServerFn(deleteRewardProgram);
   const runJobsFn = useServerFn(runRewardPeriodJobs);
 
@@ -52,8 +57,8 @@ export function RewardsPage() {
   });
 
   const { data: programs = [], isLoading } = useQuery({
-    queryKey: ["rewards", "programs", actor],
-    queryFn: () => fetchPrograms({ data: { actor_type: actor } }),
+    queryKey: ["rewards", "programs", actor, showArchived],
+    queryFn: () => fetchPrograms({ data: { actor_type: actor, archived: showArchived } }),
   });
 
   const { data: stats = [] } = useQuery({
@@ -75,11 +80,22 @@ export function RewardsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => {
+  const archive = useMutation({
+    mutationFn: (v: { id: string; archived: boolean }) => archiveFn({ data: v }),
+    onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["rewards", "programs"] });
-      toast.success("Program deleted");
+      toast.success(v.archived ? "Program archived" : "Program restored");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (v: { id: string; force: boolean }) => deleteFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards"] });
+      setDeleting(null);
+      setConfirmText("");
+      toast.success("Program deleted permanently — reward history kept");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -140,6 +156,16 @@ export function RewardsPage() {
             {a.label}
           </button>
         ))}
+        <button
+          onClick={() => setShowArchived((v) => !v)}
+          className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
+            showArchived
+              ? "border-primary bg-primary-tint text-foreground"
+              : "border-border text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Archive size={14} /> Archived
+        </button>
       </div>
 
       {tab === "programs" ? (
@@ -157,7 +183,9 @@ export function RewardsPage() {
           )}
           {!isLoading && programs.length === 0 && (
             <p className="text-[13px] text-muted-foreground text-center py-10">
-              No reward programs for this actor type yet.
+              {showArchived
+                ? "No archived reward programs for this actor type."
+                : "No reward programs for this actor type yet."}
             </p>
           )}
           {programs.map((p) => {
@@ -194,26 +222,43 @@ export function RewardsPage() {
                 <span className="text-[13px] text-muted-foreground">{p.recurrence}</span>
                 <span className="text-right font-semibold">{st?.times_triggered ?? 0}</span>
                 <div className="flex items-center justify-end gap-2">
+                  {p.archived_at ? (
+                    <span className="h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-muted-foreground grid place-items-center">
+                      Archived
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => toggle.mutate({ id: p.id, is_active: !p.is_active })}
+                      className={`h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+                        p.is_active
+                          ? "bg-primary-tint text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {p.is_active ? "Active" : "Paused"}
+                    </button>
+                  )}
+                  {!p.archived_at && (
+                    <button
+                      onClick={() => setEditing(p)}
+                      aria-label="Edit program"
+                      className="h-8 w-8 rounded-[10px] border border-border grid place-items-center hover:bg-muted"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
                   <button
-                    onClick={() => toggle.mutate({ id: p.id, is_active: !p.is_active })}
-                    className={`h-8 px-2.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
-                      p.is_active
-                        ? "bg-primary-tint text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {p.is_active ? "Active" : "Paused"}
-                  </button>
-                  <button
-                    onClick={() => setEditing(p)}
-                    aria-label="Edit program"
+                    onClick={() => archive.mutate({ id: p.id, archived: !p.archived_at })}
+                    aria-label={p.archived_at ? "Restore program" : "Archive program"}
+                    title={p.archived_at ? "Restore program" : "Archive (keeps history, stops triggering)"}
                     className="h-8 w-8 rounded-[10px] border border-border grid place-items-center hover:bg-muted"
                   >
-                    <Pencil size={14} />
+                    {p.archived_at ? <ArchiveRestore size={14} /> : <Archive size={14} />}
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Delete "${p.name}"?`)) remove.mutate(p.id);
+                      setConfirmText("");
+                      setDeleting(p);
                     }}
                     aria-label="Delete program"
                     className="h-8 w-8 rounded-[10px] border border-destructive/40 text-destructive grid place-items-center hover:bg-destructive/5"
@@ -236,6 +281,55 @@ export function RewardsPage() {
           program={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
         />
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 grid place-items-center p-4">
+          <div className="bg-card border border-border rounded-[18px] w-full max-w-[460px] p-6 space-y-4">
+            <h3 className="text-[16px] font-bold">Delete “{deleting.name}” permanently?</h3>
+            <p className="text-[13px] text-muted-foreground">
+              This removes the program for good. Rewards already given stay in the history
+              under this name. If you only want to stop it from running, use Archive instead.
+            </p>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Type DELETE to confirm</label>
+              <input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className={inputCls}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setDeleting(null);
+                  setConfirmText("");
+                }}
+                className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  archive.mutate({ id: deleting.id, archived: true });
+                  setDeleting(null);
+                  setConfirmText("");
+                }}
+                className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+              >
+                Archive instead
+              </button>
+              <button
+                onClick={() => remove.mutate({ id: deleting.id, force: true })}
+                disabled={remove.isPending || confirmText.trim().toUpperCase() !== "DELETE"}
+                className="h-10 px-4 rounded-[12px] bg-destructive text-destructive-foreground text-[13px] font-semibold disabled:opacity-60"
+              >
+                Delete forever
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
