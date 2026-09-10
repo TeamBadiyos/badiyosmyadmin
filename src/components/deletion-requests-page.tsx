@@ -153,7 +153,14 @@ function RequestCard({ request }: { request: DeletionRequest }) {
     <div className="bg-card border border-border rounded-[18px] p-5 space-y-3">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <p className="text-[15px] font-bold text-foreground font-mono">{request.phone}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[15px] font-bold text-foreground font-mono">{request.phone}</p>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${TYPE_STYLES[request.accountType]}`}
+            >
+              {TYPE_LABELS[request.accountType]}
+            </span>
+          </div>
           {request.email && (
             <p className="text-[13px] text-muted-foreground">{request.email}</p>
           )}
