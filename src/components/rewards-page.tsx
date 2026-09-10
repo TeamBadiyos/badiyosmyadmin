@@ -36,13 +36,17 @@ const labelCls = "text-[11px] font-bold uppercase tracking-wider text-muted-fore
 export function RewardsPage() {
   const [actor, setActor] = useState<string>("customer");
   const [tab, setTab] = useState<"programs" | "reports">("programs");
+  const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<RewardProgram | "new" | null>(null);
+  const [deleting, setDeleting] = useState<RewardProgram | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
   const qc = useQueryClient();
   const fetchTriggers = useServerFn(listRewardTriggerTypes);
   const fetchPrograms = useServerFn(listRewardPrograms);
   const fetchStats = useServerFn(getRewardProgramStats);
   const toggleFn = useServerFn(setRewardProgramActive);
+  const archiveFn = useServerFn(archiveRewardProgram);
   const deleteFn = useServerFn(deleteRewardProgram);
   const runJobsFn = useServerFn(runRewardPeriodJobs);
 
