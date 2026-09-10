@@ -261,7 +261,7 @@ function DeletionForm() {
       {error && <p className="text-[13px] text-red-600">{error}</p>}
       <button
         type="submit"
-        disabled={submitting || !confirmed}
+        disabled={submitting || !confirmed || !accountType}
         className="w-full h-[52px] rounded-[14px] bg-primary text-white font-bold text-[15px] disabled:opacity-60 hover:brightness-95 transition"
       >
         {submitting ? "Sending…" : "Submit deletion request"}
