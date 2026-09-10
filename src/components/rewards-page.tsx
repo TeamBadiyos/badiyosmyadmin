@@ -80,11 +80,22 @@ export function RewardsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => {
+  const archive = useMutation({
+    mutationFn: (v: { id: string; archived: boolean }) => archiveFn({ data: v }),
+    onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["rewards", "programs"] });
-      toast.success("Program deleted");
+      toast.success(v.archived ? "Program archived" : "Program restored");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (v: { id: string; force: boolean }) => deleteFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rewards"] });
+      setDeleting(null);
+      setConfirmText("");
+      toast.success("Program deleted permanently — reward history kept");
     },
     onError: (e: Error) => toast.error(e.message),
   });
