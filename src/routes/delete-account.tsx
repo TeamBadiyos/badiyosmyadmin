@@ -119,8 +119,17 @@ function DeleteAccountPage() {
   );
 }
 
+const ACCOUNT_TYPES = [
+  { key: "customer", label: "Customer" },
+  { key: "expert", label: "Expert (Partner)" },
+  { key: "merchant", label: "Merchant (Shop owner)" },
+] as const;
+
+type AccountTypeKey = (typeof ACCOUNT_TYPES)[number]["key"];
+
 function DeletionForm() {
   const submitFn = useServerFn(submitAccountDeletionRequest);
+  const [accountType, setAccountType] = useState<AccountTypeKey | null>(null);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
