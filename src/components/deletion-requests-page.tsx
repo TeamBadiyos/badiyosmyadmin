@@ -8,7 +8,20 @@ import {
   updateDeletionRequest,
   type DeletionRequest,
   type DeletionRequestStatus,
+  type DeletionAccountType,
 } from "@/lib/account-deletion.functions";
+
+const TYPE_LABELS: Record<DeletionAccountType, string> = {
+  customer: "Customer",
+  expert: "Expert",
+  merchant: "Merchant",
+};
+
+const TYPE_STYLES: Record<DeletionAccountType, string> = {
+  customer: "bg-sky-50 text-sky-700",
+  expert: "bg-violet-50 text-violet-700",
+  merchant: "bg-teal-50 text-teal-700",
+};
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
