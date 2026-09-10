@@ -156,6 +156,16 @@ export function RewardsPage() {
             {a.label}
           </button>
         ))}
+        <button
+          onClick={() => setShowArchived((v) => !v)}
+          className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
+            showArchived
+              ? "border-primary bg-primary-tint text-foreground"
+              : "border-border text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Archive size={14} /> Archived
+        </button>
       </div>
 
       {tab === "programs" ? (
