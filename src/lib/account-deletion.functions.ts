@@ -4,8 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type DeletionRequestStatus = "pending" | "in_progress" | "completed" | "rejected";
 
+export type DeletionAccountType = "customer" | "expert" | "merchant";
+
 export type DeletionRequest = {
   id: string;
+  accountType: DeletionAccountType;
   phone: string;
   email: string | null;
   reason: string | null;
@@ -16,6 +19,7 @@ export type DeletionRequest = {
 };
 
 const submitSchema = z.object({
+  accountType: z.enum(["customer", "expert", "merchant"]),
   phone: z
     .string()
     .trim()
@@ -43,6 +47,7 @@ export const submitAccountDeletionRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("account_deletion_requests").insert({
+      account_type: data.accountType,
       phone: data.phone,
       email: data.email ?? null,
       reason: data.reason ?? null,
@@ -53,6 +58,7 @@ export const submitAccountDeletionRequest = createServerFn({ method: "POST" })
 
 type Row = {
   id: string;
+  account_type: string | null;
   phone: string;
   email: string | null;
   reason: string | null;
@@ -65,19 +71,26 @@ type Row = {
 export const listDeletionRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) =>
-    z.object({ status: z.string().nullable().optional() }).parse(raw ?? {}),
+    z
+      .object({
+        status: z.string().nullable().optional(),
+        accountType: z.string().nullable().optional(),
+      })
+      .parse(raw ?? {}),
   )
   .handler(async ({ data, context }): Promise<DeletionRequest[]> => {
-    let q = context.supabase
+    let q = (context.supabase as any)
       .from("account_deletion_requests")
-      .select("id, phone, email, reason, status, staff_note, handled_at, created_at")
+      .select("id, account_type, phone, email, reason, status, staff_note, handled_at, created_at")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.status) q = q.eq("status", data.status);
+    if (data.accountType) q = q.eq("account_type", data.accountType);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return ((rows ?? []) as Row[]).map((r) => ({
       id: r.id,
+      accountType: (r.account_type ?? "customer") as DeletionAccountType,
       phone: r.phone,
       email: r.email,
       reason: r.reason,

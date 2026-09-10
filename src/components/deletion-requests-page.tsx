@@ -8,7 +8,20 @@ import {
   updateDeletionRequest,
   type DeletionRequest,
   type DeletionRequestStatus,
+  type DeletionAccountType,
 } from "@/lib/account-deletion.functions";
+
+const TYPE_LABELS: Record<DeletionAccountType, string> = {
+  customer: "Customer",
+  expert: "Expert",
+  merchant: "Merchant",
+};
+
+const TYPE_STYLES: Record<DeletionAccountType, string> = {
+  customer: "bg-sky-50 text-sky-700",
+  expert: "bg-violet-50 text-violet-700",
+  merchant: "bg-teal-50 text-teal-700",
+};
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -32,10 +45,12 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const fetchRequests = useServerFn(listDeletionRequests);
   const [status, setStatus] = useState("");
+  const [accountType, setAccountType] = useState("");
 
   const { data: requests = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["deletion-requests", status],
-    queryFn: () => fetchRequests({ data: { status: status || null } }),
+    queryKey: ["deletion-requests", status, accountType],
+    queryFn: () =>
+      fetchRequests({ data: { status: status || null, accountType: accountType || null } }),
     staleTime: 10_000,
     enabled: canManage,
   });
@@ -82,6 +97,21 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
             <option value="rejected">Rejected</option>
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Account type
+          </label>
+          <select
+            value={accountType}
+            onChange={(e) => setAccountType(e.target.value)}
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[160px]"
+          >
+            <option value="">All types</option>
+            <option value="customer">Customer</option>
+            <option value="expert">Expert</option>
+            <option value="merchant">Merchant</option>
+          </select>
+        </div>
       </div>
 
       {isLoading && <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>}
@@ -123,7 +153,14 @@ function RequestCard({ request }: { request: DeletionRequest }) {
     <div className="bg-card border border-border rounded-[18px] p-5 space-y-3">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <p className="text-[15px] font-bold text-foreground font-mono">{request.phone}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[15px] font-bold text-foreground font-mono">{request.phone}</p>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${TYPE_STYLES[request.accountType]}`}
+            >
+              {TYPE_LABELS[request.accountType]}
+            </span>
+          </div>
           {request.email && (
             <p className="text-[13px] text-muted-foreground">{request.email}</p>
           )}

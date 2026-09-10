@@ -119,8 +119,17 @@ function DeleteAccountPage() {
   );
 }
 
+const ACCOUNT_TYPES = [
+  { key: "customer", label: "Customer" },
+  { key: "expert", label: "Expert (Partner)" },
+  { key: "merchant", label: "Merchant (Shop owner)" },
+] as const;
+
+type AccountTypeKey = (typeof ACCOUNT_TYPES)[number]["key"];
+
 function DeletionForm() {
   const submitFn = useServerFn(submitAccountDeletionRequest);
+  const [accountType, setAccountType] = useState<AccountTypeKey | null>(null);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
@@ -132,10 +141,19 @@ function DeletionForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!accountType) {
+      setError("Please choose which account you want to delete.");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitFn({
-        data: { phone: phone.trim(), email: email.trim(), reason: reason.trim() },
+        data: {
+          accountType,
+          phone: phone.trim(),
+          email: email.trim(),
+          reason: reason.trim(),
+        },
       });
       setDone(true);
     } catch {
@@ -165,6 +183,28 @@ function DeletionForm() {
       onSubmit={handleSubmit}
       className="bg-card rounded-[18px] border border-border p-6 sm:p-8 space-y-4"
     >
+      <div>
+        <span className="block text-[13px] font-semibold text-foreground mb-1.5">
+          Which account do you want to delete? <span className="text-primary">*</span>
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {ACCOUNT_TYPES.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setAccountType(t.key)}
+              aria-pressed={accountType === t.key}
+              className={`h-[44px] px-4 rounded-[14px] border text-[14px] font-semibold transition ${
+                accountType === t.key
+                  ? "border-primary bg-primary-tint text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/40"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="block">
         <span className="block text-[13px] font-semibold text-foreground mb-1.5">
           Registered phone number <span className="text-primary">*</span>
@@ -221,7 +261,7 @@ function DeletionForm() {
       {error && <p className="text-[13px] text-red-600">{error}</p>}
       <button
         type="submit"
-        disabled={submitting || !confirmed}
+        disabled={submitting || !confirmed || !accountType}
         className="w-full h-[52px] rounded-[14px] bg-primary text-white font-bold text-[15px] disabled:opacity-60 hover:brightness-95 transition"
       >
         {submitting ? "Sending…" : "Submit deletion request"}

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       account_deletion_requests: {
         Row: {
+          account_type: string
           created_at: string
           email: string | null
           handled_at: string | null
@@ -28,6 +29,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_type?: string
           created_at?: string
           email?: string | null
           handled_at?: string | null
@@ -40,6 +42,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_type?: string
           created_at?: string
           email?: string | null
           handled_at?: string | null
