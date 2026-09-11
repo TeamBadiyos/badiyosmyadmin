@@ -3129,6 +3129,7 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
       }
+      apply_referral_code: { Args: { _code: string }; Returns: string }
       broadcast_booking_to_experts: {
         Args: { _booking_id: string; _radius?: number }
         Returns: number
@@ -3493,6 +3494,10 @@ export type Database = {
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
+      }
+      reactivate_customer_after_otp: {
+        Args: { _phone: string; _user_id: string }
+        Returns: undefined
       }
       record_booking_tip: {
         Args: {
