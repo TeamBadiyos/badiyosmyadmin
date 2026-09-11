@@ -26,7 +26,7 @@ const ACTORS = [
   { key: "merchant", label: "Merchant" },
 ] as const;
 
-const REWARD_TYPES = ["coins", "cash", "free_booking", "percentage_off"] as const;
+const REWARD_TYPES = ["coins", "cash"] as const;
 const RECURRENCES = ["per_event", "once", "weekly", "monthly"] as const;
 
 const inputCls =
