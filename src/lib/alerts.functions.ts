@@ -80,7 +80,19 @@ export const getStaffAlerts = createServerFn({ method: "POST" })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const list = (rows ?? []) as any[];
-    const total = list.length ? Number(list[0].unread_total ?? 0) : 0;
+    let total = list.length ? Number(list[0].unread_total ?? 0) : 0;
+
+    // The unread total only rides along on returned rows, so a filter that
+    // returns nothing (e.g. an empty "Cleared" tab) would hide a real count.
+    if (!list.length) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: unreadRows } = await (db as any).rpc("staff_list_notifications", {
+        _filter: "unread",
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const u = (unreadRows ?? []) as any[];
+      total = u.length ? Number(u[0].unread_total ?? 0) : 0;
+    }
 
     const { count } = await db
       .from("support_tickets")
