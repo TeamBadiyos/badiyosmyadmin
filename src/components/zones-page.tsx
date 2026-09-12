@@ -1180,12 +1180,14 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border">
           <div>
             <h2 className="text-[18px] font-bold text-foreground">
-              Redraw Boundary — {zone.name}
+              {redrawing ? "Redraw Boundary" : "Edit Boundary"} — {zone.name}
             </h2>
             <p className="text-[12px] text-muted-foreground">
               {redrawing
                 ? "Click on the map to add points (min 3). Press Finish Drawing to close the shape."
-                : "Current boundary shown in blue. Press Start Redraw to draw a new shape."}
+                : isEditing
+                  ? "Drag a corner to move it, drag a mid-point to add a corner, right-click a corner to delete it. The whole shape can be dragged too."
+                  : "Current boundary shown in blue. Press Edit Shape to adjust it, or Start Redraw to draw a new one."}
             </p>
           </div>
           <button
