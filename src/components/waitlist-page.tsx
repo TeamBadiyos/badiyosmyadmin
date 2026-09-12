@@ -105,7 +105,9 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                 <th className="px-5 py-3 font-semibold">City / Area</th>
                 <th className="px-5 py-3 font-semibold">Segments</th>
                 <th className="px-5 py-3 font-semibold text-right">Requests</th>
+                <th className="px-5 py-3 font-semibold text-right">Waiting / Notified</th>
                 <th className="px-5 py-3 font-semibold text-right">Latest</th>
+                <th className="px-5 py-3 font-semibold text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -133,8 +135,42 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-right font-bold text-[15px]">{g.count}</td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    <span className="font-semibold">{g.waiting}</span>
+                    <span className="text-muted-foreground"> / {g.notified}</span>
+                  </td>
                   <td className="px-5 py-3 text-right text-muted-foreground whitespace-nowrap">
                     {new Date(g.latestAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    <button
+                      disabled={g.waiting === 0 || notifyingKey === g.key}
+                      onClick={async () => {
+                        setNotifyingKey(g.key);
+                        try {
+                          const res = await notifyArea({
+                            data: {
+                              city: g.city === "Unknown city" ? null : g.city,
+                              segmentId: segmentId || null,
+                            },
+                          });
+                          toast.success(
+                            res.notified > 0
+                              ? `Notified ${res.notified} waiting customer${res.notified === 1 ? "" : "s"}`
+                              : "No waiting customers to notify",
+                          );
+                          refetch();
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : "Could not notify");
+                        } finally {
+                          setNotifyingKey(null);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold hover:bg-muted disabled:opacity-50"
+                    >
+                      <BellRing size={13} />
+                      {notifyingKey === g.key ? "Notifying…" : "Notify"}
+                    </button>
                   </td>
                 </tr>
               ))}
