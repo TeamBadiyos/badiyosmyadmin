@@ -884,10 +884,15 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clickListenerRef = useRef<any>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editListenersRef = useRef<any[]>([]);
+
   const [mapError, setMapError] = useState<string | null>(null);
   const [pointCount, setPointCount] = useState(0);
   const [finished, setFinished] = useState(false);
-  const [redrawing, setRedrawing] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit" | "redraw">("view");
+  const [liveArea, setLiveArea] = useState(0);
+  const redrawing = mode === "redraw";
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
