@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type WaitlistGroup = {
@@ -6,15 +7,37 @@ export type WaitlistGroup = {
   city: string;
   area: string;
   count: number;
+  waiting: number;
+  notified: number;
   latestAt: string;
   segments: { id: string; name: string; count: number }[];
 };
 
 export type WaitlistData = {
   total: number;
+  totalNotified: number;
   groups: WaitlistGroup[];
   segments: { id: string; name: string }[];
 };
+
+export const notifyWaitlistArea = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        city: z.string().trim().min(1).max(80).nullable().optional(),
+        segmentId: z.string().uuid().nullable().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }): Promise<{ notified: number }> => {
+    const { data: count, error } = await context.supabase.rpc("staff_notify_waitlist_area", {
+      _city: data.city ?? null,
+      _segment_id: data.segmentId ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { notified: Number(count ?? 0) };
+  });
 
 export const getWaitlistOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
