@@ -10,7 +10,9 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 export function WaitlistPage({ role }: { role: StaffRole | null }) {
   const canView = role === null || role === "super_admin" || role === "ops_manager";
   const [segmentId, setSegmentId] = useState("");
+  const [notifyingKey, setNotifyingKey] = useState<string | null>(null);
   const fetchOverview = useServerFn(getWaitlistOverview);
+  const notifyArea = useServerFn(notifyWaitlistArea);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["waitlist", "overview", segmentId],
@@ -62,12 +64,32 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-border bg-card p-5">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-          Total requests
-        </p>
-        <p className="text-[28px] font-bold leading-tight">{data?.total ?? 0}</p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-[16px] border border-border bg-card p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Total requests
+          </p>
+          <p className="text-[28px] font-bold leading-tight">{data?.total ?? 0}</p>
+        </div>
+        <div className="rounded-[16px] border border-border bg-card p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Still waiting
+          </p>
+          <p className="text-[28px] font-bold leading-tight">
+            {(data?.total ?? 0) - (data?.totalNotified ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-[16px] border border-border bg-card p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Already notified
+          </p>
+          <p className="text-[28px] font-bold leading-tight">{data?.totalNotified ?? 0}</p>
+        </div>
       </div>
+      <p className="text-[12px] text-muted-foreground">
+        Waiting customers are notified automatically the moment an expert comes online or
+        finishes a job nearby. You can also notify an area manually below.
+      </p>
 
       {isLoading ? (
         <p className="text-[14px] text-muted-foreground">Loading waitlist…</p>
