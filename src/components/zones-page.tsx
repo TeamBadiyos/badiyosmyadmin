@@ -1321,7 +1321,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
               disabled={!hasPolygon || saving}
               className="h-10 px-5 rounded-[14px] bg-primary text-white text-[13px] font-bold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving…" : "Save New Boundary"}
+              {saving ? "Saving…" : isEditing ? "Save Boundary" : "Save New Boundary"}
             </button>
           </div>
         </div>
