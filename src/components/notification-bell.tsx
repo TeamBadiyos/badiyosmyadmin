@@ -16,6 +16,7 @@ import {
   Wallet,
   X,
   CheckCheck,
+  BellRing,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -40,6 +41,7 @@ const ICONS = {
   lead: Sparkles,
   waitlist: ListChecks,
   payout: Wallet,
+  dispatch: BellRing,
 } as const;
 
 const TABS: { key: AlertFilter; label: string }[] = [
@@ -104,6 +106,11 @@ export function NotificationBell({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "booking_extensions" },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dispatch_alert_events" },
         refresh,
       )
       .subscribe();
