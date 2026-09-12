@@ -1051,14 +1051,9 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   }
 
   function extractBoundary(): { lat: number; lng: number }[] {
-    if (!polygonRef.current) return [];
-    const path = polygonRef.current.getPath();
-    const pts: { lat: number; lng: number }[] = [];
-    for (let i = 0; i < path.getLength(); i++) {
-      const p = path.getAt(i);
-      pts.push({ lat: p.lat(), lng: p.lng() });
-    }
-    return pts;
+    const active = mode === "edit" ? existingPolyRef.current : polygonRef.current;
+    if (!active) return [];
+    return pathToPoints(active.getPath());
   }
 
   function handleLocate() {
