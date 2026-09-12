@@ -14,7 +14,16 @@ function MessageRow({ row, onSaved }: { row: CapacityMessage; onSaved: () => voi
   const [text, setText] = useState(row.message_text);
   const [busy, setBusy] = useState(false);
 
-  async function run(payload: Parameters<typeof save>[0]["data"], ok: string) {
+  type SavePayload = {
+    id?: string;
+    message_key?: string;
+    message_text?: string;
+    city?: string;
+    is_active?: boolean;
+    delete?: boolean;
+  };
+
+  async function run(payload: SavePayload, ok: string) {
     setBusy(true);
     try {
       await save({ data: payload });
