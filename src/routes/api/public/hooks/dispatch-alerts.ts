@@ -81,10 +81,45 @@ export const Route = createFileRoute("/api/public/hooks/dispatch-alerts")({
           sent.push(ev.event_id);
         }
 
+        // Waitlist "an expert is free now" WhatsApp placeholders
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: waitPending, error: waitErr } = await (supabaseAdmin as any).rpc(
+          "system_pending_waitlist_whatsapp",
+        );
+        if (waitErr) {
+          console.error("[dispatch-alerts] waitlist pending query failed", waitErr);
+        }
+
+        const waitSent: string[] = [];
+        for (const ev of (waitPending ?? []) as Array<{
+          event_id: string;
+          city: string | null;
+          phone: string | null;
+          customer_name: string | null;
+          template_name: string | null;
+          numbers: string[] | null;
+        }>) {
+          await sendOpsWhatsApp({
+            numbers: ev.numbers ?? [],
+            template: ev.template_name,
+            params: {
+              alert_type: "waitlist_available",
+              city: ev.city ?? "",
+              customer: ev.customer_name ?? "",
+            },
+          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabaseAdmin as any).rpc("system_mark_waitlist_whatsapp", {
+            _event_id: ev.event_id,
+          });
+          waitSent.push(ev.event_id);
+        }
+
         return json(200, {
           ok: true,
           alerts_raised: (raised ?? []).length,
           whatsapp_processed: sent.length,
+          waitlist_whatsapp_processed: waitSent.length,
         });
       },
     },

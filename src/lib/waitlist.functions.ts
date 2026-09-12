@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type WaitlistGroup = {
@@ -6,15 +7,38 @@ export type WaitlistGroup = {
   city: string;
   area: string;
   count: number;
+  waiting: number;
+  notified: number;
   latestAt: string;
   segments: { id: string; name: string; count: number }[];
 };
 
 export type WaitlistData = {
   total: number;
+  totalNotified: number;
   groups: WaitlistGroup[];
   segments: { id: string; name: string }[];
 };
+
+export const notifyWaitlistArea = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        city: z.string().trim().min(1).max(80).nullable().optional(),
+        segmentId: z.string().uuid().nullable().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }): Promise<{ notified: number }> => {
+    const { data: count, error } = await context.supabase.rpc("staff_notify_waitlist_area", {
+      _city: data.city ?? null,
+      _segment_id: data.segmentId ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    if (error) throw new Error(error.message);
+    return { notified: Number(count ?? 0) };
+  });
 
 export const getWaitlistOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -35,7 +59,7 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
 
     let q = db
       .from("waitlist_requests")
-      .select("id, segment_id, city, address_text, created_at")
+      .select("id, segment_id, city, address_text, created_at, notified_at")
       .order("created_at", { ascending: false })
       .limit(2000);
     if (data.segmentId) q = q.eq("segment_id", data.segmentId);
@@ -49,6 +73,7 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       city: string | null;
       address_text: string | null;
       created_at: string;
+      notified_at: string | null;
     }[];
 
     const map = new Map<string, WaitlistGroup & { segCounts: Map<string, number> }>();
@@ -56,20 +81,22 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       const city = (r.city ?? "").trim() || "Unknown city";
       const area = (r.address_text ?? "").trim() || "Unspecified area";
       const key = `${city}||${area}`;
-      let g = map.get(key);
-      if (!g) {
-        g = {
-          key,
-          city,
-          area,
-          count: 0,
-          latestAt: r.created_at,
-          segments: [],
-          segCounts: new Map(),
-        };
-        map.set(key, g);
-      }
+      const existing = map.get(key);
+      const g: WaitlistGroup & { segCounts: Map<string, number> } = existing ?? {
+        key,
+        city,
+        area,
+        count: 0,
+        waiting: 0,
+        notified: 0,
+        latestAt: r.created_at,
+        segments: [],
+        segCounts: new Map<string, number>(),
+      };
+      if (!existing) map.set(key, g);
       g.count += 1;
+      if (r.notified_at) g.notified += 1;
+      else g.waiting += 1;
       if (r.created_at > g.latestAt) g.latestAt = r.created_at;
       const sid = r.segment_id ?? "none";
       g.segCounts.set(sid, (g.segCounts.get(sid) ?? 0) + 1);
@@ -88,5 +115,10 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       }))
       .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
 
-    return { total: raw.length, groups, segments };
+    return {
+      total: raw.length,
+      totalNotified: raw.filter((r) => r.notified_at).length,
+      groups,
+      segments,
+    };
   });
