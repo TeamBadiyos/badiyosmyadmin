@@ -34,7 +34,8 @@ export const notifyWaitlistArea = createServerFn({ method: "POST" })
     const { data: count, error } = await context.supabase.rpc("staff_notify_waitlist_area", {
       _city: data.city ?? null,
       _segment_id: data.segmentId ?? null,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
     if (error) throw new Error(error.message);
     return { notified: Number(count ?? 0) };
   });
@@ -114,5 +115,10 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       }))
       .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
 
-    return { total: raw.length, groups, segments };
+    return {
+      total: raw.length,
+      totalNotified: raw.filter((r) => r.notified_at).length,
+      groups,
+      segments,
+    };
   });
