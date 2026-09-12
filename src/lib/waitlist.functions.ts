@@ -58,7 +58,7 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
 
     let q = db
       .from("waitlist_requests")
-      .select("id, segment_id, city, address_text, created_at")
+      .select("id, segment_id, city, address_text, created_at, notified_at")
       .order("created_at", { ascending: false })
       .limit(2000);
     if (data.segmentId) q = q.eq("segment_id", data.segmentId);
@@ -72,6 +72,7 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       city: string | null;
       address_text: string | null;
       created_at: string;
+      notified_at: string | null;
     }[];
 
     const map = new Map<string, WaitlistGroup & { segCounts: Map<string, number> }>();
@@ -79,20 +80,22 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       const city = (r.city ?? "").trim() || "Unknown city";
       const area = (r.address_text ?? "").trim() || "Unspecified area";
       const key = `${city}||${area}`;
-      let g = map.get(key);
-      if (!g) {
-        g = {
-          key,
-          city,
-          area,
-          count: 0,
-          latestAt: r.created_at,
-          segments: [],
-          segCounts: new Map(),
-        };
-        map.set(key, g);
-      }
+      const existing = map.get(key);
+      const g: WaitlistGroup & { segCounts: Map<string, number> } = existing ?? {
+        key,
+        city,
+        area,
+        count: 0,
+        waiting: 0,
+        notified: 0,
+        latestAt: r.created_at,
+        segments: [],
+        segCounts: new Map<string, number>(),
+      };
+      if (!existing) map.set(key, g);
       g.count += 1;
+      if (r.notified_at) g.notified += 1;
+      else g.waiting += 1;
       if (r.created_at > g.latestAt) g.latestAt = r.created_at;
       const sid = r.segment_id ?? "none";
       g.segCounts.set(sid, (g.segCounts.get(sid) ?? 0) + 1);
