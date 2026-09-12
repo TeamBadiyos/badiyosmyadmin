@@ -32,6 +32,8 @@ import { NotificationSoundsPage } from "@/components/notification-sounds-page";
 import { SupportTicketsPage } from "@/components/support-tickets-page";
 import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
+import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
+import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -76,6 +78,8 @@ import {
   type LucideIcon,
   LifeBuoy,
   UserMinus,
+  BellRing,
+  MessageSquareText,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,6 +121,8 @@ const NAV_ITEMS = [
   { key: "support", label: "Support Tickets", icon: LifeBuoy },
   { key: "deletion-requests", label: "Deletion Requests", icon: UserMinus },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
+  { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
+  { key: "capacity-messages", label: "Capacity Messages", icon: MessageSquareText },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -150,7 +156,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
+    keys: ["roles", "legal", "notification-sounds", "support", "deletion-requests", "dispatch-alerts", "capacity-messages", "audit"],
   },
 ] as const;
 
@@ -492,6 +498,10 @@ function Shell() {
           <SupportTicketsPage role={role} />
         ) : active === "deletion-requests" ? (
           <DeletionRequestsPage role={role} />
+        ) : active === "dispatch-alerts" ? (
+          <DispatchAlertsPage />
+        ) : active === "capacity-messages" ? (
+          <CapacityMessagesPage />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
