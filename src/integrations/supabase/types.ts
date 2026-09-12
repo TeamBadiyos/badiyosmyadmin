@@ -3066,6 +3066,57 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_notify_events: {
+        Row: {
+          channel: string
+          city: string | null
+          created_at: string
+          expert_id: string | null
+          id: string
+          payload: Json
+          segment_id: string | null
+          waitlist_id: string
+          whatsapp_status: string
+        }
+        Insert: {
+          channel?: string
+          city?: string | null
+          created_at?: string
+          expert_id?: string | null
+          id?: string
+          payload?: Json
+          segment_id?: string | null
+          waitlist_id: string
+          whatsapp_status?: string
+        }
+        Update: {
+          channel?: string
+          city?: string | null
+          created_at?: string
+          expert_id?: string | null
+          id?: string
+          payload?: Json
+          segment_id?: string | null
+          waitlist_id?: string
+          whatsapp_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_notify_events_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_notify_events_waitlist_id_fkey"
+            columns: ["waitlist_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waitlist_requests: {
         Row: {
           address_text: string | null
@@ -3074,6 +3125,8 @@ export type Database = {
           id: string
           latitude: number
           longitude: number
+          notified_at: string | null
+          notify_count: number
           segment_id: string | null
           status: string
           user_id: string | null
@@ -3085,6 +3138,8 @@ export type Database = {
           id?: string
           latitude: number
           longitude: number
+          notified_at?: string | null
+          notify_count?: number
           segment_id?: string | null
           status?: string
           user_id?: string | null
@@ -3096,6 +3151,8 @@ export type Database = {
           id?: string
           latitude?: number
           longitude?: number
+          notified_at?: string | null
+          notify_count?: number
           segment_id?: string | null
           status?: string
           user_id?: string | null
@@ -3572,6 +3629,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_customer_user_push: {
+        Args: {
+          _body: string
+          _route: string
+          _title: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       notify_expert_alert: {
         Args: {
           _alert_type: string
@@ -3610,6 +3676,10 @@ export type Database = {
           _user_type: string
         }
         Returns: undefined
+      }
+      notify_waitlist_for_expert: {
+        Args: { _expert_id: string }
+        Returns: number
       }
       partner_decide_extension: {
         Args: { _decision: string; _extension_id: string }
@@ -3790,6 +3860,10 @@ export type Database = {
       staff_mark_subscription_invoice_paid: {
         Args: { _invoice_id: string; _paid: boolean }
         Returns: undefined
+      }
+      staff_notify_waitlist_area: {
+        Args: { _city: string; _segment_id?: string }
+        Returns: number
       }
       staff_reassign_expert: {
         Args: { _booking_id: string; _new_expert_id: string }
@@ -4025,6 +4099,10 @@ export type Database = {
         Args: { _event_id: string }
         Returns: undefined
       }
+      system_mark_waitlist_whatsapp: {
+        Args: { _event_id: string }
+        Returns: undefined
+      }
       system_pending_dispatch_whatsapp: {
         Args: never
         Returns: {
@@ -4034,6 +4112,17 @@ export type Database = {
           event_id: string
           numbers: string[]
           service_label: string
+          template_name: string
+        }[]
+      }
+      system_pending_waitlist_whatsapp: {
+        Args: never
+        Returns: {
+          city: string
+          customer_name: string
+          event_id: string
+          numbers: string[]
+          phone: string
           template_name: string
         }[]
       }
