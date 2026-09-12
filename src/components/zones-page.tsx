@@ -1162,11 +1162,17 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     const bounds = new g.LatLngBounds();
     for (const p of existing) bounds.extend(p);
     map.fitBounds(bounds);
-  }, [existing, redrawing, mapError]);
+  }, [existing, mode, mapError]);
 
   const saving = saveMutation.isPending;
-  const hasPolygon = pointCount >= 3 && finished;
-  const canFinish = pointCount >= 3 && !finished;
+  const isEditing = mode === "edit";
+  const hasPolygon = isEditing ? pointCount >= 3 : pointCount >= 3 && finished;
+  const canFinish = redrawing && pointCount >= 3 && !finished;
+  const savedArea = polygonAreaKm2(existing ?? []);
+  const areaDeltaPct =
+    isEditing && savedArea > 0 && liveArea > 0
+      ? Math.round(((liveArea - savedArea) / savedArea) * 100)
+      : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
