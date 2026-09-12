@@ -12,7 +12,8 @@ export type AlertKind =
   | "deletion"
   | "lead"
   | "waitlist"
-  | "payout";
+  | "payout"
+  | "dispatch";
 
 export type StaffAlert = {
   id: string;
