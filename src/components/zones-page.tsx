@@ -963,13 +963,66 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     });
   }
 
+  function detachEditListeners() {
+    const g = window.google?.maps;
+    if (g?.event) for (const l of editListenersRef.current) g.event.removeListener(l);
+    editListenersRef.current = [];
+  }
+
+  function pathToPoints(path: {
+    getLength: () => number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getAt: (i: number) => any;
+  }) {
+    const pts: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < path.getLength(); i++) {
+      const p = path.getAt(i);
+      pts.push({ lat: p.lat(), lng: p.lng() });
+    }
+    return pts;
+  }
+
+  function syncEditState() {
+    const poly = existingPolyRef.current;
+    if (!poly) return;
+    const pts = pathToPoints(poly.getPath());
+    setPointCount(pts.length);
+    setLiveArea(polygonAreaKm2(pts));
+  }
+
+  function startEdit() {
+    const g = window.google?.maps;
+    const poly = existingPolyRef.current;
+    if (!g || !poly) return;
+    poly.setOptions({ editable: true, draggable: true, clickable: true });
+    const path = poly.getPath();
+    detachEditListeners();
+    editListenersRef.current = [
+      g.event.addListener(path, "insert_at", syncEditState),
+      g.event.addListener(path, "set_at", syncEditState),
+      g.event.addListener(path, "remove_at", syncEditState),
+      g.event.addListener(poly, "dragend", syncEditState),
+    ];
+    setMode("edit");
+    syncEditState();
+  }
+
+  function resetEdit() {
+    const poly = existingPolyRef.current;
+    if (!poly || !existing) return;
+    poly.setPath(existing);
+    syncEditState();
+    setSaveError(null);
+  }
+
   function startRedraw() {
+    detachEditListeners();
     if (existingPolyRef.current) {
       existingPolyRef.current.setMap(null);
       existingPolyRef.current = null;
     }
     clearPolygon();
-    setRedrawing(true);
+    setMode("redraw");
     attachClickListener();
   }
 
