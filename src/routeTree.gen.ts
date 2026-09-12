@@ -29,6 +29,7 @@ import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
+import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
 
 const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
   id: '/terms-and-conditions',
@@ -131,6 +132,12 @@ const ApiPublicHooksExpireStaleBookingsRoute =
     path: '/api/public/hooks/expire-stale-bookings',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDispatchAlertsRoute =
+  ApiPublicHooksDispatchAlertsRouteImport.update({
+    id: '/api/public/hooks/dispatch-alerts',
+    path: '/api/public/hooks/dispatch-alerts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRoutesByTo {
@@ -172,6 +180,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRoutesById {
@@ -195,6 +204,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
+  '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 export interface FileRouteTypes {
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
   id:
     | '__root__'
@@ -261,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/myadmin/login'
     | '/api/public/service-image'
+    | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
   fileRoutesById: FileRoutesById
 }
@@ -282,6 +295,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
+  ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
   ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
 }
 
@@ -427,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksExpireStaleBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/dispatch-alerts': {
+      id: '/api/public/hooks/dispatch-alerts'
+      path: '/api/public/hooks/dispatch-alerts'
+      fullPath: '/api/public/hooks/dispatch-alerts'
+      preLoaderRoute: typeof ApiPublicHooksDispatchAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -470,6 +491,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
+  ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,
   ApiPublicHooksExpireStaleBookingsRoute:
     ApiPublicHooksExpireStaleBookingsRoute,
 }
