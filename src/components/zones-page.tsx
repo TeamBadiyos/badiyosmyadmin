@@ -1137,6 +1137,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
         clickListenerRef.current = null;
       }
       clearMarkers();
+      detachEditListeners();
       if (polygonRef.current) polygonRef.current.setMap(null);
       if (existingPolyRef.current) existingPolyRef.current.setMap(null);
     };
@@ -1146,7 +1147,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   useEffect(() => {
     const g = window.google?.maps;
     const map = mapObj.current;
-    if (!g || !map || redrawing || !existing || existing.length < 3) return;
+    if (!g || !map || mode !== "view" || !existing || existing.length < 3) return;
     if (existingPolyRef.current) existingPolyRef.current.setMap(null);
     existingPolyRef.current = new g.Polygon({
       paths: existing,
