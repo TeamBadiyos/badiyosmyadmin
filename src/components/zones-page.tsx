@@ -303,7 +303,7 @@ function ZoneRowItem({
           {!isDeleted && (
             <button
               onClick={() => setRedrawOpen(true)}
-              title="Redraw boundary"
+              title="Edit boundary"
               className="w-9 h-9 rounded-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center"
             >
               <PenTool size={15} />
@@ -884,10 +884,15 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clickListenerRef = useRef<any>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editListenersRef = useRef<any[]>([]);
+
   const [mapError, setMapError] = useState<string | null>(null);
   const [pointCount, setPointCount] = useState(0);
   const [finished, setFinished] = useState(false);
-  const [redrawing, setRedrawing] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit" | "redraw">("view");
+  const [liveArea, setLiveArea] = useState(0);
+  const redrawing = mode === "redraw";
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
@@ -958,13 +963,66 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     });
   }
 
+  function detachEditListeners() {
+    const g = window.google?.maps;
+    if (g?.event) for (const l of editListenersRef.current) g.event.removeListener(l);
+    editListenersRef.current = [];
+  }
+
+  function pathToPoints(path: {
+    getLength: () => number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getAt: (i: number) => any;
+  }) {
+    const pts: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < path.getLength(); i++) {
+      const p = path.getAt(i);
+      pts.push({ lat: p.lat(), lng: p.lng() });
+    }
+    return pts;
+  }
+
+  function syncEditState() {
+    const poly = existingPolyRef.current;
+    if (!poly) return;
+    const pts = pathToPoints(poly.getPath());
+    setPointCount(pts.length);
+    setLiveArea(polygonAreaKm2(pts));
+  }
+
+  function startEdit() {
+    const g = window.google?.maps;
+    const poly = existingPolyRef.current;
+    if (!g || !poly) return;
+    poly.setOptions({ editable: true, draggable: true, clickable: true });
+    const path = poly.getPath();
+    detachEditListeners();
+    editListenersRef.current = [
+      g.event.addListener(path, "insert_at", syncEditState),
+      g.event.addListener(path, "set_at", syncEditState),
+      g.event.addListener(path, "remove_at", syncEditState),
+      g.event.addListener(poly, "dragend", syncEditState),
+    ];
+    setMode("edit");
+    syncEditState();
+  }
+
+  function resetEdit() {
+    const poly = existingPolyRef.current;
+    if (!poly || !existing) return;
+    poly.setPath(existing);
+    syncEditState();
+    setSaveError(null);
+  }
+
   function startRedraw() {
+    detachEditListeners();
     if (existingPolyRef.current) {
       existingPolyRef.current.setMap(null);
       existingPolyRef.current = null;
     }
     clearPolygon();
-    setRedrawing(true);
+    setMode("redraw");
     attachClickListener();
   }
 
@@ -993,14 +1051,9 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   }
 
   function extractBoundary(): { lat: number; lng: number }[] {
-    if (!polygonRef.current) return [];
-    const path = polygonRef.current.getPath();
-    const pts: { lat: number; lng: number }[] = [];
-    for (let i = 0; i < path.getLength(); i++) {
-      const p = path.getAt(i);
-      pts.push({ lat: p.lat(), lng: p.lng() });
-    }
-    return pts;
+    const active = mode === "edit" ? existingPolyRef.current : polygonRef.current;
+    if (!active) return [];
+    return pathToPoints(active.getPath());
   }
 
   function handleLocate() {
@@ -1084,6 +1137,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
         clickListenerRef.current = null;
       }
       clearMarkers();
+      detachEditListeners();
       if (polygonRef.current) polygonRef.current.setMap(null);
       if (existingPolyRef.current) existingPolyRef.current.setMap(null);
     };
@@ -1093,7 +1147,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
   useEffect(() => {
     const g = window.google?.maps;
     const map = mapObj.current;
-    if (!g || !map || redrawing || !existing || existing.length < 3) return;
+    if (!g || !map || mode !== "view" || !existing || existing.length < 3) return;
     if (existingPolyRef.current) existingPolyRef.current.setMap(null);
     existingPolyRef.current = new g.Polygon({
       paths: existing,
@@ -1108,11 +1162,17 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
     const bounds = new g.LatLngBounds();
     for (const p of existing) bounds.extend(p);
     map.fitBounds(bounds);
-  }, [existing, redrawing, mapError]);
+  }, [existing, mode, mapError]);
 
   const saving = saveMutation.isPending;
-  const hasPolygon = pointCount >= 3 && finished;
-  const canFinish = pointCount >= 3 && !finished;
+  const isEditing = mode === "edit";
+  const hasPolygon = isEditing ? pointCount >= 3 : pointCount >= 3 && finished;
+  const canFinish = redrawing && pointCount >= 3 && !finished;
+  const savedArea = polygonAreaKm2(existing ?? []);
+  const areaDeltaPct =
+    isEditing && savedArea > 0 && liveArea > 0
+      ? Math.round(((liveArea - savedArea) / savedArea) * 100)
+      : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
@@ -1120,12 +1180,14 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border">
           <div>
             <h2 className="text-[18px] font-bold text-foreground">
-              Redraw Boundary — {zone.name}
+              {redrawing ? "Redraw Boundary" : "Edit Boundary"} — {zone.name}
             </h2>
             <p className="text-[12px] text-muted-foreground">
               {redrawing
                 ? "Click on the map to add points (min 3). Press Finish Drawing to close the shape."
-                : "Current boundary shown in blue. Press Start Redraw to draw a new shape."}
+                : isEditing
+                  ? "Drag a corner to move it, drag a mid-point to add a corner, right-click a corner to delete it. The whole shape can be dragged too."
+                  : "Current boundary shown in blue. Press Edit Shape to adjust it, or Start Redraw to draw a new one."}
             </p>
           </div>
           <button
@@ -1147,12 +1209,35 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
           <div className="absolute top-4 left-4 bg-card/95 backdrop-blur border border-border rounded-[12px] px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm">
             Points: {pointCount}
             {finished && <span className="ml-2 text-primary">• Closed</span>}
+            {areaDeltaPct !== null && (
+              <span className="ml-2 text-muted-foreground">
+                Area {areaDeltaPct > 0 ? "+" : ""}
+                {areaDeltaPct}%
+              </span>
+            )}
           </div>
           <div className="absolute top-4 right-16 flex gap-2" style={{ zIndex: 1000002 }}>
+            {mode === "view" && (
+              <button
+                onClick={startEdit}
+                disabled={!existing || existing.length < 3}
+                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold shadow-sm hover:opacity-95 disabled:opacity-50"
+              >
+                Edit Shape
+              </button>
+            )}
+            {isEditing && (
+              <button
+                onClick={resetEdit}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Reset
+              </button>
+            )}
             {!redrawing && (
               <button
                 onClick={startRedraw}
-                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold shadow-sm hover:opacity-95"
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
               >
                 Start Redraw
               </button>
@@ -1236,7 +1321,7 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
               disabled={!hasPolygon || saving}
               className="h-10 px-5 rounded-[14px] bg-primary text-white text-[13px] font-bold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving…" : "Save New Boundary"}
+              {saving ? "Saving…" : isEditing ? "Save Boundary" : "Save New Boundary"}
             </button>
           </div>
         </div>
