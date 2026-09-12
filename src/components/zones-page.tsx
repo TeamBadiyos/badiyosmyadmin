@@ -1209,12 +1209,35 @@ function RedrawBoundaryModal({ zone, onClose }: { zone: ZoneRow; onClose: () => 
           <div className="absolute top-4 left-4 bg-card/95 backdrop-blur border border-border rounded-[12px] px-3 py-2 text-[12px] font-semibold text-foreground shadow-sm">
             Points: {pointCount}
             {finished && <span className="ml-2 text-primary">• Closed</span>}
+            {areaDeltaPct !== null && (
+              <span className="ml-2 text-muted-foreground">
+                Area {areaDeltaPct > 0 ? "+" : ""}
+                {areaDeltaPct}%
+              </span>
+            )}
           </div>
           <div className="absolute top-4 right-16 flex gap-2" style={{ zIndex: 1000002 }}>
+            {mode === "view" && (
+              <button
+                onClick={startEdit}
+                disabled={!existing || existing.length < 3}
+                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold shadow-sm hover:opacity-95 disabled:opacity-50"
+              >
+                Edit Shape
+              </button>
+            )}
+            {isEditing && (
+              <button
+                onClick={resetEdit}
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
+              >
+                Reset
+              </button>
+            )}
             {!redrawing && (
               <button
                 onClick={startRedraw}
-                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold shadow-sm hover:opacity-95"
+                className="h-9 px-3 rounded-[12px] bg-card border border-border text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted"
               >
                 Start Redraw
               </button>
