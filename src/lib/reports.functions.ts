@@ -272,7 +272,7 @@ export const getExpertPerformance = createServerFn({ method: "POST" })
 
     // load experts (scoped by zone if applicable)
     let eq = context.supabase.from("experts").select("id, name, level, zone_id");
-    if (zone) eq = eq.eq("zone_id", zone);
+    if (zone) eq = eq.in("zone_id", zone);
     const { data: experts } = await eq.limit(5000);
     const expertList = (experts ?? []) as Array<{
       id: string;
