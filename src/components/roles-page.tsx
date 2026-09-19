@@ -97,7 +97,12 @@ export function RolesPage() {
               </span>
             </span>
             <span className="text-muted-foreground truncate">
-              {u.role === "area_partner" ? u.zoneName ?? "—" : "—"}
+              {u.role === "area_partner"
+                ? u.zoneNames?.length
+                  ? u.zoneNames.join(", ")
+                  : u.zoneName ?? "—"
+                : "—"}
+
             </span>
             <span>
               <span
