@@ -402,6 +402,40 @@ export function ServiceCataloguePage() {
           onClose={() => setServiceModal(null)}
         />
       )}
+      {confirmOff && (
+        <Modal
+          title={`Deactivate ${confirmOff.kind === "segment" ? "segment" : "category"}?`}
+          onClose={() => setConfirmOff(null)}
+        >
+          <p className="text-[14px] text-foreground">
+            <span className="font-semibold">{confirmOff.name}</span> will be hidden from
+            the app.
+            {confirmOff.count > 0 &&
+              ` This will hide ${confirmOff.count} active service${confirmOff.count === 1 ? "" : "s"} under it.`}
+          </p>
+          <p className="text-[13px] text-muted-foreground">
+            Nothing is deleted — you can switch it back on anytime.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={() => setConfirmOff(null)}
+              className="flex-1 h-10 rounded-[12px] border border-border text-[13px] font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                const c = confirmOff;
+                setConfirmOff(null);
+                void applyActiveToggle(c.kind, c.id, false);
+              }}
+              className="flex-1 h-10 rounded-[12px] bg-destructive text-white text-[13px] font-bold hover:brightness-95"
+            >
+              Deactivate
+            </button>
+          </div>
+        </Modal>
+      )}
       {optionModal && (
         <PriceOptionModal
           service={optionModal.service}
@@ -566,6 +600,36 @@ function ServiceRow({
         </div>
       </div>
     </div>
+  );
+}
+
+function ActiveSwitch({
+  active,
+  label,
+  onToggle,
+}: {
+  active: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-label={label}
+      title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+      onClick={onToggle}
+      className={`relative w-9 h-5 rounded-full transition-colors ${
+        active ? "bg-primary" : "bg-muted"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-all ${
+          active ? "left-[18px]" : "left-0.5"
+        }`}
+      />
+    </button>
   );
 }
 
