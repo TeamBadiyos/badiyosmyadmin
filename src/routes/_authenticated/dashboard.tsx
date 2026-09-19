@@ -35,6 +35,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { OffersPage } from "@/components/offers-page";
+import { CourierPage } from "@/components/courier-page";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -85,6 +86,7 @@ import {
   Ticket,
   BadgePercent,
   Sparkles,
+  PackageCheck,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,6 +131,7 @@ const NAV_ITEMS = [
   { key: "audit", label: "Audit Logs", icon: ScrollText },
   { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
   { key: "capacity-messages", label: "Capacity Messages", icon: MessageSquareText },
+  { key: "courier", label: "Courier", icon: PackageCheck },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -510,6 +513,8 @@ function Shell() {
           <CapacityMessagesPage />
         ) : active === "offers" ? (
           <OffersPage />
+        ) : active === "courier" ? (
+          <CourierPage />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
