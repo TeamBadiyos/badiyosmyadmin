@@ -173,11 +173,16 @@ export const getExpert = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!e) throw new Error("Expert not found");
-    if (staff.role === "area_partner" && (!staff.zone_id || e.zone_id !== staff.zone_id)) {
+    const zoneList = (await loadExpertZones(context.supabase, [data.id])).get(data.id) ?? [];
+    if (
+      staff.role === "area_partner" &&
+      !zoneList.some((z) => staff.zone_ids.includes(z.id))
+    ) {
       throw new Error("Forbidden");
     }
-    let zoneName: string | null = null;
-    if (e.zone_id) {
+    const primary = zoneList.find((z) => z.isPrimary) ?? zoneList[0] ?? null;
+    let zoneName: string | null = primary?.name ?? null;
+    if (!zoneName && e.zone_id) {
       const { data: z } = await context.supabase
         .from("zones")
         .select("name")
@@ -190,8 +195,11 @@ export const getExpert = createServerFn({ method: "POST" })
       name: e.name,
       phone: e.phone,
       photoUrl: e.photo_url ?? null,
-      zoneId: e.zone_id ?? null,
+      zoneId: primary?.id ?? e.zone_id ?? null,
       zoneName,
+      zoneIds: zoneList.map((z) => z.id),
+      zoneNames: zoneList.map((z) => z.name),
+
       level: e.level as ExpertLevel,
       kycStatus: e.kyc_status as KycStatus,
       walletBalance: e.wallet_balance != null ? Number(e.wallet_balance) : 0,
