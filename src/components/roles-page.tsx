@@ -380,22 +380,11 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
           </Field>
 
           {role === "area_partner" && (
-            <Field label="Zone">
-              <select
-                value={zoneId}
-                onChange={(e) => setZoneId(e.target.value)}
-                required
-                className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
-              >
-                <option value="">Select zone…</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name} — {z.city}
-                  </option>
-                ))}
-              </select>
+            <Field label="Zones">
+              <ZonePicker zones={zones} value={zoneIds} onChange={setZoneIds} />
             </Field>
           )}
+
 
           <Field label="Status">
             <select
