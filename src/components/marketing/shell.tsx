@@ -100,19 +100,29 @@ export function MarketingShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function ComingSoonAppButton({ dark = false }: { dark?: boolean }) {
+export function PlayStoreButton({ dark = false }: { dark?: boolean }) {
+  const fetchUrl = useServerFn(getPlayStoreUrl);
+  const { data } = useQuery({
+    queryKey: ["play-store-url"],
+    queryFn: fetchUrl,
+    staleTime: 5 * 60 * 1000,
+  });
+  const href = data ?? PLAY_STORE_URL;
   return (
-    <span
-      aria-disabled="true"
-      title="The Badiyos app is not on the Play Store yet"
-      className={`inline-flex items-center gap-2 h-10 px-4 sm:px-5 rounded-full font-bold text-[13px] sm:text-[14px] cursor-not-allowed select-none ${
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Download the Badiyos app on Google Play"
+      className={`inline-flex items-center gap-2 h-10 px-4 sm:px-5 rounded-full font-bold text-[13px] sm:text-[14px] transition hover:brightness-95 hover:-translate-y-0.5 ${
         dark
-          ? "bg-white/10 text-white/60 border border-white/15"
-          : "bg-muted text-muted-foreground border border-border"
+          ? "bg-primary text-primary-foreground"
+          : "bg-primary text-primary-foreground"
       }`}
     >
-      App — Coming Soon
-    </span>
+      <Play size={16} fill="currentColor" />
+      Download on Google Play
+    </a>
   );
 }
 
