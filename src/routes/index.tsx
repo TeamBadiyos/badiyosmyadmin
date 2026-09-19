@@ -26,7 +26,7 @@ import {
   Brush,
   type LucideIcon,
 } from "lucide-react";
-import { MarketingShell, ComingSoonAppButton } from "@/components/marketing/shell";
+import { MarketingShell, PlayStoreButton } from "@/components/marketing/shell";
 import { Reveal } from "@/components/marketing/reveal";
 import {
   BusinessInterestDialog,
@@ -43,14 +43,14 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops coming soon on Badiyos.",
+          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops on Badiyos.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Badiyos — Trusted Home Services in Latur" },
       {
         property: "og:description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with more home services and local shops coming soon.",
+          "Book a verified home expert in Latur in minutes. Download the Badiyos app on Google Play.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: OG_IMAGE },
@@ -170,7 +170,7 @@ function Hero({ onCityInterest }: { onCityInterest: () => void }) {
                 See what we do
                 <ArrowRight size={18} />
               </a>
-              <ComingSoonAppButton />
+              <PlayStoreButton />
             </div>
           </div>
 
@@ -308,7 +308,7 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
                   Don't see your service or shop yet?
                 </h4>
                 <p className="mt-1.5 text-[14px] text-muted-foreground max-w-xl">
-                  We're expanding soon — show your interest and we'll notify you first.
+                  Show your interest and our team will reach out to you.
                 </p>
               </div>
               <button
@@ -359,11 +359,6 @@ function ServiceGroup({
         {items.map((item, i) => (
           <Reveal key={item.name} delay={Math.min(i, 6) * 55}>
             <div className="group relative h-full rounded-[18px] border border-border bg-background p-5 sm:p-6 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_16px_32px_-18px_rgba(0,185,122,0.55)]">
-              {soon && (
-                <span className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                  Coming Soon
-                </span>
-              )}
               <div className="w-12 h-12 rounded-[14px] bg-primary-tint text-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
                 <item.icon size={24} strokeWidth={2.1} />
               </div>
@@ -523,7 +518,7 @@ const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: "How do I book a service?",
-    a: "The Badiyos app is launching shortly. Once it's live, you'll choose the service you need, pick a time slot that works for you, and complete the payment online. You'll get a confirmation as soon as an expert is assigned.",
+    a: "Download the Badiyos app from Google Play, choose the service you need, pick a time slot that works for you, and complete the payment online. You'll get a confirmation as soon as an expert is assigned.",
   },
   {
     q: "What's included in a time slot?",
@@ -621,17 +616,17 @@ function DownloadApp() {
               loading="lazy"
             />
             <h2 className="text-[28px] sm:text-[36px] font-bold tracking-tight">
-              The Badiyos app is on its way
+              The Badiyos app is here
             </h2>
             <p className="mt-3 text-[15px] sm:text-[16px] text-white/70 max-w-xl mx-auto">
-              Book, pay, and track your home services — all in one place. We're putting
-              the finishing touches on the Android app.
+              Book, pay, and track your home services — all in one place. Download the
+              Android app and get started in minutes.
             </p>
             <div className="mt-8 flex items-center justify-center">
-              <ComingSoonAppButton dark />
+              <PlayStoreButton dark />
             </div>
             <p className="mt-4 text-[12px] text-white/50">
-              Coming soon on Android. Chat with us on WhatsApp in the meantime.
+              Need help? Chat with us on WhatsApp anytime.
             </p>
           </div>
         </Reveal>

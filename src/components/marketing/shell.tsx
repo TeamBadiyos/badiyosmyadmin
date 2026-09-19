@@ -1,8 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, MessageCircle } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronDown, MessageCircle, Play } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { LEGAL_ENTITY_NAME, whatsappLink } from "@/lib/brand";
+import { getPlayStoreUrl, PLAY_STORE_URL } from "@/lib/playstore.functions";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
@@ -43,22 +46,13 @@ export function MarketingShell({ children }: { children: ReactNode }) {
               {servicesOpen && (
                 <div className="absolute left-0 top-full pt-2 w-[240px]">
                   <div className="bg-card border border-border rounded-[14px] shadow-lg p-2">
-                    {[
-                      { label: "Home Cleaning", soon: false },
-                      { label: "Home Services", soon: true },
-                      { label: "Shop Local", soon: true },
-                    ].map((s) => (
+                    {["Home Cleaning", "Home Services", "Shop Local"].map((label) => (
                       <a
-                        key={s.label}
+                        key={label}
                         href="#services"
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] text-[13px] text-foreground hover:bg-muted"
+                        className="block px-3 py-2 rounded-[10px] text-[13px] text-foreground hover:bg-muted"
                       >
-                        {s.label}
-                        {s.soon && (
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-primary">
-                            Soon
-                          </span>
-                        )}
+                        {label}
                       </a>
                     ))}
                   </div>
@@ -95,7 +89,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             >
               <MessageCircle size={18} />
             </a>
-            <ComingSoonAppButton />
+            <PlayStoreButton />
           </div>
         </div>
       </header>
@@ -106,19 +100,29 @@ export function MarketingShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function ComingSoonAppButton({ dark = false }: { dark?: boolean }) {
+export function PlayStoreButton({ dark = false }: { dark?: boolean }) {
+  const fetchUrl = useServerFn(getPlayStoreUrl);
+  const { data } = useQuery({
+    queryKey: ["play-store-url"],
+    queryFn: fetchUrl,
+    staleTime: 5 * 60 * 1000,
+  });
+  const href = data ?? PLAY_STORE_URL;
   return (
-    <span
-      aria-disabled="true"
-      title="The Badiyos app is not on the Play Store yet"
-      className={`inline-flex items-center gap-2 h-10 px-4 sm:px-5 rounded-full font-bold text-[13px] sm:text-[14px] cursor-not-allowed select-none ${
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Download the Badiyos app on Google Play"
+      className={`inline-flex items-center gap-2 h-10 px-4 sm:px-5 rounded-full font-bold text-[13px] sm:text-[14px] transition hover:brightness-95 hover:-translate-y-0.5 ${
         dark
-          ? "bg-white/10 text-white/60 border border-white/15"
-          : "bg-muted text-muted-foreground border border-border"
+          ? "bg-primary text-primary-foreground"
+          : "bg-primary text-primary-foreground"
       }`}
     >
-      App — Coming Soon
-    </span>
+      <Play size={16} fill="currentColor" />
+      Download on Google Play
+    </a>
   );
 }
 
