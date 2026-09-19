@@ -211,6 +211,52 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {fmtDate(r.created_at)}
                   </td>
+                  {isSuperAdmin && (
+                    <td className="px-4 py-3">
+                      <div
+                        className="flex items-center justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => setEditRow(r)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted"
+                          aria-label="Edit user"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {r.deleted_at ? (
+                          <button
+                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: false })}
+                            disabled={deletedMutation.isPending}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-emerald-700"
+                            aria-label="Restore user"
+                            title="Restore"
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: true })}
+                            disabled={deletedMutation.isPending}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-amber-700"
+                            aria-label="Deactivate user"
+                            title="Deactivate (soft delete)"
+                          >
+                            <UserX size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteRow(r)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-red-50 text-destructive"
+                          aria-label="Delete user forever"
+                          title="Delete forever"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
