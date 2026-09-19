@@ -169,13 +169,22 @@ export const createStaffUser = createServerFn({ method: "POST" })
       throw new Error(insertErr.message);
     }
 
+    if (data.zone_ids.length) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: zErr } = await (context.supabase.rpc as any)(
+        "staff_set_staff_user_zones",
+        { _staff_user_id: inserted.id, _zone_ids: data.zone_ids },
+      );
+      if (zErr) throw new Error(zErr.message);
+    }
+
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
       action: "create_staff_user",
       target_table: "staff_users",
       target_id: inserted.id,
       before_state: null,
-      after_state: inserted,
+      after_state: { ...inserted, zone_ids: data.zone_ids },
     });
 
     return { id: inserted.id as string };
@@ -185,6 +194,7 @@ export type UpdateStaffUserInput = {
   id: string;
   role: StaffRole;
   zone_id?: string | null;
+  zone_ids?: string[] | null;
   status: StaffStatus;
 };
 
@@ -195,10 +205,12 @@ export const updateStaffUser = createServerFn({ method: "POST" })
     if (!["super_admin", "ops_manager", "area_partner"].includes(input?.role))
       throw new Error("Invalid role");
     if (!["active", "inactive"].includes(input?.status)) throw new Error("Invalid status");
-    if (input.role === "area_partner" && !input.zone_id)
-      throw new Error("Zone required for area partner");
-    return input;
+    const zone_ids = normalizeZoneIds(input.role, input.zone_ids, input.zone_id);
+    if (input.role === "area_partner" && zone_ids.length === 0)
+      throw new Error("At least one zone is required for an area partner");
+    return { ...input, zone_ids, zone_id: zone_ids[0] ?? null };
   })
+
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
