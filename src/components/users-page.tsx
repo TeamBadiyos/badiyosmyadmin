@@ -373,10 +373,12 @@ function CustomerProfileModal({
   userId,
   onClose,
   onSelectBooking,
+  headerActions,
 }: {
   userId: string;
   onClose: () => void;
   onSelectBooking?: (id: string) => void;
+  headerActions?: React.ReactNode;
 }) {
   const fetchProfile = useServerFn(getCustomerProfile);
   const { data, isLoading, isError } = useQuery({
