@@ -144,7 +144,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards"],
+    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers"],
   },
   {
     id: "catalog",
@@ -508,6 +508,8 @@ function Shell() {
           <DispatchAlertsPage />
         ) : active === "capacity-messages" ? (
           <CapacityMessagesPage />
+        ) : active === "offers" ? (
+          <OffersPage />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
