@@ -311,7 +311,7 @@ async function loadBookingDetails(
   supabase: any,
   bookingId: string,
   role: string,
-  staffZoneId: string | null,
+  staffZoneIds: string[],
 ): Promise<BookingDetails> {
   const { data: b, error } = await supabase
     .from("bookings")
