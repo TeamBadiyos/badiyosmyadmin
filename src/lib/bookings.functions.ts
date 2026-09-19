@@ -110,13 +110,15 @@ export const listBookings = createServerFn({ method: "POST" })
 
 
     if (staff.role === "area_partner") {
-      if (!staff.zone_id) {
+      const scope = await loadStaffScope(context.supabase, context.userId);
+      if (!scope.zoneIds.length) {
         return { rows: [], total: 0, page, pageSize };
       }
-      q = q.eq("zone_id", staff.zone_id);
+      q = q.in("zone_id", scope.zoneIds);
     } else if (data.zoneId) {
       q = q.eq("zone_id", data.zoneId);
     }
+
 
     if (data.status && BOOKING_STATUSES.includes(data.status as BookingStatus)) {
       q = q.eq("status", data.status);
