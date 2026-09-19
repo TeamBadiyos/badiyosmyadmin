@@ -63,7 +63,7 @@ export function ExpertFormModal({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [zoneId, setZoneId] = useState("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [level, setLevel] = useState<ExpertLevel>("bronze");
   const [status, setStatus] = useState<ActiveStatus>("active");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
