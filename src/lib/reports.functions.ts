@@ -11,16 +11,12 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getScope(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("staff_users")
-    .select("role, status, zone_id")
-    .eq("auth_user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data || data.status !== "active") throw new Error("Forbidden");
+  const { loadStaffScope } = await import("@/lib/zone-scope");
+  const scope = await loadStaffScope(supabase, userId);
   return {
-    role: data.role as StaffRole,
-    zone_id: (data.zone_id as string | null) ?? null,
+    role: scope.role as StaffRole,
+    zone_id: scope.zoneId,
+    zone_ids: scope.zoneIds,
   };
 }
 
@@ -36,20 +32,22 @@ function validateRange(input: ReportRange | undefined): ReportRange {
 }
 
 function scopeZone(
-  scope: { role: StaffRole; zone_id: string | null },
+  scope: { role: StaffRole; zone_ids: string[] },
   requestedZoneId: string | null | undefined,
-): string | null | "empty" {
+): string[] | null | "empty" {
   if (scope.role === "area_partner") {
-    if (!scope.zone_id) return "empty";
-    return scope.zone_id;
+    if (!scope.zone_ids.length) return "empty";
+    if (requestedZoneId && scope.zone_ids.includes(requestedZoneId)) return [requestedZoneId];
+    return scope.zone_ids;
   }
-  return requestedZoneId ?? null;
+  return requestedZoneId ? [requestedZoneId] : null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function applyZone(q: any, zoneId: string | null) {
-  return zoneId ? q.eq("zone_id", zoneId) : q;
+function applyZone(q: any, zoneIds: string[] | null) {
+  return zoneIds && zoneIds.length ? q.in("zone_id", zoneIds) : q;
 }
+
 
 const rangeFrom = (from: string) => `${from}T00:00:00Z`;
 const rangeTo = (to: string) => `${to}T23:59:59Z`;
