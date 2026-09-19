@@ -103,8 +103,19 @@ export type CreateStaffUserInput = {
   email: string;
   role: "ops_manager" | "area_partner";
   zone_id?: string | null;
+  zone_ids?: string[] | null;
   password: string;
 };
+
+function normalizeZoneIds(
+  role: StaffRole,
+  zoneIds: string[] | null | undefined,
+  zoneId: string | null | undefined,
+): string[] {
+  if (role !== "area_partner") return [];
+  const ids = (zoneIds && zoneIds.length ? zoneIds : zoneId ? [zoneId] : []).filter(Boolean);
+  return Array.from(new Set(ids));
+}
 
 export const createStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -116,11 +127,12 @@ export const createStaffUser = createServerFn({ method: "POST" })
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Valid email required");
     if (!["ops_manager", "area_partner"].includes(input?.role))
       throw new Error("Invalid role");
-    if (input.role === "area_partner" && !input.zone_id)
-      throw new Error("Zone required for area partner");
-    if (password.length < 8) throw new Error("Password must be at least 8 characters");
-    return { ...input, name, email, zone_id: input.zone_id ?? null };
+    const zone_ids = normalizeZoneIds(input?.role, input?.zone_ids, input?.zone_id);
+    if (input.role === "area_partner" && zone_ids.length === 0)
+      throw new Error("At least one zone is required for an area partner");
+    return { ...input, name, email, zone_ids, zone_id: zone_ids[0] ?? null };
   })
+
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
