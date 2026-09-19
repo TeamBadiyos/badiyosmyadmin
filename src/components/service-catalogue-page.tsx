@@ -201,6 +201,12 @@ export function ServiceCataloguePage() {
         {segments.map((seg) => {
           const open = openSegments[seg.id] ?? true;
           const cats = catsBySegment.get(seg.id) ?? [];
+          const segActiveServices = cats.reduce(
+            (n, c) =>
+              n +
+              (servicesByCategory.get(c.id) ?? []).filter((s) => s.is_active).length,
+            0,
+          );
           return (
             <section
               key={seg.id}
