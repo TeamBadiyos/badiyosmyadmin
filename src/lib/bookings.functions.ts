@@ -433,7 +433,9 @@ export const getBookingDetails = createServerFn({ method: "POST" })
       .eq("auth_user_id", context.userId)
       .maybeSingle();
     if (!staff || staff.status !== "active") throw new Error("Forbidden");
-    return loadBookingDetails(context.supabase, data.bookingId, staff.role, staff.zone_id ?? null);
+    const scope = await loadStaffScope(context.supabase, context.userId);
+    return loadBookingDetails(context.supabase, data.bookingId, staff.role, scope.zoneIds);
+
   });
 
 export const updateBookingStatus = createServerFn({ method: "POST" })
