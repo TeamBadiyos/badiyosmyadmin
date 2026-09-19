@@ -143,7 +143,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"ops_manager" | "area_partner">("ops_manager");
-  const [zoneId, setZoneId] = useState<string>("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [password, setPassword] = useState(() => randomPassword());
   const [error, setError] = useState<string | null>(null);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
