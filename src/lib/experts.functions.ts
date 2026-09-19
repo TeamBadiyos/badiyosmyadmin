@@ -252,6 +252,30 @@ export const upsertExpert = createServerFn({ method: "POST" })
     return { id: id as string };
   });
 
+export const setExpertZones = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { expertId: string; zoneIds: string[]; primaryZoneId?: string | null }) => {
+      if (!input?.expertId) throw new Error("expertId required");
+      return {
+        expertId: input.expertId,
+        zoneIds: input.zoneIds ?? [],
+        primaryZoneId: input.primaryZoneId ?? null,
+      };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_set_expert_zones", {
+      _expert_id: data.expertId,
+      _zone_ids: data.zoneIds,
+      _primary: data.primaryZoneId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+
 export const kycDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
