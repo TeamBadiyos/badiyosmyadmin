@@ -6,10 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getExpert,
   upsertExpert,
+  setExpertZones,
   signStorageUrl,
   type ExpertLevel,
   type ActiveStatus,
 } from "@/lib/experts.functions";
+
 import { listZoneOptions } from "@/lib/bookings.functions";
 
 const LEVELS: ExpertLevel[] = ["bronze", "silver", "gold", "diamond"];
