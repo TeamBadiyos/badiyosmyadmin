@@ -427,3 +427,42 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+function ZonePicker({
+  zones,
+  value,
+  onChange,
+}: {
+  zones: { id: string; name: string; city?: string | null }[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="border border-border rounded-[14px] bg-background p-2 max-h-[180px] overflow-y-auto flex flex-wrap gap-2">
+      {zones.length === 0 && (
+        <span className="text-[13px] text-muted-foreground px-1 py-1">No zones available</span>
+      )}
+      {zones.map((z) => {
+        const selected = value.includes(z.id);
+        return (
+          <button
+            key={z.id}
+            type="button"
+            onClick={() =>
+              onChange(selected ? value.filter((id) => id !== z.id) : [...value, z.id])
+            }
+            className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+              selected
+                ? "bg-primary text-white border-primary"
+                : "bg-card text-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {z.name}
+            {z.city ? ` — ${z.city}` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
