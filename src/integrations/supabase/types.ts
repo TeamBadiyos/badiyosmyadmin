@@ -888,6 +888,592 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_offers: {
+        Row: {
+          created_at: string
+          distance_km: number | null
+          expert_id: string
+          expires_at: string
+          id: string
+          order_id: string
+          responded_at: string | null
+          sent_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          distance_km?: number | null
+          expert_id: string
+          expires_at: string
+          id?: string
+          order_id: string
+          responded_at?: string | null
+          sent_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number | null
+          expert_id?: string
+          expires_at?: string
+          id?: string
+          order_id?: string
+          responded_at?: string | null
+          sent_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_offers_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_offers_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "courier_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_order_events: {
+        Row: {
+          actor_id: string | null
+          actor_type: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          meta: Json
+          order_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          meta?: Json
+          order_id: string
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          meta?: Json
+          order_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "courier_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_order_secrets: {
+        Row: {
+          created_at: string
+          delivery_attempts: number
+          delivery_otp_expires_at: string | null
+          delivery_otp_hash: string | null
+          delivery_otp_issued_at: string | null
+          locked_until: string | null
+          order_id: string
+          pickup_attempts: number
+          pickup_otp_expires_at: string | null
+          pickup_otp_hash: string | null
+          pickup_otp_issued_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_attempts?: number
+          delivery_otp_expires_at?: string | null
+          delivery_otp_hash?: string | null
+          delivery_otp_issued_at?: string | null
+          locked_until?: string | null
+          order_id: string
+          pickup_attempts?: number
+          pickup_otp_expires_at?: string | null
+          pickup_otp_hash?: string | null
+          pickup_otp_issued_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_attempts?: number
+          delivery_otp_expires_at?: string | null
+          delivery_otp_hash?: string | null
+          delivery_otp_issued_at?: string | null
+          locked_until?: string | null
+          order_id?: string
+          pickup_attempts?: number
+          pickup_otp_expires_at?: string | null
+          pickup_otp_hash?: string | null
+          pickup_otp_issued_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_order_secrets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "courier_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_orders: {
+        Row: {
+          arrived_pickup_at: string | null
+          assigned_at: string | null
+          assigned_expert_id: string | null
+          base_amount: number
+          cancel_reason_code: string | null
+          cancellation_fee: number
+          cancelled_at: string | null
+          cancelled_by: string | null
+          city: string
+          commission_pct: number
+          completed_at: string | null
+          coupon_code: string | null
+          coupon_id: string | null
+          courier_type_id: string
+          created_at: string
+          current_search_radius_km: number | null
+          customer_id: string
+          delivered_at: string | null
+          discount_amount: number
+          distance_km: number
+          distance_source: string
+          drop_address: string
+          drop_contact_name: string
+          drop_contact_phone: string
+          drop_lat: number
+          drop_lng: number
+          earnings_credited_at: string | null
+          extra_fee: number
+          fare_breakdown: Json
+          gst_amount: number
+          gst_percent: number
+          id: string
+          in_transit_at: string | null
+          incident_code: string | null
+          incident_notes: string | null
+          incident_resolution: string | null
+          needs_ops_attention: boolean
+          order_code: string
+          otp_attempts: number
+          package_description: string | null
+          payment_status: string
+          picked_up_at: string | null
+          pickup_address: string
+          pickup_contact_name: string
+          pickup_contact_phone: string
+          pickup_lat: number
+          pickup_lng: number
+          platform_fee: number
+          prohibited_items_confirmed: boolean
+          proof_photo_url: string | null
+          quote_expires_at: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          refund_amount: number
+          refund_attempts: number
+          refund_id: string | null
+          refund_next_attempt_at: string | null
+          refund_reason: string | null
+          refund_status: string
+          rider_cancel_count: number
+          search_started_at: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          vehicle_type_id: string
+          wallet_amount: number
+          weight_kg: number
+        }
+        Insert: {
+          arrived_pickup_at?: string | null
+          assigned_at?: string | null
+          assigned_expert_id?: string | null
+          base_amount?: number
+          cancel_reason_code?: string | null
+          cancellation_fee?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          city: string
+          commission_pct?: number
+          completed_at?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
+          courier_type_id: string
+          created_at?: string
+          current_search_radius_km?: number | null
+          customer_id: string
+          delivered_at?: string | null
+          discount_amount?: number
+          distance_km?: number
+          distance_source?: string
+          drop_address: string
+          drop_contact_name: string
+          drop_contact_phone: string
+          drop_lat: number
+          drop_lng: number
+          earnings_credited_at?: string | null
+          extra_fee?: number
+          fare_breakdown?: Json
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          in_transit_at?: string | null
+          incident_code?: string | null
+          incident_notes?: string | null
+          incident_resolution?: string | null
+          needs_ops_attention?: boolean
+          order_code?: string
+          otp_attempts?: number
+          package_description?: string | null
+          payment_status?: string
+          picked_up_at?: string | null
+          pickup_address: string
+          pickup_contact_name: string
+          pickup_contact_phone: string
+          pickup_lat: number
+          pickup_lng: number
+          platform_fee?: number
+          prohibited_items_confirmed?: boolean
+          proof_photo_url?: string | null
+          quote_expires_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          refund_amount?: number
+          refund_attempts?: number
+          refund_id?: string | null
+          refund_next_attempt_at?: string | null
+          refund_reason?: string | null
+          refund_status?: string
+          rider_cancel_count?: number
+          search_started_at?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          vehicle_type_id: string
+          wallet_amount?: number
+          weight_kg?: number
+        }
+        Update: {
+          arrived_pickup_at?: string | null
+          assigned_at?: string | null
+          assigned_expert_id?: string | null
+          base_amount?: number
+          cancel_reason_code?: string | null
+          cancellation_fee?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          city?: string
+          commission_pct?: number
+          completed_at?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
+          courier_type_id?: string
+          created_at?: string
+          current_search_radius_km?: number | null
+          customer_id?: string
+          delivered_at?: string | null
+          discount_amount?: number
+          distance_km?: number
+          distance_source?: string
+          drop_address?: string
+          drop_contact_name?: string
+          drop_contact_phone?: string
+          drop_lat?: number
+          drop_lng?: number
+          earnings_credited_at?: string | null
+          extra_fee?: number
+          fare_breakdown?: Json
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          in_transit_at?: string | null
+          incident_code?: string | null
+          incident_notes?: string | null
+          incident_resolution?: string | null
+          needs_ops_attention?: boolean
+          order_code?: string
+          otp_attempts?: number
+          package_description?: string | null
+          payment_status?: string
+          picked_up_at?: string | null
+          pickup_address?: string
+          pickup_contact_name?: string
+          pickup_contact_phone?: string
+          pickup_lat?: number
+          pickup_lng?: number
+          platform_fee?: number
+          prohibited_items_confirmed?: boolean
+          proof_photo_url?: string | null
+          quote_expires_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          refund_amount?: number
+          refund_attempts?: number
+          refund_id?: string | null
+          refund_next_attempt_at?: string | null
+          refund_reason?: string | null
+          refund_status?: string
+          rider_cancel_count?: number
+          search_started_at?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          vehicle_type_id?: string
+          wallet_amount?: number
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_orders_assigned_expert_id_fkey"
+            columns: ["assigned_expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_orders_courier_type_id_fkey"
+            columns: ["courier_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_orders_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_quote_log: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      courier_types: {
+        Row: {
+          created_at: string
+          extra_fee: number
+          icon: string | null
+          id: string
+          instructions: string | null
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          extra_fee?: number
+          icon?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          extra_fee?: number
+          icon?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      courier_vehicle_courier_types: {
+        Row: {
+          courier_type_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          vehicle_type_id: string
+        }
+        Insert: {
+          courier_type_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          vehicle_type_id: string
+        }
+        Update: {
+          courier_type_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          vehicle_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_vehicle_courier_types_courier_type_id_fkey"
+            columns: ["courier_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_vehicle_courier_types_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_vehicle_rates: {
+        Row: {
+          base_fare: number
+          city: string
+          commission_pct: number
+          created_at: string
+          id: string
+          included_km: number
+          is_placeholder: boolean
+          min_fare: number
+          per_km: number
+          platform_fee: number
+          updated_at: string
+          vehicle_type_id: string
+        }
+        Insert: {
+          base_fare?: number
+          city: string
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          included_km?: number
+          is_placeholder?: boolean
+          min_fare?: number
+          per_km?: number
+          platform_fee?: number
+          updated_at?: string
+          vehicle_type_id: string
+        }
+        Update: {
+          base_fare?: number
+          city?: string
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          included_km?: number
+          is_placeholder?: boolean
+          min_fare?: number
+          per_km?: number
+          platform_fee?: number
+          updated_at?: string
+          vehicle_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_vehicle_rates_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_vehicle_types: {
+        Row: {
+          created_at: string
+          exclusions: string[]
+          icon: string | null
+          id: string
+          inclusions: string[]
+          is_active: boolean
+          max_weight_kg: number
+          name: string
+          required_documents: string[]
+          required_skill: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exclusions?: string[]
+          icon?: string | null
+          id?: string
+          inclusions?: string[]
+          is_active?: boolean
+          max_weight_kg?: number
+          name: string
+          required_documents?: string[]
+          required_skill?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exclusions?: string[]
+          icon?: string | null
+          id?: string
+          inclusions?: string[]
+          is_active?: boolean
+          max_weight_kg?: number
+          name?: string
+          required_documents?: string[]
+          required_skill?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_vehicle_types_required_skill_fkey"
+            columns: ["required_skill"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_coupons: {
         Row: {
           coupon_id: string
@@ -2988,6 +3574,39 @@ export type Database = {
           },
         ]
       }
+      service_flags: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          service_key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          service_key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          service_key?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_price_options: {
         Row: {
           created_at: string
@@ -3764,6 +4383,102 @@ export type Database = {
         }
         Returns: Json
       }
+      courier_booking_start_at: {
+        Args: { _d: string; _slot: string }
+        Returns: string
+      }
+      courier_cancel_order: {
+        Args: { _order_id: string; _reason?: string }
+        Returns: Json
+      }
+      courier_create_order: {
+        Args: { _customer_id: string; _payload: Json }
+        Returns: Json
+      }
+      courier_derive_otp: {
+        Args: { _issued_at: string; _order_id: string; _purpose: string }
+        Returns: string
+      }
+      courier_dispatch_next: { Args: { _order_id: string }; Returns: boolean }
+      courier_dispatch_refund_job: { Args: never; Returns: undefined }
+      courier_eligible_riders: {
+        Args: { _order_id: string; _radius: number }
+        Returns: {
+          distance_km: number
+          expert_id: string
+        }[]
+      }
+      courier_get_otp: {
+        Args: { _order_id: string; _purpose: string }
+        Returns: Json
+      }
+      courier_hash_otp: { Args: { _otp: string }; Returns: string }
+      courier_is_ops_staff: { Args: never; Returns: boolean }
+      courier_is_super_admin: { Args: never; Returns: boolean }
+      courier_issue_otp: {
+        Args: { _order_id: string; _purpose: string }
+        Returns: string
+      }
+      courier_mark_refund_pending: {
+        Args: { _amount: number; _order_id: string; _reason: string }
+        Returns: undefined
+      }
+      courier_offer_respond: {
+        Args: { _accept: boolean; _offer_id: string }
+        Returns: Json
+      }
+      courier_otp_key: { Args: never; Returns: string }
+      courier_quote_internal: {
+        Args: {
+          _city: string
+          _coupon_code?: string
+          _courier_type_id: string
+          _customer_id: string
+          _distance_km: number
+          _vehicle_type_id: string
+          _weight_kg: number
+        }
+        Returns: Json
+      }
+      courier_report_incident: {
+        Args: { _code: string; _notes: string; _order_id: string }
+        Returns: Json
+      }
+      courier_rider_advance: {
+        Args: {
+          _lat?: number
+          _lng?: number
+          _order_id: string
+          _to_status: string
+        }
+        Returns: Json
+      }
+      courier_rider_cancel: {
+        Args: { _order_id: string; _reason: string }
+        Returns: Json
+      }
+      courier_rider_offers: { Args: never; Returns: Json }
+      courier_setting: {
+        Args: { _default: number; _key: string }
+        Returns: number
+      }
+      courier_settle_order: { Args: { _order_id: string }; Returns: undefined }
+      courier_start_dispatch: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
+      courier_sweeper: { Args: never; Returns: undefined }
+      courier_sweeper_tick: { Args: never; Returns: undefined }
+      courier_verify_job_secret: { Args: { _secret: string }; Returns: boolean }
+      courier_verify_otp: {
+        Args: {
+          _order_id: string
+          _otp: string
+          _proof_url?: string
+          _purpose: string
+        }
+        Returns: Json
+      }
       credit_referral_for_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -4203,6 +4918,31 @@ export type Database = {
         Returns: boolean
       }
       staff_clear_notifications: { Args: never; Returns: undefined }
+      staff_courier_force_cancel: {
+        Args: { _order_id: string; _reason: string; _refund_amount?: number }
+        Returns: Json
+      }
+      staff_courier_reassign_rider: {
+        Args: { _expert_id: string; _order_id: string }
+        Returns: Json
+      }
+      staff_courier_refund: {
+        Args: { _amount: number; _order_id: string; _reason: string }
+        Returns: Json
+      }
+      staff_courier_resolve_incident: {
+        Args: {
+          _order_id: string
+          _pay_rider?: boolean
+          _refund_amount?: number
+          _resolution: string
+        }
+        Returns: Json
+      }
+      staff_courier_set_service_flag: {
+        Args: { _city: string; _is_active: boolean; _service_key: string }
+        Returns: Json
+      }
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
         Returns: string
