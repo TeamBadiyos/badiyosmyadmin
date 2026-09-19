@@ -132,14 +132,14 @@ export function ExpertFormModal({
   }
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      save({
+    mutationFn: async () => {
+      const res = await save({
         data: {
           id: expertId ?? null,
           name: name.trim(),
           phone: phone.trim(),
           address: address.trim() || null,
-          zone_id: zoneId || null,
+          zone_id: zoneIds[0] ?? null,
           level,
           status,
           photo_url: photoPath,
@@ -150,7 +150,13 @@ export function ExpertFormModal({
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
         },
-      }),
+      });
+      await saveZones({
+        data: { expertId: res.id, zoneIds, primaryZoneId: zoneIds[0] ?? null },
+      });
+      return res;
+    },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["experts", "list"] });
       if (expertId) {
