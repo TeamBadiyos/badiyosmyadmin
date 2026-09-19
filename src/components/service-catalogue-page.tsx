@@ -294,7 +294,20 @@ export function ServiceCataloguePage() {
                               {svcs.length} service{svcs.length === 1 ? "" : "s"}
                             </span>
                           </button>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
+                            <ActiveSwitch
+                              active={cat.is_active}
+                              label={`${cat.name} active`}
+                              onToggle={() =>
+                                requestActiveToggle(
+                                  "category",
+                                  cat.id,
+                                  cat.name,
+                                  cat.is_active,
+                                  svcs.filter((s) => s.is_active).length,
+                                )
+                              }
+                            />
                             <button
                               onClick={() => setAvailabilityModal({ category: cat })}
                               className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
