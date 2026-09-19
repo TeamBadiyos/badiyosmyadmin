@@ -304,7 +304,10 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
   });
 
   const [role, setRole] = useState<StaffRole>(user.role);
-  const [zoneId, setZoneId] = useState<string>(user.zoneId ?? "");
+  const [zoneIds, setZoneIds] = useState<string[]>(
+    user.zoneIds?.length ? user.zoneIds : user.zoneId ? [user.zoneId] : [],
+  );
+
   const [status, setStatus] = useState<StaffStatus>(user.status);
   const [error, setError] = useState<string | null>(null);
 
