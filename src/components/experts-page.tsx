@@ -215,8 +215,27 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       <span className="font-semibold text-foreground truncate">{expert.name}</span>
       <span className="font-mono text-[13px] text-muted-foreground truncate">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
-        {expert.zoneName ?? <span className="italic">Unassigned</span>}
+        {expert.zoneNames?.length ? (
+          <span className="inline-flex flex-wrap gap-1">
+            {expert.zoneNames.slice(0, 2).map((n) => (
+              <span
+                key={n}
+                className="px-2 py-0.5 rounded-full bg-muted text-[11px] font-semibold text-foreground"
+              >
+                {n}
+              </span>
+            ))}
+            {expert.zoneNames.length > 2 && (
+              <span className="px-2 py-0.5 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
+                +{expert.zoneNames.length - 2}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="italic">Unassigned</span>
+        )}
       </span>
+
       <span>
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${LEVEL_STYLES[expert.level]}`}>
           {expert.level}

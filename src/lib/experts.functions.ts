@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { loadStaffScope } from "@/lib/zone-scope";
 
 export type ExpertLevel = "bronze" | "silver" | "gold" | "diamond";
 export type KycStatus = "pending" | "approved" | "rejected";
@@ -12,6 +13,8 @@ export type ExpertRow = {
   photoUrl: string | null;
   zoneId: string | null;
   zoneName: string | null;
+  zoneIds: string[];
+  zoneNames: string[];
   level: ExpertLevel;
   kycStatus: KycStatus;
   walletBalance: number;
@@ -39,15 +42,40 @@ async function requireStaff(
   supabase: any,
   userId: string,
 ) {
-  const { data: staff, error } = await supabase
-    .from("staff_users")
-    .select("role, status, zone_id")
-    .eq("auth_user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!staff || staff.status !== "active") throw new Error("Forbidden");
-  return staff as { role: "super_admin" | "ops_manager" | "area_partner"; status: string; zone_id: string | null };
+  const scope = await loadStaffScope(supabase, userId);
+  return { role: scope.role, status: "active", zone_id: scope.zoneId, zone_ids: scope.zoneIds };
 }
+
+/** expert_id -> assigned zones (id + name), primary first */
+async function loadExpertZones(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  expertIds: string[],
+): Promise<Map<string, Array<{ id: string; name: string; isPrimary: boolean }>>> {
+  const out = new Map<string, Array<{ id: string; name: string; isPrimary: boolean }>>();
+  if (!expertIds.length) return out;
+  const { data: links } = await supabase
+    .from("expert_zones")
+    .select("expert_id, zone_id, is_primary")
+    .in("expert_id", expertIds);
+  const rows = (links ?? []) as { expert_id: string; zone_id: string; is_primary: boolean }[];
+  if (!rows.length) return out;
+  const zoneIds = Array.from(new Set(rows.map((r) => r.zone_id)));
+  const { data: zones } = await supabase.from("zones").select("id, name").in("id", zoneIds);
+  const nameById = new Map(
+    ((zones ?? []) as { id: string; name: string }[]).map((z) => [z.id, z.name]),
+  );
+  for (const r of rows) {
+    const list = out.get(r.expert_id) ?? [];
+    list.push({ id: r.zone_id, name: nameById.get(r.zone_id) ?? "—", isPrimary: !!r.is_primary });
+    out.set(r.expert_id, list);
+  }
+  for (const list of out.values()) {
+    list.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name));
+  }
+  return out;
+}
+
 
 export const listExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -72,11 +100,24 @@ export const listExperts = createServerFn({ method: "POST" })
     }
     q = q.order("created_at", { ascending: false });
 
+    // Zone scoping / filtering — an expert may cover several zones.
+    let wantedZoneIds: string[] | null = null;
     if (staff.role === "area_partner") {
-      if (!staff.zone_id) return [];
-      q = q.eq("zone_id", staff.zone_id);
+      if (!staff.zone_ids.length) return [];
+      wantedZoneIds = staff.zone_ids;
     } else if (data.zoneId) {
-      q = q.eq("zone_id", data.zoneId);
+      wantedZoneIds = [data.zoneId];
+    }
+    if (wantedZoneIds) {
+      const { data: links } = await context.supabase
+        .from("expert_zones")
+        .select("expert_id")
+        .in("zone_id", wantedZoneIds);
+      const ids = Array.from(
+        new Set(((links ?? []) as { expert_id: string }[]).map((l) => l.expert_id)),
+      );
+      if (!ids.length) return [];
+      q = q.in("id", ids);
     }
     if (data.kycStatus && ["pending", "approved", "rejected"].includes(data.kycStatus)) {
       q = q.eq("kyc_status", data.kycStatus);
@@ -89,33 +130,33 @@ export const listExperts = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (rows ?? []) as any[];
-    const zoneIds = Array.from(new Set(raw.map((r) => r.zone_id).filter(Boolean)));
-    const zoneMap = new Map<string, string>();
-    if (zoneIds.length) {
-      const { data: zones } = await context.supabase
-        .from("zones")
-        .select("id, name")
-        .in("id", zoneIds);
-      for (const z of (zones ?? []) as { id: string; name: string }[]) {
-        zoneMap.set(z.id, z.name);
-      }
-    }
-    return raw.map((r) => ({
-      id: r.id,
-      name: r.name,
-      phone: r.phone,
-      photoUrl: r.photo_url ?? null,
-      zoneId: r.zone_id ?? null,
-      zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
-      level: r.level as ExpertLevel,
-      kycStatus: r.kyc_status as KycStatus,
-      walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
-      status: r.status as ActiveStatus,
-      isOnline: !!r.is_online,
-      isBusy: !!r.is_busy,
-      lastSeenAt: r.location_updated_at ?? null,
-    }));
+    const zonesByExpert = await loadExpertZones(
+      context.supabase,
+      raw.map((r) => r.id),
+    );
+    return raw.map((r) => {
+      const list = zonesByExpert.get(r.id) ?? [];
+      const primary = list.find((z) => z.isPrimary) ?? list[0] ?? null;
+      return {
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        photoUrl: r.photo_url ?? null,
+        zoneId: primary?.id ?? r.zone_id ?? null,
+        zoneName: primary?.name ?? null,
+        zoneIds: list.map((z) => z.id),
+        zoneNames: list.map((z) => z.name),
+        level: r.level as ExpertLevel,
+        kycStatus: r.kyc_status as KycStatus,
+        walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
+        status: r.status as ActiveStatus,
+        isOnline: !!r.is_online,
+        isBusy: !!r.is_busy,
+        lastSeenAt: r.location_updated_at ?? null,
+      };
+    });
   });
+
 
 export const getExpert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -132,11 +173,16 @@ export const getExpert = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!e) throw new Error("Expert not found");
-    if (staff.role === "area_partner" && (!staff.zone_id || e.zone_id !== staff.zone_id)) {
+    const zoneList = (await loadExpertZones(context.supabase, [data.id])).get(data.id) ?? [];
+    if (
+      staff.role === "area_partner" &&
+      !zoneList.some((z) => staff.zone_ids.includes(z.id))
+    ) {
       throw new Error("Forbidden");
     }
-    let zoneName: string | null = null;
-    if (e.zone_id) {
+    const primary = zoneList.find((z) => z.isPrimary) ?? zoneList[0] ?? null;
+    let zoneName: string | null = primary?.name ?? null;
+    if (!zoneName && e.zone_id) {
       const { data: z } = await context.supabase
         .from("zones")
         .select("name")
@@ -149,8 +195,11 @@ export const getExpert = createServerFn({ method: "POST" })
       name: e.name,
       phone: e.phone,
       photoUrl: e.photo_url ?? null,
-      zoneId: e.zone_id ?? null,
+      zoneId: primary?.id ?? e.zone_id ?? null,
       zoneName,
+      zoneIds: zoneList.map((z) => z.id),
+      zoneNames: zoneList.map((z) => z.name),
+
       level: e.level as ExpertLevel,
       kycStatus: e.kyc_status as KycStatus,
       walletBalance: e.wallet_balance != null ? Number(e.wallet_balance) : 0,
@@ -202,6 +251,30 @@ export const upsertExpert = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: id as string };
   });
+
+export const setExpertZones = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { expertId: string; zoneIds: string[]; primaryZoneId?: string | null }) => {
+      if (!input?.expertId) throw new Error("expertId required");
+      return {
+        expertId: input.expertId,
+        zoneIds: input.zoneIds ?? [],
+        primaryZoneId: input.primaryZoneId ?? null,
+      };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_set_expert_zones", {
+      _expert_id: data.expertId,
+      _zone_ids: data.zoneIds,
+      _primary: data.primaryZoneId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 
 export const kycDecision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

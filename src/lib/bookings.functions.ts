@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { loadStaffScope } from "@/lib/zone-scope";
+
 
 export type BookingStatus =
   | "confirmed"
@@ -110,13 +112,15 @@ export const listBookings = createServerFn({ method: "POST" })
 
 
     if (staff.role === "area_partner") {
-      if (!staff.zone_id) {
+      const scope = await loadStaffScope(context.supabase, context.userId);
+      if (!scope.zoneIds.length) {
         return { rows: [], total: 0, page, pageSize };
       }
-      q = q.eq("zone_id", staff.zone_id);
+      q = q.in("zone_id", scope.zoneIds);
     } else if (data.zoneId) {
       q = q.eq("zone_id", data.zoneId);
     }
+
 
     if (data.status && BOOKING_STATUSES.includes(data.status as BookingStatus)) {
       q = q.eq("status", data.status);
@@ -307,7 +311,7 @@ async function loadBookingDetails(
   supabase: any,
   bookingId: string,
   role: string,
-  staffZoneId: string | null,
+  staffZoneIds: string[],
 ): Promise<BookingDetails> {
   const { data: b, error } = await supabase
     .from("bookings")
@@ -318,7 +322,7 @@ async function loadBookingDetails(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!b) throw new Error("Booking not found");
-  if (role === "area_partner" && (!staffZoneId || b.zone_id !== staffZoneId)) {
+  if (role === "area_partner" && (!b.zone_id || !staffZoneIds.includes(b.zone_id))) {
     throw new Error("Forbidden");
   }
 
@@ -429,7 +433,9 @@ export const getBookingDetails = createServerFn({ method: "POST" })
       .eq("auth_user_id", context.userId)
       .maybeSingle();
     if (!staff || staff.status !== "active") throw new Error("Forbidden");
-    return loadBookingDetails(context.supabase, data.bookingId, staff.role, staff.zone_id ?? null);
+    const scope = await loadStaffScope(context.supabase, context.userId);
+    return loadBookingDetails(context.supabase, data.bookingId, staff.role, scope.zoneIds);
+
   });
 
 export const updateBookingStatus = createServerFn({ method: "POST" })

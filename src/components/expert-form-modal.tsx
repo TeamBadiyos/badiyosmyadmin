@@ -6,10 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getExpert,
   upsertExpert,
+  setExpertZones,
   signStorageUrl,
   type ExpertLevel,
   type ActiveStatus,
 } from "@/lib/experts.functions";
+
 import { listZoneOptions } from "@/lib/bookings.functions";
 
 const LEVELS: ExpertLevel[] = ["bronze", "silver", "gold", "diamond"];
@@ -44,6 +46,8 @@ export function ExpertFormModal({
   const fetchExpert = useServerFn(getExpert);
   const fetchZones = useServerFn(listZoneOptions);
   const save = useServerFn(upsertExpert);
+  const saveZones = useServerFn(setExpertZones);
+
   const sign = useServerFn(signStorageUrl);
 
   const isEdit = !!expertId;
@@ -63,7 +67,7 @@ export function ExpertFormModal({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [zoneId, setZoneId] = useState("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [level, setLevel] = useState<ExpertLevel>("bronze");
   const [status, setStatus] = useState<ActiveStatus>("active");
   const [photoPath, setPhotoPath] = useState<string | null>(null);
@@ -86,7 +90,10 @@ export function ExpertFormModal({
       setName(existing.name);
       setPhone(existing.phone);
       setAddress(existing.address ?? "");
-      setZoneId(existing.zoneId ?? "");
+      setZoneIds(
+        existing.zoneIds?.length ? existing.zoneIds : existing.zoneId ? [existing.zoneId] : [],
+      );
+
       setLevel(existing.level);
       setStatus(existing.status);
       setPhotoPath(existing.photoUrl);
@@ -129,14 +136,14 @@ export function ExpertFormModal({
   }
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      save({
+    mutationFn: async () => {
+      const res = await save({
         data: {
           id: expertId ?? null,
           name: name.trim(),
           phone: phone.trim(),
           address: address.trim() || null,
-          zone_id: zoneId || null,
+          zone_id: zoneIds[0] ?? null,
           level,
           status,
           photo_url: photoPath,
@@ -147,7 +154,13 @@ export function ExpertFormModal({
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
         },
-      }),
+      });
+      await saveZones({
+        data: { expertId: res.id, zoneIds, primaryZoneId: zoneIds[0] ?? null },
+      });
+      return res;
+    },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["experts", "list"] });
       if (expertId) {
@@ -210,10 +223,42 @@ export function ExpertFormModal({
             <Field label="Name" value={name} onChange={setName} required />
             <Field label="Phone" value={phone} onChange={setPhone} required />
             <Field label="Address" value={address} onChange={setAddress} className="md:col-span-2" />
-            <SelectField label="Zone" value={zoneId} onChange={setZoneId}>
-              <option value="">Unassigned</option>
-              {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
-            </SelectField>
+            <div className="md:col-span-2">
+              <label className="block text-[13px] font-semibold text-foreground mb-2">
+                Zones{" "}
+                <span className="font-normal text-muted-foreground">
+                  (select one or more — first pick is primary)
+                </span>
+              </label>
+              <div className="flex flex-wrap gap-2 p-3 rounded-[12px] border border-border bg-muted/30 max-h-[160px] overflow-y-auto">
+                {zones.length === 0 && (
+                  <span className="text-[13px] text-muted-foreground">No zones available</span>
+                )}
+                {zones.map((z) => {
+                  const selected = zoneIds.includes(z.id);
+                  return (
+                    <button
+                      key={z.id}
+                      type="button"
+                      onClick={() =>
+                        setZoneIds((prev) =>
+                          prev.includes(z.id) ? prev.filter((id) => id !== z.id) : [...prev, z.id],
+                        )
+                      }
+                      className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-colors ${
+                        selected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      {z.name}
+                      {selected && zoneIds[0] === z.id ? " • primary" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <SelectField label="Level" value={level} onChange={(v) => setLevel(v as ExpertLevel)}>
               {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
             </SelectField>

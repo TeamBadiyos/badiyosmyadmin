@@ -323,7 +323,15 @@ export function ExpertDetailsModal({
                 <Card title="Contact">
                   <Row label="Phone" value={data.phone} mono />
                   <Row label="Address" value={data.address ?? "—"} />
-                  <Row label="Zone" value={data.zoneName ?? "Unassigned"} />
+                  <Row
+                    label="Zones"
+                    value={
+                      data.zoneNames?.length
+                        ? data.zoneNames.join(", ")
+                        : data.zoneName ?? "Unassigned"
+                    }
+                  />
+
                 </Card>
                 <Card title="Bank">
                   <Row label="Holder" value={data.bankAccountHolderName ?? "—"} />

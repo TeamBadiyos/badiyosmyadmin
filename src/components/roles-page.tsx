@@ -97,7 +97,12 @@ export function RolesPage() {
               </span>
             </span>
             <span className="text-muted-foreground truncate">
-              {u.role === "area_partner" ? u.zoneName ?? "—" : "—"}
+              {u.role === "area_partner"
+                ? u.zoneNames?.length
+                  ? u.zoneNames.join(", ")
+                  : u.zoneName ?? "—"
+                : "—"}
+
             </span>
             <span>
               <span
@@ -143,7 +148,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"ops_manager" | "area_partner">("ops_manager");
-  const [zoneId, setZoneId] = useState<string>("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [password, setPassword] = useState(() => randomPassword());
   const [error, setError] = useState<string | null>(null);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
@@ -154,9 +159,10 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       name: string;
       email: string;
       role: "ops_manager" | "area_partner";
-      zone_id: string | null;
+      zone_ids: string[];
       password: string;
     }) => create({ data: payload }),
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff-users"] });
       setCreatedPassword(password);
@@ -216,7 +222,8 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 name: name.trim(),
                 email: email.trim(),
                 role,
-                zone_id: role === "area_partner" ? zoneId || null : null,
+                zone_ids: role === "area_partner" ? zoneIds : [],
+
                 password,
               });
             }}
@@ -250,22 +257,11 @@ function CreateModal({ onClose }: { onClose: () => void }) {
               </select>
             </Field>
             {role === "area_partner" && (
-              <Field label="Zone">
-                <select
-                  value={zoneId}
-                  onChange={(e) => setZoneId(e.target.value)}
-                  required
-                  className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
-                >
-                  <option value="">Select zone…</option>
-                  {zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} — {z.city}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Zones">
+                <ZonePicker zones={zones} value={zoneIds} onChange={setZoneIds} />
               </Field>
             )}
+
             <Field label="Temporary Password">
               <div className="flex gap-2">
                 <input
@@ -313,7 +309,10 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
   });
 
   const [role, setRole] = useState<StaffRole>(user.role);
-  const [zoneId, setZoneId] = useState<string>(user.zoneId ?? "");
+  const [zoneIds, setZoneIds] = useState<string[]>(
+    user.zoneIds?.length ? user.zoneIds : user.zoneId ? [user.zoneId] : [],
+  );
+
   const [status, setStatus] = useState<StaffStatus>(user.status);
   const [error, setError] = useState<string | null>(null);
 
@@ -326,7 +325,7 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
         data: {
           id: user.id,
           role,
-          zone_id: role === "area_partner" ? zoneId || null : null,
+          zone_ids: role === "area_partner" ? zoneIds : [],
           status,
         },
       }),
@@ -389,22 +388,11 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
           </Field>
 
           {role === "area_partner" && (
-            <Field label="Zone">
-              <select
-                value={zoneId}
-                onChange={(e) => setZoneId(e.target.value)}
-                required
-                className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
-              >
-                <option value="">Select zone…</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name} — {z.city}
-                  </option>
-                ))}
-              </select>
+            <Field label="Zones">
+              <ZonePicker zones={zones} value={zoneIds} onChange={setZoneIds} />
             </Field>
           )}
+
 
           <Field label="Status">
             <select
@@ -444,3 +432,42 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
+
+function ZonePicker({
+  zones,
+  value,
+  onChange,
+}: {
+  zones: { id: string; name: string; city?: string | null }[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div className="border border-border rounded-[14px] bg-background p-2 max-h-[180px] overflow-y-auto flex flex-wrap gap-2">
+      {zones.length === 0 && (
+        <span className="text-[13px] text-muted-foreground px-1 py-1">No zones available</span>
+      )}
+      {zones.map((z) => {
+        const selected = value.includes(z.id);
+        return (
+          <button
+            key={z.id}
+            type="button"
+            onClick={() =>
+              onChange(selected ? value.filter((id) => id !== z.id) : [...value, z.id])
+            }
+            className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+              selected
+                ? "bg-primary text-white border-primary"
+                : "bg-card text-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {z.name}
+            {z.city ? ` — ${z.city}` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
