@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { loadStaffScope } from "@/lib/zone-scope";
+
 
 export type BookingStatus =
   | "confirmed"
