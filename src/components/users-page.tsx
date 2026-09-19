@@ -157,26 +157,27 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                 <th className="text-left px-4 py-3">Spend</th>
                 <th className="text-left px-4 py-3">Referrals</th>
                 <th className="text-left px-4 py-3">Joined</th>
+                {isSuperAdmin && <th className="text-right px-4 py-3">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
               {isError && !isLoading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-destructive">
+                  <td colSpan={9} className="text-center py-10 text-destructive">
                     Failed to load users.
                   </td>
                 </tr>
               )}
               {!isLoading && !isError && rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
                     No users found.
                   </td>
                 </tr>
