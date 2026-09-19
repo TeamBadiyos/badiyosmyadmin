@@ -250,14 +250,22 @@ export const updateStaffUser = createServerFn({ method: "POST" })
       .single();
     if (updErr) throw new Error(updErr.message);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: zErr } = await (context.supabase.rpc as any)(
+      "staff_set_staff_user_zones",
+      { _staff_user_id: data.id, _zone_ids: data.zone_ids },
+    );
+    if (zErr) throw new Error(zErr.message);
+
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
       action: "update_staff_user",
       target_table: "staff_users",
       target_id: after.id,
       before_state: before,
-      after_state: after,
+      after_state: { ...after, zone_ids: data.zone_ids },
     });
+
 
     return { ok: true };
   });
