@@ -35,8 +35,34 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [sort, setSort] = useState<"recent" | "spend">("recent");
   const [selected, setSelected] = useState<string | null>(null);
+  const [editRow, setEditRow] = useState<CustomerRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<CustomerRow | null>(null);
 
+  const queryClient = useQueryClient();
   const fetchCustomers = useServerFn(listCustomers);
+  const fetchRole = useServerFn(getStaffUserRole);
+  const callSetDeleted = useServerFn(setUserDeleted);
+
+  const { data: roleData } = useQuery({
+    queryKey: ["customers", "my-role"],
+    queryFn: () => fetchRole(),
+    staleTime: 60_000,
+  });
+  const isSuperAdmin = Boolean(roleData?.isSuperAdmin);
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["customers"] });
+  };
+
+  const deletedMutation = useMutation({
+    mutationFn: ({ userId, deleted }: { userId: string; deleted: boolean }) =>
+      callSetDeleted({ data: { userId, deleted } }),
+    onSuccess: (_r, v) => {
+      toast.success(v.deleted ? "User deactivated." : "User restored.");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const filters = useMemo(
     () => ({ search: query || null, page, pageSize: PAGE_SIZE, includeDeleted, sort }),
