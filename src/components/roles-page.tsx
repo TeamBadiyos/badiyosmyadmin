@@ -154,9 +154,10 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       name: string;
       email: string;
       role: "ops_manager" | "area_partner";
-      zone_id: string | null;
+      zone_ids: string[];
       password: string;
     }) => create({ data: payload }),
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff-users"] });
       setCreatedPassword(password);
