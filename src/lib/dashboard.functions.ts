@@ -13,6 +13,11 @@ export type DashboardStats = {
   todayOrders: number;
   onlineExperts: number;
   openMerchants: number;
+  // offers & campaigns
+  couponsUsed: number;
+  discountGiven: number;
+  activeCampaigns: number;
+  rewardsIssued: number;
 };
 
 export const getDashboardStats = createServerFn({ method: "GET" })
