@@ -101,6 +101,45 @@ export function ServiceCataloguePage() {
   const [availabilityModal, setAvailabilityModal] = useState<
     { category: CatalogueCategory } | null
   >(null);
+  const [confirmOff, setConfirmOff] = useState<{
+    kind: "segment" | "category";
+    id: string;
+    name: string;
+    count: number;
+  } | null>(null);
+
+  const queryClient = useQueryClient();
+  const setSegActiveFn = useServerFn(setSegmentActive);
+  const setCatActiveFn = useServerFn(setCategoryActive);
+
+  async function applyActiveToggle(
+    kind: "segment" | "category",
+    id: string,
+    active: boolean,
+  ) {
+    try {
+      if (kind === "segment") await setSegActiveFn({ data: { id, active } });
+      else await setCatActiveFn({ data: { id, active } });
+      toast.success(active ? "Activated" : "Deactivated");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Could not update.");
+    }
+  }
+
+  function requestActiveToggle(
+    kind: "segment" | "category",
+    id: string,
+    name: string,
+    currentlyActive: boolean,
+    activeServiceCount: number,
+  ) {
+    if (currentlyActive) {
+      setConfirmOff({ kind, id, name, count: activeServiceCount });
+    } else {
+      void applyActiveToggle(kind, id, true);
+    }
+  }
 
   const fetchOverrides = useServerFn(listAvailabilityOverrides);
   const { data: overridesData } = useQuery({
