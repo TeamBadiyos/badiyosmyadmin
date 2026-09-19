@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { loadStaffScope } from "@/lib/zone-scope";
 
 export type ExpertLevel = "bronze" | "silver" | "gold" | "diamond";
 export type KycStatus = "pending" | "approved" | "rejected";
@@ -12,6 +13,8 @@ export type ExpertRow = {
   photoUrl: string | null;
   zoneId: string | null;
   zoneName: string | null;
+  zoneIds: string[];
+  zoneNames: string[];
   level: ExpertLevel;
   kycStatus: KycStatus;
   walletBalance: number;
@@ -39,15 +42,40 @@ async function requireStaff(
   supabase: any,
   userId: string,
 ) {
-  const { data: staff, error } = await supabase
-    .from("staff_users")
-    .select("role, status, zone_id")
-    .eq("auth_user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!staff || staff.status !== "active") throw new Error("Forbidden");
-  return staff as { role: "super_admin" | "ops_manager" | "area_partner"; status: string; zone_id: string | null };
+  const scope = await loadStaffScope(supabase, userId);
+  return { role: scope.role, status: "active", zone_id: scope.zoneId, zone_ids: scope.zoneIds };
 }
+
+/** expert_id -> assigned zones (id + name), primary first */
+async function loadExpertZones(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  expertIds: string[],
+): Promise<Map<string, Array<{ id: string; name: string; isPrimary: boolean }>>> {
+  const out = new Map<string, Array<{ id: string; name: string; isPrimary: boolean }>>();
+  if (!expertIds.length) return out;
+  const { data: links } = await supabase
+    .from("expert_zones")
+    .select("expert_id, zone_id, is_primary")
+    .in("expert_id", expertIds);
+  const rows = (links ?? []) as { expert_id: string; zone_id: string; is_primary: boolean }[];
+  if (!rows.length) return out;
+  const zoneIds = Array.from(new Set(rows.map((r) => r.zone_id)));
+  const { data: zones } = await supabase.from("zones").select("id, name").in("id", zoneIds);
+  const nameById = new Map(
+    ((zones ?? []) as { id: string; name: string }[]).map((z) => [z.id, z.name]),
+  );
+  for (const r of rows) {
+    const list = out.get(r.expert_id) ?? [];
+    list.push({ id: r.zone_id, name: nameById.get(r.zone_id) ?? "—", isPrimary: !!r.is_primary });
+    out.set(r.expert_id, list);
+  }
+  for (const list of out.values()) {
+    list.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name));
+  }
+  return out;
+}
+
 
 export const listExperts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
