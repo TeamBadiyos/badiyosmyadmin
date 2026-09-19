@@ -347,7 +347,7 @@ export const getPartnerPerformance = createServerFn({ method: "POST" })
     if (zone === "empty") return [];
 
     let zq = context.supabase.from("zones").select("id, name, assigned_area_partner_id");
-    if (zone) zq = zq.eq("id", zone);
+    if (zone) zq = zq.in("id", zone);
     const { data: zones } = await zq.limit(5000);
     const zoneRows = ((zones ?? []) as Array<{
       id: string;
