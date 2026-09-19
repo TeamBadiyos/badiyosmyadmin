@@ -18,6 +18,7 @@ import {
   listCatalogueTree,
   upsertCategory,
   setCategoryActive,
+  setSegmentActive,
   upsertService,
   deleteService,
   upsertPriceOption,
@@ -100,6 +101,45 @@ export function ServiceCataloguePage() {
   const [availabilityModal, setAvailabilityModal] = useState<
     { category: CatalogueCategory } | null
   >(null);
+  const [confirmOff, setConfirmOff] = useState<{
+    kind: "segment" | "category";
+    id: string;
+    name: string;
+    count: number;
+  } | null>(null);
+
+  const queryClient = useQueryClient();
+  const setSegActiveFn = useServerFn(setSegmentActive);
+  const setCatActiveFn = useServerFn(setCategoryActive);
+
+  async function applyActiveToggle(
+    kind: "segment" | "category",
+    id: string,
+    active: boolean,
+  ) {
+    try {
+      if (kind === "segment") await setSegActiveFn({ data: { id, active } });
+      else await setCatActiveFn({ data: { id, active } });
+      toast.success(active ? "Activated" : "Deactivated");
+      queryClient.invalidateQueries({ queryKey: ["catalogue"] });
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Could not update.");
+    }
+  }
+
+  function requestActiveToggle(
+    kind: "segment" | "category",
+    id: string,
+    name: string,
+    currentlyActive: boolean,
+    activeServiceCount: number,
+  ) {
+    if (currentlyActive) {
+      setConfirmOff({ kind, id, name, count: activeServiceCount });
+    } else {
+      void applyActiveToggle(kind, id, true);
+    }
+  }
 
   const fetchOverrides = useServerFn(listAvailabilityOverrides);
   const { data: overridesData } = useQuery({
@@ -161,6 +201,12 @@ export function ServiceCataloguePage() {
         {segments.map((seg) => {
           const open = openSegments[seg.id] ?? true;
           const cats = catsBySegment.get(seg.id) ?? [];
+          const segActiveServices = cats.reduce(
+            (n, c) =>
+              n +
+              (servicesByCategory.get(c.id) ?? []).filter((s) => s.is_active).length,
+            0,
+          );
           return (
             <section
               key={seg.id}
@@ -183,12 +229,27 @@ export function ServiceCataloguePage() {
                     {cats.length} categor{cats.length === 1 ? "y" : "ies"}
                   </span>
                 </button>
-                <button
-                  onClick={() => setCategoryModal({ segment: seg, category: null })}
-                  className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
-                >
-                  <Plus size={14} /> Category
-                </button>
+                <div className="flex items-center gap-3">
+                  <ActiveSwitch
+                    active={seg.is_active}
+                    label={`${seg.name} active`}
+                    onToggle={() =>
+                      requestActiveToggle(
+                        "segment",
+                        seg.id,
+                        seg.name,
+                        seg.is_active,
+                        segActiveServices,
+                      )
+                    }
+                  />
+                  <button
+                    onClick={() => setCategoryModal({ segment: seg, category: null })}
+                    className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Category
+                  </button>
+                </div>
               </header>
 
               {open && (
@@ -233,7 +294,20 @@ export function ServiceCataloguePage() {
                               {svcs.length} service{svcs.length === 1 ? "" : "s"}
                             </span>
                           </button>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
+                            <ActiveSwitch
+                              active={cat.is_active}
+                              label={`${cat.name} active`}
+                              onToggle={() =>
+                                requestActiveToggle(
+                                  "category",
+                                  cat.id,
+                                  cat.name,
+                                  cat.is_active,
+                                  svcs.filter((s) => s.is_active).length,
+                                )
+                              }
+                            />
                             <button
                               onClick={() => setAvailabilityModal({ category: cat })}
                               className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
@@ -327,6 +401,40 @@ export function ServiceCataloguePage() {
           service={serviceModal.service}
           onClose={() => setServiceModal(null)}
         />
+      )}
+      {confirmOff && (
+        <Modal
+          title={`Deactivate ${confirmOff.kind === "segment" ? "segment" : "category"}?`}
+          onClose={() => setConfirmOff(null)}
+        >
+          <p className="text-[14px] text-foreground">
+            <span className="font-semibold">{confirmOff.name}</span> will be hidden from
+            the app.
+            {confirmOff.count > 0 &&
+              ` This will hide ${confirmOff.count} active service${confirmOff.count === 1 ? "" : "s"} under it.`}
+          </p>
+          <p className="text-[13px] text-muted-foreground">
+            Nothing is deleted — you can switch it back on anytime.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={() => setConfirmOff(null)}
+              className="flex-1 h-10 rounded-[12px] border border-border text-[13px] font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                const c = confirmOff;
+                setConfirmOff(null);
+                void applyActiveToggle(c.kind, c.id, false);
+              }}
+              className="flex-1 h-10 rounded-[12px] bg-destructive text-white text-[13px] font-bold hover:brightness-95"
+            >
+              Deactivate
+            </button>
+          </div>
+        </Modal>
       )}
       {optionModal && (
         <PriceOptionModal
@@ -492,6 +600,36 @@ function ServiceRow({
         </div>
       </div>
     </div>
+  );
+}
+
+function ActiveSwitch({
+  active,
+  label,
+  onToggle,
+}: {
+  active: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-label={label}
+      title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+      onClick={onToggle}
+      className={`relative w-9 h-5 rounded-full transition-colors ${
+        active ? "bg-primary" : "bg-muted"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-all ${
+          active ? "left-[18px]" : "left-0.5"
+        }`}
+      />
+    </button>
   );
 }
 
