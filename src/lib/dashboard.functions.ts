@@ -13,6 +13,11 @@ export type DashboardStats = {
   todayOrders: number;
   onlineExperts: number;
   openMerchants: number;
+  // offers & campaigns
+  couponsUsed: number;
+  discountGiven: number;
+  activeCampaigns: number;
+  rewardsIssued: number;
 };
 
 export const getDashboardStats = createServerFn({ method: "GET" })
@@ -244,6 +249,19 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const onlineExperts = expertsRes.count ?? 0;
     const openMerchants = openMerchantsRes.count ?? 0;
 
+    // Offers & campaigns (not segment-scoped)
+    const [redemptionsRes, activeCampaignsRes, awardsRes] = await Promise.all([
+      db.from("coupon_redemptions").select("discount_amount").eq("status", "applied").limit(10000),
+      db
+        .from("marketing_campaigns")
+        .select("*", countOnly)
+        .eq("status", "sent")
+        .eq("show_in_offers", true),
+      db.from("referral_milestone_awards").select("*", countOnly),
+    ]);
+
+    const redemptionRows = (redemptionsRes.data ?? []) as Array<{ discount_amount: number }>;
+
     return {
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue,
       todayTransactions: todayBookings + todayOrders,
@@ -257,5 +275,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       todayOrders,
       onlineExperts,
       openMerchants,
+      couponsUsed: redemptionRows.length,
+      discountGiven: redemptionRows.reduce((a, r) => a + Number(r.discount_amount ?? 0), 0),
+      activeCampaigns: activeCampaignsRes.count ?? 0,
+      rewardsIssued: awardsRes.count ?? 0,
     };
   });

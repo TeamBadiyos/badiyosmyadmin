@@ -34,6 +34,7 @@ import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
+import { OffersPage } from "@/components/offers-page";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -80,6 +81,10 @@ import {
   UserMinus,
   BellRing,
   MessageSquareText,
+  Megaphone,
+  Ticket,
+  BadgePercent,
+  Sparkles,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +119,7 @@ const NAV_ITEMS = [
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "rewards", label: "Rewards", icon: Award },
+  { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
@@ -138,7 +144,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards"],
+    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers"],
   },
   {
     id: "catalog",
@@ -502,6 +508,8 @@ function Shell() {
           <DispatchAlertsPage />
         ) : active === "capacity-messages" ? (
           <CapacityMessagesPage />
+        ) : active === "offers" ? (
+          <OffersPage />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
@@ -642,6 +650,35 @@ function DashboardHome({
       onClick: () => onGoExperts(true),
     },
   ];
+
+  if (role === "super_admin" || role === "ops_manager") {
+    cards.push(
+      {
+        label: "Coupons Used",
+        value: String(data?.couponsUsed ?? 0),
+        hint: "All-time redemptions",
+        icon: Ticket,
+      },
+      {
+        label: "Discount Given",
+        value: inr.format(data?.discountGiven ?? 0),
+        hint: "Total customer savings",
+        icon: BadgePercent,
+      },
+      {
+        label: "Active Campaigns",
+        value: String(data?.activeCampaigns ?? 0),
+        hint: "Live in the Offers tab",
+        icon: Megaphone,
+      },
+      {
+        label: "Rewards Issued",
+        value: String(data?.rewardsIssued ?? 0),
+        hint: "Referral milestone rewards",
+        icon: Sparkles,
+      },
+    );
+  }
 
   return (
     <div className="w-full space-y-6">
