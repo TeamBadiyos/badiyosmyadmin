@@ -470,11 +470,14 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          coupon_code: string | null
+          coupon_id: string | null
           created_at: string | null
           current_search_radius_km: number | null
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
+          discount_amount: number
           dispatch_alert_sent: boolean
           dispatch_exhausted_at: string | null
           end_otp: string | null
@@ -516,11 +519,14 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string | null
           current_search_radius_km?: number | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          discount_amount?: number
           dispatch_alert_sent?: boolean
           dispatch_exhausted_at?: string | null
           end_otp?: string | null
@@ -562,11 +568,14 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string | null
           current_search_radius_km?: number | null
           delete_reason?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          discount_amount?: number
           dispatch_alert_sent?: boolean
           dispatch_exhausted_at?: string | null
           end_otp?: string | null
@@ -611,6 +620,13 @@ export type Database = {
             columns: ["assigned_expert_id"]
             isOneToOne: false
             referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
             referencedColumns: ["id"]
           },
           {
@@ -666,6 +682,35 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_deliveries: {
+        Row: {
+          campaign_id: string
+          id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          id?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_deliveries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capacity_messages: {
         Row: {
           city: string
@@ -719,6 +764,170 @@ export type Database = {
           phone?: string
         }
         Relationships: []
+      }
+      coupon_redemptions: {
+        Row: {
+          base_amount: number
+          booking_id: string | null
+          coupon_id: string
+          created_at: string
+          discount_amount: number
+          id: string
+          razorpay_order_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_amount?: number
+          booking_id?: string | null
+          coupon_id: string
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          razorpay_order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_amount?: number
+          booking_id?: string | null
+          coupon_id?: string
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          razorpay_order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          audience: string
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_discount: number | null
+          min_order_amount: number
+          per_user_limit: number
+          title: string
+          total_usage_limit: number | null
+          updated_at: string
+          used_count: number
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          audience?: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_order_amount?: number
+          per_user_limit?: number
+          title?: string
+          total_usage_limit?: number | null
+          updated_at?: string
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          audience?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_order_amount?: number
+          per_user_limit?: number
+          title?: string
+          total_usage_limit?: number | null
+          updated_at?: string
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      customer_coupons: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          source: string
+          source_ref: string | null
+          status: string
+          updated_at: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          source?: string
+          source_ref?: string | null
+          status?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          source?: string
+          source_ref?: string | null
+          status?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_sessions: {
         Row: {
@@ -1204,6 +1413,74 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaigns: {
+        Row: {
+          audience: string
+          body: string
+          coupon_id: string | null
+          created_at: string
+          created_by: string | null
+          deep_link: string | null
+          ends_at: string | null
+          id: string
+          image_url: string | null
+          recipients_count: number
+          scheduled_at: string | null
+          sent_at: string | null
+          show_in_offers: boolean
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          body?: string
+          coupon_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deep_link?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          recipients_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          show_in_offers?: boolean
+          starts_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          coupon_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deep_link?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          recipients_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          show_in_offers?: boolean
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
             referencedColumns: ["id"]
           },
         ]
@@ -2250,6 +2527,93 @@ export type Database = {
           milestone_reward_coins?: number | null
           reward_coins?: number
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_milestone_awards: {
+        Row: {
+          coupon_id: string | null
+          created_at: string
+          id: string
+          program_id: string
+          referrals_at_award: number
+          user_id: string
+        }
+        Insert: {
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          program_id: string
+          referrals_at_award?: number
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          program_id?: string
+          referrals_at_award?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_milestone_awards_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_milestone_awards_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "referral_milestone_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_milestone_programs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          required_referrals: number
+          reward_discount_type: string
+          reward_discount_value: number
+          reward_max_discount: number | null
+          reward_min_order_amount: number
+          reward_validity_days: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          required_referrals?: number
+          reward_discount_type?: string
+          reward_discount_value?: number
+          reward_max_discount?: number | null
+          reward_min_order_amount?: number
+          reward_validity_days?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          required_referrals?: number
+          reward_discount_type?: string
+          reward_discount_value?: number
+          reward_max_discount?: number | null
+          reward_min_order_amount?: number
+          reward_validity_days?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3309,6 +3673,7 @@ export type Database = {
         Returns: undefined
       }
       apply_referral_code: { Args: { _code: string }; Returns: string }
+      award_referral_milestones: { Args: { _user_id: string }; Returns: number }
       broadcast_booking_to_experts: {
         Args: { _booking_id: string; _radius?: number }
         Returns: number
@@ -3330,11 +3695,14 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          coupon_code: string | null
+          coupon_id: string | null
           created_at: string | null
           current_search_radius_km: number | null
           delete_reason: string | null
           deleted_at: string | null
           deleted_by: string | null
+          discount_amount: number
           dispatch_alert_sent: boolean
           dispatch_exhausted_at: string | null
           end_otp: string | null
@@ -3372,6 +3740,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      coupon_preview: {
+        Args: {
+          _base_amount: number
+          _code: string
+          _duration_minutes?: number
+        }
+        Returns: Json
+      }
+      coupon_quote: {
+        Args: {
+          _base_amount: number
+          _code: string
+          _duration_minutes?: number
+          _user_id: string
+        }
+        Returns: Json
       }
       credit_referral_for_booking: {
         Args: { _booking_id: string }
@@ -3610,6 +3995,23 @@ export type Database = {
         Args: { p_phone: string; p_pin: string }
         Returns: Json
       }
+      my_coupons: {
+        Args: never
+        Returns: {
+          code: string
+          description: string
+          discount_type: string
+          discount_value: number
+          id: string
+          is_personal: boolean
+          max_discount: number
+          min_order_amount: number
+          source: string
+          title: string
+          valid_until: string
+        }[]
+      }
+      my_referral_progress: { Args: never; Returns: Json }
       notify_customer_alert: {
         Args: {
           _alert_type: string
@@ -3709,6 +4111,7 @@ export type Database = {
         Args: { p_fcm_token: string; p_platform: string }
         Returns: string
       }
+      release_stale_coupon_reservations: { Args: never; Returns: number }
       resolve_booking_payouts: {
         Args: { _booking_id: string }
         Returns: {
@@ -4077,6 +4480,17 @@ export type Database = {
         Returns: Json
       }
       system_check_no_accept_alerts: { Args: never; Returns: string[] }
+      system_coupon_release: { Args: { _order_id: string }; Returns: undefined }
+      system_coupon_reserve: {
+        Args: {
+          _base_amount: number
+          _code: string
+          _duration_minutes: number
+          _order_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       system_credit_referral_for_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -4125,6 +4539,10 @@ export type Database = {
           phone: string
           template_name: string
         }[]
+      }
+      system_send_marketing_campaign: {
+        Args: { _campaign_id: string }
+        Returns: number
       }
       verify_login_pin: {
         Args: { p_phone: string; p_pin: string; p_user_type: string }
