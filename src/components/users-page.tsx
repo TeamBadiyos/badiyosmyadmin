@@ -293,6 +293,61 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
           userId={selected}
           onClose={() => setSelected(null)}
           onSelectBooking={onSelectBooking}
+          headerActions={
+            isSuperAdmin ? (
+              <div className="flex items-center gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => {
+                    const row = rows.find((r) => r.id === selected);
+                    if (row) setEditRow(row);
+                  }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+                  aria-label="Edit user"
+                  title="Edit"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={() => {
+                    const row = rows.find((r) => r.id === selected);
+                    if (row) setDeleteRow(row);
+                  }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-red-50 text-destructive"
+                  aria-label="Delete user forever"
+                  title="Delete forever"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ) : undefined
+          }
+        />
+      )}
+
+      {editRow && (
+        <EditUserModal
+          row={editRow}
+          onClose={() => setEditRow(null)}
+          onSaved={() => {
+            setEditRow(null);
+            refresh();
+          }}
+        />
+      )}
+      {deleteRow && (
+        <DeleteUserModal
+          row={deleteRow}
+          onClose={() => setDeleteRow(null)}
+          onDeleted={(anonymized) => {
+            toast.success(
+              anonymized
+                ? "Personal data erased. Financial history kept (anonymized) for accounts."
+                : "User permanently deleted.",
+            );
+            setDeleteRow(null);
+            if (selected === deleteRow.id) setSelected(null);
+            refresh();
+          }}
         />
       )}
     </div>
