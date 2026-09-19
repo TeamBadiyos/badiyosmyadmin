@@ -12,10 +12,13 @@ export type StaffUserRow = {
   role: StaffRole;
   zoneId: string | null;
   zoneName: string | null;
+  zoneIds: string[];
+  zoneNames: string[];
   status: StaffStatus;
   createdAt: string;
   isSelf: boolean;
 };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function requireSuperAdmin(supabase: any, userId: string) {
