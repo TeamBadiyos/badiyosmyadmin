@@ -217,7 +217,8 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 name: name.trim(),
                 email: email.trim(),
                 role,
-                zone_id: role === "area_partner" ? zoneId || null : null,
+                zone_ids: role === "area_partner" ? zoneIds : [],
+
                 password,
               });
             }}
