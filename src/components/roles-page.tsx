@@ -320,7 +320,7 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
         data: {
           id: user.id,
           role,
-          zone_id: role === "area_partner" ? zoneId || null : null,
+          zone_ids: role === "area_partner" ? zoneIds : [],
           status,
         },
       }),
