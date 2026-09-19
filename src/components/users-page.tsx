@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { listCustomers, getCustomerProfile, type CustomerRow } from "@/lib/users.functions";
+import { ChevronLeft, ChevronRight, Pencil, RotateCcw, Trash2, UserX, X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  getCustomerProfile,
+  getStaffUserRole,
+  listCustomers,
+  permanentlyDeleteUser,
+  setUserDeleted,
+  updateUser,
+  type CustomerRow,
+} from "@/lib/users.functions";
 
 const PAGE_SIZE = 25;
 
@@ -26,8 +35,34 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [sort, setSort] = useState<"recent" | "spend">("recent");
   const [selected, setSelected] = useState<string | null>(null);
+  const [editRow, setEditRow] = useState<CustomerRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<CustomerRow | null>(null);
 
+  const queryClient = useQueryClient();
   const fetchCustomers = useServerFn(listCustomers);
+  const fetchRole = useServerFn(getStaffUserRole);
+  const callSetDeleted = useServerFn(setUserDeleted);
+
+  const { data: roleData } = useQuery({
+    queryKey: ["customers", "my-role"],
+    queryFn: () => fetchRole(),
+    staleTime: 60_000,
+  });
+  const isSuperAdmin = Boolean(roleData?.isSuperAdmin);
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["customers"] });
+  };
+
+  const deletedMutation = useMutation({
+    mutationFn: ({ userId, deleted }: { userId: string; deleted: boolean }) =>
+      callSetDeleted({ data: { userId, deleted } }),
+    onSuccess: (_r, v) => {
+      toast.success(v.deleted ? "User deactivated." : "User restored.");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const filters = useMemo(
     () => ({ search: query || null, page, pageSize: PAGE_SIZE, includeDeleted, sort }),
@@ -122,26 +157,27 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                 <th className="text-left px-4 py-3">Spend</th>
                 <th className="text-left px-4 py-3">Referrals</th>
                 <th className="text-left px-4 py-3">Joined</th>
+                {isSuperAdmin && <th className="text-right px-4 py-3">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
               {isError && !isLoading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-destructive">
+                  <td colSpan={9} className="text-center py-10 text-destructive">
                     Failed to load users.
                   </td>
                 </tr>
               )}
               {!isLoading && !isError && rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
                     No users found.
                   </td>
                 </tr>
@@ -175,6 +211,52 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {fmtDate(r.created_at)}
                   </td>
+                  {isSuperAdmin && (
+                    <td className="px-4 py-3">
+                      <div
+                        className="flex items-center justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => setEditRow(r)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted"
+                          aria-label="Edit user"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {r.deleted_at ? (
+                          <button
+                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: false })}
+                            disabled={deletedMutation.isPending}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-emerald-700"
+                            aria-label="Restore user"
+                            title="Restore"
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: true })}
+                            disabled={deletedMutation.isPending}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-amber-700"
+                            aria-label="Deactivate user"
+                            title="Deactivate (soft delete)"
+                          >
+                            <UserX size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteRow(r)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-red-50 text-destructive"
+                          aria-label="Delete user forever"
+                          title="Delete forever"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -211,6 +293,61 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
           userId={selected}
           onClose={() => setSelected(null)}
           onSelectBooking={onSelectBooking}
+          headerActions={
+            isSuperAdmin ? (
+              <div className="flex items-center gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => {
+                    const row = rows.find((r) => r.id === selected);
+                    if (row) setEditRow(row);
+                  }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+                  aria-label="Edit user"
+                  title="Edit"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={() => {
+                    const row = rows.find((r) => r.id === selected);
+                    if (row) setDeleteRow(row);
+                  }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-red-50 text-destructive"
+                  aria-label="Delete user forever"
+                  title="Delete forever"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ) : undefined
+          }
+        />
+      )}
+
+      {editRow && (
+        <EditUserModal
+          row={editRow}
+          onClose={() => setEditRow(null)}
+          onSaved={() => {
+            setEditRow(null);
+            refresh();
+          }}
+        />
+      )}
+      {deleteRow && (
+        <DeleteUserModal
+          row={deleteRow}
+          onClose={() => setDeleteRow(null)}
+          onDeleted={(anonymized) => {
+            toast.success(
+              anonymized
+                ? "Personal data erased. Financial history kept (anonymized) for accounts."
+                : "User permanently deleted.",
+            );
+            setDeleteRow(null);
+            if (selected === deleteRow.id) setSelected(null);
+            refresh();
+          }}
         />
       )}
     </div>
@@ -236,10 +373,12 @@ function CustomerProfileModal({
   userId,
   onClose,
   onSelectBooking,
+  headerActions,
 }: {
   userId: string;
   onClose: () => void;
   onSelectBooking?: (id: string) => void;
+  headerActions?: React.ReactNode;
 }) {
   const fetchProfile = useServerFn(getCustomerProfile);
   const { data, isLoading, isError } = useQuery({
@@ -267,13 +406,16 @@ function CustomerProfileModal({
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center">
+            {headerActions}
+            <button
+              onClick={onClose}
+              className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-6">
@@ -459,6 +601,200 @@ function CustomerProfileModal({
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EditUserModal({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: CustomerRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const callUpdate = useServerFn(updateUser);
+  const [fullName, setFullName] = useState(row.full_name ?? "");
+  const [email, setEmail] = useState(row.email ?? "");
+  const [lang, setLang] = useState(row.preferred_language ?? "en");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      callUpdate({
+        data: {
+          userId: row.id,
+          fullName: fullName.trim(),
+          email: email.trim() || null,
+          preferredLanguage: lang,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("User updated.");
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-[16px] font-bold text-foreground">Edit user</h2>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <form
+          className="p-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Name
+            </label>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Optional"
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Preferred language
+            </label>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            >
+              <option value="en">English</option>
+              <option value="hi">Hindi</option>
+            </select>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Phone number ({row.phone ?? "—"}) cannot be changed — it is the user's login identity.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending || !fullName.trim()}
+              className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-semibold disabled:opacity-50"
+            >
+              {mutation.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteUserModal({
+  row,
+  onClose,
+  onDeleted,
+}: {
+  row: CustomerRow;
+  onClose: () => void;
+  onDeleted: (anonymized: boolean) => void;
+}) {
+  const callDelete = useServerFn(permanentlyDeleteUser);
+  const [confirmPhone, setConfirmPhone] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      callDelete({ data: { userId: row.id, confirmPhone: confirmPhone.trim() } }),
+    onSuccess: (r) => onDeleted(Boolean(r?.anonymized)),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-[16px] font-bold text-destructive">Delete user forever</h2>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <form
+          className="p-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <p className="text-[13px] text-foreground">
+            This permanently erases <strong>{row.full_name ?? "this user"}</strong>'s personal data —
+            profile, addresses, devices, tickets and referrals. This cannot be undone.
+          </p>
+          <p className="text-[12px] text-muted-foreground">
+            If the user has booking or payment history, those financial records are kept but
+            anonymized for accounting. Otherwise the account login is removed too.
+          </p>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Type the user's phone number to confirm ({row.phone ?? "no phone"})
+            </label>
+            <input
+              value={confirmPhone}
+              onChange={(e) => setConfirmPhone(e.target.value)}
+              placeholder={row.phone ?? ""}
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={
+                mutation.isPending || !row.phone || confirmPhone.trim() !== row.phone
+              }
+              className="h-10 px-4 rounded-[12px] bg-red-600 text-white text-[13px] font-semibold disabled:opacity-50"
+            >
+              {mutation.isPending ? "Deleting…" : "Delete forever"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

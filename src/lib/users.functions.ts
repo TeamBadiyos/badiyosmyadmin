@@ -399,3 +399,74 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
       })),
     };
   });
+
+/** Whether the caller is an active super admin (controls edit/delete buttons). */
+export const getStaffUserRole = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ isSuperAdmin: boolean }> => {
+    const { data } = await context.supabase.rpc("is_super_admin_user");
+    return { isSuperAdmin: Boolean(data) };
+  });
+
+export const updateUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { userId: string; fullName: string; email: string | null; preferredLanguage: string }) => {
+      if (!input?.userId) throw new Error("userId required");
+      if (!input.fullName?.trim()) throw new Error("Name is required");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_update_user", {
+      _user_id: data.userId,
+      _full_name: data.fullName.trim(),
+      _email: data.email?.trim() ?? "",
+      _preferred_language: data.preferredLanguage || "en",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setUserDeleted = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; deleted: boolean }) => {
+    if (!input?.userId) throw new Error("userId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_set_user_deleted", {
+      _user_id: data.userId,
+      _deleted: data.deleted,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const permanentlyDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; confirmPhone: string }) => {
+    if (!input?.userId || !input.confirmPhone?.trim()) {
+      throw new Error("userId and confirmation phone required");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { data: res, error } = await context.supabase.rpc("staff_permanently_delete_user", {
+      _user_id: data.userId,
+      _confirm_phone: data.confirmPhone.trim(),
+    });
+    if (error) throw new Error(error.message);
+    const hasHistory = Boolean((res as { has_history?: boolean } | null)?.has_history);
+    if (!hasHistory) {
+      // No financial history — remove the auth identity too (cascades the users row),
+      // freeing the phone number for a future signup.
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin.auth.admin.deleteUser(data.userId);
+      } catch {
+        // PII already purged by the RPC; auth cleanup can be retried manually.
+      }
+    }
+    return { ok: true, anonymized: hasHistory };
+  });
