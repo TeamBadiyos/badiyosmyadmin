@@ -229,12 +229,27 @@ export function ServiceCataloguePage() {
                     {cats.length} categor{cats.length === 1 ? "y" : "ies"}
                   </span>
                 </button>
-                <button
-                  onClick={() => setCategoryModal({ segment: seg, category: null })}
-                  className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
-                >
-                  <Plus size={14} /> Category
-                </button>
+                <div className="flex items-center gap-3">
+                  <ActiveSwitch
+                    active={seg.is_active}
+                    label={`${seg.name} active`}
+                    onToggle={() =>
+                      requestActiveToggle(
+                        "segment",
+                        seg.id,
+                        seg.name,
+                        seg.is_active,
+                        segActiveServices,
+                      )
+                    }
+                  />
+                  <button
+                    onClick={() => setCategoryModal({ segment: seg, category: null })}
+                    className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Category
+                  </button>
+                </div>
               </header>
 
               {open && (
