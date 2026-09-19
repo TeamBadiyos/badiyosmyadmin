@@ -605,3 +605,197 @@ function CustomerProfileModal({
     </div>
   );
 }
+
+function EditUserModal({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: CustomerRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const callUpdate = useServerFn(updateUser);
+  const [fullName, setFullName] = useState(row.full_name ?? "");
+  const [email, setEmail] = useState(row.email ?? "");
+  const [lang, setLang] = useState(row.preferred_language ?? "en");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      callUpdate({
+        data: {
+          userId: row.id,
+          fullName: fullName.trim(),
+          email: email.trim() || null,
+          preferredLanguage: lang,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("User updated.");
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-[16px] font-bold text-foreground">Edit user</h2>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <form
+          className="p-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Name
+            </label>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Optional"
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Preferred language
+            </label>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            >
+              <option value="en">English</option>
+              <option value="hi">Hindi</option>
+            </select>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Phone number ({row.phone ?? "—"}) cannot be changed — it is the user's login identity.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending || !fullName.trim()}
+              className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-semibold disabled:opacity-50"
+            >
+              {mutation.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteUserModal({
+  row,
+  onClose,
+  onDeleted,
+}: {
+  row: CustomerRow;
+  onClose: () => void;
+  onDeleted: (anonymized: boolean) => void;
+}) {
+  const callDelete = useServerFn(permanentlyDeleteUser);
+  const [confirmPhone, setConfirmPhone] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      callDelete({ data: { userId: row.id, confirmPhone: confirmPhone.trim() } }),
+    onSuccess: (r) => onDeleted(Boolean(r?.anonymized)),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-[16px] font-bold text-destructive">Delete user forever</h2>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <form
+          className="p-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <p className="text-[13px] text-foreground">
+            This permanently erases <strong>{row.full_name ?? "this user"}</strong>'s personal data —
+            profile, addresses, devices, tickets and referrals. This cannot be undone.
+          </p>
+          <p className="text-[12px] text-muted-foreground">
+            If the user has booking or payment history, those financial records are kept but
+            anonymized for accounting. Otherwise the account login is removed too.
+          </p>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Type the user's phone number to confirm ({row.phone ?? "no phone"})
+            </label>
+            <input
+              value={confirmPhone}
+              onChange={(e) => setConfirmPhone(e.target.value)}
+              placeholder={row.phone ?? ""}
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={
+                mutation.isPending || !row.phone || confirmPhone.trim() !== row.phone
+              }
+              className="h-10 px-4 rounded-[12px] bg-red-600 text-white text-[13px] font-semibold disabled:opacity-50"
+            >
+              {mutation.isPending ? "Deleting…" : "Delete forever"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
