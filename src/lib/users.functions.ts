@@ -421,7 +421,7 @@ export const updateUser = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_user", {
       _user_id: data.userId,
       _full_name: data.fullName.trim(),
-      _email: data.email?.trim() || null,
+      _email: data.email?.trim() ?? "",
       _preferred_language: data.preferredLanguage || "en",
     });
     if (error) throw new Error(error.message);
