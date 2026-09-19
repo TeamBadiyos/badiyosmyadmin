@@ -46,6 +46,8 @@ export function ExpertFormModal({
   const fetchExpert = useServerFn(getExpert);
   const fetchZones = useServerFn(listZoneOptions);
   const save = useServerFn(upsertExpert);
+  const saveZones = useServerFn(setExpertZones);
+
   const sign = useServerFn(signStorageUrl);
 
   const isEdit = !!expertId;
