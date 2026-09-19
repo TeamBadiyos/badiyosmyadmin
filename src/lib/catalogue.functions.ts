@@ -218,6 +218,22 @@ export const setCategoryActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setSegmentActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; active: boolean }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("segments")
+      .update({ is_active: data.active })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ---------------- Services ----------------
 
 export type UpsertServiceInput = {

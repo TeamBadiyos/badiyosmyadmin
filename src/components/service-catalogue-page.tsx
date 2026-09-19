@@ -18,6 +18,7 @@ import {
   listCatalogueTree,
   upsertCategory,
   setCategoryActive,
+  setSegmentActive,
   upsertService,
   deleteService,
   upsertPriceOption,
