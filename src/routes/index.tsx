@@ -26,7 +26,7 @@ import {
   Brush,
   type LucideIcon,
 } from "lucide-react";
-import { MarketingShell, ComingSoonAppButton } from "@/components/marketing/shell";
+import { MarketingShell, PlayStoreButton } from "@/components/marketing/shell";
 import { Reveal } from "@/components/marketing/reveal";
 import {
   BusinessInterestDialog,
@@ -43,14 +43,14 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops coming soon on Badiyos.",
+          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops on Badiyos.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Badiyos — Trusted Home Services in Latur" },
       {
         property: "og:description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with more home services and local shops coming soon.",
+          "Book a verified home expert in Latur in minutes. Download the Badiyos app on Google Play.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: OG_IMAGE },
@@ -170,7 +170,7 @@ function Hero({ onCityInterest }: { onCityInterest: () => void }) {
                 See what we do
                 <ArrowRight size={18} />
               </a>
-              <ComingSoonAppButton />
+              <PlayStoreButton />
             </div>
           </div>
 
