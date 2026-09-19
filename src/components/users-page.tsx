@@ -406,13 +406,16 @@ function CustomerProfileModal({
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center">
+            {headerActions}
+            <button
+              onClick={onClose}
+              className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border hover:bg-muted"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-6">
