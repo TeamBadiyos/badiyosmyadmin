@@ -86,7 +86,10 @@ export function ExpertFormModal({
       setName(existing.name);
       setPhone(existing.phone);
       setAddress(existing.address ?? "");
-      setZoneId(existing.zoneId ?? "");
+      setZoneIds(
+        existing.zoneIds?.length ? existing.zoneIds : existing.zoneId ? [existing.zoneId] : [],
+      );
+
       setLevel(existing.level);
       setStatus(existing.status);
       setPhotoPath(existing.photoUrl);
