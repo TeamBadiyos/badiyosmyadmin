@@ -45,8 +45,26 @@ export const listStaffUsers = createServerFn({ method: "GET" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows = (data ?? []) as any[];
 
+    const { data: links } = await context.supabase
+      .from("staff_user_zones")
+      .select("staff_user_id, zone_id")
+      .in(
+        "staff_user_id",
+        rows.map((r) => r.id),
+      );
+    const linkRows = (links ?? []) as { staff_user_id: string; zone_id: string }[];
+    const zonesByStaff = new Map<string, string[]>();
+    for (const l of linkRows) {
+      const list = zonesByStaff.get(l.staff_user_id) ?? [];
+      list.push(l.zone_id);
+      zonesByStaff.set(l.staff_user_id, list);
+    }
+
     const zoneIds = Array.from(
-      new Set(rows.map((r) => r.zone_id).filter((v): v is string => !!v)),
+      new Set([
+        ...rows.map((r) => r.zone_id).filter((v): v is string => !!v),
+        ...linkRows.map((l) => l.zone_id),
+      ]),
     );
     const zoneNameById = new Map<string, string>();
     if (zoneIds.length) {
@@ -59,18 +77,25 @@ export const listStaffUsers = createServerFn({ method: "GET" })
       }
     }
 
-    return rows.map((r) => ({
-      id: r.id,
-      authUserId: r.auth_user_id,
-      name: r.name,
-      email: r.email,
-      role: r.role,
-      zoneId: r.zone_id,
-      zoneName: r.zone_id ? zoneNameById.get(r.zone_id) ?? null : null,
-      status: r.status,
-      createdAt: r.created_at,
-      isSelf: r.auth_user_id === context.userId,
-    }));
+    return rows.map((r) => {
+      const ids = zonesByStaff.get(r.id) ?? (r.zone_id ? [r.zone_id] : []);
+      const names = ids.map((id) => zoneNameById.get(id) ?? "—").sort();
+      return {
+        id: r.id,
+        authUserId: r.auth_user_id,
+        name: r.name,
+        email: r.email,
+        role: r.role,
+        zoneId: r.zone_id ?? ids[0] ?? null,
+        zoneName: r.zone_id ? zoneNameById.get(r.zone_id) ?? null : names[0] ?? null,
+        zoneIds: ids,
+        zoneNames: names,
+        status: r.status,
+        createdAt: r.created_at,
+        isSelf: r.auth_user_id === context.userId,
+      };
+    });
+
   });
 
 export type CreateStaffUserInput = {
