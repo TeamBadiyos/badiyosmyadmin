@@ -322,7 +322,7 @@ async function loadBookingDetails(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!b) throw new Error("Booking not found");
-  if (role === "area_partner" && (!staffZoneId || b.zone_id !== staffZoneId)) {
+  if (role === "area_partner" && (!b.zone_id || !staffZoneIds.includes(b.zone_id))) {
     throw new Error("Forbidden");
   }
 
