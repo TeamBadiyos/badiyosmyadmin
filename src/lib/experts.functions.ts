@@ -100,11 +100,24 @@ export const listExperts = createServerFn({ method: "POST" })
     }
     q = q.order("created_at", { ascending: false });
 
+    // Zone scoping / filtering — an expert may cover several zones.
+    let wantedZoneIds: string[] | null = null;
     if (staff.role === "area_partner") {
-      if (!staff.zone_id) return [];
-      q = q.eq("zone_id", staff.zone_id);
+      if (!staff.zone_ids.length) return [];
+      wantedZoneIds = staff.zone_ids;
     } else if (data.zoneId) {
-      q = q.eq("zone_id", data.zoneId);
+      wantedZoneIds = [data.zoneId];
+    }
+    if (wantedZoneIds) {
+      const { data: links } = await context.supabase
+        .from("expert_zones")
+        .select("expert_id")
+        .in("zone_id", wantedZoneIds);
+      const ids = Array.from(
+        new Set(((links ?? []) as { expert_id: string }[]).map((l) => l.expert_id)),
+      );
+      if (!ids.length) return [];
+      q = q.in("id", ids);
     }
     if (data.kycStatus && ["pending", "approved", "rejected"].includes(data.kycStatus)) {
       q = q.eq("kyc_status", data.kycStatus);
@@ -117,33 +130,33 @@ export const listExperts = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (rows ?? []) as any[];
-    const zoneIds = Array.from(new Set(raw.map((r) => r.zone_id).filter(Boolean)));
-    const zoneMap = new Map<string, string>();
-    if (zoneIds.length) {
-      const { data: zones } = await context.supabase
-        .from("zones")
-        .select("id, name")
-        .in("id", zoneIds);
-      for (const z of (zones ?? []) as { id: string; name: string }[]) {
-        zoneMap.set(z.id, z.name);
-      }
-    }
-    return raw.map((r) => ({
-      id: r.id,
-      name: r.name,
-      phone: r.phone,
-      photoUrl: r.photo_url ?? null,
-      zoneId: r.zone_id ?? null,
-      zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
-      level: r.level as ExpertLevel,
-      kycStatus: r.kyc_status as KycStatus,
-      walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
-      status: r.status as ActiveStatus,
-      isOnline: !!r.is_online,
-      isBusy: !!r.is_busy,
-      lastSeenAt: r.location_updated_at ?? null,
-    }));
+    const zonesByExpert = await loadExpertZones(
+      context.supabase,
+      raw.map((r) => r.id),
+    );
+    return raw.map((r) => {
+      const list = zonesByExpert.get(r.id) ?? [];
+      const primary = list.find((z) => z.isPrimary) ?? list[0] ?? null;
+      return {
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        photoUrl: r.photo_url ?? null,
+        zoneId: primary?.id ?? r.zone_id ?? null,
+        zoneName: primary?.name ?? null,
+        zoneIds: list.map((z) => z.id),
+        zoneNames: list.map((z) => z.name),
+        level: r.level as ExpertLevel,
+        kycStatus: r.kyc_status as KycStatus,
+        walletBalance: r.wallet_balance != null ? Number(r.wallet_balance) : 0,
+        status: r.status as ActiveStatus,
+        isOnline: !!r.is_online,
+        isBusy: !!r.is_busy,
+        lastSeenAt: r.location_updated_at ?? null,
+      };
+    });
   });
+
 
 export const getExpert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
