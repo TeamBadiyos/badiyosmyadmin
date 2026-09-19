@@ -12,6 +12,11 @@ type Ctx = {
   userId: string;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rpc(db: any, fn: string, args: Record<string, unknown>) {
+  return db.rpc(fn, args) as Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
 async function requireCourierStaff(context: Ctx): Promise<CourierAccess> {
   const { data, error } = await context.supabase
     .from("staff_users")
@@ -186,7 +191,7 @@ export const saveVehicleType = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireCourierWriter(context);
-    const { error } = await context.supabase.rpc("staff_courier_upsert_vehicle_type", {
+    const { error } = await rpc(context.supabase, "staff_courier_upsert_vehicle_type", {
       _id: data.id ?? null,
       _name: data.name.trim(),
       _icon: data.icon ?? null,
@@ -295,7 +300,7 @@ export const saveRate = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireCourierWriter(context);
-    const { error } = await context.supabase.rpc("staff_courier_upsert_rate", {
+    const { error } = await rpc(context.supabase, "staff_courier_upsert_rate", {
       _id: data.id ?? null,
       _city: data.city.trim(),
       _vehicle_type_id: data.vehicleTypeId,
@@ -394,7 +399,7 @@ export const saveCourierType = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireCourierWriter(context);
-    const { error } = await context.supabase.rpc("staff_courier_upsert_courier_type", {
+    const { error } = await rpc(context.supabase, "staff_courier_upsert_courier_type", {
       _id: data.id ?? null,
       _name: data.name.trim(),
       _icon: data.icon ?? null,
@@ -553,7 +558,7 @@ export type CourierEventRow = {
   to_status: string;
   actor_type: string | null;
   created_at: string;
-  meta: Record<string, unknown>;
+  metaText: string;
 };
 
 export const listCourierOrderEvents = createServerFn({ method: "POST" })
@@ -571,7 +576,14 @@ export const listCourierOrderEvents = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return (rows ?? []) as CourierEventRow[];
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r["id"] as string,
+      from_status: (r["from_status"] as string | null) ?? null,
+      to_status: r["to_status"] as string,
+      actor_type: (r["actor_type"] as string | null) ?? null,
+      created_at: r["created_at"] as string,
+      metaText: r["meta"] ? JSON.stringify(r["meta"]) : "",
+    }));
   });
 
 export const listCourierRiders = createServerFn({ method: "GET" })
