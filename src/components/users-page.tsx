@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { listCustomers, getCustomerProfile, type CustomerRow } from "@/lib/users.functions";
+import { ChevronLeft, ChevronRight, Pencil, RotateCcw, Trash2, UserX, X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  getCustomerProfile,
+  getStaffUserRole,
+  listCustomers,
+  permanentlyDeleteUser,
+  setUserDeleted,
+  updateUser,
+  type CustomerRow,
+} from "@/lib/users.functions";
 
 const PAGE_SIZE = 25;
 
