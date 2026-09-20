@@ -276,6 +276,8 @@ export function RewardsPage() {
               </div>
             );
           })}
+          </div>
+          ))}
         </div>
       ) : (
         <ReportsSection programs={programs} actor={actor} />
