@@ -19,7 +19,7 @@ import {
   type RewardCondition,
   type RewardLedgerRow,
 } from "@/lib/rewards.functions";
-import { IncentiveProgramModal } from "@/components/incentive-program-modal";
+import { IncentiveProgramModal, groupProgramsByTier } from "@/components/incentive-program-modal";
 
 const ACTORS = [
   { key: "customer", label: "Customer" },
@@ -71,6 +71,8 @@ export function RewardsPage() {
     () => new Map(stats.map((s) => [s.program_id, s])),
     [stats],
   );
+
+  const grouped = useMemo(() => groupProgramsByTier(programs), [programs]);
 
   const toggle = useMutation({
     mutationFn: (v: { id: string; is_active: boolean }) => toggleFn({ data: v }),
@@ -189,7 +191,13 @@ export function RewardsPage() {
                 : "No reward programs for this actor type yet."}
             </p>
           )}
-          {programs.map((p) => {
+          {grouped.map((g) => (
+          <div key={g.key}>
+            <div className="px-6 py-2.5 bg-muted/60 border-b border-border">
+              <p className="text-[12px] font-bold">{g.title}</p>
+              <p className="text-[11px] text-muted-foreground">{g.note}</p>
+            </div>
+          {g.items.map((p) => {
             const st = statMap.get(p.id);
             const trig = triggers.find((t) => t.key === p.trigger_type);
             return (
@@ -270,6 +278,8 @@ export function RewardsPage() {
               </div>
             );
           })}
+          </div>
+          ))}
         </div>
       ) : (
         <ReportsSection programs={programs} actor={actor} />

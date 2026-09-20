@@ -14,6 +14,7 @@ import {
   type CommissionType,
 } from "@/lib/commission.functions";
 import { IncentivesTab } from "@/components/incentives-tab";
+import { BonusPreviewTab } from "@/components/bonus-preview-tab";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -58,7 +59,7 @@ export function CommissionTab() {
   });
 
   const canWrite = !!access?.canWrite;
-  const [sub, setSub] = useState<"commission" | "incentives">("commission");
+  const [sub, setSub] = useState<"commission" | "incentives" | "bonus preview">("commission");
   const [editing, setEditing] = useState<CommissionRuleRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [simFor, setSimFor] = useState<CommissionRuleRow | null>(null);
@@ -70,7 +71,10 @@ export function CommissionTab() {
   return (
     <div className="space-y-4">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
-        {(["commission", "incentives"] as const).map((s) => (
+        {(canWrite
+          ? (["commission", "incentives", "bonus preview"] as const)
+          : (["commission", "incentives"] as const)
+        ).map((s) => (
           <button
             key={s}
             onClick={() => setSub(s)}
@@ -84,6 +88,8 @@ export function CommissionTab() {
       </div>
 
       {sub === "incentives" && <IncentivesTab canWrite={canWrite} />}
+
+      {sub === "bonus preview" && canWrite && <BonusPreviewTab />}
 
       {sub === "commission" && (
       <>

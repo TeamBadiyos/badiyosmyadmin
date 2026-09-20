@@ -20,7 +20,11 @@ import {
   runRewardPeriodJobs,
   type RewardProgram,
 } from "@/lib/rewards.functions";
-import { IncentiveProgramModal, ACTORS } from "@/components/incentive-program-modal";
+import {
+  IncentiveProgramModal,
+  ACTORS,
+  groupProgramsByTier,
+} from "@/components/incentive-program-modal";
 
 const inputCls =
   "h-10 w-full px-3 rounded-[12px] border border-border bg-card text-[13px] outline-none focus:border-primary";
@@ -83,6 +87,8 @@ export function IncentivesTab({ canWrite }: { canWrite: boolean }) {
   });
 
   const statMap = useMemo(() => new Map(stats.map((s) => [s.program_id, s])), [stats]);
+
+  const grouped = useMemo(() => groupProgramsByTier(programs), [programs]);
 
   const toggle = useMutation({
     mutationFn: (v: { id: string; is_active: boolean }) => toggleFn({ data: v }),
@@ -189,7 +195,13 @@ export function IncentivesTab({ canWrite }: { canWrite: boolean }) {
             {showArchived ? "No archived incentive plans here." : "No incentive plans yet."}
           </p>
         )}
-        {programs.map((p) => {
+        {grouped.map((g) => (
+          <div key={g.key}>
+            <div className="px-6 py-2.5 bg-muted/60 border-b border-border">
+              <p className="text-[12px] font-bold">{g.title}</p>
+              <p className="text-[11px] text-muted-foreground">{g.note}</p>
+            </div>
+            {g.items.map((p) => {
           const st = statMap.get(p.id);
           const trig = triggers.find((t) => t.key === p.trigger_type);
           return (
@@ -268,7 +280,9 @@ export function IncentivesTab({ canWrite }: { canWrite: boolean }) {
               </div>
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
 
       {editing && (

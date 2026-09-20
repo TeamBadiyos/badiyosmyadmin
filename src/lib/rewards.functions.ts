@@ -249,6 +249,52 @@ export const reverseReward = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type RewardPreviewRow = {
+  expert_id: string;
+  expert_name: string | null;
+  hours: number;
+  active_days: number;
+  orders: number;
+  category: string;
+  program_id: string;
+  program_name: string;
+  slab: string;
+  amount: number;
+  qualifies: boolean;
+  reason: string | null;
+};
+
+export const previewRewardPeriod = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { period: "weekly" | "monthly"; period_start: string }) => {
+    if (input?.period !== "weekly" && input?.period !== "monthly") {
+      throw new Error("period must be weekly or monthly");
+    }
+    if (!input.period_start) throw new Error("period_start required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<RewardPreviewRow[]> => {
+    const { data: rows, error } = await (context.supabase as any).rpc(
+      "staff_reward_period_preview",
+      { _period: data.period, _period_start: data.period_start },
+    );
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as any[]).map((r) => ({
+      expert_id: r.expert_id,
+      expert_name: r.expert_name ?? null,
+      hours: Number(r.hours ?? 0),
+      active_days: Number(r.active_days ?? 0),
+      orders: Number(r.orders ?? 0),
+      category: r.category,
+      program_id: r.program_id,
+      program_name: r.program_name,
+      slab: r.slab,
+      amount: Number(r.amount ?? 0),
+      qualifies: !!r.qualifies,
+      reason: r.reason ?? null,
+    }));
+  });
+
 export const runRewardPeriodJobs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { period_start?: string | null } | undefined) => input ?? {})
