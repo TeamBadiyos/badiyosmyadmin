@@ -13,6 +13,9 @@ import {
 
   markPayoutItemPaid,
   markPayoutBatchPaid,
+  discardPayoutBatch,
+  getTdsReport,
+  markTdsDeposited,
   type WalletOwner,
   type PayoutBatch,
 } from "@/lib/wallets.functions";
@@ -27,9 +30,9 @@ const inr = new Intl.NumberFormat("en-IN", {
 type Role = "super_admin" | "ops_manager" | "area_partner" | null;
 
 export function WalletsPage({ role }: { role: Role }) {
-  const [tab, setTab] = useState<"balances" | "payouts" | "merchant_payouts" | "commission">(
-    "balances",
-  );
+  const [tab, setTab] = useState<
+    "balances" | "payouts" | "merchant_payouts" | "commission" | "tds"
+  >("balances");
   return (
     <div className="space-y-6">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
@@ -45,11 +48,15 @@ export function WalletsPage({ role }: { role: Role }) {
         <TabBtn active={tab === "commission"} onClick={() => setTab("commission")}>
           Commission &amp; Incentives
         </TabBtn>
+        <TabBtn active={tab === "tds"} onClick={() => setTab("tds")}>
+          TDS Report
+        </TabBtn>
       </div>
       {tab === "balances" && <BalancesTab role={role} />}
       {tab === "payouts" && <PayoutsTab mode="expert" />}
       {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
       {tab === "commission" && <CommissionTab />}
+      {tab === "tds" && <TdsReportTab role={role} />}
     </div>
   );
 }
@@ -503,6 +510,10 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const fetchItems = useServerFn(listPayoutItems);
   const markItem = useServerFn(markPayoutItemPaid);
   const markBatch = useServerFn(markPayoutBatchPaid);
+  const discardBatch = useServerFn(discardPayoutBatch);
+  const [discardReason, setDiscardReason] = useState("");
+  const [showDiscard, setShowDiscard] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["wallets", "batch-items", batch.id],
@@ -525,7 +536,20 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
     },
   });
 
+  const discardMutation = useMutation({
+    mutationFn: () => discardBatch({ data: { batch_id: batch.id, reason: discardReason } }),
+    onSuccess: () => {
+      setShowDiscard(false);
+      setDiscardReason("");
+      queryClient.invalidateQueries({ queryKey: ["wallets", "batch-items", batch.id] });
+      queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] });
+      onBack();
+    },
+    onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
+  });
+
   const unpaid = data.filter((i) => !i.paid).length;
+  const tdsTotal = data.reduce((sum, i) => sum + (i.tds_amount ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -536,14 +560,57 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         >
           <ArrowLeft size={14} /> Back to batches
         </button>
-        <button
-          disabled={batchMutation.isPending || unpaid === 0}
-          onClick={() => batchMutation.mutate()}
-          className="h-10 px-4 rounded-[12px] bg-primary text-white font-bold text-[13px] disabled:opacity-50"
-        >
-          {batchMutation.isPending ? "Marking…" : "Mark entire batch paid"}
-        </button>
+        <div className="flex items-center gap-2">
+          {batch.status !== "paid" && (
+            <button
+              onClick={() => setShowDiscard(true)}
+              className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted"
+            >
+              Discard batch
+            </button>
+          )}
+          <button
+            disabled={batchMutation.isPending || unpaid === 0}
+            onClick={() => batchMutation.mutate()}
+            className="h-10 px-4 rounded-[12px] bg-primary text-white font-bold text-[13px] disabled:opacity-50"
+          >
+            {batchMutation.isPending ? "Confirming…" : "Confirm & mark batch paid"}
+          </button>
+        </div>
       </div>
+
+      {detailError && <p className="text-[13px] text-destructive">{detailError}</p>}
+
+      {showDiscard && (
+        <div className="bg-card border border-border rounded-[18px] p-5 space-y-3">
+          <p className="text-[14px] font-semibold text-foreground">Discard this batch?</p>
+          <p className="text-[13px] text-muted-foreground">
+            All jobs in it become available for the next batch. Nothing is deleted — any money
+            already moved is returned with a reversal entry.
+          </p>
+          <input
+            value={discardReason}
+            onChange={(e) => setDiscardReason(e.target.value)}
+            placeholder="Reason"
+            className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+          />
+          <div className="flex gap-2">
+            <button
+              disabled={discardMutation.isPending || !discardReason.trim()}
+              onClick={() => discardMutation.mutate()}
+              className="h-10 px-4 rounded-[12px] bg-destructive text-white font-bold text-[13px] disabled:opacity-50"
+            >
+              {discardMutation.isPending ? "Discarding…" : "Discard"}
+            </button>
+            <button
+              onClick={() => setShowDiscard(false)}
+              className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-[18px] p-5">
         <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -556,14 +623,21 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
           Total <span className="font-semibold text-foreground">{inr.format(batch.total_amount)}</span>
           {" · "}
           {unpaid} unpaid item(s)
+          {tdsTotal > 0 && (
+            <>
+              {" · "}TDS <span className="font-semibold text-foreground">{inr.format(tdsTotal)}</span>
+            </>
+          )}
         </p>
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1fr)_120px_140px_120px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Owner</span>
           <span>Type</span>
-          <span className="text-right">Amount</span>
+          <span className="text-right">Gross</span>
+          <span className="text-right">TDS</span>
+          <span className="text-right">Net</span>
           <span>Paid</span>
         </div>
         {isLoading && (
@@ -577,9 +651,14 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         {data.map((i) => (
           <div
             key={i.id}
-            className="grid grid-cols-[minmax(0,1fr)_120px_140px_120px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+            className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
           >
-            <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
+              {i.pan_last4 && (
+                <p className="text-[11px] text-muted-foreground">PAN ••••{i.pan_last4}</p>
+              )}
+            </div>
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               {i.owner_type === "expert"
                 ? "Expert"
@@ -588,7 +667,11 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
                   : "Partner"}
 
             </span>
-            <span className="text-right font-semibold">{inr.format(i.amount)}</span>
+            <span className="text-right font-semibold">{inr.format(i.gross_amount)}</span>
+            <span className="text-right text-muted-foreground">
+              {i.tds_amount > 0 ? `${inr.format(i.tds_amount)} (${i.tds_rate}%)` : "—"}
+            </span>
+            <span className="text-right font-semibold">{inr.format(i.net_amount)}</span>
             <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
               <input
                 type="checkbox"
@@ -601,6 +684,139 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
               />
               {i.paid ? "Paid" : "Unpaid"}
             </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TdsReportTab({ role }: { role: Role }) {
+  const queryClient = useQueryClient();
+  const fetchReport = useServerFn(getTdsReport);
+  const markDeposited = useServerFn(markTdsDeposited);
+  const now = new Date();
+  const currentFy = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+  const [fy, setFy] = useState(currentFy);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["wallets", "tds", fy],
+    queryFn: () => fetchReport({ data: { fy_start_year: fy } }),
+  });
+
+  const deposit = useMutation({
+    mutationFn: (p: { owner_type: string; owner_id: string }) =>
+      markDeposited({ data: { ...p, fy_start_year: fy } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets", "tds", fy] }),
+    onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
+  });
+
+  function exportCsv() {
+    const header = ["Name", "Type", "PAN last 4", "Gross", "TDS", "Net", "Deposited", "Items"];
+    const lines = data.map((r) =>
+      [
+        r.owner_name,
+        r.owner_type,
+        r.pan_last4 ?? "",
+        r.gross_total,
+        r.tds_total,
+        r.net_total,
+        r.deposited_total,
+        r.items,
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const csv = [header.join(","), ...lines].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tds-report-fy-${fy}-${fy + 1}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-muted-foreground">Financial year</span>
+          <select
+            value={fy}
+            onChange={(e) => setFy(Number(e.target.value))}
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px]"
+          >
+            {[0, 1, 2, 3].map((n) => {
+              const y = currentFy - n;
+              return (
+                <option key={y} value={y}>
+                  April {y} – March {y + 1}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+        <button
+          onClick={exportCsv}
+          disabled={data.length === 0}
+          className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] disabled:opacity-40 hover:bg-muted"
+        >
+          Export CSV
+        </button>
+      </div>
+
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
+
+      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span>Person</span>
+          <span>Type</span>
+          <span className="text-right">Gross</span>
+          <span className="text-right">TDS</span>
+          <span className="text-right">Deposited</span>
+          <span></span>
+        </div>
+        {isLoading && (
+          <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
+        )}
+        {!isLoading && data.length === 0 && (
+          <p className="text-[13px] text-muted-foreground text-center py-10">
+            No paid payouts in this financial year.
+          </p>
+        )}
+        {data.map((r) => (
+          <div
+            key={`${r.owner_type}:${r.owner_id}`}
+            className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+          >
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground truncate">{r.owner_name}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {r.pan_last4 ? `PAN ••••${r.pan_last4}` : "PAN not provided"}
+              </p>
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              {r.owner_type === "expert" ? "Expert" : "Partner"}
+            </span>
+            <span className="text-right font-semibold">{inr.format(r.gross_total)}</span>
+            <span className="text-right">{inr.format(r.tds_total)}</span>
+            <span className="text-right text-muted-foreground">
+              {inr.format(r.deposited_total)}
+            </span>
+            <div className="flex justify-end">
+              {role === "super_admin" && r.tds_total > r.deposited_total && (
+                <button
+                  disabled={deposit.isPending}
+                  onClick={() =>
+                    deposit.mutate({ owner_type: r.owner_type, owner_id: r.owner_id })
+                  }
+                  className="h-9 px-3 rounded-[12px] border border-border font-semibold text-[12px] hover:bg-muted disabled:opacity-50"
+                >
+                  Mark deposited
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
