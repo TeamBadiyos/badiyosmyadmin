@@ -5,6 +5,7 @@ import { X, Upload, Check, Loader2, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getExpert,
+  listExperts,
   upsertExpert,
   setExpertZones,
   signStorageUrl,
