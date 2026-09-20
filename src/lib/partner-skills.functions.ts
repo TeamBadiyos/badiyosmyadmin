@@ -120,15 +120,39 @@ export const listExpertSkills = createServerFn({ method: "POST" })
 
 export const listActiveServiceCategories = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ id: string; name: string }[]> => {
-    const { data, error } = await context.supabase
-      .from("service_categories")
-      .select("id, name")
-      .eq("is_active", true)
-      .order("rank", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as { id: string; name: string }[];
-  });
+  .handler(
+    async ({
+      context,
+    }): Promise<{ id: string; name: string; isActive: boolean }[]> => {
+      const db = context.supabase;
+      const [catsRes, vehiclesRes] = await Promise.all([
+        db
+          .from("service_categories")
+          .select("id, name, is_active")
+          .order("rank", { ascending: true }),
+        db
+          .from("courier_vehicle_types")
+          .select("required_skill")
+          .eq("is_active", true),
+      ]);
+      if (catsRes.error) throw new Error(catsRes.error.message);
+      if (vehiclesRes.error) throw new Error(vehiclesRes.error.message);
+
+      const requiredSkillIds = new Set(
+        (vehiclesRes.data ?? [])
+          .map((v) => v.required_skill as string | null)
+          .filter((id): id is string => !!id),
+      );
+
+      return (catsRes.data ?? [])
+        .filter((c) => c.is_active === true || requiredSkillIds.has(c.id))
+        .map((c) => ({
+          id: c.id as string,
+          name: c.name as string,
+          isActive: c.is_active === true,
+        }));
+    },
+  );
 
 export const assignPartnerSkill = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
