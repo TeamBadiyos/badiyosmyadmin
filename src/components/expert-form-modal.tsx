@@ -116,6 +116,7 @@ export function ExpertFormModal({
       setBankAcc(existing.bankAccountNumber ?? "");
       setBankIfsc(existing.bankIfsc ?? "");
       setBankHolder(existing.bankAccountHolderName ?? "");
+      setReferredBy(existing.referredByExpertId ?? "");
     }
   }, [existing]);
 
