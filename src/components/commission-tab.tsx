@@ -208,6 +208,8 @@ export function CommissionTab() {
       </div>
 
       <FinanceSettingsCard canWrite={canWrite} />
+      </>
+      )}
 
       {editing && (
         <EditRuleModal
