@@ -265,6 +265,7 @@ export function ExpertDetailsModal({
                         {assignable.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
+                            {c.isActive === false ? " (inactive)" : ""}
                           </option>
                         ))}
                       </select>
