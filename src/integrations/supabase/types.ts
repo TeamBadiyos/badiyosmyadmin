@@ -5835,6 +5835,23 @@ export type Database = {
           trigger_event_ref: string
         }[]
       }
+      staff_reward_period_preview: {
+        Args: { _period: string; _period_start: string }
+        Returns: {
+          active_days: number
+          amount: number
+          category: string
+          expert_id: string
+          expert_name: string
+          hours: number
+          orders: number
+          program_id: string
+          program_name: string
+          qualifies: boolean
+          reason: string
+          slab: string
+        }[]
+      }
       staff_reward_program_stats: {
         Args: { _from?: string; _to?: string }
         Returns: {
