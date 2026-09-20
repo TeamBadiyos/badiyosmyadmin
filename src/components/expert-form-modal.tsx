@@ -82,7 +82,18 @@ export function ExpertFormModal({
   const [ifscError, setIfscError] = useState<string | null>(null);
   const [ifscLoading, setIfscLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [referredBy, setReferredBy] = useState("");
   const seededRef = useRef(false);
+
+  const { data: allExperts = [] } = useQuery({
+    queryKey: ["experts", "referrer-options"],
+    queryFn: () => fetchExperts({ data: {} }),
+    staleTime: 60_000,
+  });
+  const referrerOptions = useMemo(
+    () => allExperts.filter((e) => e.id !== expertId),
+    [allExperts, expertId],
+  );
 
   useEffect(() => {
     if (existing && !seededRef.current) {
