@@ -4342,6 +4342,7 @@ export type Database = {
           internal_note: string | null
           last_message_at: string
           message: string
+          resolution_outcome: string | null
           resolution_summary: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -4360,6 +4361,7 @@ export type Database = {
           internal_note?: string | null
           last_message_at?: string
           message: string
+          resolution_outcome?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -4378,6 +4380,7 @@ export type Database = {
           internal_note?: string | null
           last_message_at?: string
           message?: string
+          resolution_outcome?: string | null
           resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -5513,6 +5516,15 @@ export type Database = {
           _event_ref: string
           _notes?: string
           _program: Database["public"]["Tables"]["reward_programs"]["Row"]
+        }
+        Returns: boolean
+      }
+      reward_gates_pass: {
+        Args: {
+          _condition: Json
+          _end: string
+          _expert_id: string
+          _start: string
         }
         Returns: boolean
       }
