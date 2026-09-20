@@ -4858,6 +4858,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      compute_tds: {
+        Args: { _gross: number; _owner_id: string; _owner_type: string }
+        Returns: {
+          amount: number
+          applicable: boolean
+          pan_last4: string
+          rate: number
+        }[]
+      }
       coupon_preview: {
         Args: {
           _base_amount: number
@@ -5551,6 +5560,10 @@ export type Database = {
         Returns: boolean
       }
       staff_clear_notifications: { Args: never; Returns: undefined }
+      staff_confirm_payout_batch: {
+        Args: { _batch_id: string }
+        Returns: undefined
+      }
       staff_courier_confirm_rate: { Args: { _id: string }; Returns: undefined }
       staff_courier_force_cancel: {
         Args: { _order_id: string; _reason: string; _refund_amount?: number }
@@ -5658,6 +5671,10 @@ export type Database = {
         Args: { _id: string }
         Returns: undefined
       }
+      staff_discard_payout_batch: {
+        Args: { _batch_id: string; _reason: string }
+        Returns: undefined
+      }
       staff_dismiss_notification: {
         Args: { _dismissed?: boolean; _id: string }
         Returns: undefined
@@ -5677,6 +5694,17 @@ export type Database = {
       staff_expert_kyc_decision: {
         Args: { _decision: string; _expert_id: string; _reason: string }
         Returns: undefined
+      }
+      staff_export_raw_pan_tds_report: {
+        Args: { _fy_start_year: number }
+        Returns: {
+          gross_total: number
+          net_total: number
+          owner_name: string
+          owner_type: string
+          pan: string
+          tds_total: number
+        }[]
       }
       staff_force_expert_offline: {
         Args: { _expert_id: string }
@@ -5717,6 +5745,10 @@ export type Database = {
       staff_mark_subscription_invoice_paid: {
         Args: { _invoice_id: string; _paid: boolean }
         Returns: undefined
+      }
+      staff_mark_tds_deposited: {
+        Args: { _fy_start_year: number; _owner_id: string; _owner_type: string }
+        Returns: number
       }
       staff_notify_waitlist_area: {
         Args: { _city?: string; _segment_id?: string }
@@ -5872,6 +5904,20 @@ export type Database = {
         Returns: undefined
       }
       staff_sync_notifications: { Args: never; Returns: undefined }
+      staff_tds_report: {
+        Args: { _fy_start_year: number }
+        Returns: {
+          deposited_total: number
+          gross_total: number
+          items: number
+          net_total: number
+          owner_id: string
+          owner_name: string
+          owner_type: string
+          pan_last4: string
+          tds_total: number
+        }[]
+      }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
