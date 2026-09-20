@@ -902,12 +902,6 @@ function PriceOptionModal({
   const queryClient = useQueryClient();
   const save = useServerFn(upsertPriceOption);
   const saveLinks = useServerFn(setItemTaskTypes);
-  const fetchCommissionAccess = useServerFn(getCommissionAccess);
-  const { data: commissionAccess } = useQuery({
-    queryKey: ["commission", "access"],
-    queryFn: () => fetchCommissionAccess(),
-  });
-  const hidePayoutFields = commissionAccess?.newEngineEnabled ?? false;
   const [selectedTaskTypes, setSelectedTaskTypes] =
     useState<string[]>(linkedTaskTypeIds);
   const [label, setLabel] = useState(option?.label ?? "");
@@ -919,13 +913,11 @@ function PriceOptionModal({
   const [wasPrice, setWasPrice] = useState(
     option?.strikethrough_price != null ? String(option.strikethrough_price) : "",
   );
-  const [expert, setExpert] = useState(
-    option?.expert_payout != null ? String(option.expert_payout) : "",
-  );
-  const [partner, setPartner] = useState(
-    option?.partner_commission != null ? String(option.partner_commission) : "",
-  );
-  const [hq, setHq] = useState(option?.hq_share != null ? String(option.hq_share) : "");
+  // Legacy split values are preserved as-is; splits are configured in Commission & Incentives.
+  const expert = option?.expert_payout != null ? String(option.expert_payout) : "";
+  const partner =
+    option?.partner_commission != null ? String(option.partner_commission) : "";
+  const hq = option?.hq_share != null ? String(option.hq_share) : "";
   const [order, setOrder] = useState(String(option?.display_order ?? 0));
   const [active, setActive] = useState(option?.is_active ?? true);
   const [image, setImage] = useState<string | null>(option?.image_url ?? null);
