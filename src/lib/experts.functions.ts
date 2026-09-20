@@ -248,6 +248,7 @@ export type UpsertExpertInput = {
   kyc_aadhaar_url?: string | null;
   kyc_pan_url?: string | null;
   kyc_address_proof_url?: string | null;
+  referred_by_expert_id?: string | null;
 };
 
 export const upsertExpert = createServerFn({ method: "POST" })
