@@ -445,6 +445,82 @@ export const setVehicleCourierType = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ------------------------------ Zone mapping ------------------------------ */
+
+export type CourierZoneRow = {
+  id: string;
+  name: string;
+  city: string;
+  mapped: boolean;
+};
+
+export type CourierZoneMapping = {
+  cities: string[];
+  zones: CourierZoneRow[];
+};
+
+export const listCourierZoneMapping = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CourierZoneMapping> => {
+    await requireCourierStaff(context);
+    const db = context.supabase;
+
+    const [{ data: zoneRows, error: zErr }, { data: mapRows, error: mErr }, { data: flagRows }] =
+      await Promise.all([
+        db
+          .from("zones")
+          .select("id, name, city")
+          .eq("status", "active")
+          .is("deleted_at", null)
+          .order("city", { ascending: true })
+          .order("name", { ascending: true }),
+        db.from("courier_zones").select("zone_id, is_active"),
+        db.from("service_flags").select("city").eq("service_key", "courier"),
+      ]);
+    if (zErr) throw new Error(zErr.message);
+    if (mErr) throw new Error(mErr.message);
+
+    const active = new Set(
+      ((mapRows ?? []) as Array<{ zone_id: string; is_active: boolean }>)
+        .filter((r) => r.is_active)
+        .map((r) => r.zone_id),
+    );
+
+    const zones = ((zoneRows ?? []) as Array<{ id: string; name: string; city: string | null }>).map(
+      (z) => ({
+        id: z.id,
+        name: z.name,
+        city: (z.city ?? "").trim(),
+        mapped: active.has(z.id),
+      }),
+    );
+
+    const cities = new Set<string>();
+    for (const r of (flagRows ?? []) as Array<{ city: string | null }>) {
+      const c = (r.city ?? "").trim();
+      if (c) cities.add(c);
+    }
+    for (const z of zones) if (z.city) cities.add(z.city);
+
+    return { cities: [...cities].sort((a, b) => a.localeCompare(b)), zones };
+  });
+
+export const saveCourierZoneMapping = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { city: string; zoneIds: string[] }) => {
+    if (!input?.city?.trim()) throw new Error("City is required");
+    return { city: input.city.trim(), zoneIds: Array.isArray(input.zoneIds) ? input.zoneIds : [] };
+  })
+  .handler(async ({ data, context }) => {
+    await requireCourierWriter(context);
+    const { error } = await rpc(context.supabase, "staff_courier_set_zones", {
+      _city: data.city,
+      _zone_ids: data.zoneIds,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 /* -------------------------------- Orders ---------------------------------- */
 
 export type CourierOrderRow = {
