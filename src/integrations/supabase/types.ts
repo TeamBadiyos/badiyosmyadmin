@@ -2134,6 +2134,7 @@ export type Database = {
           photo_url: string | null
           pin_hash: string | null
           preferred_language: string
+          referred_by_expert_id: string | null
           security_deposit_status: string
           status: string
           wallet_balance: number
@@ -2168,6 +2169,7 @@ export type Database = {
           photo_url?: string | null
           pin_hash?: string | null
           preferred_language?: string
+          referred_by_expert_id?: string | null
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
@@ -2202,6 +2204,7 @@ export type Database = {
           photo_url?: string | null
           pin_hash?: string | null
           preferred_language?: string
+          referred_by_expert_id?: string | null
           security_deposit_status?: string
           status?: string
           wallet_balance?: number
@@ -2220,6 +2223,13 @@ export type Database = {
             columns: ["onboarded_by"]
             isOneToOne: false
             referencedRelation: "area_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experts_referred_by_expert_id_fkey"
+            columns: ["referred_by_expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
             referencedColumns: ["id"]
           },
           {
@@ -5518,6 +5528,10 @@ export type Database = {
           _program: Database["public"]["Tables"]["reward_programs"]["Row"]
         }
         Returns: boolean
+      }
+      reward_check_expert_referral: {
+        Args: { _expert_id: string }
+        Returns: undefined
       }
       reward_gates_pass: {
         Args: {
