@@ -167,6 +167,7 @@ export function ExpertFormModal({
           kyc_aadhaar_url: aadhaar.path,
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
+          referred_by_expert_id: referredBy || null,
         },
       });
       await saveZones({
