@@ -14,6 +14,7 @@ import {
   type CommissionType,
 } from "@/lib/commission.functions";
 import { IncentivesTab } from "@/components/incentives-tab";
+import { BonusPreviewTab } from "@/components/bonus-preview-tab";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -87,6 +88,8 @@ export function CommissionTab() {
       </div>
 
       {sub === "incentives" && <IncentivesTab canWrite={canWrite} />}
+
+      {sub === "bonus preview" && canWrite && <BonusPreviewTab />}
 
       {sub === "commission" && (
       <>
