@@ -606,7 +606,7 @@ function FinanceSettingsCard({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="bg-card border border-border rounded-[18px] p-5 space-y-4">
-      <h3 className="text-[16px] font-bold text-foreground">Finance switches & TDS settings</h3>
+      <h3 className="text-[16px] font-bold text-foreground">Finance switches</h3>
       {!canWrite && (
         <p className="text-[13px] text-muted-foreground">Read-only — Super Admin can change these.</p>
       )}
