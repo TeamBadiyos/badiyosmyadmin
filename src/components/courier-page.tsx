@@ -23,6 +23,7 @@ import {
   listCourierOrders,
   listCourierRiders,
   listCourierTypes,
+  listCourierZoneMapping,
   listRates,
   listServiceFlags,
   listVehicleTypes,
@@ -30,6 +31,7 @@ import {
   reassignRider,
   resolveIncident,
   saveCourierType,
+  saveCourierZoneMapping,
   saveRate,
   saveVehicleType,
   setCourierTypeActive,
@@ -140,6 +142,7 @@ const TABS = [
   { key: "vehicles", label: "Vehicle Types" },
   { key: "rates", label: "Rates" },
   { key: "types", label: "Courier Types" },
+  { key: "zones", label: "Zone Mapping" },
   { key: "orders", label: "Live Orders" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -1459,6 +1462,7 @@ export function CourierPage() {
       {tab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
       {tab === "rates" ? <RatesTab canWrite={canWrite} /> : null}
       {tab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
+      {tab === "zones" ? <ZoneMappingTab canWrite={canWrite} /> : null}
       {tab === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
     </div>
   );
