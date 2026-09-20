@@ -19,6 +19,7 @@ import {
   type RewardCondition,
   type RewardLedgerRow,
 } from "@/lib/rewards.functions";
+import { IncentiveProgramModal } from "@/components/incentive-program-modal";
 
 const ACTORS = [
   { key: "customer", label: "Customer" },
@@ -275,7 +276,7 @@ export function RewardsPage() {
       )}
 
       {editing && (
-        <ProgramModal
+        <IncentiveProgramModal
           triggers={triggers}
           actor={actor}
           program={editing === "new" ? null : editing}
