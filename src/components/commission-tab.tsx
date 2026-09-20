@@ -13,6 +13,7 @@ import {
   type CommissionRuleRow,
   type CommissionType,
 } from "@/lib/commission.functions";
+import { IncentivesTab } from "@/components/incentives-tab";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -57,6 +58,7 @@ export function CommissionTab() {
   });
 
   const canWrite = !!access?.canWrite;
+  const [sub, setSub] = useState<"commission" | "incentives">("commission");
   const [editing, setEditing] = useState<CommissionRuleRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [simFor, setSimFor] = useState<CommissionRuleRow | null>(null);
