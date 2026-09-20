@@ -114,6 +114,99 @@ export type Database = {
           },
         ]
       }
+      admin_alert_dispatch_state: {
+        Row: {
+          id: boolean
+          last_dispatch_at: string
+        }
+        Insert: {
+          id?: boolean
+          last_dispatch_at?: string
+        }
+        Update: {
+          id?: boolean
+          last_dispatch_at?: string
+        }
+        Relationships: []
+      }
+      admin_alert_log: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          order_id: string
+          order_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          order_id: string
+          order_type: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          order_id?: string
+          order_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      admin_alert_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          order_id: string
+          order_type: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          v_amount: string
+          v_customer: string
+          v_order: string
+          v_time: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          order_id: string
+          order_type: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          v_amount?: string
+          v_customer?: string
+          v_order?: string
+          v_time?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          order_id?: string
+          order_type?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          v_amount?: string
+          v_customer?: string
+          v_order?: string
+          v_time?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           current_version: string
@@ -4470,6 +4563,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_alert_claim_batch: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          id: string
+          order_id: string
+          order_type: string
+          v_amount: string
+          v_customer: string
+          v_order: string
+          v_time: string
+        }[]
+      }
+      admin_alert_clean: { Args: { _v: string }; Returns: string }
+      admin_alert_dispatch: { Args: never; Returns: undefined }
+      admin_alert_enabled: { Args: { _key: string }; Returns: boolean }
+      admin_alert_enqueue: {
+        Args: {
+          _amount: number
+          _customer: string
+          _order: string
+          _order_id: string
+          _order_type: string
+          _time: string
+        }
+        Returns: undefined
+      }
+      admin_alert_mark: {
+        Args: { _error?: string; _id: string; _ok: boolean }
+        Returns: undefined
+      }
+      admin_alert_verify_job_secret: {
+        Args: { _secret: string }
+        Returns: boolean
+      }
       advance_booking_status: {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
