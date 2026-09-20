@@ -265,6 +265,23 @@ export function ExpertFormModal({
             <SelectField label="Status" value={status} onChange={(v) => setStatus(v as ActiveStatus)}>
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </SelectField>
+            <div className="md:col-span-2">
+              <SelectField
+                label="Referred by expert (optional)"
+                value={referredBy}
+                onChange={setReferredBy}
+              >
+                <option value="">No referral</option>
+                {referrerOptions.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} · {e.phone}
+                  </option>
+                ))}
+              </SelectField>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Referral bonus pays out once this expert completes the required jobs.
+              </p>
+            </div>
           </section>
 
           <section>
