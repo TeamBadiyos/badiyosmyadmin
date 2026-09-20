@@ -72,6 +72,8 @@ export function RewardsPage() {
     [stats],
   );
 
+  const grouped = useMemo(() => groupProgramsByTier(programs), [programs]);
+
   const toggle = useMutation({
     mutationFn: (v: { id: string; is_active: boolean }) => toggleFn({ data: v }),
     onSuccess: () => {
