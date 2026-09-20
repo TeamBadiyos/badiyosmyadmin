@@ -23,6 +23,7 @@ import {
   listCourierOrders,
   listCourierRiders,
   listCourierTypes,
+  listCourierZoneMapping,
   listRates,
   listServiceFlags,
   listVehicleTypes,
@@ -30,6 +31,7 @@ import {
   reassignRider,
   resolveIncident,
   saveCourierType,
+  saveCourierZoneMapping,
   saveRate,
   saveVehicleType,
   setCourierTypeActive,
@@ -140,6 +142,7 @@ const TABS = [
   { key: "vehicles", label: "Vehicle Types" },
   { key: "rates", label: "Rates" },
   { key: "types", label: "Courier Types" },
+  { key: "zones", label: "Zone Mapping" },
   { key: "orders", label: "Live Orders" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -1255,6 +1258,160 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
+/* ----------------------------- Zone mapping ------------------------------ */
+
+function ZoneMappingTab({ canWrite }: { canWrite: boolean }) {
+  const qc = useQueryClient();
+  const fetchMapping = useServerFn(listCourierZoneMapping);
+  const save = useServerFn(saveCourierZoneMapping);
+  const [city, setCity] = useState<string>("");
+  const [selected, setSelected] = useState<string[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ["courier", "zone-mapping"],
+    queryFn: () => fetchMapping(),
+  });
+
+  const cities = data?.cities ?? [];
+  const activeCity = city || cities[0] || "";
+  const cityZones = useMemo(
+    () =>
+      (data?.zones ?? []).filter(
+        (z) => z.city.toLowerCase() === activeCity.toLowerCase() && activeCity !== "",
+      ),
+    [data, activeCity],
+  );
+
+  const current = selected ?? cityZones.filter((z) => z.mapped).map((z) => z.id);
+  const dirty =
+    selected !== null &&
+    JSON.stringify([...current].sort()) !==
+      JSON.stringify(
+        cityZones
+          .filter((z) => z.mapped)
+          .map((z) => z.id)
+          .sort(),
+      );
+
+  function toggleZone(id: string) {
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    setSelected(next);
+  }
+
+  async function submit() {
+    setBusy(true);
+    try {
+      await save({ data: { city: activeCity, zoneIds: current } });
+      toast.success("Zone mapping saved");
+      setSelected(null);
+      qc.invalidateQueries({ queryKey: ["courier", "zone-mapping"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[12px] border border-info/30 bg-info/10 p-4 text-[12px] text-foreground">
+        Parcel delivery runs only inside the zones you map here, and only within the same city —
+        pickup and drop must both fall in a mapped zone of that city. If a city has no mapped zone,
+        courier stays off there.
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[12px] font-semibold text-muted-foreground">City</span>
+        <select
+          value={activeCity}
+          onChange={(e) => {
+            setCity(e.target.value);
+            setSelected(null);
+          }}
+          className="rounded-[10px] border border-border bg-card px-3 py-2 text-[13px] text-foreground"
+        >
+          {cities.length === 0 ? <option value="">No cities</option> : null}
+          {cities.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {canWrite && cityZones.length > 0 ? (
+          <>
+            <button
+              onClick={() => setSelected(cityZones.map((z) => z.id))}
+              className="rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted"
+            >
+              Select all
+            </button>
+            <button
+              onClick={() => setSelected([])}
+              className="rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted"
+            >
+              Clear
+            </button>
+          </>
+        ) : null}
+      </div>
+
+      {cityZones.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">No active zones in this city yet.</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {cityZones.map((z) => {
+            const on = current.includes(z.id);
+            return (
+              <label
+                key={z.id}
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-[16px] border p-4 ${
+                  on ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+                } ${canWrite ? "" : "cursor-default opacity-80"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={!canWrite}
+                    onChange={() => toggleZone(z.id)}
+                    className="h-4 w-4 accent-[#00B97A]"
+                  />
+                  <span className="text-[13px] font-bold text-foreground">{z.name}</span>
+                </span>
+                {on ? <Pill tone="ok">Mapped</Pill> : <Pill tone="off">Not mapped</Pill>}
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {canWrite ? (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={submit}
+            disabled={!dirty || busy || !activeCity}
+            className="rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40"
+          >
+            {busy ? "Saving…" : "Save mapping"}
+          </button>
+          {dirty ? (
+            <button
+              onClick={() => setSelected(null)}
+              className="rounded-[10px] border border-border px-4 py-2 text-[13px] font-semibold text-foreground hover:bg-muted"
+            >
+              Reset
+            </button>
+          ) : null}
+          <span className="text-[12px] text-muted-foreground">
+            {current.length} of {cityZones.length} zones mapped
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* --------------------------------- page ---------------------------------- */
 
 export function CourierPage() {
@@ -1305,6 +1462,7 @@ export function CourierPage() {
       {tab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
       {tab === "rates" ? <RatesTab canWrite={canWrite} /> : null}
       {tab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
+      {tab === "zones" ? <ZoneMappingTab canWrite={canWrite} /> : null}
       {tab === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
     </div>
   );
