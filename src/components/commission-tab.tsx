@@ -58,7 +58,7 @@ export function CommissionTab() {
   });
 
   const canWrite = !!access?.canWrite;
-  const [sub, setSub] = useState<"commission" | "incentives">("commission");
+  const [sub, setSub] = useState<"commission" | "incentives" | "bonus preview">("commission");
   const [editing, setEditing] = useState<CommissionRuleRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [simFor, setSimFor] = useState<CommissionRuleRow | null>(null);
@@ -70,7 +70,10 @@ export function CommissionTab() {
   return (
     <div className="space-y-4">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
-        {(["commission", "incentives"] as const).map((s) => (
+        {(canWrite
+          ? (["commission", "incentives", "bonus preview"] as const)
+          : (["commission", "incentives"] as const)
+        ).map((s) => (
           <button
             key={s}
             onClick={() => setSub(s)}
