@@ -1030,34 +1030,10 @@ function PriceOptionModal({
             onChange={(e) => setWasPrice(e.target.value)}
           />
         </Field>
-        {!hidePayoutFields && (
-          <>
-            <Field label="Expert payout">
-              <input
-                className={inputCls}
-                value={expert}
-                inputMode="decimal"
-                onChange={(e) => setExpert(e.target.value)}
-              />
-            </Field>
-            <Field label="Partner commission">
-              <input
-                className={inputCls}
-                value={partner}
-                inputMode="decimal"
-                onChange={(e) => setPartner(e.target.value)}
-              />
-            </Field>
-            <Field label="HQ share">
-              <input
-                className={inputCls}
-                value={hq}
-                inputMode="decimal"
-                onChange={(e) => setHq(e.target.value)}
-              />
-            </Field>
-          </>
-        )}
+        <p className="col-span-2 text-[12px] text-muted-foreground">
+          Expert, partner and HQ shares are now set in Wallet &amp; Payout → Commission &amp;
+          Incentives.
+        </p>
         <Field label="Display order">
           <input
             className={inputCls}
