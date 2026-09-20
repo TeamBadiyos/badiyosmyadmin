@@ -280,6 +280,7 @@ function ChatWindow({ ticket }: { ticket: SupportTicket }) {
   }, [messages.length, ticket.id]);
 
   const resolved = ticket.status === "resolved";
+  const [outcome, setOutcome] = useState<string>("no_fault");
 
   const send = useMutation({
     mutationFn: (body: string) => sendFn({ data: { ticketId: ticket.id, body } }),
@@ -299,6 +300,7 @@ function ChatWindow({ ticket }: { ticket: SupportTicket }) {
           status,
           note: note || null,
           resolution: status === "resolved" ? note || null : null,
+          resolutionOutcome: status === "resolved" ? outcome : null,
         },
       }),
     onSuccess: (_d, status) => {
@@ -357,6 +359,18 @@ function ChatWindow({ ticket }: { ticket: SupportTicket }) {
               >
                 In progress
               </button>
+              <select
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}
+                title="Outcome recorded when you resolve this ticket"
+                className="h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] font-semibold"
+              >
+                <option value="no_fault">No one at fault</option>
+                <option value="expert_fault">Expert at fault</option>
+                <option value="customer_fault">Customer at fault</option>
+                <option value="platform_issue">Platform issue</option>
+                <option value="other">Other</option>
+              </select>
               <button
                 disabled={setStatus.isPending}
                 onClick={() => setStatus.mutate("resolved")}
