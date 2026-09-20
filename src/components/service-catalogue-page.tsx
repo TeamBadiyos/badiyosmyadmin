@@ -545,11 +545,6 @@ function ServiceRow({
                     {inr.format(o.strikethrough_price)}
                   </span>
                 )}
-                <span className="text-[11px] text-muted-foreground">
-                  E {o.expert_payout != null ? inr.format(o.expert_payout) : "—"} · P{" "}
-                  {o.partner_commission != null ? inr.format(o.partner_commission) : "—"} · HQ{" "}
-                  {o.hq_share != null ? inr.format(o.hq_share) : "—"}
-                </span>
                 <button
                   onClick={() => onEditOption(o)}
                   className="h-7 px-2 rounded-[8px] border border-border text-[11px] font-semibold hover:bg-muted"
@@ -912,11 +907,6 @@ function PriceOptionModal({
   const [wasPrice, setWasPrice] = useState(
     option?.strikethrough_price != null ? String(option.strikethrough_price) : "",
   );
-  // Legacy split values are preserved as-is; splits are configured in Commission & Incentives.
-  const expert = option?.expert_payout != null ? String(option.expert_payout) : "";
-  const partner =
-    option?.partner_commission != null ? String(option.partner_commission) : "";
-  const hq = option?.hq_share != null ? String(option.hq_share) : "";
   const [order, setOrder] = useState(String(option?.display_order ?? 0));
   const [active, setActive] = useState(option?.is_active ?? true);
   const [image, setImage] = useState<string | null>(option?.image_url ?? null);
@@ -944,9 +934,9 @@ function PriceOptionModal({
           unit_label: service.pricing_type === "quantity" ? unit : null,
           customer_price: Number(price) || 0,
           strikethrough_price: optNum(wasPrice),
-          expert_payout: optNum(expert),
-          partner_commission: optNum(partner),
-          hq_share: optNum(hq),
+          expert_payout: null,
+          partner_commission: null,
+          hq_share: null,
           display_order: Number(order) || 0,
           is_active: active,
           image_url: image,
@@ -1021,10 +1011,6 @@ function PriceOptionModal({
             onChange={(e) => setWasPrice(e.target.value)}
           />
         </Field>
-        <p className="col-span-2 text-[12px] text-muted-foreground">
-          Expert, partner and HQ shares are now set in Wallet &amp; Payout → Commission &amp;
-          Incentives.
-        </p>
         <Field label="Display order">
           <input
             className={inputCls}
