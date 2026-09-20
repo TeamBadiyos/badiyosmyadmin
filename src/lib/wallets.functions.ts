@@ -55,6 +55,24 @@ export type PayoutItem = {
   amount: number;
   paid: boolean;
   paid_at: string | null;
+  gross_amount: number;
+  tds_rate: number;
+  tds_amount: number;
+  net_amount: number;
+  tds_status: string;
+  pan_last4: string | null;
+};
+
+export type TdsReportRow = {
+  owner_type: string;
+  owner_id: string;
+  owner_name: string;
+  pan_last4: string | null;
+  gross_total: number;
+  tds_total: number;
+  net_total: number;
+  deposited_total: number;
+  items: number;
 };
 
 
@@ -197,7 +215,7 @@ export const listPayoutItems = createServerFn({ method: "GET" })
     const db = context.supabase;
     const { data: items, error } = await db
       .from("payout_batch_items")
-      .select("id, batch_id, owner_type, owner_id, amount, paid, paid_at")
+      .select("id, batch_id, owner_type, owner_id, amount, paid, paid_at, gross_amount, tds_rate, tds_amount, net_amount, tds_status, pan_last4")
       .eq("batch_id", data.batch_id)
       .order("owner_type", { ascending: true });
     if (error) throw new Error(error.message);
@@ -230,7 +248,8 @@ export const listPayoutItems = createServerFn({ method: "GET" })
     for (const m of (merchantsRes.data ?? []) as any[])
       nameMap.set(`merchant:${m.id}`, m.store_name || m.owner_name || m.phone);
 
-    return (items ?? []).map((r) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((items ?? []) as any[]).map((r) => ({
       id: r.id,
       batch_id: r.batch_id,
       owner_type: r.owner_type as "expert" | "area_partner" | "merchant",
@@ -239,6 +258,12 @@ export const listPayoutItems = createServerFn({ method: "GET" })
       amount: Number(r.amount ?? 0),
       paid: r.paid,
       paid_at: r.paid_at,
+      gross_amount: Number(r.gross_amount ?? r.amount ?? 0),
+      tds_rate: Number(r.tds_rate ?? 0),
+      tds_amount: Number(r.tds_amount ?? 0),
+      net_amount: Number(r.net_amount ?? r.amount ?? 0),
+      tds_status: (r.tds_status ?? "none") as string,
+      pan_last4: r.pan_last4 ?? null,
     }));
   });
 
@@ -281,9 +306,70 @@ export const markPayoutBatchPaid = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("staff_mark_payout_batch_paid", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_confirm_payout_batch", {
       _batch_id: data.batch_id,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const discardPayoutBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { batch_id: string; reason: string }) => {
+    if (!input?.batch_id) throw new Error("batch_id required");
+    if (!input.reason?.trim()) throw new Error("Reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_discard_payout_batch", {
+      _batch_id: data.batch_id,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getTdsReport = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { fy_start_year: number }) => {
+    if (!input?.fy_start_year) throw new Error("fy_start_year required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<TdsReportRow[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rows, error } = await (context.supabase as any).rpc("staff_tds_report", {
+      _fy_start_year: data.fy_start_year,
+    });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((rows ?? []) as any[]).map((r) => ({
+      owner_type: r.owner_type,
+      owner_id: r.owner_id,
+      owner_name: r.owner_name,
+      pan_last4: r.pan_last4 ?? null,
+      gross_total: Number(r.gross_total ?? 0),
+      tds_total: Number(r.tds_total ?? 0),
+      net_total: Number(r.net_total ?? 0),
+      deposited_total: Number(r.deposited_total ?? 0),
+      items: Number(r.items ?? 0),
+    }));
+  });
+
+export const markTdsDeposited = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { owner_type: string; owner_id: string; fy_start_year: number }) => {
+    if (!input?.owner_id) throw new Error("owner_id required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ items: number }> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: n, error } = await (context.supabase as any).rpc("staff_mark_tds_deposited", {
+      _owner_type: data.owner_type,
+      _owner_id: data.owner_id,
+      _fy_start_year: data.fy_start_year,
+    });
+    if (error) throw new Error(error.message);
+    return { items: Number(n ?? 0) };
   });
