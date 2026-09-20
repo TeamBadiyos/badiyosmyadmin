@@ -309,7 +309,7 @@ export const verifyCommissionParity = createServerFn({ method: "GET" })
     }));
   });
 
-// ---------- Finance settings (commission engine + TDS) ----------
+// ---------- Finance settings (commission engine) ----------
 
 export type FinanceSetting = { key: string; value: string; label: string | null };
 
@@ -321,7 +321,7 @@ export const listFinanceSettings = createServerFn({ method: "GET" })
       .from("ops_settings")
       .select("key, value, label")
       .or(
-        "key.eq.use_new_commission_engine,key.eq.payout_batch_wallet_mode,key.like.tds_%,key.eq.commission_min_hq_share,key.eq.reward_punctuality_gate_enabled",
+        "key.eq.use_new_commission_engine,key.eq.payout_batch_wallet_mode,key.eq.commission_min_hq_share,key.eq.reward_punctuality_gate_enabled",
       )
       .order("key", { ascending: true });
     if (error) throw new Error(error.message);

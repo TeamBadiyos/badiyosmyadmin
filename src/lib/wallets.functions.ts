@@ -373,3 +373,53 @@ export const markTdsDeposited = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { items: Number(n ?? 0) };
   });
+
+// ---------- TDS settings (single toggle + single rate) ----------
+
+export type TdsSettings = { enabled: boolean; rate: number };
+
+export const getTdsSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TdsSettings> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (context.supabase as any)
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", ["tds_master_enabled", "tds_default_rate"]);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = new Map(((data ?? []) as any[]).map((r) => [r.key, String(r.value ?? "")]));
+    return {
+      enabled: map.get("tds_master_enabled") === "1",
+      rate: Number(map.get("tds_default_rate") ?? 2) || 0,
+    };
+  });
+
+export const saveTdsSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { enabled?: boolean; rate?: number }) => {
+    if (input?.rate !== undefined) {
+      if (!Number.isFinite(input.rate) || input.rate < 0 || input.rate > 100)
+        throw new Error("TDS rate must be between 0 and 100");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    if (data.enabled !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (context.supabase as any).rpc("staff_set_ops_setting", {
+        _key: "tds_master_enabled",
+        _value: data.enabled ? "1" : "0",
+      });
+      if (error) throw new Error(error.message);
+    }
+    if (data.rate !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (context.supabase as any).rpc("staff_set_ops_setting", {
+        _key: "tds_default_rate",
+        _value: String(data.rate),
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
