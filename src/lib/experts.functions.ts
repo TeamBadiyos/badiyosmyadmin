@@ -192,7 +192,18 @@ export const getExpert = createServerFn({ method: "POST" })
         .maybeSingle();
       zoneName = z?.name ?? null;
     }
+    let referredByExpertName: string | null = null;
+    if (e.referred_by_expert_id) {
+      const { data: ref } = await context.supabase
+        .from("experts")
+        .select("name")
+        .eq("id", e.referred_by_expert_id)
+        .maybeSingle();
+      referredByExpertName = ref?.name ?? null;
+    }
     return {
+      referredByExpertId: e.referred_by_expert_id ?? null,
+      referredByExpertName,
       id: e.id,
       name: e.name,
       phone: e.phone,
