@@ -5954,6 +5954,7 @@ export type Database = {
         Args: {
           _note?: string
           _resolution?: string
+          _resolution_outcome?: string
           _status: string
           _ticket_id: string
         }
