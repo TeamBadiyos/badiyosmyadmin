@@ -20,7 +20,11 @@ import {
   runRewardPeriodJobs,
   type RewardProgram,
 } from "@/lib/rewards.functions";
-import { IncentiveProgramModal, ACTORS } from "@/components/incentive-program-modal";
+import {
+  IncentiveProgramModal,
+  ACTORS,
+  groupProgramsByTier,
+} from "@/components/incentive-program-modal";
 
 const inputCls =
   "h-10 w-full px-3 rounded-[12px] border border-border bg-card text-[13px] outline-none focus:border-primary";

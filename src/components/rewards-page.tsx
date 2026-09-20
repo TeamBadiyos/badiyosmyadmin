@@ -19,7 +19,7 @@ import {
   type RewardCondition,
   type RewardLedgerRow,
 } from "@/lib/rewards.functions";
-import { IncentiveProgramModal } from "@/components/incentive-program-modal";
+import { IncentiveProgramModal, groupProgramsByTier } from "@/components/incentive-program-modal";
 
 const ACTORS = [
   { key: "customer", label: "Customer" },
