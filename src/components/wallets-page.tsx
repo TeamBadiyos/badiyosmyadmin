@@ -16,6 +16,8 @@ import {
   discardPayoutBatch,
   getTdsReport,
   markTdsDeposited,
+  getTdsSettings,
+  saveTdsSettings,
   type WalletOwner,
   type PayoutBatch,
 } from "@/lib/wallets.functions";
@@ -49,14 +51,14 @@ export function WalletsPage({ role }: { role: Role }) {
           Commission &amp; Incentives
         </TabBtn>
         <TabBtn active={tab === "tds"} onClick={() => setTab("tds")}>
-          TDS Report
+          TDS
         </TabBtn>
       </div>
       {tab === "balances" && <BalancesTab role={role} />}
       {tab === "payouts" && <PayoutsTab mode="expert" />}
       {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
       {tab === "commission" && <CommissionTab />}
-      {tab === "tds" && <TdsReportTab role={role} />}
+      {tab === "tds" && <TdsTab role={role} />}
     </div>
   );
 }
@@ -691,7 +693,77 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   );
 }
 
-function TdsReportTab({ role }: { role: Role }) {
+function TdsSettingsCard({ canWrite }: { canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const fetchSettings = useServerFn(getTdsSettings);
+  const save = useServerFn(saveTdsSettings);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ["wallets", "tds-settings"],
+    queryFn: () => fetchSettings(),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (v: { enabled?: boolean; rate?: number }) => save({ data: v }),
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const enabled = data?.enabled ?? false;
+  const rate = data?.rate ?? 2;
+
+  return (
+    <div className="bg-card border border-border rounded-[18px] p-5 space-y-3">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h3 className="text-[16px] font-bold text-foreground">TDS deduction</h3>
+          <p className="text-[13px] text-muted-foreground">
+            One rate for every payout — experts and area partners.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-[13px] font-semibold">
+            <input
+              type="checkbox"
+              checked={enabled}
+              disabled={!canWrite || mutation.isPending}
+              onChange={(e) => mutation.mutate({ enabled: e.target.checked })}
+            />
+            {enabled ? "On" : "Off"}
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] text-muted-foreground">Rate</span>
+            <input
+              key={rate}
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              defaultValue={rate}
+              disabled={!canWrite}
+              onBlur={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v) && v !== rate) mutation.mutate({ rate: v });
+              }}
+              className="w-24 h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] disabled:opacity-60"
+            />
+            <span className="text-[13px] text-muted-foreground">%</span>
+          </div>
+        </div>
+      </div>
+      {!canWrite && (
+        <p className="text-[13px] text-muted-foreground">Read-only — Super Admin can change this.</p>
+      )}
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function TdsTab({ role }: { role: Role }) {
   const queryClient = useQueryClient();
   const fetchReport = useServerFn(getTdsReport);
   const markDeposited = useServerFn(markTdsDeposited);
@@ -739,6 +811,7 @@ function TdsReportTab({ role }: { role: Role }) {
 
   return (
     <div className="space-y-4">
+      <TdsSettingsCard canWrite={role === "super_admin"} />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-[13px] text-muted-foreground">Financial year</span>
