@@ -67,6 +67,24 @@ export function CommissionTab() {
 
   return (
     <div className="space-y-4">
+      <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
+        {(["commission", "incentives"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSub(s)}
+            className={`h-9 px-4 rounded-[10px] text-[13px] font-semibold capitalize ${
+              sub === s ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {sub === "incentives" && <IncentivesTab canWrite={canWrite} />}
+
+      {sub === "commission" && (
+      <>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[14px] text-muted-foreground">
