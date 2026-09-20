@@ -45,6 +45,7 @@ export function ExpertFormModal({
 }) {
   const queryClient = useQueryClient();
   const fetchExpert = useServerFn(getExpert);
+  const fetchExperts = useServerFn(listExperts);
   const fetchZones = useServerFn(listZoneOptions);
   const save = useServerFn(upsertExpert);
   const saveZones = useServerFn(setExpertZones);
