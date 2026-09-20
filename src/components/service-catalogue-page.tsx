@@ -38,7 +38,6 @@ import {
   type AvailabilityOverride,
 } from "@/lib/catalogue.functions";
 import { AvailabilityModal, AvailabilityBadge } from "@/components/availability-modal";
-import { getCommissionAccess } from "@/lib/commission.functions";
 
 import {
   ServiceImage,
