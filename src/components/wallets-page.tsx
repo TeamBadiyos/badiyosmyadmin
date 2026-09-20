@@ -16,6 +16,7 @@ import {
   type WalletOwner,
   type PayoutBatch,
 } from "@/lib/wallets.functions";
+import { CommissionTab } from "@/components/commission-tab";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
