@@ -34,6 +34,8 @@ export type ExpertDetails = ExpertRow & {
   kycAddressProofPath: string | null;
   kycRejectionReason: string | null;
   securityDepositStatus: "pending" | "collected" | "adjusted";
+  referredByExpertId: string | null;
+  referredByExpertName: string | null;
   createdAt: string;
 };
 
