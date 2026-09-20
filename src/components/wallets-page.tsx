@@ -16,6 +16,8 @@ import {
   discardPayoutBatch,
   getTdsReport,
   markTdsDeposited,
+  getTdsSettings,
+  saveTdsSettings,
   type WalletOwner,
   type PayoutBatch,
 } from "@/lib/wallets.functions";
@@ -49,14 +51,14 @@ export function WalletsPage({ role }: { role: Role }) {
           Commission &amp; Incentives
         </TabBtn>
         <TabBtn active={tab === "tds"} onClick={() => setTab("tds")}>
-          TDS Report
+          TDS
         </TabBtn>
       </div>
       {tab === "balances" && <BalancesTab role={role} />}
       {tab === "payouts" && <PayoutsTab mode="expert" />}
       {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
       {tab === "commission" && <CommissionTab />}
-      {tab === "tds" && <TdsReportTab role={role} />}
+      {tab === "tds" && <TdsTab role={role} />}
     </div>
   );
 }
