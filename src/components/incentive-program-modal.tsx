@@ -364,3 +364,37 @@ export function IncentiveProgramModal({
     </div>
   );
 }
+
+export type ProgramTierGroup = {
+  key: string;
+  title: string;
+  note: string;
+  items: RewardProgram[];
+};
+
+export function groupProgramsByTier(programs: RewardProgram[]): ProgramTierGroup[] {
+  const buckets = new Map<string, RewardProgram[]>();
+  for (const p of programs) {
+    const key = String((p.condition ?? {})["tier_group"] ?? "") || "__standalone";
+    const list = buckets.get(key) ?? [];
+    list.push(p);
+    buckets.set(key, list);
+  }
+  const thresholdOf = (p: RewardProgram) => {
+    const c = p.condition ?? {};
+    return Number(c["hours"] ?? c["days"] ?? c["count"] ?? c["orders"] ?? p.reward_value ?? 0);
+  };
+  const out: ProgramTierGroup[] = [...buckets.entries()].map(([key, items]) => ({
+    key,
+    title: key === "__standalone" ? "Standalone bonuses" : `${key.replace(/_/g, " ")} slabs`,
+    note:
+      key === "__standalone"
+        ? "These add on top of any slab bonus — each one is paid separately."
+        : "Only the highest slab an expert reaches in this category is paid — not all of them.",
+    items: [...items].sort((a, b) => thresholdOf(a) - thresholdOf(b)),
+  }));
+  out.sort((a, b) =>
+    a.key === "__standalone" ? 1 : b.key === "__standalone" ? -1 : a.key.localeCompare(b.key),
+  );
+  return out;
+}
