@@ -410,19 +410,29 @@ export const updateSupportTicket = createServerFn({ method: "POST" })
       status: TicketStatus;
       note?: string | null;
       resolution?: string | null;
+      resolutionOutcome?: string | null;
     }) => {
       if (!input?.ticketId) throw new Error("ticketId required");
       if (!["open", "in_progress", "answered", "resolved"].includes(input.status))
         throw new Error("Invalid status");
+      if (
+        input.resolutionOutcome &&
+        !["expert_fault", "customer_fault", "platform_issue", "no_fault", "other"].includes(
+          input.resolutionOutcome,
+        )
+      )
+        throw new Error("Invalid resolution outcome");
       return input;
     },
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("staff_update_support_ticket", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_update_support_ticket", {
       _ticket_id: data.ticketId,
       _status: data.status,
       _note: data.note?.trim() ? data.note.trim() : undefined,
       _resolution: data.resolution?.trim() ? data.resolution.trim() : undefined,
+      _resolution_outcome: data.resolutionOutcome || undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
