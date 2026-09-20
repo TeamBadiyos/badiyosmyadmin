@@ -34,6 +34,8 @@ export type ExpertDetails = ExpertRow & {
   kycAddressProofPath: string | null;
   kycRejectionReason: string | null;
   securityDepositStatus: "pending" | "collected" | "adjusted";
+  referredByExpertId: string | null;
+  referredByExpertName: string | null;
   createdAt: string;
 };
 
@@ -190,7 +192,18 @@ export const getExpert = createServerFn({ method: "POST" })
         .maybeSingle();
       zoneName = z?.name ?? null;
     }
+    let referredByExpertName: string | null = null;
+    if (e.referred_by_expert_id) {
+      const { data: ref } = await context.supabase
+        .from("experts")
+        .select("name")
+        .eq("id", e.referred_by_expert_id)
+        .maybeSingle();
+      referredByExpertName = ref?.name ?? null;
+    }
     return {
+      referredByExpertId: e.referred_by_expert_id ?? null,
+      referredByExpertName,
       id: e.id,
       name: e.name,
       phone: e.phone,
@@ -235,6 +248,7 @@ export type UpsertExpertInput = {
   kyc_aadhaar_url?: string | null;
   kyc_pan_url?: string | null;
   kyc_address_proof_url?: string | null;
+  referred_by_expert_id?: string | null;
 };
 
 export const upsertExpert = createServerFn({ method: "POST" })

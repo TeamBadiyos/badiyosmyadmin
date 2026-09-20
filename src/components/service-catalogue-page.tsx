@@ -38,7 +38,6 @@ import {
   type AvailabilityOverride,
 } from "@/lib/catalogue.functions";
 import { AvailabilityModal, AvailabilityBadge } from "@/components/availability-modal";
-import { getCommissionAccess } from "@/lib/commission.functions";
 
 import {
   ServiceImage,
@@ -902,12 +901,6 @@ function PriceOptionModal({
   const queryClient = useQueryClient();
   const save = useServerFn(upsertPriceOption);
   const saveLinks = useServerFn(setItemTaskTypes);
-  const fetchCommissionAccess = useServerFn(getCommissionAccess);
-  const { data: commissionAccess } = useQuery({
-    queryKey: ["commission", "access"],
-    queryFn: () => fetchCommissionAccess(),
-  });
-  const hidePayoutFields = commissionAccess?.newEngineEnabled ?? false;
   const [selectedTaskTypes, setSelectedTaskTypes] =
     useState<string[]>(linkedTaskTypeIds);
   const [label, setLabel] = useState(option?.label ?? "");
@@ -919,13 +912,11 @@ function PriceOptionModal({
   const [wasPrice, setWasPrice] = useState(
     option?.strikethrough_price != null ? String(option.strikethrough_price) : "",
   );
-  const [expert, setExpert] = useState(
-    option?.expert_payout != null ? String(option.expert_payout) : "",
-  );
-  const [partner, setPartner] = useState(
-    option?.partner_commission != null ? String(option.partner_commission) : "",
-  );
-  const [hq, setHq] = useState(option?.hq_share != null ? String(option.hq_share) : "");
+  // Legacy split values are preserved as-is; splits are configured in Commission & Incentives.
+  const expert = option?.expert_payout != null ? String(option.expert_payout) : "";
+  const partner =
+    option?.partner_commission != null ? String(option.partner_commission) : "";
+  const hq = option?.hq_share != null ? String(option.hq_share) : "";
   const [order, setOrder] = useState(String(option?.display_order ?? 0));
   const [active, setActive] = useState(option?.is_active ?? true);
   const [image, setImage] = useState<string | null>(option?.image_url ?? null);
@@ -1030,34 +1021,10 @@ function PriceOptionModal({
             onChange={(e) => setWasPrice(e.target.value)}
           />
         </Field>
-        {!hidePayoutFields && (
-          <>
-            <Field label="Expert payout">
-              <input
-                className={inputCls}
-                value={expert}
-                inputMode="decimal"
-                onChange={(e) => setExpert(e.target.value)}
-              />
-            </Field>
-            <Field label="Partner commission">
-              <input
-                className={inputCls}
-                value={partner}
-                inputMode="decimal"
-                onChange={(e) => setPartner(e.target.value)}
-              />
-            </Field>
-            <Field label="HQ share">
-              <input
-                className={inputCls}
-                value={hq}
-                inputMode="decimal"
-                onChange={(e) => setHq(e.target.value)}
-              />
-            </Field>
-          </>
-        )}
+        <p className="col-span-2 text-[12px] text-muted-foreground">
+          Expert, partner and HQ shares are now set in Wallet &amp; Payout → Commission &amp;
+          Incentives.
+        </p>
         <Field label="Display order">
           <input
             className={inputCls}

@@ -5,6 +5,7 @@ import { X, Upload, Check, Loader2, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getExpert,
+  listExperts,
   upsertExpert,
   setExpertZones,
   signStorageUrl,
@@ -44,6 +45,7 @@ export function ExpertFormModal({
 }) {
   const queryClient = useQueryClient();
   const fetchExpert = useServerFn(getExpert);
+  const fetchExperts = useServerFn(listExperts);
   const fetchZones = useServerFn(listZoneOptions);
   const save = useServerFn(upsertExpert);
   const saveZones = useServerFn(setExpertZones);
@@ -82,7 +84,18 @@ export function ExpertFormModal({
   const [ifscError, setIfscError] = useState<string | null>(null);
   const [ifscLoading, setIfscLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [referredBy, setReferredBy] = useState("");
   const seededRef = useRef(false);
+
+  const { data: allExperts = [] } = useQuery({
+    queryKey: ["experts", "referrer-options"],
+    queryFn: () => fetchExperts({ data: {} }),
+    staleTime: 60_000,
+  });
+  const referrerOptions = useMemo(
+    () => allExperts.filter((e) => e.id !== expertId),
+    [allExperts, expertId],
+  );
 
   useEffect(() => {
     if (existing && !seededRef.current) {
@@ -103,6 +116,7 @@ export function ExpertFormModal({
       setBankAcc(existing.bankAccountNumber ?? "");
       setBankIfsc(existing.bankIfsc ?? "");
       setBankHolder(existing.bankAccountHolderName ?? "");
+      setReferredBy(existing.referredByExpertId ?? "");
     }
   }, [existing]);
 
@@ -153,6 +167,7 @@ export function ExpertFormModal({
           kyc_aadhaar_url: aadhaar.path,
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
+          referred_by_expert_id: referredBy || null,
         },
       });
       await saveZones({
@@ -265,6 +280,23 @@ export function ExpertFormModal({
             <SelectField label="Status" value={status} onChange={(v) => setStatus(v as ActiveStatus)}>
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </SelectField>
+            <div className="md:col-span-2">
+              <SelectField
+                label="Referred by expert (optional)"
+                value={referredBy}
+                onChange={setReferredBy}
+              >
+                <option value="">No referral</option>
+                {referrerOptions.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} · {e.phone}
+                  </option>
+                ))}
+              </SelectField>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Referral bonus pays out once this expert completes the required jobs.
+              </p>
+            </div>
           </section>
 
           <section>
