@@ -328,7 +328,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
 
     const { data: expert } = await db
       .from("experts")
-      .select("id, name, phone, email, created_at, preferred_language, address")
+      .select("id, name, phone, created_at, preferred_language, address")
       .eq("auth_user_id", uid)
       .maybeSingle();
     if (expert) {
@@ -336,7 +336,6 @@ export const getTicketContact = createServerFn({ method: "POST" })
         id: string;
         name: string | null;
         phone: string | null;
-        email: string | null;
         created_at: string | null;
         preferred_language: string | null;
         address: string | null;
@@ -354,7 +353,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
         role: "expert",
         name: e.name,
         phone: e.phone,
-        email: e.email,
+        email: null,
         joinedAt: e.created_at,
         language: e.preferred_language,
         address: e.address,
@@ -378,7 +377,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
 
     const { data: merchant } = await db
       .from("merchants")
-      .select("id, store_name, owner_name, phone, email, created_at, address")
+      .select("id, store_name, owner_name, phone, created_at, address")
       .eq("auth_user_id", uid)
       .maybeSingle();
     if (merchant) {
@@ -386,7 +385,6 @@ export const getTicketContact = createServerFn({ method: "POST" })
         store_name: string | null;
         owner_name: string | null;
         phone: string | null;
-        email: string | null;
         created_at: string | null;
         address: string | null;
       };
@@ -395,7 +393,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
         role: "merchant",
         name: m.owner_name ?? m.store_name,
         phone: m.phone,
-        email: m.email,
+        email: null,
         joinedAt: m.created_at,
         address: m.address,
       };
