@@ -274,7 +274,9 @@ export function IncentivesTab({ canWrite }: { canWrite: boolean }) {
               </div>
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
 
       {editing && (
