@@ -811,6 +811,7 @@ function TdsTab({ role }: { role: Role }) {
 
   return (
     <div className="space-y-4">
+      <TdsSettingsCard canWrite={role === "super_admin"} />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-[13px] text-muted-foreground">Financial year</span>
