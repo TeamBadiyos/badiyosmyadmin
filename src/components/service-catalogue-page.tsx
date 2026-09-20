@@ -38,6 +38,7 @@ import {
   type AvailabilityOverride,
 } from "@/lib/catalogue.functions";
 import { AvailabilityModal, AvailabilityBadge } from "@/components/availability-modal";
+import { getCommissionAccess } from "@/lib/commission.functions";
 
 import {
   ServiceImage,
@@ -901,6 +902,12 @@ function PriceOptionModal({
   const queryClient = useQueryClient();
   const save = useServerFn(upsertPriceOption);
   const saveLinks = useServerFn(setItemTaskTypes);
+  const fetchCommissionAccess = useServerFn(getCommissionAccess);
+  const { data: commissionAccess } = useQuery({
+    queryKey: ["commission", "access"],
+    queryFn: () => fetchCommissionAccess(),
+  });
+  const hidePayoutFields = commissionAccess?.newEngineEnabled ?? false;
   const [selectedTaskTypes, setSelectedTaskTypes] =
     useState<string[]>(linkedTaskTypeIds);
   const [label, setLabel] = useState(option?.label ?? "");
@@ -1023,30 +1030,34 @@ function PriceOptionModal({
             onChange={(e) => setWasPrice(e.target.value)}
           />
         </Field>
-        <Field label="Expert payout">
-          <input
-            className={inputCls}
-            value={expert}
-            inputMode="decimal"
-            onChange={(e) => setExpert(e.target.value)}
-          />
-        </Field>
-        <Field label="Partner commission">
-          <input
-            className={inputCls}
-            value={partner}
-            inputMode="decimal"
-            onChange={(e) => setPartner(e.target.value)}
-          />
-        </Field>
-        <Field label="HQ share">
-          <input
-            className={inputCls}
-            value={hq}
-            inputMode="decimal"
-            onChange={(e) => setHq(e.target.value)}
-          />
-        </Field>
+        {!hidePayoutFields && (
+          <>
+            <Field label="Expert payout">
+              <input
+                className={inputCls}
+                value={expert}
+                inputMode="decimal"
+                onChange={(e) => setExpert(e.target.value)}
+              />
+            </Field>
+            <Field label="Partner commission">
+              <input
+                className={inputCls}
+                value={partner}
+                inputMode="decimal"
+                onChange={(e) => setPartner(e.target.value)}
+              />
+            </Field>
+            <Field label="HQ share">
+              <input
+                className={inputCls}
+                value={hq}
+                inputMode="decimal"
+                onChange={(e) => setHq(e.target.value)}
+              />
+            </Field>
+          </>
+        )}
         <Field label="Display order">
           <input
             className={inputCls}
