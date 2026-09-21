@@ -11,6 +11,8 @@ export type DashboardStats = {
   // breakdown (used for tooltips / drilldowns)
   todayBookings: number;
   todayOrders: number;
+  courierToday: number;
+  courierRevenue: number;
   onlineExperts: number;
   openMerchants: number;
   // offers & campaigns
@@ -260,19 +262,68 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db.from("referral_milestone_awards").select("*", countOnly),
     ]);
 
+    // Courier (parcel delivery) orders — shown alongside service bookings.
+    const COURIER_ACTIVE = [
+      "ASSIGNED",
+      "ARRIVED_PICKUP",
+      "PICKED_UP",
+      "IN_TRANSIT",
+    ];
+    const COURIER_DONE = ["DELIVERED", "COMPLETED"];
+    const [
+      courierTodayRes,
+      courierRevenueRes,
+      courierActiveRes,
+      courierDoneRes,
+      courierPendingRes,
+    ] = await Promise.all([
+      db
+        .from("courier_orders")
+        .select("*", countOnly)
+        .gte("created_at", startOfDay)
+        .lt("created_at", endOfDay),
+      db
+        .from("courier_orders")
+        .select("total_amount")
+        .eq("payment_status", "PAID")
+        .gte("created_at", startOfDay)
+        .lt("created_at", endOfDay)
+        .limit(1000),
+      db.from("courier_orders").select("*", countOnly).in("status", COURIER_ACTIVE),
+      db
+        .from("courier_orders")
+        .select("*", countOnly)
+        .in("status", COURIER_DONE)
+        .gte("created_at", startOfDay)
+        .lt("created_at", endOfDay),
+      db.from("courier_orders").select("*", countOnly).eq("status", "SEARCHING"),
+    ]);
+
+    const courierRevenue = sum(courierRevenueRes.data, "total_amount");
+    const courierToday = courierTodayRes.count ?? 0;
+
     const redemptionRows = (redemptionsRes.data ?? []) as Array<{ discount_amount: number }>;
 
     return {
-      todayRevenue: bookingRevenue + orderRevenue + offlineRevenue,
-      todayTransactions: todayBookings + todayOrders,
-      activeNow: (activeBookingsRes.count ?? 0) + (activeOrdersRes.count ?? 0),
+      todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
+      todayTransactions: todayBookings + todayOrders + courierToday,
+      activeNow:
+        (activeBookingsRes.count ?? 0) +
+        (activeOrdersRes.count ?? 0) +
+        (courierActiveRes.count ?? 0),
       completedToday:
-        (completedBookingsRes.count ?? 0) + (completedOrdersRes.count ?? 0),
+        (completedBookingsRes.count ?? 0) +
+        (completedOrdersRes.count ?? 0) +
+        (courierDoneRes.count ?? 0),
       pendingAction:
-        (pendingBookingsRes.count ?? 0) + (pendingOrdersRes.count ?? 0),
+        (pendingBookingsRes.count ?? 0) +
+        (pendingOrdersRes.count ?? 0) +
+        (courierPendingRes.count ?? 0),
       onlineNow: onlineExperts + openMerchants,
       todayBookings,
       todayOrders,
+      courierToday,
+      courierRevenue,
       onlineExperts,
       openMerchants,
       couponsUsed: redemptionRows.length,
@@ -281,3 +332,4 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       rewardsIssued: awardsRes.count ?? 0,
     };
   });
+
