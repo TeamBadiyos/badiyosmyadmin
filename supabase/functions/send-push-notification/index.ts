@@ -286,6 +286,16 @@ Deno.serve(async (req) => {
   }
 
 
+  const deliveryId = payload.campaign_delivery_id;
+  const markDelivery = async (status: "delivered" | "failed", error: string | null) => {
+    if (!deliveryId) return;
+    const { error: upErr } = await admin
+      .from("campaign_deliveries")
+      .update({ status, error })
+      .eq("id", deliveryId);
+    if (upErr) console.error("[push] delivery update failed", upErr);
+  };
+
   const { data: tokens, error: tokErr } = await admin
     .from("device_tokens")
     .select("id, fcm_token")
@@ -294,10 +304,12 @@ Deno.serve(async (req) => {
 
   if (tokErr) {
     console.error("[push] token lookup failed", tokErr);
+    await markDelivery("failed", "Device lookup failed");
     return json(200, { sent: 0, failed: 0, note: "token lookup failed" });
   }
   if (!tokens || tokens.length === 0) {
-    return json(200, { sent: 0, failed: 0, note: "no tokens" });
+    await markDelivery("failed", "App not installed / no registered device");
+    return json(200, { sent: 0, failed: 0, note: "no tokens", results: [] });
   }
 
   let accessToken: string;
@@ -305,17 +317,33 @@ Deno.serve(async (req) => {
     accessToken = await getFcmAccessToken();
   } catch (e) {
     console.error("[push] FCM auth failed", e);
+    await markDelivery("failed", "Push service auth failed");
     return json(200, { sent: 0, failed: tokens.length, error: String(e) });
   }
 
   let sent = 0;
   let failed = 0;
   const invalidIds: string[] = [];
+  const results: Array<{
+    token_tail: string;
+    ok: boolean;
+    status: number;
+    invalid: boolean;
+    error?: string;
+  }> = [];
 
   await Promise.all(
     tokens.map(async (t) => {
+      const tail = String(t.fcm_token ?? "").slice(-8);
       try {
         const r = await sendToToken(accessToken, t.fcm_token, title, body, data);
+        results.push({
+          token_tail: tail,
+          ok: r.ok,
+          status: r.status,
+          invalid: r.invalid,
+          error: r.error ? r.error.slice(0, 400) : undefined,
+        });
         if (r.ok) {
           sent++;
           await admin
@@ -329,6 +357,7 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         failed++;
+        results.push({ token_tail: tail, ok: false, status: 0, invalid: false, error: String(e) });
         console.error("[push] send exception", e);
       }
     }),
@@ -342,5 +371,23 @@ Deno.serve(async (req) => {
     if (delErr) console.error("[push] cleanup failed", delErr);
   }
 
-  return json(200, { sent, failed, cleaned: invalidIds.length });
+  if (sent > 0) {
+    await markDelivery("delivered", null);
+  } else {
+    const firstErr = results.find((r) => !r.ok)?.error;
+    await markDelivery(
+      "failed",
+      invalidIds.length > 0 && invalidIds.length === tokens.length
+        ? "Stale device token (app reinstalled or uninstalled)"
+        : (firstErr ?? "Push rejected by Google"),
+    );
+  }
+
+  return json(200, {
+    sent,
+    failed,
+    cleaned: invalidIds.length,
+    tokens: tokens.length,
+    results: payload.debug ? results : undefined,
+  });
 });
