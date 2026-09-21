@@ -17,11 +17,13 @@ import {
   listCampaignDeliveries,
   previewCampaignAudience,
   listCampaignCities,
+  searchCampaignCustomers,
   saveCampaign,
   sendCampaign,
   type CouponRow,
   type MilestoneRow,
   type CampaignRow,
+  type CampaignCustomer,
 } from "@/lib/offers.functions";
 
 type Tab = "coupons" | "milestones" | "campaigns";
