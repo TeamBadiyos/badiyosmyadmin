@@ -889,6 +889,7 @@ function CampaignModal({
     audience: campaign?.audience ?? (locked ? city ?? "" : "all"),
     show_in_offers: campaign?.show_in_offers ?? true,
   });
+  const [targets, setTargets] = useState<CampaignCustomer[]>([]);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -901,6 +902,8 @@ function CampaignModal({
           deep_link: form.deep_link || null,
           audience: form.audience,
           show_in_offers: form.show_in_offers,
+          target_user_ids:
+            form.audience === "specific_users" ? targets.map((t) => t.id) : null,
         },
       }),
     onSuccess: () => {
