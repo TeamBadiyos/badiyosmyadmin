@@ -305,12 +305,13 @@ export function PipelineKanban({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-4">
         <div className="min-w-0">
           <h2 className="text-[16px] font-bold text-foreground">
-            Service Operations
+            Live Orders
           </h2>
 
           <p className="text-[12px] text-muted-foreground mt-1">
-            Live board — cards move as statuses change.
+            Services and parcel delivery on one board — cards move as statuses change.
           </p>
+
           {isError && (
             <p className="text-[12px] text-destructive mt-1">
               Failed to load board

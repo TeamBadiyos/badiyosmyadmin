@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BOOKING_STATUSES,
@@ -10,6 +10,9 @@ import {
   type BookingRow,
   type BookingStatus,
 } from "@/lib/bookings.functions";
+import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
+import { OrderDetail } from "@/components/courier-page";
+
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -71,9 +74,12 @@ export function BookingsPage({
   const [to, setTo] = useState<string>(initialFilters?.to ?? "");
   const [page, setPage] = useState<number>(1);
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
+  const [orderType, setOrderType] = useState<"all" | "service" | "courier">("all");
+  const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
+  const fetchCourier = useServerFn(listCourierOrders);
 
   const { data: zones = [] } = useQuery({
     queryKey: ["bookings", "zone-options"],
@@ -100,9 +106,18 @@ export function BookingsPage({
     queryKey: ["bookings", "list", filters],
     queryFn: () => fetchBookings({ data: filters }),
     staleTime: 15_000,
+    enabled: orderType !== "courier",
   });
 
-  // Realtime: any change to bookings invalidates the list.
+  const canSeeCourier = role === "super_admin" || role === "ops_manager";
+  const { data: courierAll } = useQuery({
+    queryKey: ["bookings", "courier-list"],
+    queryFn: () => fetchCourier({ data: { status: null, search: null } }),
+    enabled: canSeeCourier && orderType !== "service",
+    staleTime: 15_000,
+  });
+
+  // Realtime: any change to bookings or parcel orders invalidates the list.
   useEffect(() => {
     const channel = supabase
       .channel("bookings-list")
@@ -111,15 +126,36 @@ export function BookingsPage({
         { event: "*", schema: "public", table: "bookings" },
         () => queryClient.invalidateQueries({ queryKey: ["bookings", "list"] }),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courier_orders" },
+        () =>
+          queryClient.invalidateQueries({ queryKey: ["bookings", "courier-list"] }),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
-  const rows = data?.rows ?? [];
-  const total = data?.total ?? 0;
+  const rows = orderType === "courier" ? [] : (data?.rows ?? []);
+  const total = orderType === "courier" ? 0 : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Parcel orders are listed alongside services (first page only, date-filtered).
+  const courierRows = useMemo(() => {
+    if (orderType === "service" || !canSeeCourier) return [];
+    if (orderType === "all" && page > 1) return [];
+    const fromMs = from ? new Date(`${from}T00:00:00`).getTime() : null;
+    const toMs = to ? new Date(`${to}T23:59:59`).getTime() : null;
+    return (courierAll ?? []).filter((o) => {
+      const t = new Date(o.created_at).getTime();
+      if (fromMs != null && t < fromMs) return false;
+      if (toMs != null && t > toMs) return false;
+      return true;
+    });
+  }, [courierAll, orderType, page, from, to, canSeeCourier]);
+
 
   function updateFilter(fn: () => void) {
     fn();
@@ -131,7 +167,28 @@ export function BookingsPage({
   return (
     <div className="space-y-6">
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        {canSeeCourier && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Type
+            </label>
+            <select
+              value={orderType}
+              onChange={(e) =>
+                updateFilter(() =>
+                  setOrderType(e.target.value as "all" | "service" | "courier"),
+                )
+              }
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[150px]"
+            >
+              <option value="all">All orders</option>
+              <option value="service">Services only</option>
+              <option value="courier">Parcel delivery only</option>
+            </select>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
+
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             Status
           </label>
@@ -222,7 +279,9 @@ export function BookingsPage({
         )}
 
         <div className="ml-auto text-[12px] text-muted-foreground self-center">
-          {isLoading ? "Loading…" : `${total} booking${total === 1 ? "" : "s"}`}
+          {isLoading && orderType !== "courier"
+            ? "Loading…"
+            : `${total + courierRows.length} order${total + courierRows.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
@@ -242,29 +301,39 @@ export function BookingsPage({
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
+              {isLoading && orderType !== "courier" && (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
-              {isError && !isLoading && (
+              {isError && !isLoading && orderType !== "courier" && (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-destructive">
                     Failed to load bookings.
                   </td>
                 </tr>
               )}
-              {!isLoading && !isError && rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center py-10 text-muted-foreground">
-                    No bookings match these filters.
-                  </td>
-                </tr>
-              )}
+              {!isLoading &&
+                !isError &&
+                rows.length === 0 &&
+                courierRows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No orders match these filters.
+                    </td>
+                  </tr>
+                )}
               {rows.map((r) => (
                 <BookingRowItem key={r.id} row={r} onSelect={onSelect} />
+              ))}
+              {courierRows.map((o) => (
+                <CourierRowItem
+                  key={o.id}
+                  row={o}
+                  onSelect={() => setOpenCourier(o)}
+                />
               ))}
             </tbody>
           </table>
@@ -294,9 +363,84 @@ export function BookingsPage({
           </div>
         </div>
       </div>
+
+      {openCourier && (
+        <OrderDetail
+          order={openCourier}
+          canWrite={role === "super_admin"}
+          onClose={() => setOpenCourier(null)}
+          onChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ["bookings", "courier-list"] });
+            setOpenCourier(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+function CourierRowItem({
+  row,
+  onSelect,
+}: {
+  row: CourierOrderRow;
+  onSelect: () => void;
+}) {
+  const payment =
+    row.refund_status === "COMPLETED" || row.refund_status === "completed"
+      ? "refunded"
+      : row.payment_status === "PAID"
+        ? "paid"
+        : "unpaid";
+  return (
+    <tr
+      onClick={onSelect}
+      className="border-t border-border hover:bg-muted/40 cursor-pointer"
+    >
+      <td className="px-4 py-3 font-semibold text-foreground">
+        <div className="flex items-center gap-2">
+          <span>{row.customerName ?? "Customer"}</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-tint text-primary">
+            <Package size={10} /> Parcel
+          </span>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">
+        <div className="text-foreground">{row.order_code}</div>
+        <div className="text-[11px] truncate max-w-[280px]">
+          {row.pickup_address ?? "—"} → {row.drop_address ?? "—"}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">{row.city ?? "—"}</td>
+      <td className="px-4 py-3">
+        {row.riderName ? (
+          <span className="text-foreground">{row.riderName}</span>
+        ) : (
+          <span className="text-muted-foreground italic">Unassigned</span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-muted-foreground">
+          {row.status.replace(/_/g, " ").toLowerCase()}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${PAYMENT_STYLES[payment]}`}
+        >
+          {payment}
+        </span>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          ₹{row.total_amount.toFixed(0)}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+        {fmtDateTime(row.created_at)}
+      </td>
+    </tr>
+  );
+}
+
 
 function BookingRowItem({
   row,
