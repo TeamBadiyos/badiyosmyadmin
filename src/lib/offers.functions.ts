@@ -365,6 +365,7 @@ export type CampaignRow = {
   created_at: string;
   delivered: number;
   failed: number;
+  target_user_ids: string[] | null;
 };
 
 export const listCampaigns = createServerFn({ method: "GET" })
@@ -374,7 +375,7 @@ export const listCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("marketing_campaigns")
       .select(
-        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at",
+        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at, target_user_ids",
       )
       .order("created_at", { ascending: false })
       .limit(200);
@@ -473,6 +474,7 @@ export type CampaignInput = {
   audience: string;
   coupon_id?: string | null;
   show_in_offers?: boolean;
+  target_user_ids?: string[] | null;
 };
 
 export const saveCampaign = createServerFn({ method: "POST" })
@@ -481,6 +483,8 @@ export const saveCampaign = createServerFn({ method: "POST" })
     if (!input?.title?.trim()) throw new Error("Title is required");
     if (!input.body?.trim()) throw new Error("Message is required");
     if (!input.audience?.trim()) throw new Error("Audience is required");
+    if (input.audience === "specific_users" && !(input.target_user_ids ?? []).length)
+      throw new Error("Select at least one customer");
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -494,6 +498,8 @@ export const saveCampaign = createServerFn({ method: "POST" })
       _audience: data.audience,
       _coupon_id: data.coupon_id ?? null,
       _show_in_offers: data.show_in_offers ?? true,
+      _target_user_ids:
+        data.audience === "specific_users" ? (data.target_user_ids ?? []) : null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     if (error) throw new Error(error.message);
@@ -521,7 +527,7 @@ export type AudiencePreview = { total: number; reachable: number; unreachable: n
 /** How many customers an audience selects, and how many can actually receive a push. */
 export const previewCampaignAudience = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { audience: string }) => {
+  .inputValidator((input: { audience: string; targetUserIds?: string[] | null }) => {
     if (!input?.audience) throw new Error("audience required");
     return input;
   })
@@ -529,6 +535,7 @@ export const previewCampaignAudience = createServerFn({ method: "GET" })
     await requireOffersStaff(context.supabase, context.userId);
     const { data: res, error } = await context.supabase.rpc("staff_campaign_audience_preview", {
       _audience: data.audience,
+      _target_user_ids: data.targetUserIds ?? null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     if (error) throw new Error(error.message);
@@ -538,4 +545,61 @@ export const previewCampaignAudience = createServerFn({ method: "GET" })
       reachable: Number(r.reachable ?? 0),
       unreachable: Number(r.unreachable ?? 0),
     };
+  });
+
+export type CampaignCustomer = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  city: string | null;
+  has_app: boolean;
+};
+
+/** Search customers to target a campaign at specific people. */
+export const searchCampaignCustomers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { search?: string | null; ids?: string[] | null } | undefined) => input ?? {})
+  .handler(async ({ data, context }): Promise<CampaignCustomer[]> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const db = context.supabase;
+    const ids = data.ids ?? [];
+    const search = (data.search ?? "").trim();
+
+    let q = db
+      .from("users")
+      .select("id, full_name, phone")
+      .is("deleted_at", null)
+      .limit(ids.length ? ids.length : 20);
+
+    if (ids.length) {
+      q = q.in("id", ids);
+    } else {
+      if (!search) return [];
+      const esc = search.replace(/[%,]/g, "");
+      q = q.or(`full_name.ilike.%${esc}%,phone.ilike.%${esc}%,email.ilike.%${esc}%`);
+    }
+
+    const { data: users, error } = await q;
+    if (error) throw new Error(error.message);
+    const list = (users ?? []) as { id: string; full_name: string | null; phone: string | null }[];
+    if (!list.length) return [];
+
+    const userIds = list.map((u) => u.id);
+    const [{ data: tokens }, { data: addrs }] = await Promise.all([
+      db.from("device_tokens").select("user_id").eq("user_type", "customer").in("user_id", userIds),
+      db.from("addresses").select("user_id, city").in("user_id", userIds),
+    ]);
+    const withApp = new Set(((tokens ?? []) as { user_id: string }[]).map((t) => t.user_id));
+    const cityMap = new Map<string, string | null>();
+    for (const a of (addrs ?? []) as { user_id: string; city: string | null }[]) {
+      if (!cityMap.has(a.user_id)) cityMap.set(a.user_id, a.city);
+    }
+
+    return list.map((u) => ({
+      id: u.id,
+      full_name: u.full_name,
+      phone: u.phone,
+      city: cityMap.get(u.id) ?? null,
+      has_app: withApp.has(u.id),
+    }));
   });

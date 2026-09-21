@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -17,11 +17,13 @@ import {
   listCampaignDeliveries,
   previewCampaignAudience,
   listCampaignCities,
+  searchCampaignCustomers,
   saveCampaign,
   sendCampaign,
   type CouponRow,
   type MilestoneRow,
   type CampaignRow,
+  type CampaignCustomer,
 } from "@/lib/offers.functions";
 
 type Tab = "coupons" | "milestones" | "campaigns";
@@ -40,6 +42,15 @@ function discountLabel(type: string, value: number, max: number | null) {
 
 function fmtDate(v: string | null) {
   return v ? new Date(v).toLocaleDateString("en-IN") : "—";
+}
+
+function audienceLabel(c: { audience: string; target_user_ids?: string[] | null }) {
+  if (c.audience === "all") return "All customers";
+  if (c.audience === "specific_users") {
+    const n = c.target_user_ids?.length ?? 0;
+    return `${n} customer${n === 1 ? "" : "s"} selected`;
+  }
+  return c.audience;
 }
 
 const inputCls =
@@ -796,7 +807,7 @@ function CampaignsTab({
                 <p className="font-bold truncate">{c.title}</p>
                 <p className="text-[12px] text-muted-foreground truncate">{c.body}</p>
               </button>
-              <span className="text-[13px]">{c.audience === "all" ? "All customers" : c.audience}</span>
+              <span className="text-[13px]">{audienceLabel(c)}</span>
               <span>
                 <span
                   className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
@@ -887,6 +898,19 @@ function CampaignModal({
     audience: campaign?.audience ?? (locked ? city ?? "" : "all"),
     show_in_offers: campaign?.show_in_offers ?? true,
   });
+  const [targets, setTargets] = useState<CampaignCustomer[]>([]);
+
+  const fetchCustomers = useServerFn(searchCampaignCustomers);
+  const preselectIds = campaign?.target_user_ids ?? [];
+  const { data: preselected } = useQuery({
+    queryKey: ["offers", "campaign-targets", campaign?.id ?? "new"],
+    queryFn: () => fetchCustomers({ data: { ids: preselectIds } }),
+    enabled: preselectIds.length > 0,
+  });
+  useEffect(() => {
+    if (preselected?.length) setTargets(preselected);
+  }, [preselected]);
+
 
   const mut = useMutation({
     mutationFn: () =>
@@ -899,6 +923,8 @@ function CampaignModal({
           deep_link: form.deep_link || null,
           audience: form.audience,
           show_in_offers: form.show_in_offers,
+          target_user_ids:
+            form.audience === "specific_users" ? targets.map((t) => t.id) : null,
         },
       }),
     onSuccess: () => {
@@ -946,15 +972,15 @@ function CampaignModal({
             <select
               className={inputCls}
               value={form.audience}
-              disabled={locked}
               onChange={(e) => setForm({ ...form, audience: e.target.value })}
             >
               {!locked && <option value="all">All customers</option>}
-              {cities.map((c) => (
+              {(locked ? cities.filter((c) => c === city) : cities).map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
+              <option value="specific_users">Specific customers</option>
             </select>
           </Field>
           <Field label="Show in customer Offers tab">
@@ -968,6 +994,10 @@ function CampaignModal({
             </label>
           </Field>
         </div>
+
+        {form.audience === "specific_users" && (
+          <CustomerPicker selected={targets} onChange={setTargets} />
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-5">
@@ -979,6 +1009,105 @@ function CampaignModal({
         </button>
       </div>
     </Modal>
+  );
+}
+
+function CustomerPicker({
+  selected,
+  onChange,
+}: {
+  selected: CampaignCustomer[];
+  onChange: (rows: CampaignCustomer[]) => void;
+}) {
+  const fetchCustomers = useServerFn(searchCampaignCustomers);
+  const [term, setTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(term.trim()), 300);
+    return () => clearTimeout(t);
+  }, [term]);
+
+  const { data: results = [], isFetching } = useQuery({
+    queryKey: ["offers", "customer-search", debounced],
+    queryFn: () => fetchCustomers({ data: { search: debounced } }),
+    enabled: debounced.length >= 2,
+  });
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+
+  return (
+    <div className="space-y-3 border border-border rounded-[14px] p-4">
+      <div>
+        <p className={labelCls}>Select customers</p>
+        <input
+          className={`${inputCls} mt-1`}
+          placeholder="Search by name or phone number"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+        />
+      </div>
+
+      {debounced.length >= 2 && (
+        <div className="max-h-48 overflow-y-auto divide-y divide-border border border-border rounded-[12px]">
+          {isFetching && <p className="text-[12px] text-muted-foreground p-3">Searching…</p>}
+          {!isFetching && results.length === 0 && (
+            <p className="text-[12px] text-muted-foreground p-3">No customer found.</p>
+          )}
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              disabled={selectedIds.has(r.id)}
+              onClick={() => onChange([...selected, r])}
+              className="w-full text-left px-3 py-2 text-[13px] hover:bg-muted disabled:opacity-50 flex items-center justify-between gap-3"
+            >
+              <span className="min-w-0">
+                <span className="font-semibold">{r.full_name ?? "—"}</span>
+                <span className="text-[12px] text-muted-foreground"> · {r.phone ?? "—"}</span>
+                {r.city && <span className="text-[12px] text-muted-foreground"> · {r.city}</span>}
+              </span>
+              <span
+                className={`text-[11px] font-bold uppercase ${
+                  r.has_app ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {r.has_app ? "App" : "No app"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {selected.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">Nobody selected yet.</p>
+        )}
+        {selected.map((s) => (
+          <span
+            key={s.id}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold ${
+              s.has_app ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {s.full_name ?? s.phone ?? "Customer"}
+            <button
+              type="button"
+              onClick={() => onChange(selected.filter((x) => x.id !== s.id))}
+              aria-label="Remove"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <p className="text-[12px] text-muted-foreground">
+          {selected.length} selected · {selected.filter((s) => s.has_app).length} can receive the
+          notification.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -995,17 +1124,27 @@ function SendConfirmModal({
 }) {
   const preview = useServerFn(previewCampaignAudience);
   const { data, isLoading } = useQuery({
-    queryKey: ["offers", "audience", campaign.audience],
-    queryFn: () => preview({ data: { audience: campaign.audience } }),
+    queryKey: ["offers", "audience", campaign.id, campaign.audience],
+    queryFn: () =>
+      preview({
+        data: {
+          audience: campaign.audience,
+          targetUserIds: campaign.target_user_ids ?? null,
+        },
+      }),
   });
 
   return (
     <Modal title="Send this campaign?" onClose={onClose}>
       <div className="space-y-3 text-[13px]">
         <p className="text-muted-foreground">
-          This sends an app notification to customers in{" "}
+          This sends an app notification to{" "}
           <strong className="text-foreground">
-            {campaign.audience === "all" ? "all cities" : campaign.audience}
+            {campaign.audience === "all"
+              ? "customers in all cities"
+              : campaign.audience === "specific_users"
+                ? audienceLabel(campaign)
+                : `customers in ${campaign.audience}`}
           </strong>
           . It cannot be undone or edited afterwards.
         </p>
