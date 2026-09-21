@@ -44,6 +44,9 @@ import {
   type ServiceFlagRow,
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
+import { listServiceControl } from "@/lib/service-control.functions";
+import { ServiceStatusSection } from "@/components/courier/service-status-section";
+import { ServiceHoursSection } from "@/components/courier/service-hours-section";
 
 /* --------------------------------- shared -------------------------------- */
 
