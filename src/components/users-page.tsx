@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, Pencil, RotateCcw, Trash2, UserX, X } from "lucide-react";
+import {
+  BellRing,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  RotateCcw,
+  Trash2,
+  UserX,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   getCustomerProfile,
@@ -37,6 +46,7 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
   const [selected, setSelected] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<CustomerRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<CustomerRow | null>(null);
+  const [testRow, setTestRow] = useState<CustomerRow | null>(null);
 
   const queryClient = useQueryClient();
   const fetchCustomers = useServerFn(listCustomers);
