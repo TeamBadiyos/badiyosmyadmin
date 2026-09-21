@@ -1,42 +1,69 @@
-# Service Hours — Service Toggle tab ke andar
+# Service Status + Service Hours — Service Toggle tab ke andar
 
-Courier → Service Toggle tab me neeche ek naya "Service Hours" section jodenge. Yeh sirf Command Center ka UI hai. Tables aur RPC Customer App project ke plan me ban rahe hain — unke naam wahi se lekar yahan wire karenge (jab tak naam confirm nahi hote, screen read-only placeholder dikhayegi, koi guess kiya hua RPC call nahi karenge).
+Courier → Service Toggle tab me do naye section jodenge: upar **Service Status**, uske neeche **Service Hours**. Yeh Command Center ka UI hai. Tables aur RPC Customer App project ke plan me ban rahe hain — unke exact naam wahi se lekar wire karenge, koi naam guess nahi karenge. Jab tak naam confirm nahi, screen read-only placeholder dikhayegi.
 
-## Kya dikhega
+## 1. Service Status (sabse upar)
 
-City chunne ke baad har service (courier + baaki services) ka ek card:
+Har service ki row par:
 
-1. **Weekly hours** — Somvar se Ravivar, har din ke liye open aur close time, ek "band" switch (us din service nahi), aur last-order cutoff time (close se pehle aakhri order kab tak liya jaye).
-2. **Holiday calendar** — date chuno, reason English aur Marathi dono me likho, add karo. Neeche list me sab holidays, har row par edit aur hatao.
-3. **Aaj band rakho** — ek bada button: turant aaj ke liye band, reason maango (English + Marathi). Band hone par wahi button "Wapas kholo" ban jata hai, saath me kab tak band hai woh dikhega.
-4. **Customer message box** — after-hours par customer ko jo text dikhega, English aur Marathi dono. Alag-alag text: band hai, holiday hai, aur aaj band rakha hai.
-5. **Impact count** — koi bhi band karne wala action (din band, holiday, aaj band) save karne se pehle confirm dialog: us service + city me abhi chal rahe orders aur aage schedule hue bookings ki ginti, "kuch delete nahi hoga" wali line ke saath.
-6. **Customer ko kya dikhega preview** — ek preview panel jo abhi ke hisaab se dikhata hai: service khuli hai ya band, agla khulne ka time, aur wahi message jo customer app me aayega. Language toggle (English / मराठी) aur "kisi aur time par test karo" ke liye date-time picker.
+- **Dropdown**: Live / Coming Soon / Temporarily Stopped / Hidden.
+- **Custom note** English aur Marathi — khaali chhoda to har status ka default message chalega.
+- **Optional "wapas kab shuru hoga"** — date + time, hamesha IST.
+- Status badalte hi **confirm dialog**: us service + city me abhi chal rahe aur aane wale orders ki ginti, "kuch delete nahi hoga" line ke saath.
 
-## Access
+**Preset button** (section ke upar): "Sirf Local Parcel live rakho, baaki Coming Soon" — ek click me sabhi services Coming Soon, Local Parcel Live. Ek hi baar me sabke liye common note daalne ka option, confirm dialog (kitni services badlengi + active orders), aur save ke baad **Undo** (purani halat wapas, wahi RPC se, audit me alag entry).
 
-- super_admin: sab kuch badal sakta hai.
-- ops_manager: sirf dekh sakta hai — sab switch, buttons aur form disabled.
-- Baaki roles: section dikhega hi nahi (jaise abhi Courier section).
+## 2. Service Hours (neeche)
 
-Har save staff RPC se jayega aur audit_logs me before/after ke saath record hoga — yeh RPC ke andar hota hai, direct table write kahin nahi.
+1. **Weekly hours** — Somvar se Ravivar, har din open aur close time, "band" switch, aur cutoff time.
+   - "Somvar ka time sab din copy karo" button.
+   - Validation: close time open se baad hona chahiye; galat ho to save block aur inline error.
+   - **Cutoff ka label service ke hisaab se** — courier me "Last order time", home service me "Last slot ka end".
+2. **Holiday calendar** — single date ya **date range**, reason English + Marathi. List me edit/hatao. Purani (beet chuki) holidays list se apne aap hat jayengi (sirf display se; record rehta hai).
+3. **Aaj band rakho** — turant band, reason (EN + MR), aur **"kab tak"** ka option (aaj raat tak ya chuna hua time). Raat 12 baje IST par apne aap clear. Band hone par button "Wapas kholo" ban jata hai.
+4. **After-hours message box** — EN + MR, alag text: band hai / holiday hai / aaj band rakha hai.
+5. **Impact count** — har band karne wale action se pehle wahi confirm dialog with order counts.
+
+## 3. Priority rule
+
+Pehle **status**, phir **hours/holiday**. Matlab service Coming Soon / Temporarily Stopped / Hidden hai to hours aur holiday dekhe bina hi customer ko status wala message dikhega. Live hone par hi hours, holiday aur "aaj band" lagu honge. Preview dono ko milakar ek hi final jawab dikhayega.
+
+## 4. "Customer ko kya dikhega" preview
+
+- Abhi ke hisaab se: service khuli/band, agla khulne ka time, aur exact customer message.
+- Language toggle English / मराठी.
+- **Test-time picker sirf staff ke liye** (customer app me kabhi nahi), aur har time IST me dikhega aur IST me hi bheja jayega.
+- Marathi text ke liye Devanagari font fallback, taaki dabbe na dikhein.
+
+## 5. Access aur suraksha
+
+- **super_admin**: sab badal sakta hai.
+- **ops_manager**: sirf dekh sakta hai — sab dropdown, switch, button disabled.
+- Baaki roles: section dikhega hi nahi.
+- Role check sirf UI me nahi — **server function aur RPC dono me**.
+- Har save `updated_at` bhejega; agar beech me kisi aur ne badla to save reject hoga aur "kisi aur ne abhi badla hai, refresh karke dobara dekhiye" dikhega.
+- Har change audit_logs me before/after ke saath, RPC ke andar se.
 
 ## Technical notes
 
-- Naya file `src/components/courier/service-hours-section.tsx`, aur server functions `src/lib/service-hours.functions.ts` (authenticated, `requireSupabaseAuth`, role resolve wahi pattern jo `courier.functions.ts` me hai).
-- Customer App project se chahiye: table/column naam aur in RPC ke exact naam —
-  - weekly hours upsert (service, city, weekday, open, close, closed flag, last-order cutoff)
-  - holiday add / update / delete (date, reason_en, reason_mr)
-  - "closed today" set / clear (reason_en, reason_mr)
+- Naye files: `src/components/courier/service-status-section.tsx`, `src/components/courier/service-hours-section.tsx`, aur `src/lib/service-hours.functions.ts` (authenticated, `requireSupabaseAuth`, role resolve wahi pattern jo `courier.functions.ts` me hai).
+- Customer App project se chahiye exact RPC/table naam:
+  - service status set (status, note_en, note_mr, resume_at) + bulk/preset variant
+  - weekly hours upsert (service, city, weekday, open, close, closed flag, cutoff)
+  - holiday add/update/delete (start_date, end_date, reason_en, reason_mr)
+  - closed-today set/clear (reason_en, reason_mr, until)
   - after-hours message upsert (3 message types × 2 languages)
-  - current status read (open/closed + next open time) — preview aur customer app dono isi ko use karenge
-- Impact count ke liye naya RPC nahi: existing `bookings` aur `courier_orders` par scoped count query, wahi tareeka jo Service Toggle ke confirm dialog me pehle se hai.
-- Preview client-side calculate nahi karega — wahi status RPC call karega taaki customer app aur admin ek hi jawab dikhayein.
-- Styling existing Command Center tokens: Badiyos Green #00B97A, Nunito Sans, 8pt grid, wahi card/switch/modal patterns.
+  - combined status read (status + hours + holiday → open/closed, next open, final message) — preview aur customer app dono yahi use karenge
+- Impact count ke liye naya RPC nahi: `bookings` + `courier_orders` par scoped count, wahi tareeka jo Service Toggle ke maujooda confirm dialog me hai.
+- Auto-clear (midnight IST) DB side ho — UI par bharosa nahi; "until" column + read RPC me time comparison, ya existing cron. Yeh bhi Customer App plan se confirm karna hai.
+- Sab time storage UTC me, display/input IST me (`Asia/Kolkata`), preview server RPC se aata hai taaki admin aur customer ka jawab ek ho.
+- Styling: Badiyos Green #00B97A, Nunito Sans, 8pt grid, existing card/switch/modal patterns.
 
 ## Build order
 
 1. Customer App se RPC naam confirm.
-2. Server functions + role gating.
-3. UI section (weekly hours → holidays → aaj band → messages → preview).
-4. Ops manager read-only aur audit verify.
+2. Server functions + role gating + updated_at guard.
+3. Service Status section + preset + undo.
+4. Service Hours (weekly → holidays → aaj band → messages).
+5. Combined preview (status-first rule, IST, Devanagari fallback).
+6. Ops manager read-only aur audit verify.
