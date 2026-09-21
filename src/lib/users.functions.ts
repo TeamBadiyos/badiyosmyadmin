@@ -484,6 +484,7 @@ export type TestPushResult = {
     error?: string;
   }>;
   note: string | null;
+  reason: string | null;
 };
 
 /**
@@ -530,6 +531,8 @@ export const sendTestPush = createServerFn({ method: "POST" })
       cleaned?: number;
       tokens?: number;
       note?: string;
+      reason?: string;
+      error?: string;
       results?: TestPushResult["devices"];
     };
 
@@ -549,5 +552,6 @@ export const sendTestPush = createServerFn({ method: "POST" })
       cleaned: Number(body.cleaned ?? 0),
       devices: body.results ?? [],
       note: body.note ?? null,
+      reason: body.reason ?? body.error ?? null,
     };
   });

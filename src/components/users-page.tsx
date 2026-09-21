@@ -429,6 +429,11 @@ function TestPushModal({ row, onClose }: { row: CustomerRow; onClose: () => void
                 notification permission allowed on this account.
               </p>
             )}
+            {res.delivered === 0 && res.tokens > 0 && res.reason && (
+              <p className="text-[13px] text-destructive font-semibold break-words">
+                {res.reason}
+              </p>
+            )}
             {res.delivered > 0 && (
               <p className="text-[13px] text-primary">
                 Google accepted the notification. If the phone still shows nothing, the fix is in
