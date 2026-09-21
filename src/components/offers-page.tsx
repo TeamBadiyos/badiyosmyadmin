@@ -809,7 +809,7 @@ function CampaignsTab({
               </span>
               <span className="text-[12px] text-muted-foreground">
                 {c.status === "sent"
-                  ? `${c.recipients_count} · ${c.failed} failed`
+                  ? `${c.delivered} delivered · ${c.failed} failed`
                   : "—"}
               </span>
               <div className="flex justify-end gap-2">
@@ -821,7 +821,7 @@ function CampaignsTab({
                     <button
                       className={primaryBtn}
                       disabled={sendMut.isPending}
-                      onClick={() => sendMut.mutate(c.id)}
+                      onClick={() => setConfirmSend(c)}
                     >
                       <Send size={14} /> Send now
                     </button>
@@ -839,6 +839,17 @@ function CampaignsTab({
           role={role}
           city={city}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {confirmSend && (
+        <SendConfirmModal
+          campaign={confirmSend}
+          pending={sendMut.isPending}
+          onClose={() => setConfirmSend(null)}
+          onConfirm={() => {
+            sendMut.mutate(confirmSend.id);
+            setConfirmSend(null);
+          }}
         />
       )}
       {detail && <DeliveriesModal campaign={detail} onClose={() => setDetail(null)} />}
