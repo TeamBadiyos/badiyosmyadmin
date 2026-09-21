@@ -191,7 +191,26 @@ function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
   const rows = data ?? [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      {control ? (
+        <ServiceStatusSection
+          flags={control.flags}
+          canWrite={canWrite && control.canWrite}
+          activeOrdersByKey={activeOrdersByKey}
+          undo={control.undo}
+          onSaved={refresh}
+        />
+      ) : null}
+      {control ? (
+        <ServiceHoursSection
+          flags={control.flags}
+          hours={control.hours}
+          holidays={control.holidays}
+          canWrite={canWrite && control.canWrite}
+          onSaved={refresh}
+        />
+      ) : null}
+      <div className="space-y-3">
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">No services configured yet.</p>
       ) : null}
