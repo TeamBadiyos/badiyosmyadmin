@@ -236,7 +236,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     if (uErr) throw new Error(uErr.message);
     if (!user) throw new Error("Customer not found");
 
-    const [addrRes, bookRes, walletRes, refRes, ticketRes] = await Promise.all([
+    const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes] = await Promise.all([
       db
         .from("addresses")
         .select("id, label, full_address, area, city, is_default")
@@ -268,17 +268,30 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(100),
+      db
+        .from("courier_orders")
+        .select(
+          "id, order_code, created_at, status, payment_status, total_amount, distance_km, pickup_address, drop_address, assigned_expert_id",
+        )
+        .eq("customer_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(200),
     ]);
     if (addrRes.error) throw new Error(addrRes.error.message);
     if (bookRes.error) throw new Error(bookRes.error.message);
     if (walletRes.error) throw new Error(walletRes.error.message);
     if (refRes.error) throw new Error(refRes.error.message);
     if (ticketRes.error) throw new Error(ticketRes.error.message);
+    if (courierRes.error) throw new Error(courierRes.error.message);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bookingRows = (bookRes.data ?? []) as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const courierRows = (courierRes.data ?? []) as any[];
     const expertIds = Array.from(
-      new Set(bookingRows.map((b) => b.assigned_expert_id).filter(Boolean)),
+      new Set(
+        [...bookingRows, ...courierRows].map((b) => b.assigned_expert_id).filter(Boolean),
+      ),
     ) as string[];
     const counterpartIds = Array.from(
       new Set(
