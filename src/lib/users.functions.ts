@@ -502,21 +502,25 @@ export const sendTestPush = createServerFn({ method: "POST" })
     if (!isSuper) throw new Error("Forbidden");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: cfg } = await supabaseAdmin
+    const { data: cfgRows } = await supabaseAdmin
       .from("edge_runtime_config")
-      .select("value")
-      .eq("key", "push_trigger_secret")
-      .maybeSingle();
-    const secret = (cfg as { value?: string } | null)?.value;
+      .select("key,value")
+      .in("key", ["push_trigger_secret", "push_endpoint_url"]);
+    const cfg = Object.fromEntries(
+      ((cfgRows ?? []) as Array<{ key: string; value: string }>).map((r) => [r.key, r.value]),
+    );
+    const secret = cfg["push_trigger_secret"];
     if (!secret) throw new Error("Push service is not configured (missing trigger secret)");
 
-    const url = `${process.env["SUPABASE_URL"] ?? "https://dkneclwmmjlqswovtqno.supabase.co"}/functions/v1/send-push-notification`;
+    // Same live push service the app's own notifications use.
+    const url = cfg["push_endpoint_url"] || "https://user.badiyos.com/api/public/push/send";
     const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", "x-internal-secret": secret },
       body: JSON.stringify({
         user_type: data.userType ?? "customer",
         user_id: data.userId,
+        alert_type: "general",
         title: "Badiyos test notification",
         body: "Agar ye dikha, to notifications theek kaam kar rahe hain.",
         debug: true,
@@ -529,6 +533,7 @@ export const sendTestPush = createServerFn({ method: "POST" })
       sent?: number;
       failed?: number;
       cleaned?: number;
+      removed?: number;
       tokens?: number;
       note?: string;
       reason?: string;
@@ -549,7 +554,7 @@ export const sendTestPush = createServerFn({ method: "POST" })
       tokens: Number(body.tokens ?? 0),
       delivered: Number(body.sent ?? 0),
       failed: Number(body.failed ?? 0),
-      cleaned: Number(body.cleaned ?? 0),
+      cleaned: Number(body.cleaned ?? body.removed ?? 0),
       devices: body.results ?? [],
       note: body.note ?? null,
       reason: body.reason ?? body.error ?? null,
