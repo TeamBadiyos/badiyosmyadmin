@@ -631,6 +631,48 @@ function CustomerProfileModal({
                 )}
               </Section>
 
+              <Section title="Parcel delivery orders">
+                {data.courierOrders.length === 0 ? (
+                  <Empty label="No parcel orders yet." />
+                ) : (
+                  <table className="w-full text-[13px]">
+                    <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-4 py-2">Placed</th>
+                        <th className="text-left px-4 py-2">Order</th>
+                        <th className="text-left px-4 py-2">Route</th>
+                        <th className="text-left px-4 py-2">Rider</th>
+                        <th className="text-left px-4 py-2">Status</th>
+                        <th className="text-left px-4 py-2">Payment</th>
+                        <th className="text-left px-4 py-2">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.courierOrders.map((c) => (
+                        <tr key={c.id} className="border-t border-border">
+                          <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                            {fmtDate(c.created_at)}
+                          </td>
+                          <td className="px-4 py-2 font-semibold">{c.order_code}</td>
+                          <td className="px-4 py-2 text-[11px] text-muted-foreground max-w-[260px]">
+                            {c.pickup_address ?? "—"}
+                            <span className="mx-1">→</span>
+                            {c.drop_address ?? "—"}
+                            {c.distance_km != null ? ` · ${c.distance_km} km` : ""}
+                          </td>
+                          <td className="px-4 py-2 text-muted-foreground">{c.expert_name ?? "—"}</td>
+                          <td className="px-4 py-2">{c.status.replace(/_/g, " ").toLowerCase()}</td>
+                          <td className="px-4 py-2 text-muted-foreground">
+                            {c.payment_status ?? "—"}
+                          </td>
+                          <td className="px-4 py-2">{inr(c.total_amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </Section>
+
               <Section title="Wallet & coins ledger">
                 {data.wallet.length === 0 ? (
                   <Empty label="No wallet activity." />
