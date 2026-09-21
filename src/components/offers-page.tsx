@@ -963,15 +963,15 @@ function CampaignModal({
             <select
               className={inputCls}
               value={form.audience}
-              disabled={locked}
               onChange={(e) => setForm({ ...form, audience: e.target.value })}
             >
               {!locked && <option value="all">All customers</option>}
-              {cities.map((c) => (
+              {(locked ? cities.filter((c) => c === city) : cities).map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
+              <option value="specific_users">Specific customers</option>
             </select>
           </Field>
           <Field label="Show in customer Offers tab">
