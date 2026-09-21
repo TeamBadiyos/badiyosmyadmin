@@ -147,13 +147,24 @@ export function PipelineKanban({
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
+  const fetchCourier = useServerFn(listCourierOrders);
 
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["pipeline", "board", segmentId],
     queryFn: () => fetchPipeline({ data: { segmentId } }),
     refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const canSeeCourier = role === "super_admin" || role === "ops_manager";
+  const { data: courierData } = useQuery({
+    queryKey: ["pipeline", "courier"],
+    queryFn: () => fetchCourier({ data: { status: null, search: null } }),
+    enabled: canSeeCourier,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
 
@@ -169,7 +180,7 @@ export function PipelineKanban({
     dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
 
 
-  // Realtime subscription: any booking status change refreshes the board.
+  // Realtime subscription: any booking or parcel order change refreshes the board.
   useEffect(() => {
     const channel = supabase
       .channel("pipeline-board")
@@ -178,6 +189,13 @@ export function PipelineKanban({
         { event: "*", schema: "public", table: "bookings" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["pipeline", "board"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courier_orders" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] });
         },
       )
       .subscribe();
@@ -196,11 +214,26 @@ export function PipelineKanban({
     return map;
   }, [data]);
 
-  // Audio alerts for new "Needs Expert" (accepted, awaiting expert) bookings.
+  const courierGrouped = useMemo(() => {
+    const map = new Map<PipelineStatus, CourierOrderRow[]>();
+    COLUMNS.forEach((c) => map.set(c.key, []));
+    for (const o of courierData ?? []) {
+      const col = courierColumn(o.status, o.created_at);
+      if (!col) continue;
+      map.get(col)?.push(o);
+    }
+    return map;
+  }, [courierData]);
+
+  // Audio alerts for new "Needs Expert" cards (services + parcel orders).
   const needsExpertIds = useMemo(
-    () => (grouped.get("accepted") ?? []).map((b) => b.id),
-    [grouped],
+    () => [
+      ...(grouped.get("accepted") ?? []).map((b) => b.id),
+      ...(courierGrouped.get("accepted") ?? []).map((o) => o.id),
+    ],
+    [grouped, courierGrouped],
   );
+
   const audioRef = useRef<AudioHandle | null>(null);
   const [muted, setMuted] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
