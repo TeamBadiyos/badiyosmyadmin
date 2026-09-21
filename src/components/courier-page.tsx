@@ -238,6 +238,7 @@ function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
           />
         </div>
       ))}
+      </div>
 
       {confirming ? (
         <Modal title="Turn this service off?" onClose={() => setConfirming(null)}>
