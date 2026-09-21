@@ -470,3 +470,84 @@ export const permanentlyDeleteUser = createServerFn({ method: "POST" })
     }
     return { ok: true, anonymized: hasHistory };
   });
+
+export type TestPushResult = {
+  tokens: number;
+  delivered: number;
+  failed: number;
+  cleaned: number;
+  devices: Array<{
+    token_tail: string;
+    ok: boolean;
+    status: number;
+    invalid: boolean;
+    error?: string;
+  }>;
+  note: string | null;
+};
+
+/**
+ * Sends a real push to one user and reports what Google (FCM) said per device.
+ * Super admin only — the fastest way to tell a server problem from an app problem.
+ */
+export const sendTestPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; userType?: "customer" | "expert" }) => {
+    if (!input?.userId) throw new Error("userId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<TestPushResult> => {
+    const { data: isSuper } = await context.supabase.rpc("is_super_admin_user");
+    if (!isSuper) throw new Error("Forbidden");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cfg } = await supabaseAdmin
+      .from("edge_runtime_config")
+      .select("value")
+      .eq("key", "push_trigger_secret")
+      .maybeSingle();
+    const secret = (cfg as { value?: string } | null)?.value;
+    if (!secret) throw new Error("Push service is not configured (missing trigger secret)");
+
+    const url = `${process.env["SUPABASE_URL"] ?? "https://dkneclwmmjlqswovtqno.supabase.co"}/functions/v1/send-push-notification`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-secret": secret },
+      body: JSON.stringify({
+        user_type: data.userType ?? "customer",
+        user_id: data.userId,
+        title: "Badiyos test notification",
+        body: "Agar ye dikha, to notifications theek kaam kar rahe hain.",
+        debug: true,
+        data: { route: "home", type: "admin_test" },
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Push service error ${res.status}: ${text.slice(0, 200)}`);
+    const body = JSON.parse(text) as {
+      sent?: number;
+      failed?: number;
+      cleaned?: number;
+      tokens?: number;
+      note?: string;
+      results?: TestPushResult["devices"];
+    };
+
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "test_push_sent",
+      target_table: "device_tokens",
+      target_id: data.userId,
+      after_state: body as unknown as Record<string, unknown>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    return {
+      tokens: Number(body.tokens ?? 0),
+      delivered: Number(body.sent ?? 0),
+      failed: Number(body.failed ?? 0),
+      cleaned: Number(body.cleaned ?? 0),
+      devices: body.results ?? [],
+      note: body.note ?? null,
+    };
+  });
