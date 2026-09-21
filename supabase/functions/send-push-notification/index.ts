@@ -25,9 +25,44 @@ const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
 // (which cannot be read from SQL). Both are treated as equally privileged.
 const TRIGGER_SECRET = Deno.env.get("PUSH_TRIGGER_SECRET") || "";
 
-const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
-const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
-const FCM_PRIVATE_KEY = Deno.env.get("FCM_PRIVATE_KEY");
+// Preferred: one JSON blob from Firebase Console (service account key file).
+// Fallback: the three legacy env vars.
+function loadServiceAccount(): {
+  projectId?: string;
+  clientEmail?: string;
+  privateKey?: string;
+} {
+  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  if (raw && raw.trim()) {
+    try {
+      const sa = JSON.parse(raw) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (sa.project_id && sa.client_email && sa.private_key) {
+        return {
+          projectId: sa.project_id,
+          clientEmail: sa.client_email,
+          privateKey: sa.private_key,
+        };
+      }
+      console.warn("[push] FIREBASE_SERVICE_ACCOUNT_JSON missing required fields");
+    } catch (e) {
+      console.error("[push] FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON", String(e));
+    }
+  }
+  return {
+    projectId: Deno.env.get("FCM_PROJECT_ID") ?? undefined,
+    clientEmail: Deno.env.get("FCM_CLIENT_EMAIL") ?? undefined,
+    privateKey: Deno.env.get("FCM_PRIVATE_KEY") ?? undefined,
+  };
+}
+
+const SERVICE_ACCOUNT = loadServiceAccount();
+const FCM_PROJECT_ID = SERVICE_ACCOUNT.projectId;
+const FCM_CLIENT_EMAIL = SERVICE_ACCOUNT.clientEmail;
+const FCM_PRIVATE_KEY = SERVICE_ACCOUNT.privateKey;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -309,16 +344,42 @@ Deno.serve(async (req) => {
   }
   if (!tokens || tokens.length === 0) {
     await markDelivery("failed", "App not installed / no registered device");
-    return json(200, { sent: 0, failed: 0, note: "no tokens", results: [] });
+    return json(200, {
+      sent: 0,
+      failed: 0,
+      tokens: 0,
+      note: "no tokens",
+      reason: "App not installed / no registered device",
+      results: [],
+    });
   }
 
   let accessToken: string;
   try {
     accessToken = await getFcmAccessToken();
   } catch (e) {
+    const detail = String(e);
+    const reason = /invalid_grant|account not found|Missing FCM/i.test(detail)
+      ? "Firebase service account key is invalid or missing — update FIREBASE_SERVICE_ACCOUNT_JSON."
+      : `Push service auth failed: ${detail.slice(0, 300)}`;
     console.error("[push] FCM auth failed", e);
-    await markDelivery("failed", "Push service auth failed");
-    return json(200, { sent: 0, failed: tokens.length, error: String(e) });
+    await markDelivery("failed", reason);
+    return json(200, {
+      sent: 0,
+      failed: tokens.length,
+      tokens: tokens.length,
+      error: detail.slice(0, 500),
+      reason,
+      results: payload.debug
+        ? tokens.map((t) => ({
+            token_tail: String(t.fcm_token ?? "").slice(-8),
+            ok: false,
+            status: 0,
+            invalid: false,
+            error: reason,
+          }))
+        : undefined,
+    });
   }
 
   let sent = 0;
