@@ -554,7 +554,7 @@ export const sendTestPush = createServerFn({ method: "POST" })
       tokens: Number(body.tokens ?? 0),
       delivered: Number(body.sent ?? 0),
       failed: Number(body.failed ?? 0),
-      cleaned: Number(body.cleaned ?? 0),
+      cleaned: Number(body.cleaned ?? body.removed ?? 0),
       devices: body.results ?? [],
       note: body.note ?? null,
       reason: body.reason ?? body.error ?? null,
