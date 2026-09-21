@@ -484,6 +484,7 @@ export type TestPushResult = {
     error?: string;
   }>;
   note: string | null;
+  reason: string | null;
 };
 
 /**
