@@ -79,6 +79,18 @@ export type CustomerProfile = {
     paid: boolean;
     rating: number | null;
   }>;
+  courierOrders: Array<{
+    id: string;
+    order_code: string;
+    created_at: string | null;
+    status: string;
+    payment_status: string | null;
+    total_amount: number;
+    distance_km: number | null;
+    pickup_address: string | null;
+    drop_address: string | null;
+    expert_name: string | null;
+  }>;
   wallet: Array<{
     id: string;
     amount: number;
