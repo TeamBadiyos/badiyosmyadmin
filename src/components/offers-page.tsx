@@ -1124,17 +1124,27 @@ function SendConfirmModal({
 }) {
   const preview = useServerFn(previewCampaignAudience);
   const { data, isLoading } = useQuery({
-    queryKey: ["offers", "audience", campaign.audience],
-    queryFn: () => preview({ data: { audience: campaign.audience } }),
+    queryKey: ["offers", "audience", campaign.id, campaign.audience],
+    queryFn: () =>
+      preview({
+        data: {
+          audience: campaign.audience,
+          targetUserIds: campaign.target_user_ids ?? null,
+        },
+      }),
   });
 
   return (
     <Modal title="Send this campaign?" onClose={onClose}>
       <div className="space-y-3 text-[13px]">
         <p className="text-muted-foreground">
-          This sends an app notification to customers in{" "}
+          This sends an app notification to{" "}
           <strong className="text-foreground">
-            {campaign.audience === "all" ? "all cities" : campaign.audience}
+            {campaign.audience === "all"
+              ? "customers in all cities"
+              : campaign.audience === "specific_users"
+                ? audienceLabel(campaign)
+                : `customers in ${campaign.audience}`}
           </strong>
           . It cannot be undone or edited afterwards.
         </p>
