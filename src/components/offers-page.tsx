@@ -15,6 +15,7 @@ import {
   setMilestoneActive,
   listCampaigns,
   listCampaignDeliveries,
+  previewCampaignAudience,
   listCampaignCities,
   saveCampaign,
   sendCampaign,
@@ -735,6 +736,7 @@ function CampaignsTab({
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CampaignRow | "new" | null>(null);
   const [detail, setDetail] = useState<CampaignRow | null>(null);
+  const [confirmSend, setConfirmSend] = useState<CampaignRow | null>(null);
 
   const fetchList = useServerFn(listCampaigns);
   const send = useServerFn(sendCampaign);
@@ -808,7 +810,7 @@ function CampaignsTab({
               </span>
               <span className="text-[12px] text-muted-foreground">
                 {c.status === "sent"
-                  ? `${c.recipients_count} · ${c.failed} failed`
+                  ? `${c.delivered} delivered · ${c.failed} failed`
                   : "—"}
               </span>
               <div className="flex justify-end gap-2">
@@ -820,7 +822,7 @@ function CampaignsTab({
                     <button
                       className={primaryBtn}
                       disabled={sendMut.isPending}
-                      onClick={() => sendMut.mutate(c.id)}
+                      onClick={() => setConfirmSend(c)}
                     >
                       <Send size={14} /> Send now
                     </button>
@@ -838,6 +840,17 @@ function CampaignsTab({
           role={role}
           city={city}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {confirmSend && (
+        <SendConfirmModal
+          campaign={confirmSend}
+          pending={sendMut.isPending}
+          onClose={() => setConfirmSend(null)}
+          onConfirm={() => {
+            sendMut.mutate(confirmSend.id);
+            setConfirmSend(null);
+          }}
         />
       )}
       {detail && <DeliveriesModal campaign={detail} onClose={() => setDetail(null)} />}
@@ -969,6 +982,69 @@ function CampaignModal({
   );
 }
 
+function SendConfirmModal({
+  campaign,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  campaign: CampaignRow;
+  pending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const preview = useServerFn(previewCampaignAudience);
+  const { data, isLoading } = useQuery({
+    queryKey: ["offers", "audience", campaign.audience],
+    queryFn: () => preview({ data: { audience: campaign.audience } }),
+  });
+
+  return (
+    <Modal title="Send this campaign?" onClose={onClose}>
+      <div className="space-y-3 text-[13px]">
+        <p className="text-muted-foreground">
+          This sends an app notification to customers in{" "}
+          <strong className="text-foreground">
+            {campaign.audience === "all" ? "all cities" : campaign.audience}
+          </strong>
+          . It cannot be undone or edited afterwards.
+        </p>
+        {isLoading ? (
+          <p className="text-muted-foreground">Checking audience…</p>
+        ) : (
+          data && (
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { l: "Customers", v: data.total },
+                { l: "Can receive", v: data.reachable },
+                { l: "No app", v: data.unreachable },
+              ].map((c) => (
+                <div key={c.l} className="border border-border rounded-[14px] py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {c.l}
+                  </p>
+                  <p className="text-[20px] font-bold">{c.v}</p>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+        <p className="text-[12px] text-muted-foreground">
+          Customers without the app installed are marked failed — they get nothing.
+        </p>
+      </div>
+      <div className="flex justify-end gap-2 pt-5">
+        <button className={ghostBtn} onClick={onClose}>
+          Cancel
+        </button>
+        <button className={primaryBtn} disabled={pending} onClick={onConfirm}>
+          <Send size={14} /> Send now
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function DeliveriesModal({
   campaign,
   onClose,
@@ -980,14 +1056,50 @@ function DeliveriesModal({
   const { data = [], isLoading } = useQuery({
     queryKey: ["offers", "deliveries", campaign.id],
     queryFn: () => fetchRows({ data: { campaignId: campaign.id } }),
+    refetchInterval: 5000,
   });
+
+  const counts = data.reduce(
+    (acc, d) => {
+      const k = d.status === "delivered" ? "delivered" : d.status === "failed" ? "failed" : "queued";
+      acc[k] += 1;
+      return acc;
+    },
+    { delivered: 0, failed: 0, queued: 0 },
+  );
+
+  const exportCsv = () => {
+    const rows = [
+      ["Name", "Phone", "Status", "Reason"],
+      ...data.map((d) => [d.user_name ?? "", d.user_phone ?? "", d.status, d.error ?? ""]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `campaign-${campaign.id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Modal title={`${campaign.title} · delivery`} onClose={onClose}>
-      <p className="text-[13px] text-muted-foreground pb-3">
-        {campaign.status === "sent"
-          ? `Sent ${fmtDate(campaign.sent_at)} · ${campaign.recipients_count} recipients · ${campaign.failed} failed`
-          : "Not sent yet."}
+      <div className="flex items-center justify-between gap-3 pb-3">
+        <p className="text-[13px] text-muted-foreground">
+          {campaign.status === "sent"
+            ? `Sent ${fmtDate(campaign.sent_at)} · ${counts.delivered} delivered · ${counts.failed} failed${
+                counts.queued ? ` · ${counts.queued} still sending` : ""
+              }`
+            : "Not sent yet."}
+        </p>
+        {data.length > 0 && (
+          <button className={ghostBtn} onClick={exportCsv}>
+            Export CSV
+          </button>
+        )}
+      </div>
+      <p className="text-[12px] text-muted-foreground pb-3">
+        &ldquo;Delivered&rdquo; means Google accepted the notification for that phone.
       </p>
       {isLoading && <p className="text-[13px] text-muted-foreground py-6">Loading…</p>}
       <div className="divide-y divide-border max-h-[50vh] overflow-y-auto">
@@ -997,18 +1109,20 @@ function DeliveriesModal({
               <p className="font-semibold truncate">{d.user_name ?? "—"}</p>
               <p className="text-[12px] text-muted-foreground truncate">{d.user_phone ?? ""}</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-right shrink-0 max-w-[55%]">
               <span
                 className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
                   d.status === "failed"
                     ? "bg-destructive/10 text-destructive"
-                    : "bg-primary/10 text-primary"
+                    : d.status === "delivered"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-amber-100 text-amber-800"
                 }`}
               >
                 {d.status}
               </span>
               {d.error && (
-                <p className="text-[11px] text-muted-foreground mt-1">{d.error}</p>
+                <p className="text-[11px] text-muted-foreground mt-1 break-words">{d.error}</p>
               )}
             </div>
           </div>
