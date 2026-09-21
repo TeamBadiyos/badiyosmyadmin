@@ -344,16 +344,42 @@ Deno.serve(async (req) => {
   }
   if (!tokens || tokens.length === 0) {
     await markDelivery("failed", "App not installed / no registered device");
-    return json(200, { sent: 0, failed: 0, note: "no tokens", results: [] });
+    return json(200, {
+      sent: 0,
+      failed: 0,
+      tokens: 0,
+      note: "no tokens",
+      reason: "App not installed / no registered device",
+      results: [],
+    });
   }
 
   let accessToken: string;
   try {
     accessToken = await getFcmAccessToken();
   } catch (e) {
+    const detail = String(e);
+    const reason = /invalid_grant|account not found|Missing FCM/i.test(detail)
+      ? "Firebase service account key is invalid or missing — update FIREBASE_SERVICE_ACCOUNT_JSON."
+      : `Push service auth failed: ${detail.slice(0, 300)}`;
     console.error("[push] FCM auth failed", e);
-    await markDelivery("failed", "Push service auth failed");
-    return json(200, { sent: 0, failed: tokens.length, error: String(e) });
+    await markDelivery("failed", reason);
+    return json(200, {
+      sent: 0,
+      failed: tokens.length,
+      tokens: tokens.length,
+      error: detail.slice(0, 500),
+      reason,
+      results: payload.debug
+        ? tokens.map((t) => ({
+            token_tail: String(t.fcm_token ?? "").slice(-8),
+            ok: false,
+            status: 0,
+            invalid: false,
+            error: reason,
+          }))
+        : undefined,
+    });
   }
 
   let sent = 0;
