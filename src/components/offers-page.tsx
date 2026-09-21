@@ -1003,6 +1003,105 @@ function CampaignModal({
   );
 }
 
+function CustomerPicker({
+  selected,
+  onChange,
+}: {
+  selected: CampaignCustomer[];
+  onChange: (rows: CampaignCustomer[]) => void;
+}) {
+  const fetchCustomers = useServerFn(searchCampaignCustomers);
+  const [term, setTerm] = useState("");
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(term.trim()), 300);
+    return () => clearTimeout(t);
+  }, [term]);
+
+  const { data: results = [], isFetching } = useQuery({
+    queryKey: ["offers", "customer-search", debounced],
+    queryFn: () => fetchCustomers({ data: { search: debounced } }),
+    enabled: debounced.length >= 2,
+  });
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+
+  return (
+    <div className="space-y-3 border border-border rounded-[14px] p-4">
+      <div>
+        <p className={labelCls}>Select customers</p>
+        <input
+          className={`${inputCls} mt-1`}
+          placeholder="Search by name or phone number"
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+        />
+      </div>
+
+      {debounced.length >= 2 && (
+        <div className="max-h-48 overflow-y-auto divide-y divide-border border border-border rounded-[12px]">
+          {isFetching && <p className="text-[12px] text-muted-foreground p-3">Searching…</p>}
+          {!isFetching && results.length === 0 && (
+            <p className="text-[12px] text-muted-foreground p-3">No customer found.</p>
+          )}
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              disabled={selectedIds.has(r.id)}
+              onClick={() => onChange([...selected, r])}
+              className="w-full text-left px-3 py-2 text-[13px] hover:bg-muted disabled:opacity-50 flex items-center justify-between gap-3"
+            >
+              <span className="min-w-0">
+                <span className="font-semibold">{r.full_name ?? "—"}</span>
+                <span className="text-[12px] text-muted-foreground"> · {r.phone ?? "—"}</span>
+                {r.city && <span className="text-[12px] text-muted-foreground"> · {r.city}</span>}
+              </span>
+              <span
+                className={`text-[11px] font-bold uppercase ${
+                  r.has_app ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {r.has_app ? "App" : "No app"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {selected.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">Nobody selected yet.</p>
+        )}
+        {selected.map((s) => (
+          <span
+            key={s.id}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold ${
+              s.has_app ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {s.full_name ?? s.phone ?? "Customer"}
+            <button
+              type="button"
+              onClick={() => onChange(selected.filter((x) => x.id !== s.id))}
+              aria-label="Remove"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <p className="text-[12px] text-muted-foreground">
+          {selected.length} selected · {selected.filter((s) => s.has_app).length} can receive the
+          notification.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SendConfirmModal({
   campaign,
   pending,
