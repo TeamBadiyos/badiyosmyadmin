@@ -386,6 +386,18 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         paid: Boolean(b.razorpay_payment_id),
         rating: typeof b.rating === "number" ? b.rating : null,
       })),
+      courierOrders: courierRows.map((c) => ({
+        id: c.id,
+        order_code: c.order_code,
+        created_at: c.created_at ?? null,
+        status: c.status,
+        payment_status: c.payment_status ?? null,
+        total_amount: Number(c.total_amount ?? 0),
+        distance_km: c.distance_km == null ? null : Number(c.distance_km),
+        pickup_address: c.pickup_address ?? null,
+        drop_address: c.drop_address ?? null,
+        expert_name: c.assigned_expert_id ? (expertMap.get(c.assigned_expert_id) ?? null) : null,
+      })),
       wallet: walletRows.map((w) => ({
         id: w.id,
         amount: Number(w.amount ?? 0),
