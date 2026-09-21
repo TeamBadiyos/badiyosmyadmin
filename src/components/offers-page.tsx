@@ -44,6 +44,15 @@ function fmtDate(v: string | null) {
   return v ? new Date(v).toLocaleDateString("en-IN") : "—";
 }
 
+function audienceLabel(c: { audience: string; target_user_ids?: string[] | null }) {
+  if (c.audience === "all") return "All customers";
+  if (c.audience === "specific_users") {
+    const n = c.target_user_ids?.length ?? 0;
+    return `${n} customer${n === 1 ? "" : "s"} selected`;
+  }
+  return c.audience;
+}
+
 const inputCls =
   "h-10 w-full px-3 rounded-[12px] border border-border bg-card text-[13px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 const labelCls =
