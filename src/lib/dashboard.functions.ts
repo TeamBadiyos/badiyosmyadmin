@@ -264,6 +264,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     // Courier (parcel delivery) orders — shown alongside service bookings.
     const COURIER_ACTIVE = [
+      "DRIVER_ASSIGNED",
       "ASSIGNED",
       "ARRIVED_PICKUP",
       "PICKED_UP",
@@ -285,7 +286,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("courier_orders")
         .select("total_amount")
-        .eq("payment_status", "PAID")
+        .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
         .limit(1000),
@@ -296,8 +297,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .in("status", COURIER_DONE)
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
-      db.from("courier_orders").select("*", countOnly).eq("status", "SEARCHING"),
+      db
+        .from("courier_orders")
+        .select("*", countOnly)
+        .in("status", ["REQUESTED", "SEARCHING"]),
     ]);
+
 
     const courierRevenue = sum(courierRevenueRes.data, "total_amount");
     const courierToday = courierTodayRes.count ?? 0;

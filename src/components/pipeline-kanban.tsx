@@ -167,7 +167,7 @@ export function PipelineKanban({
     queryKey: ["pipeline", "courier"],
     queryFn: () => fetchCourier({ data: { status: null, search: null } }),
     enabled: canSeeCourier,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
     refetchOnWindowFocus: false,
   });
 
