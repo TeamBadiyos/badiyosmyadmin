@@ -368,6 +368,95 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
           }}
         />
       )}
+      {testRow && <TestPushModal row={testRow} onClose={() => setTestRow(null)} />}
+    </div>
+  );
+}
+
+function TestPushModal({ row, onClose }: { row: CustomerRow; onClose: () => void }) {
+  const callTest = useServerFn(sendTestPush);
+  const mut = useMutation({
+    mutationFn: () => callTest({ data: { userId: row.id, userType: "customer" } }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const res = mut.data;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-[560px] my-8 p-6">
+        <div className="flex items-center justify-between gap-4 pb-3">
+          <h2 className="text-[17px] font-bold">Test notification</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X size={18} />
+          </button>
+        </div>
+
+        <p className="text-[13px] text-muted-foreground">
+          Sends one real notification to {row.full_name ?? "this customer"} ({row.phone ?? "—"}) and
+          shows exactly what Google replied for each registered device.
+        </p>
+
+        <button
+          onClick={() => mut.mutate()}
+          disabled={mut.isPending}
+          className="mt-4 h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-semibold text-[13px] inline-flex items-center gap-2 disabled:opacity-60"
+        >
+          <BellRing size={16} /> {mut.isPending ? "Sending…" : "Send test notification"}
+        </button>
+
+        {res && (
+          <div className="mt-5 space-y-3">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { l: "Devices", v: res.tokens },
+                { l: "Accepted", v: res.delivered },
+                { l: "Failed", v: res.failed },
+              ].map((c) => (
+                <div key={c.l} className="border border-border rounded-[14px] py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {c.l}
+                  </p>
+                  <p className="text-[20px] font-bold">{c.v}</p>
+                </div>
+              ))}
+            </div>
+
+            {res.tokens === 0 && (
+              <p className="text-[13px] text-amber-700">
+                No registered device — the app isn&apos;t installed or was never opened with
+                notification permission allowed on this account.
+              </p>
+            )}
+            {res.delivered > 0 && (
+              <p className="text-[13px] text-primary">
+                Google accepted the notification. If the phone still shows nothing, the fix is in
+                the mobile app (notification permission or notification channel), not here.
+              </p>
+            )}
+            {res.cleaned > 0 && (
+              <p className="text-[12px] text-muted-foreground">
+                {res.cleaned} stale device{res.cleaned === 1 ? "" : "s"} removed automatically.
+              </p>
+            )}
+
+            <div className="divide-y divide-border border border-border rounded-[14px]">
+              {res.devices.map((d, i) => (
+                <div key={`${d.token_tail}-${i}`} className="px-4 py-2.5 text-[12px]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">device …{d.token_tail}</span>
+                    <span className={d.ok ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+                      {d.ok ? "Accepted" : d.invalid ? "Stale token" : `Rejected (${d.status})`}
+                    </span>
+                  </div>
+                  {d.error && (
+                    <p className="text-[11px] text-muted-foreground mt-1 break-words">{d.error}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
