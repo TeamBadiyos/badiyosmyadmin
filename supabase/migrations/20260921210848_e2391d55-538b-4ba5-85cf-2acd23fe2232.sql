@@ -1,0 +1,10 @@
+GRANT EXECUTE ON FUNCTION public.staff_set_service_status(text, text, text, text, timestamp with time zone) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_set_service_focus(text, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_undo_service_focus(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_set_service_hours(text, integer, time without time zone, time without time zone, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_set_service_hours_enabled(text, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_set_service_holiday(text, date, date, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_remove_service_holiday(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_close_service_today(text, text, timestamp with time zone) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.staff_reopen_service_today(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.service_next_open(uuid, timestamp with time zone) TO authenticated;
