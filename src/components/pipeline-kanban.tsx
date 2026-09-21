@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, UserPlus, Volume2, VolumeX } from "lucide-react";
+import { X, UserPlus, Volume2, VolumeX, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ import {
   type PipelineStatus,
   type RejectReason,
 } from "@/lib/live-orders.functions";
+import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
+import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 
@@ -28,6 +30,36 @@ const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
   { key: "in_progress", label: "In Progress" },
   { key: "completed", label: "Completed Today" },
 ];
+
+// Parcel delivery orders live in their own table but belong on the same board.
+function courierColumn(status: string, createdAt: string): PipelineStatus | null {
+  switch (status) {
+    case "QUOTED":
+      return "confirmed";
+    case "PAID":
+    case "SEARCHING":
+      return "accepted";
+    case "ASSIGNED":
+    case "ARRIVED_PICKUP":
+      return "expert_assigned";
+    case "PICKED_UP":
+    case "IN_TRANSIT":
+      return "in_progress";
+    case "DELIVERED":
+    case "COMPLETED": {
+      const d = new Date(createdAt);
+      const now = new Date();
+      const sameDay =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+      return sameDay ? "completed" : null;
+    }
+    default:
+      return null;
+  }
+}
+
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -115,13 +147,24 @@ export function PipelineKanban({
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
+  const fetchCourier = useServerFn(listCourierOrders);
 
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["pipeline", "board", segmentId],
     queryFn: () => fetchPipeline({ data: { segmentId } }),
     refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const canSeeCourier = role === "super_admin" || role === "ops_manager";
+  const { data: courierData } = useQuery({
+    queryKey: ["pipeline", "courier"],
+    queryFn: () => fetchCourier({ data: { status: null, search: null } }),
+    enabled: canSeeCourier,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
 
@@ -137,7 +180,7 @@ export function PipelineKanban({
     dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
 
 
-  // Realtime subscription: any booking status change refreshes the board.
+  // Realtime subscription: any booking or parcel order change refreshes the board.
   useEffect(() => {
     const channel = supabase
       .channel("pipeline-board")
@@ -146,6 +189,13 @@ export function PipelineKanban({
         { event: "*", schema: "public", table: "bookings" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["pipeline", "board"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courier_orders" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] });
         },
       )
       .subscribe();
@@ -164,11 +214,26 @@ export function PipelineKanban({
     return map;
   }, [data]);
 
-  // Audio alerts for new "Needs Expert" (accepted, awaiting expert) bookings.
+  const courierGrouped = useMemo(() => {
+    const map = new Map<PipelineStatus, CourierOrderRow[]>();
+    COLUMNS.forEach((c) => map.set(c.key, []));
+    for (const o of courierData ?? []) {
+      const col = courierColumn(o.status, o.created_at);
+      if (!col) continue;
+      map.get(col)?.push(o);
+    }
+    return map;
+  }, [courierData]);
+
+  // Audio alerts for new "Needs Expert" cards (services + parcel orders).
   const needsExpertIds = useMemo(
-    () => (grouped.get("accepted") ?? []).map((b) => b.id),
-    [grouped],
+    () => [
+      ...(grouped.get("accepted") ?? []).map((b) => b.id),
+      ...(courierGrouped.get("accepted") ?? []).map((o) => o.id),
+    ],
+    [grouped, courierGrouped],
   );
+
   const audioRef = useRef<AudioHandle | null>(null);
   const [muted, setMuted] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -274,6 +339,8 @@ export function PipelineKanban({
       <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
         {COLUMNS.map((col) => {
           const items = grouped.get(col.key) ?? [];
+          const courierItems = courierGrouped.get(col.key) ?? [];
+          const totalItems = items.length + courierItems.length;
           return (
             <div
               key={col.key}
@@ -284,18 +351,18 @@ export function PipelineKanban({
                   {col.label}
                 </span>
                 <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-primary-tint text-primary text-[11px] font-bold shrink-0">
-                  {items.length}
+                  {totalItems}
                 </span>
               </div>
               <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
-                {isLoading && items.length === 0 && (
+                {isLoading && totalItems === 0 && (
                   <p className="text-[12px] text-muted-foreground px-1">
                     Loading…
                   </p>
                 )}
-                {!isLoading && items.length === 0 && (
+                {!isLoading && totalItems === 0 && (
                   <p className="text-[12px] text-muted-foreground px-1">
-                    No bookings.
+                    No orders.
                   </p>
                 )}
                 {items.map((b) => (
@@ -307,6 +374,13 @@ export function PipelineKanban({
                     noExpertTimeoutMinutes={noExpertTimeoutMinutes}
 
                     onOpen={() => setOpenId(b.id)}
+                  />
+                ))}
+                {courierItems.map((o) => (
+                  <CourierBoardCard
+                    key={o.id}
+                    order={o}
+                    onOpen={() => setOpenCourier(o)}
                   />
                 ))}
               </div>
@@ -322,6 +396,19 @@ export function PipelineKanban({
           onClose={() => setOpenId(null)}
         />
       )}
+
+      {openCourier && (
+        <OrderDetail
+          order={openCourier}
+          canWrite={role === "super_admin"}
+          onClose={() => setOpenCourier(null)}
+          onChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] });
+            setOpenCourier(null);
+          }}
+        />
+      )}
+
     </section>
   );
 }
@@ -660,6 +747,57 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+function CourierBoardCard({
+  order,
+  onOpen,
+}: {
+  order: CourierOrderRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
+        order.needs_ops_attention
+          ? "border-warning bg-warning-tint/30"
+          : "border-border hover:border-primary/60"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className="text-[13px] font-bold text-foreground truncate">
+          {order.customerName ?? "Customer"}
+        </p>
+        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+          {order.order_code}
+        </span>
+      </div>
+
+      <span className="inline-flex items-center gap-1 rounded-full bg-primary-tint px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+        <Package size={11} /> Parcel
+      </span>
+
+      <div className="mt-1.5 text-[12px] text-muted-foreground space-y-0.5">
+        {order.pickup_address && (
+          <p className="truncate">Pick-up: {order.pickup_address}</p>
+        )}
+        {order.drop_address && (
+          <p className="truncate">Drop: {order.drop_address}</p>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <span>{formatPlacedAt(order.created_at)}</span>
+          <span className="font-semibold text-foreground">
+            {inr.format(order.total_amount)}
+          </span>
+        </div>
+        <p className="truncate text-foreground">
+          <span className="text-muted-foreground">Rider: </span>
+          {order.riderName ?? "Searching…"}
+        </p>
+      </div>
     </div>
   );
 }
