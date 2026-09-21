@@ -735,6 +735,7 @@ function CampaignsTab({
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CampaignRow | "new" | null>(null);
   const [detail, setDetail] = useState<CampaignRow | null>(null);
+  const [confirmSend, setConfirmSend] = useState<CampaignRow | null>(null);
 
   const fetchList = useServerFn(listCampaigns);
   const send = useServerFn(sendCampaign);
