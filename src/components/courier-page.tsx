@@ -155,12 +155,24 @@ type TabKey = (typeof TABS)[number]["key"];
 function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const fetchFlags = useServerFn(listServiceFlags);
+  const fetchControl = useServerFn(listServiceControl);
   const save = useServerFn(setServiceFlag);
   const [confirming, setConfirming] = useState<ServiceFlagRow | null>(null);
   const [busy, setBusy] = useState(false);
 
   const { data } = useQuery({ queryKey: ["courier", "flags"], queryFn: () => fetchFlags() });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "flags"] });
+  const { data: control } = useQuery({
+    queryKey: ["courier", "service-control"],
+    queryFn: () => fetchControl(),
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["courier", "flags"] });
+    qc.invalidateQueries({ queryKey: ["courier", "service-control"] });
+  };
+
+  const activeOrdersByKey = new Map<string, number>(
+    (data ?? []).map((r) => [r.service_key, r.activeOrders]),
+  );
 
   async function apply(row: ServiceFlagRow, isActive: boolean) {
     setBusy(true);
