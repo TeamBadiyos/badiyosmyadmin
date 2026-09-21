@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, UserPlus, Volume2, VolumeX } from "lucide-react";
+import { X, UserPlus, Volume2, VolumeX, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ import {
   type PipelineStatus,
   type RejectReason,
 } from "@/lib/live-orders.functions";
+import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
+import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 
@@ -28,6 +30,36 @@ const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
   { key: "in_progress", label: "In Progress" },
   { key: "completed", label: "Completed Today" },
 ];
+
+// Parcel delivery orders live in their own table but belong on the same board.
+function courierColumn(status: string, createdAt: string): PipelineStatus | null {
+  switch (status) {
+    case "QUOTED":
+      return "confirmed";
+    case "PAID":
+    case "SEARCHING":
+      return "accepted";
+    case "ASSIGNED":
+    case "ARRIVED_PICKUP":
+      return "expert_assigned";
+    case "PICKED_UP":
+    case "IN_TRANSIT":
+      return "in_progress";
+    case "DELIVERED":
+    case "COMPLETED": {
+      const d = new Date(createdAt);
+      const now = new Date();
+      const sameDay =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+      return sameDay ? "completed" : null;
+    }
+    default:
+      return null;
+  }
+}
+
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
