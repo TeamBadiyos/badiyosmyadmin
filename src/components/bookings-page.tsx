@@ -167,7 +167,28 @@ export function BookingsPage({
   return (
     <div className="space-y-6">
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        {canSeeCourier && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Type
+            </label>
+            <select
+              value={orderType}
+              onChange={(e) =>
+                updateFilter(() =>
+                  setOrderType(e.target.value as "all" | "service" | "courier"),
+                )
+              }
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[150px]"
+            >
+              <option value="all">All orders</option>
+              <option value="service">Services only</option>
+              <option value="courier">Parcel delivery only</option>
+            </select>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
+
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             Status
           </label>
