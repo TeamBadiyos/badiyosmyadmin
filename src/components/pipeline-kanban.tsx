@@ -339,6 +339,8 @@ export function PipelineKanban({
       <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
         {COLUMNS.map((col) => {
           const items = grouped.get(col.key) ?? [];
+          const courierItems = courierGrouped.get(col.key) ?? [];
+          const totalItems = items.length + courierItems.length;
           return (
             <div
               key={col.key}
@@ -349,18 +351,18 @@ export function PipelineKanban({
                   {col.label}
                 </span>
                 <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-primary-tint text-primary text-[11px] font-bold shrink-0">
-                  {items.length}
+                  {totalItems}
                 </span>
               </div>
               <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
-                {isLoading && items.length === 0 && (
+                {isLoading && totalItems === 0 && (
                   <p className="text-[12px] text-muted-foreground px-1">
                     Loading…
                   </p>
                 )}
-                {!isLoading && items.length === 0 && (
+                {!isLoading && totalItems === 0 && (
                   <p className="text-[12px] text-muted-foreground px-1">
-                    No bookings.
+                    No orders.
                   </p>
                 )}
                 {items.map((b) => (
@@ -372,6 +374,13 @@ export function PipelineKanban({
                     noExpertTimeoutMinutes={noExpertTimeoutMinutes}
 
                     onOpen={() => setOpenId(b.id)}
+                  />
+                ))}
+                {courierItems.map((o) => (
+                  <CourierBoardCard
+                    key={o.id}
+                    order={o}
+                    onOpen={() => setOpenCourier(o)}
                   />
                 ))}
               </div>
@@ -387,6 +396,19 @@ export function PipelineKanban({
           onClose={() => setOpenId(null)}
         />
       )}
+
+      {openCourier && (
+        <OrderDetail
+          order={openCourier}
+          canWrite={role === "super_admin"}
+          onClose={() => setOpenCourier(null)}
+          onChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] });
+            setOpenCourier(null);
+          }}
+        />
+      )}
+
     </section>
   );
 }
