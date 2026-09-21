@@ -247,6 +247,14 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                           </button>
                         )}
                         <button
+                          onClick={() => setTestRow(r)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-primary"
+                          aria-label="Send test notification"
+                          title="Send test notification"
+                        >
+                          <BellRing size={14} />
+                        </button>
+                        <button
                           onClick={() => setDeleteRow(r)}
                           className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-red-50 text-destructive"
                           aria-label="Delete user forever"
