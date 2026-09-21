@@ -15,6 +15,7 @@ import {
   setMilestoneActive,
   listCampaigns,
   listCampaignDeliveries,
+  previewCampaignAudience,
   listCampaignCities,
   saveCampaign,
   sendCampaign,
