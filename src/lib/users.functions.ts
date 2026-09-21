@@ -533,6 +533,7 @@ export const sendTestPush = createServerFn({ method: "POST" })
       sent?: number;
       failed?: number;
       cleaned?: number;
+      removed?: number;
       tokens?: number;
       note?: string;
       reason?: string;
