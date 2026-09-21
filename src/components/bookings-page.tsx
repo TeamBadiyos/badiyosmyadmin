@@ -74,9 +74,12 @@ export function BookingsPage({
   const [to, setTo] = useState<string>(initialFilters?.to ?? "");
   const [page, setPage] = useState<number>(1);
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
+  const [orderType, setOrderType] = useState<"all" | "service" | "courier">("all");
+  const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
+  const fetchCourier = useServerFn(listCourierOrders);
 
   const { data: zones = [] } = useQuery({
     queryKey: ["bookings", "zone-options"],
@@ -103,9 +106,18 @@ export function BookingsPage({
     queryKey: ["bookings", "list", filters],
     queryFn: () => fetchBookings({ data: filters }),
     staleTime: 15_000,
+    enabled: orderType !== "courier",
   });
 
-  // Realtime: any change to bookings invalidates the list.
+  const canSeeCourier = role === "super_admin" || role === "ops_manager";
+  const { data: courierAll } = useQuery({
+    queryKey: ["bookings", "courier-list"],
+    queryFn: () => fetchCourier({ data: { status: null, search: null } }),
+    enabled: canSeeCourier && orderType !== "service",
+    staleTime: 15_000,
+  });
+
+  // Realtime: any change to bookings or parcel orders invalidates the list.
   useEffect(() => {
     const channel = supabase
       .channel("bookings-list")
@@ -114,15 +126,36 @@ export function BookingsPage({
         { event: "*", schema: "public", table: "bookings" },
         () => queryClient.invalidateQueries({ queryKey: ["bookings", "list"] }),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courier_orders" },
+        () =>
+          queryClient.invalidateQueries({ queryKey: ["bookings", "courier-list"] }),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
-  const rows = data?.rows ?? [];
-  const total = data?.total ?? 0;
+  const rows = orderType === "courier" ? [] : (data?.rows ?? []);
+  const total = orderType === "courier" ? 0 : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Parcel orders are listed alongside services (first page only, date-filtered).
+  const courierRows = useMemo(() => {
+    if (orderType === "service" || !canSeeCourier) return [];
+    if (orderType === "all" && page > 1) return [];
+    const fromMs = from ? new Date(`${from}T00:00:00`).getTime() : null;
+    const toMs = to ? new Date(`${to}T23:59:59`).getTime() : null;
+    return (courierAll ?? []).filter((o) => {
+      const t = new Date(o.created_at).getTime();
+      if (fromMs != null && t < fromMs) return false;
+      if (toMs != null && t > toMs) return false;
+      return true;
+    });
+  }, [courierAll, orderType, page, from, to, canSeeCourier]);
+
 
   function updateFilter(fn: () => void) {
     fn();
