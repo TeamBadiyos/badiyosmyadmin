@@ -365,6 +365,7 @@ export type CampaignRow = {
   created_at: string;
   delivered: number;
   failed: number;
+  target_user_ids: string[] | null;
 };
 
 export const listCampaigns = createServerFn({ method: "GET" })
@@ -374,7 +375,7 @@ export const listCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("marketing_campaigns")
       .select(
-        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at",
+        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at, target_user_ids",
       )
       .order("created_at", { ascending: false })
       .limit(200);
