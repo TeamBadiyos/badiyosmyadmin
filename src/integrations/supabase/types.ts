@@ -595,6 +595,7 @@ export type Database = {
           gst_amount: number
           gst_percent: number
           id: string
+          last_rebroadcast_at: string | null
           partner_payout_batch_id: string | null
           price: number
           rating: number | null
@@ -655,6 +656,7 @@ export type Database = {
           gst_amount?: number
           gst_percent?: number
           id?: string
+          last_rebroadcast_at?: string | null
           partner_payout_batch_id?: string | null
           price: number
           rating?: number | null
@@ -715,6 +717,7 @@ export type Database = {
           gst_amount?: number
           gst_percent?: number
           id?: string
+          last_rebroadcast_at?: string | null
           partner_payout_batch_id?: string | null
           price?: number
           rating?: number | null
@@ -2044,6 +2047,27 @@ export type Database = {
           },
         ]
       }
+      expert_holiday_notices: {
+        Row: {
+          created_at: string
+          holiday_id: string
+          id: string
+          phase: string
+        }
+        Insert: {
+          created_at?: string
+          holiday_id: string
+          id?: string
+          phase: string
+        }
+        Update: {
+          created_at?: string
+          holiday_id?: string
+          id?: string
+          phase?: string
+        }
+        Relationships: []
+      }
       expert_leads: {
         Row: {
           area: string
@@ -2135,6 +2159,7 @@ export type Database = {
           level: string
           location_updated_at: string | null
           name: string
+          offline_after_job: boolean
           onboarded_by: string | null
           pan_encrypted: string | null
           pan_last4: string | null
@@ -2170,6 +2195,7 @@ export type Database = {
           level?: string
           location_updated_at?: string | null
           name: string
+          offline_after_job?: boolean
           onboarded_by?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
@@ -2205,6 +2231,7 @@ export type Database = {
           level?: string
           location_updated_at?: string | null
           name?: string
+          offline_after_job?: boolean
           onboarded_by?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
@@ -3955,33 +3982,220 @@ export type Database = {
       service_flags: {
         Row: {
           city: string
+          closed_today_date: string | null
+          closed_today_reason: string | null
+          closed_until: string | null
           created_at: string
+          hours_enabled: boolean
           id: string
           is_active: boolean
           label: string
+          last_order_buffer_minutes: number
+          resume_at: string | null
           service_key: string
           sort_order: number
+          status: string
+          status_message_en: string | null
+          status_message_mr: string | null
+          status_updated_at: string | null
+          status_updated_by: string | null
           updated_at: string
         }
         Insert: {
           city: string
+          closed_today_date?: string | null
+          closed_today_reason?: string | null
+          closed_until?: string | null
           created_at?: string
+          hours_enabled?: boolean
           id?: string
           is_active?: boolean
           label: string
+          last_order_buffer_minutes?: number
+          resume_at?: string | null
           service_key: string
           sort_order?: number
+          status?: string
+          status_message_en?: string | null
+          status_message_mr?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
           updated_at?: string
         }
         Update: {
           city?: string
+          closed_today_date?: string | null
+          closed_today_reason?: string | null
+          closed_until?: string | null
           created_at?: string
+          hours_enabled?: boolean
           id?: string
           is_active?: boolean
           label?: string
+          last_order_buffer_minutes?: number
+          resume_at?: string | null
           service_key?: string
           sort_order?: number
+          status?: string
+          status_message_en?: string | null
+          status_message_mr?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      service_focus_snapshots: {
+        Row: {
+          active_orders: Json
+          after: Json
+          before: Json
+          created_at: string
+          created_by: string
+          expires_at: string
+          undo_token: string
+          used_at: string | null
+        }
+        Insert: {
+          active_orders?: Json
+          after: Json
+          before: Json
+          created_at?: string
+          created_by: string
+          expires_at: string
+          undo_token?: string
+          used_at?: string | null
+        }
+        Update: {
+          active_orders?: Json
+          after?: Json
+          before?: Json
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          undo_token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      service_holidays: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          reason: string | null
+          reason_mr: string | null
+          service_flag_id: string | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          reason?: string | null
+          reason_mr?: string | null
+          service_flag_id?: string | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          reason?: string | null
+          reason_mr?: string | null
+          service_flag_id?: string | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_holidays_service_flag_id_fkey"
+            columns: ["service_flag_id"]
+            isOneToOne: false
+            referencedRelation: "service_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_hours: {
+        Row: {
+          close_time: string
+          created_at: string
+          id: string
+          is_closed: boolean
+          open_time: string
+          service_flag_id: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          close_time?: string
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          open_time?: string
+          service_flag_id: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          close_time?: string
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          open_time?: string
+          service_flag_id?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_hours_service_flag_id_fkey"
+            columns: ["service_flag_id"]
+            isOneToOne: false
+            referencedRelation: "service_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_hours_bypass_users: {
+        Row: {
+          created_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      service_notify_requests: {
+        Row: {
+          created_at: string
+          id: string
+          notified_at: string | null
+          service_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          service_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notified_at?: string | null
+          service_key?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -4848,6 +5062,7 @@ export type Database = {
           gst_amount: number
           gst_percent: number
           id: string
+          last_rebroadcast_at: string | null
           partner_payout_batch_id: string | null
           price: number
           rating: number | null
@@ -5154,6 +5369,7 @@ export type Database = {
         Returns: boolean
       }
       customer_list_devices: { Args: never; Returns: Json }
+      customer_notify_me: { Args: { _service_key: string }; Returns: Json }
       customer_register_device: {
         Args: { _device_id: string; _device_label?: string }
         Returns: Json
@@ -5229,6 +5445,7 @@ export type Database = {
       }
       expert_revoke_device: { Args: { _device_id: string }; Returns: undefined }
       expert_rewards_overview: { Args: never; Returns: Json }
+      expert_service_schedule: { Args: { _service_key: string }; Returns: Json }
       expert_set_language: { Args: { _lang: string }; Returns: undefined }
       expert_set_online: { Args: { _online: boolean }; Returns: undefined }
       expert_update_location: {
@@ -5462,6 +5679,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_service_waiters: {
+        Args: { _service_key: string }
+        Returns: number
+      }
       notify_waitlist_for_expert: {
         Args: { _expert_id: string }
         Returns: number
@@ -5495,6 +5716,10 @@ export type Database = {
       reactivate_customer_after_otp: {
         Args: { _phone: string; _user_id: string }
         Returns: undefined
+      }
+      rebroadcast_pending_advance_to_expert: {
+        Args: { _expert_id: string }
+        Returns: number
       }
       record_booking_tip: {
         Args: {
@@ -5570,7 +5795,39 @@ export type Database = {
       }
       send_completion_reminders: { Args: never; Returns: number }
       send_scheduled_booking_reminders: { Args: never; Returns: number }
+      service_can_order: {
+        Args: { _at?: string; _service_key: string }
+        Returns: boolean
+      }
+      service_effective_state: {
+        Args: { _at?: string; _city?: string; _service_key: string }
+        Returns: Json
+      }
+      service_holiday_notify: { Args: { _phase: string }; Returns: undefined }
+      service_hours_autooffline: { Args: never; Returns: undefined }
+      service_hours_bypass: { Args: never; Returns: boolean }
+      service_next_open: {
+        Args: { _flag_id: string; _from: string }
+        Returns: string
+      }
+      service_slot_allowed: {
+        Args: {
+          _date: string
+          _duration_minutes?: number
+          _service_key: string
+          _slot: string
+        }
+        Returns: Json
+      }
+      service_window: {
+        Args: { _city?: string; _service_key: string }
+        Returns: Json
+      }
       set_login_pin: { Args: { p_pin: string }; Returns: undefined }
+      slot_start_ist: {
+        Args: { _date: string; _slot: string }
+        Returns: string
+      }
       staff_accept_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -5614,6 +5871,10 @@ export type Database = {
         Returns: boolean
       }
       staff_clear_notifications: { Args: never; Returns: undefined }
+      staff_close_service_today: {
+        Args: { _reason?: string; _service_key: string; _until?: string }
+        Returns: Json
+      }
       staff_confirm_payout_batch: {
         Args: { _batch_id: string }
         Returns: undefined
@@ -5824,10 +6085,19 @@ export type Database = {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
       }
+      staff_remove_service_holiday: {
+        Args: { _holiday_id: string }
+        Returns: Json
+      }
+      staff_reopen_service_today: {
+        Args: { _service_key: string }
+        Returns: Json
+      }
       staff_reorder_homepage_sections: {
         Args: { _orders: Json }
         Returns: undefined
       }
+      staff_require_super_admin: { Args: never; Returns: undefined }
       staff_reverse_referral_reward: {
         Args: { _reason: string; _txn_id: string }
         Returns: undefined
@@ -5930,6 +6200,10 @@ export type Database = {
         Args: { _active: boolean; _id: string }
         Returns: undefined
       }
+      staff_set_last_order_buffer: {
+        Args: { _minutes: number; _service_key: string }
+        Returns: Json
+      }
       staff_set_merchant_fee_tier: {
         Args: { _fee_tier_id: string; _merchant_id: string }
         Returns: undefined
@@ -5953,6 +6227,49 @@ export type Database = {
       staff_set_reward_program_active: {
         Args: { _id: string; _is_active: boolean }
         Returns: undefined
+      }
+      staff_set_service_focus: {
+        Args: {
+          _live_service_key: string
+          _message_en?: string
+          _message_mr?: string
+          _others_status?: string
+        }
+        Returns: Json
+      }
+      staff_set_service_holiday: {
+        Args: {
+          _end_date?: string
+          _reason?: string
+          _reason_mr?: string
+          _service_key: string
+          _start_date: string
+        }
+        Returns: Json
+      }
+      staff_set_service_hours: {
+        Args: {
+          _close_time: string
+          _is_closed?: boolean
+          _open_time: string
+          _service_key: string
+          _weekday: number
+        }
+        Returns: Json
+      }
+      staff_set_service_hours_enabled: {
+        Args: { _enabled: boolean; _service_key: string }
+        Returns: Json
+      }
+      staff_set_service_status: {
+        Args: {
+          _message_en?: string
+          _message_mr?: string
+          _resume_at?: string
+          _service_key: string
+          _status: string
+        }
+        Returns: Json
       }
       staff_set_staff_user_zones: {
         Args: { _staff_user_id: string; _zone_ids: string[] }
@@ -5989,6 +6306,7 @@ export type Database = {
           tds_total: number
         }[]
       }
+      staff_undo_service_focus: { Args: { _undo_token: string }; Returns: Json }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
