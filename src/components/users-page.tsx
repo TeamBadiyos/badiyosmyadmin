@@ -381,7 +381,7 @@ function TestPushModal({ row, onClose }: { row: CustomerRow; onClose: () => void
     mutationFn: () => callTest({ data: { userId: row.id, userType: "customer" } }),
     onError: (e: Error) => toast.error(e.message),
   });
-  const res = mut.data;
+  const res = mut.data as TestPushResult | undefined;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto">
