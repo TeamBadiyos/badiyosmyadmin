@@ -515,3 +515,27 @@ export const sendCampaign = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { sent: Number(sent ?? 0) };
   });
+
+export type AudiencePreview = { total: number; reachable: number; unreachable: number };
+
+/** How many customers an audience selects, and how many can actually receive a push. */
+export const previewCampaignAudience = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { audience: string }) => {
+    if (!input?.audience) throw new Error("audience required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<AudiencePreview> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const { data: res, error } = await context.supabase.rpc("staff_campaign_audience_preview", {
+      _audience: data.audience,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    if (error) throw new Error(error.message);
+    const r = (res ?? {}) as Partial<AudiencePreview>;
+    return {
+      total: Number(r.total ?? 0),
+      reachable: Number(r.reachable ?? 0),
+      unreachable: Number(r.unreachable ?? 0),
+    };
+  });
