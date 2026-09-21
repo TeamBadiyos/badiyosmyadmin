@@ -891,6 +891,18 @@ function CampaignModal({
   });
   const [targets, setTargets] = useState<CampaignCustomer[]>([]);
 
+  const fetchCustomers = useServerFn(searchCampaignCustomers);
+  const preselectIds = campaign?.target_user_ids ?? [];
+  const { data: preselected } = useQuery({
+    queryKey: ["offers", "campaign-targets", campaign?.id ?? "new"],
+    queryFn: () => fetchCustomers({ data: { ids: preselectIds } }),
+    enabled: preselectIds.length > 0,
+  });
+  useEffect(() => {
+    if (preselected?.length) setTargets(preselected);
+  }, [preselected]);
+
+
   const mut = useMutation({
     mutationFn: () =>
       save({
