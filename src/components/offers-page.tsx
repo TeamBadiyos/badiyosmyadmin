@@ -798,7 +798,7 @@ function CampaignsTab({
                 <p className="font-bold truncate">{c.title}</p>
                 <p className="text-[12px] text-muted-foreground truncate">{c.body}</p>
               </button>
-              <span className="text-[13px]">{c.audience === "all" ? "All customers" : c.audience}</span>
+              <span className="text-[13px]">{audienceLabel(c)}</span>
               <span>
                 <span
                   className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
