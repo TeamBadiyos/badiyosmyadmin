@@ -44,6 +44,9 @@ import {
   type ServiceFlagRow,
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
+import { listServiceControl } from "@/lib/service-control.functions";
+import { ServiceStatusSection } from "@/components/courier/service-status-section";
+import { ServiceHoursSection } from "@/components/courier/service-hours-section";
 
 /* --------------------------------- shared -------------------------------- */
 
@@ -152,12 +155,24 @@ type TabKey = (typeof TABS)[number]["key"];
 function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const fetchFlags = useServerFn(listServiceFlags);
+  const fetchControl = useServerFn(listServiceControl);
   const save = useServerFn(setServiceFlag);
   const [confirming, setConfirming] = useState<ServiceFlagRow | null>(null);
   const [busy, setBusy] = useState(false);
 
   const { data } = useQuery({ queryKey: ["courier", "flags"], queryFn: () => fetchFlags() });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "flags"] });
+  const { data: control } = useQuery({
+    queryKey: ["courier", "service-control"],
+    queryFn: () => fetchControl(),
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["courier", "flags"] });
+    qc.invalidateQueries({ queryKey: ["courier", "service-control"] });
+  };
+
+  const activeOrdersByKey = new Map<string, number>(
+    (data ?? []).map((r) => [r.service_key, r.activeOrders]),
+  );
 
   async function apply(row: ServiceFlagRow, isActive: boolean) {
     setBusy(true);
@@ -176,7 +191,26 @@ function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
   const rows = data ?? [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      {control ? (
+        <ServiceStatusSection
+          flags={control.flags}
+          canWrite={canWrite && control.canWrite}
+          activeOrdersByKey={activeOrdersByKey}
+          undo={control.undo}
+          onSaved={refresh}
+        />
+      ) : null}
+      {control ? (
+        <ServiceHoursSection
+          flags={control.flags}
+          hours={control.hours}
+          holidays={control.holidays}
+          canWrite={canWrite && control.canWrite}
+          onSaved={refresh}
+        />
+      ) : null}
+      <div className="space-y-3">
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">No services configured yet.</p>
       ) : null}
@@ -204,6 +238,7 @@ function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
           />
         </div>
       ))}
+      </div>
 
       {confirming ? (
         <Modal title="Turn this service off?" onClose={() => setConfirming(null)}>
