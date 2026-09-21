@@ -279,7 +279,9 @@ export function BookingsPage({
         )}
 
         <div className="ml-auto text-[12px] text-muted-foreground self-center">
-          {isLoading ? "Loading…" : `${total} booking${total === 1 ? "" : "s"}`}
+          {isLoading && orderType !== "courier"
+            ? "Loading…"
+            : `${total + courierRows.length} order${total + courierRows.length === 1 ? "" : "s"}`}
         </div>
       </div>
 
@@ -299,29 +301,39 @@ export function BookingsPage({
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
+              {isLoading && orderType !== "courier" && (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               )}
-              {isError && !isLoading && (
+              {isError && !isLoading && orderType !== "courier" && (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-destructive">
                     Failed to load bookings.
                   </td>
                 </tr>
               )}
-              {!isLoading && !isError && rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center py-10 text-muted-foreground">
-                    No bookings match these filters.
-                  </td>
-                </tr>
-              )}
+              {!isLoading &&
+                !isError &&
+                rows.length === 0 &&
+                courierRows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No orders match these filters.
+                    </td>
+                  </tr>
+                )}
               {rows.map((r) => (
                 <BookingRowItem key={r.id} row={r} onSelect={onSelect} />
+              ))}
+              {courierRows.map((o) => (
+                <CourierRowItem
+                  key={o.id}
+                  row={o}
+                  onSelect={() => setOpenCourier(o)}
+                />
               ))}
             </tbody>
           </table>
@@ -351,9 +363,84 @@ export function BookingsPage({
           </div>
         </div>
       </div>
+
+      {openCourier && (
+        <OrderDetail
+          order={openCourier}
+          canWrite={role === "super_admin"}
+          onClose={() => setOpenCourier(null)}
+          onChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ["bookings", "courier-list"] });
+            setOpenCourier(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+function CourierRowItem({
+  row,
+  onSelect,
+}: {
+  row: CourierOrderRow;
+  onSelect: () => void;
+}) {
+  const payment =
+    row.refund_status === "COMPLETED" || row.refund_status === "completed"
+      ? "refunded"
+      : row.payment_status === "PAID"
+        ? "paid"
+        : "unpaid";
+  return (
+    <tr
+      onClick={onSelect}
+      className="border-t border-border hover:bg-muted/40 cursor-pointer"
+    >
+      <td className="px-4 py-3 font-semibold text-foreground">
+        <div className="flex items-center gap-2">
+          <span>{row.customerName ?? "Customer"}</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-tint text-primary">
+            <Package size={10} /> Parcel
+          </span>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">
+        <div className="text-foreground">{row.order_code}</div>
+        <div className="text-[11px] truncate max-w-[280px]">
+          {row.pickup_address ?? "—"} → {row.drop_address ?? "—"}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">{row.city ?? "—"}</td>
+      <td className="px-4 py-3">
+        {row.riderName ? (
+          <span className="text-foreground">{row.riderName}</span>
+        ) : (
+          <span className="text-muted-foreground italic">Unassigned</span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-muted-foreground">
+          {row.status.replace(/_/g, " ").toLowerCase()}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${PAYMENT_STYLES[payment]}`}
+        >
+          {payment}
+        </span>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          ₹{row.total_amount.toFixed(0)}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+        {fmtDateTime(row.created_at)}
+      </td>
+    </tr>
+  );
+}
+
 
 function BookingRowItem({
   row,
