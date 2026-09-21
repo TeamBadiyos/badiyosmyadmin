@@ -36,9 +36,11 @@ function courierColumn(status: string, createdAt: string): PipelineStatus | null
   switch (status) {
     case "QUOTED":
       return "confirmed";
+    case "REQUESTED":
     case "PAID":
     case "SEARCHING":
       return "accepted";
+    case "DRIVER_ASSIGNED":
     case "ASSIGNED":
     case "ARRIVED_PICKUP":
       return "expert_assigned";
@@ -59,6 +61,7 @@ function courierColumn(status: string, createdAt: string): PipelineStatus | null
       return null;
   }
 }
+
 
 
 const inr = new Intl.NumberFormat("en-IN", {
