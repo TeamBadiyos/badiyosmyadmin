@@ -985,6 +985,10 @@ function CampaignModal({
             </label>
           </Field>
         </div>
+
+        {form.audience === "specific_users" && (
+          <CustomerPicker selected={targets} onChange={setTargets} />
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-5">
