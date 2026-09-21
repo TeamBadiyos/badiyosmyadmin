@@ -79,6 +79,18 @@ export type CustomerProfile = {
     paid: boolean;
     rating: number | null;
   }>;
+  courierOrders: Array<{
+    id: string;
+    order_code: string;
+    created_at: string | null;
+    status: string;
+    payment_status: string | null;
+    total_amount: number;
+    distance_km: number | null;
+    pickup_address: string | null;
+    drop_address: string | null;
+    expert_name: string | null;
+  }>;
   wallet: Array<{
     id: string;
     amount: number;
@@ -224,7 +236,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     if (uErr) throw new Error(uErr.message);
     if (!user) throw new Error("Customer not found");
 
-    const [addrRes, bookRes, walletRes, refRes, ticketRes] = await Promise.all([
+    const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes] = await Promise.all([
       db
         .from("addresses")
         .select("id, label, full_address, area, city, is_default")
@@ -256,17 +268,30 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(100),
+      db
+        .from("courier_orders")
+        .select(
+          "id, order_code, created_at, status, payment_status, total_amount, distance_km, pickup_address, drop_address, assigned_expert_id",
+        )
+        .eq("customer_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(200),
     ]);
     if (addrRes.error) throw new Error(addrRes.error.message);
     if (bookRes.error) throw new Error(bookRes.error.message);
     if (walletRes.error) throw new Error(walletRes.error.message);
     if (refRes.error) throw new Error(refRes.error.message);
     if (ticketRes.error) throw new Error(ticketRes.error.message);
+    if (courierRes.error) throw new Error(courierRes.error.message);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bookingRows = (bookRes.data ?? []) as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const courierRows = (courierRes.data ?? []) as any[];
     const expertIds = Array.from(
-      new Set(bookingRows.map((b) => b.assigned_expert_id).filter(Boolean)),
+      new Set(
+        [...bookingRows, ...courierRows].map((b) => b.assigned_expert_id).filter(Boolean),
+      ),
     ) as string[];
     const counterpartIds = Array.from(
       new Set(
@@ -360,6 +385,18 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         expert_name: b.assigned_expert_id ? (expertMap.get(b.assigned_expert_id) ?? null) : null,
         paid: Boolean(b.razorpay_payment_id),
         rating: typeof b.rating === "number" ? b.rating : null,
+      })),
+      courierOrders: courierRows.map((c) => ({
+        id: c.id,
+        order_code: c.order_code,
+        created_at: c.created_at ?? null,
+        status: c.status,
+        payment_status: c.payment_status ?? null,
+        total_amount: Number(c.total_amount ?? 0),
+        distance_km: c.distance_km == null ? null : Number(c.distance_km),
+        pickup_address: c.pickup_address ?? null,
+        drop_address: c.drop_address ?? null,
+        expert_name: c.assigned_expert_id ? (expertMap.get(c.assigned_expert_id) ?? null) : null,
       })),
       wallet: walletRows.map((w) => ({
         id: w.id,
