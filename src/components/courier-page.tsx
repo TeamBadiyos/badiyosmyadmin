@@ -904,7 +904,7 @@ function CourierTypesTab({ canWrite }: { canWrite: boolean }) {
 
 /* ------------------------------ 5. Live orders ---------------------------- */
 
-function OrderDetail({
+export function OrderDetail({
   order,
   canWrite,
   onClose,
