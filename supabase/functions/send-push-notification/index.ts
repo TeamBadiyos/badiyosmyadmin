@@ -230,6 +230,11 @@ Deno.serve(async (req) => {
     body?: string;
     alert_type?: string;
     data?: Record<string, unknown>;
+    // When present, the campaign_deliveries row is updated with the real
+    // FCM outcome (delivered / failed + reason) instead of a guess.
+    campaign_delivery_id?: string;
+    // Debug mode returns per-device results to the caller (admin test push).
+    debug?: boolean;
   };
   try {
     payload = await req.json();
