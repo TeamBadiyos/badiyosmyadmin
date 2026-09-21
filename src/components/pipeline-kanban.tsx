@@ -750,3 +750,54 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
     </div>
   );
 }
+
+function CourierBoardCard({
+  order,
+  onOpen,
+}: {
+  order: CourierOrderRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
+        order.needs_ops_attention
+          ? "border-warning bg-warning-tint/30"
+          : "border-border hover:border-primary/60"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className="text-[13px] font-bold text-foreground truncate">
+          {order.customerName ?? "Customer"}
+        </p>
+        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+          {order.order_code}
+        </span>
+      </div>
+
+      <span className="inline-flex items-center gap-1 rounded-full bg-primary-tint px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+        <Package size={11} /> Parcel
+      </span>
+
+      <div className="mt-1.5 text-[12px] text-muted-foreground space-y-0.5">
+        {order.pickup_address && (
+          <p className="truncate">Pick-up: {order.pickup_address}</p>
+        )}
+        {order.drop_address && (
+          <p className="truncate">Drop: {order.drop_address}</p>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <span>{formatPlacedAt(order.created_at)}</span>
+          <span className="font-semibold text-foreground">
+            {inr.format(order.total_amount)}
+          </span>
+        </div>
+        <p className="truncate text-foreground">
+          <span className="text-muted-foreground">Rider: </span>
+          {order.riderName ?? "Searching…"}
+        </p>
+      </div>
+    </div>
+  );
+}
