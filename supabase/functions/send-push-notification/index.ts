@@ -25,9 +25,44 @@ const INTERNAL_SECRET = Deno.env.get("PUSH_INTERNAL_SECRET") || "";
 // (which cannot be read from SQL). Both are treated as equally privileged.
 const TRIGGER_SECRET = Deno.env.get("PUSH_TRIGGER_SECRET") || "";
 
-const FCM_PROJECT_ID = Deno.env.get("FCM_PROJECT_ID");
-const FCM_CLIENT_EMAIL = Deno.env.get("FCM_CLIENT_EMAIL");
-const FCM_PRIVATE_KEY = Deno.env.get("FCM_PRIVATE_KEY");
+// Preferred: one JSON blob from Firebase Console (service account key file).
+// Fallback: the three legacy env vars.
+function loadServiceAccount(): {
+  projectId?: string;
+  clientEmail?: string;
+  privateKey?: string;
+} {
+  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON");
+  if (raw && raw.trim()) {
+    try {
+      const sa = JSON.parse(raw) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (sa.project_id && sa.client_email && sa.private_key) {
+        return {
+          projectId: sa.project_id,
+          clientEmail: sa.client_email,
+          privateKey: sa.private_key,
+        };
+      }
+      console.warn("[push] FIREBASE_SERVICE_ACCOUNT_JSON missing required fields");
+    } catch (e) {
+      console.error("[push] FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON", String(e));
+    }
+  }
+  return {
+    projectId: Deno.env.get("FCM_PROJECT_ID") ?? undefined,
+    clientEmail: Deno.env.get("FCM_CLIENT_EMAIL") ?? undefined,
+    privateKey: Deno.env.get("FCM_PRIVATE_KEY") ?? undefined,
+  };
+}
+
+const SERVICE_ACCOUNT = loadServiceAccount();
+const FCM_PROJECT_ID = SERVICE_ACCOUNT.projectId;
+const FCM_CLIENT_EMAIL = SERVICE_ACCOUNT.clientEmail;
+const FCM_PRIVATE_KEY = SERVICE_ACCOUNT.privateKey;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
