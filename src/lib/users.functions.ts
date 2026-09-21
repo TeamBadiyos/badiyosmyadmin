@@ -531,6 +531,8 @@ export const sendTestPush = createServerFn({ method: "POST" })
       cleaned?: number;
       tokens?: number;
       note?: string;
+      reason?: string;
+      error?: string;
       results?: TestPushResult["devices"];
     };
 
