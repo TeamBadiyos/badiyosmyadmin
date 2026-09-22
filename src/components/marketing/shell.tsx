@@ -31,34 +31,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 text-[14px] font-semibold">
-            <div
-              className="relative"
-              onMouseEnter={() => setServicesOpen(true)}
-              onMouseLeave={() => setServicesOpen(false)}
+            <a
+              href="#services"
+              className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              <button
-                type="button"
-                className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1"
-              >
-                Services
-                <ChevronDown size={14} />
-              </button>
-              {servicesOpen && (
-                <div className="absolute left-0 top-full pt-2 w-[240px]">
-                  <div className="bg-card border border-border rounded-[14px] shadow-lg p-2">
-                    {["Home Cleaning", "Home Services", "Shop Local"].map((label) => (
-                      <a
-                        key={label}
-                        href="#services"
-                        className="block px-3 py-2 rounded-[10px] text-[13px] text-foreground hover:bg-muted"
-                      >
-                        {label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+              Services
+            </a>
             <a
               href="#why"
               className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
