@@ -229,48 +229,111 @@ function Hero({ onCityInterest }: { onCityInterest: () => void }) {
 
 /* ----------------------------- SERVICES ----------------------------- */
 
-type ServiceItem = { name: string; icon: LucideIcon };
+type LiveService = {
+  name: string;
+  icon: LucideIcon;
+  desc: string;
+  tags: string[];
+  no: string;
+};
 
-const GROUP_LIVE: ServiceItem[] = [{ name: "Maid / Home Cleaning", icon: Brush }];
-
-const GROUP_HOME: ServiceItem[] = [{ name: "Car & Bike Wash", icon: Car }];
+const LIVE_SERVICES: LiveService[] = [
+  {
+    name: "Maid / Home Cleaning",
+    icon: Brush,
+    desc: "Trained, verified Home Experts for cleaning work around the house.",
+    tags: ["Dishwashing", "Bathroom clean", "Kitchen deep clean"],
+    no: "01",
+  },
+  {
+    name: "Local Parcel",
+    icon: Bike,
+    desc: "Send parcels across Latur, fast and reliable.",
+    tags: ["Doorstep pickup", "Live tracking", "Same-day"],
+    no: "02",
+  },
+  {
+    name: "Car & Bike Wash",
+    icon: Car,
+    desc: "Doorstep care for your vehicle by a verified Badiyos expert.",
+    tags: ["At your parking", "Foam wash", "Interior wipe"],
+    no: "03",
+  },
+];
 
 function Services({ onShowInterest }: { onShowInterest: () => void }) {
   return (
     <section id="services" className="w-full bg-card">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-24 space-y-16">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-24">
         <Reveal>
           <p className="text-[12px] font-bold uppercase tracking-widest text-primary">
             Services
           </p>
           <h2 className="mt-2 text-[28px] sm:text-[38px] font-bold text-foreground max-w-2xl leading-tight">
-            Everything your home needs — one app at a time.
+            Three things we do in Latur — and we do them properly.
           </h2>
           <p className="mt-3 text-[15px] text-muted-foreground max-w-2xl">
-            We're starting with home cleaning in Latur and adding more as we grow.
+            All three are live today. More services arrive as we grow.
           </p>
         </Reveal>
 
-        <ServiceGroup
-          eyebrow="Live today"
-          title="On-Demand Home Cleaning"
-          desc="Book a trained, verified Home Expert for cleaning work around the house."
-          items={GROUP_LIVE}
-          soon={false}
-        />
+        <div className="mt-10 grid gap-5 sm:gap-6 md:grid-cols-3">
+          {LIVE_SERVICES.map((s, i) => (
+            <Reveal key={s.name} delay={i * 90}>
+              <article className="group relative h-full rounded-[26px] border border-border bg-background p-6 sm:p-7 overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_48px_-26px_rgba(0,185,122,0.65)]">
+                {/* glow */}
+                <div className="pointer-events-none absolute -top-24 -right-20 w-56 h-56 rounded-full bg-primary/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                {/* big index */}
+                <span className="pointer-events-none absolute right-5 top-3 text-[64px] font-bold leading-none text-foreground/[0.045] select-none">
+                  {s.no}
+                </span>
 
-        <ServiceGroup
-          eyebrow="Home services"
-          title="Home Services"
-          desc="Doorstep care for your vehicle by a verified Badiyos expert."
-          items={GROUP_HOME}
-          soon={false}
-        />
+                <div className="relative flex items-center justify-between gap-3">
+                  <div className="w-14 h-14 rounded-[18px] bg-primary-tint text-primary flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                    <s.icon size={26} strokeWidth={2.1} />
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-[10.5px] font-bold uppercase tracking-wide">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="hero-pulse absolute inline-flex h-full w-full rounded-full bg-primary-foreground" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                    </span>
+                    Live today
+                  </span>
+                </div>
 
+                <h3 className="relative mt-5 text-[19px] font-bold text-foreground leading-snug">
+                  {s.name}
+                </h3>
+                <p className="relative mt-2 text-[14px] text-muted-foreground leading-relaxed">
+                  {s.desc}
+                </p>
+
+                <div className="relative mt-5 flex flex-wrap gap-2">
+                  {s.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center h-7 px-2.5 rounded-full border border-border bg-card text-[11.5px] font-semibold text-muted-foreground"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="relative mt-6 pt-5 border-t border-border flex items-center gap-2 text-[13px] font-bold text-primary">
+                  Book on the app
+                  <ArrowRight
+                    size={15}
+                    className="transition-transform duration-300 group-hover:translate-x-1.5"
+                  />
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
 
         <div>
           <Reveal delay={80}>
-            <div className="mt-8 rounded-[24px] border border-primary/25 bg-primary-tint p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 justify-between">
+            <div className="mt-10 rounded-[24px] border border-primary/25 bg-primary-tint p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 justify-between">
               <div>
                 <h4 className="text-[18px] sm:text-[20px] font-bold text-foreground">
                   Don't see your service or shop yet?
@@ -292,52 +355,6 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
         </div>
       </div>
     </section>
-  );
-}
-
-function ServiceGroup({
-  eyebrow,
-  title,
-  desc,
-  items,
-  soon,
-}: {
-  eyebrow: string;
-  title: string;
-  desc: string;
-  items: ServiceItem[];
-  soon: boolean;
-}) {
-  return (
-    <div>
-      <Reveal>
-        <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-[22px] sm:text-[26px] font-bold text-foreground">{title}</h3>
-          {!soon && (
-            <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wide">
-              <BadgeCheck size={13} />
-              {eyebrow}
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-[14px] text-muted-foreground max-w-2xl">{desc}</p>
-      </Reveal>
-
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-        {items.map((item, i) => (
-          <Reveal key={item.name} delay={Math.min(i, 6) * 55}>
-            <div className="group relative h-full rounded-[18px] border border-border bg-background p-5 sm:p-6 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_16px_32px_-18px_rgba(0,185,122,0.55)]">
-              <div className="w-12 h-12 rounded-[14px] bg-primary-tint text-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-                <item.icon size={24} strokeWidth={2.1} />
-              </div>
-              <p className="mt-4 text-[15px] font-bold text-foreground leading-snug">
-                {item.name}
-              </p>
-            </div>
-          </Reveal>
-        ))}
-      </div>
-    </div>
   );
 }
 
