@@ -76,6 +76,8 @@ function HomePage() {
 
 const TICKER_ITEMS = [
   "Home Cleaning",
+  "Local Parcel Delivery",
+  "Car & Bike Wash",
   "Dishwashing",
   "Kitchen Deep Clean",
   "Bathroom Cleaning",
