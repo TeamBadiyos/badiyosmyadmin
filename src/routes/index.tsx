@@ -259,6 +259,15 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
           soon={false}
         />
 
+        <ServiceGroup
+          eyebrow="Home services"
+          title="Home Services"
+          desc="Doorstep care for your vehicle by a verified Badiyos expert."
+          items={GROUP_HOME}
+          soon={false}
+        />
+
+
         <div>
           <Reveal delay={80}>
             <div className="mt-8 rounded-[24px] border border-primary/25 bg-primary-tint p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 justify-between">
