@@ -282,8 +282,8 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
 
         <div className="mt-10 grid gap-5 sm:gap-6 md:grid-cols-3">
           {LIVE_SERVICES.map((s, i) => (
-            <Reveal key={s.name} delay={i * 90}>
-              <article className="group relative h-full rounded-[26px] border border-border bg-background p-6 sm:p-7 overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_48px_-26px_rgba(0,185,122,0.65)]">
+            <Reveal key={s.name} delay={i * 90} className="h-full">
+              <article className="group relative flex flex-col h-full rounded-[26px] border border-border bg-background p-6 sm:p-7 overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_48px_-26px_rgba(0,185,122,0.65)]">
                 {/* glow */}
                 <div className="pointer-events-none absolute -top-24 -right-20 w-56 h-56 rounded-full bg-primary/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 {/* big index */}
@@ -304,14 +304,14 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
                   </span>
                 </div>
 
-                <h3 className="relative mt-5 text-[19px] font-bold text-foreground leading-snug">
+                <h3 className="relative mt-5 min-h-[52px] text-[19px] font-bold text-foreground leading-snug">
                   {s.name}
                 </h3>
-                <p className="relative mt-2 text-[14px] text-muted-foreground leading-relaxed">
+                <p className="relative mt-2 min-h-[66px] text-[14px] text-muted-foreground leading-relaxed">
                   {s.desc}
                 </p>
 
-                <div className="relative mt-5 flex flex-wrap gap-2">
+                <div className="relative mt-5 min-h-[64px] flex flex-wrap content-start gap-2">
                   {s.tags.map((t) => (
                     <span
                       key={t}
@@ -322,7 +322,7 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
                   ))}
                 </div>
 
-                <div className="relative mt-6 pt-5 border-t border-border flex items-center gap-2 text-[13px] font-bold text-primary">
+                <div className="relative mt-auto pt-5 border-t border-border flex items-center gap-2 text-[13px] font-bold text-primary">
                   Book on the app
                   <ArrowRight
                     size={15}
