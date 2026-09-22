@@ -242,22 +242,6 @@ type ServiceItem = { name: string; icon: LucideIcon };
 
 const GROUP_LIVE: ServiceItem[] = [{ name: "Maid / Home Cleaning", icon: Brush }];
 
-const GROUP_HOME: ServiceItem[] = [
-  { name: "Plumber", icon: Wrench },
-  { name: "Electrician", icon: Zap },
-  { name: "AC Cleaning & Repair", icon: Wind },
-  { name: "Pest Control", icon: Bug },
-  { name: "Carpenter", icon: Hammer },
-  { name: "Car & Bike Wash", icon: Car },
-  { name: "Laundry", icon: Shirt },
-];
-
-const GROUP_SHOP: ServiceItem[] = [
-  { name: "Grocery", icon: ShoppingBasket },
-  { name: "Vegetables & Fruits", icon: Apple },
-  { name: "Local Businesses", icon: Store },
-];
-
 function Services({ onShowInterest }: { onShowInterest: () => void }) {
   return (
     <section id="services" className="w-full bg-card">
