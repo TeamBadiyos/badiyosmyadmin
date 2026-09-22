@@ -232,6 +232,8 @@ type ServiceItem = { name: string; icon: LucideIcon };
 
 const GROUP_LIVE: ServiceItem[] = [{ name: "Maid / Home Cleaning", icon: Brush }];
 
+const GROUP_HOME: ServiceItem[] = [{ name: "Car & Bike Wash", icon: Car }];
+
 function Services({ onShowInterest }: { onShowInterest: () => void }) {
   return (
     <section id="services" className="w-full bg-card">
