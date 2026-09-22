@@ -33,7 +33,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops on Badiyos.",
+          "Book a verified home cleaning expert in Latur in minutes. Dishwashing, kitchen deep clean and bathroom cleaning on Badiyos.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Badiyos — Trusted Home Services in Latur" },
