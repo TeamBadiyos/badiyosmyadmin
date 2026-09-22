@@ -13,16 +13,6 @@ import {
   ChevronDown,
   MapPin,
   ArrowRight,
-  Wrench,
-  Zap,
-  Wind,
-  Bug,
-  Hammer,
-  Car,
-  Shirt,
-  ShoppingBasket,
-  Apple,
-  Store,
   Brush,
   type LucideIcon,
 } from "lucide-react";
@@ -43,7 +33,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Book a verified home expert in Latur in minutes. Home cleaning today, with plumbing, electrical, AC care and local shops on Badiyos.",
+          "Book a verified home cleaning expert in Latur in minutes. Dishwashing, kitchen deep clean and bathroom cleaning on Badiyos.",
       },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "Badiyos — Trusted Home Services in Latur" },
@@ -242,22 +232,6 @@ type ServiceItem = { name: string; icon: LucideIcon };
 
 const GROUP_LIVE: ServiceItem[] = [{ name: "Maid / Home Cleaning", icon: Brush }];
 
-const GROUP_HOME: ServiceItem[] = [
-  { name: "Plumber", icon: Wrench },
-  { name: "Electrician", icon: Zap },
-  { name: "AC Cleaning & Repair", icon: Wind },
-  { name: "Pest Control", icon: Bug },
-  { name: "Carpenter", icon: Hammer },
-  { name: "Car & Bike Wash", icon: Car },
-  { name: "Laundry", icon: Shirt },
-];
-
-const GROUP_SHOP: ServiceItem[] = [
-  { name: "Grocery", icon: ShoppingBasket },
-  { name: "Vegetables & Fruits", icon: Apple },
-  { name: "Local Businesses", icon: Store },
-];
-
 function Services({ onShowInterest }: { onShowInterest: () => void }) {
   return (
     <section id="services" className="w-full bg-card">
@@ -283,24 +257,6 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
         />
 
         <div>
-          <ServiceGroup
-            eyebrow="Group 2"
-            title="Home Services"
-            desc="The everyday fixes and chores, handled by verified local professionals."
-            items={GROUP_HOME}
-            soon
-          />
-        </div>
-
-        <div>
-          <ServiceGroup
-            eyebrow="Group 3"
-            title="Shop Local"
-            desc="Order from the shops around your neighbourhood, delivered to your door."
-            items={GROUP_SHOP}
-            soon
-          />
-
           <Reveal delay={80}>
             <div className="mt-8 rounded-[24px] border border-primary/25 bg-primary-tint p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 justify-between">
               <div>
@@ -365,11 +321,6 @@ function ServiceGroup({
               <p className="mt-4 text-[15px] font-bold text-foreground leading-snug">
                 {item.name}
               </p>
-              {item.name === "Local Businesses" && (
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  Mobile, bakery, cloth shops and more
-                </p>
-              )}
             </div>
           </Reveal>
         ))}
@@ -482,9 +433,6 @@ function WhyBadiyos() {
                   approved experts appear in your app.
                 </p>
               </div>
-              <p className="relative mt-8 text-[11px] uppercase tracking-widest text-white/60">
-                [ Stats to be added post-launch ]
-              </p>
             </div>
           </Reveal>
 
@@ -514,7 +462,7 @@ function WhyBadiyos() {
 const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   {
     q: "What is badiyos?",
-    a: "Badiyos is a home-services app that connects you with verified Home Experts for everyday tasks like cleaning, dishwashing, laundry and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
+    a: "Badiyos is a home-services app that connects you with verified Home Experts for everyday tasks like home cleaning, dishwashing, kitchen deep clean and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
   },
   {
     q: "How do I book a service?",

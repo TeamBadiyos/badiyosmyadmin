@@ -2,14 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, MessageCircle, Play } from "lucide-react";
+import { MessageCircle, Play } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { LEGAL_ENTITY_NAME, whatsappLink } from "@/lib/brand";
 import { getPlayStoreUrl, PLAY_STORE_URL } from "@/lib/playstore.functions";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
-  const [servicesOpen, setServicesOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -31,34 +30,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 text-[14px] font-semibold">
-            <div
-              className="relative"
-              onMouseEnter={() => setServicesOpen(true)}
-              onMouseLeave={() => setServicesOpen(false)}
+            <a
+              href="#services"
+              className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              <button
-                type="button"
-                className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors inline-flex items-center gap-1"
-              >
-                Services
-                <ChevronDown size={14} />
-              </button>
-              {servicesOpen && (
-                <div className="absolute left-0 top-full pt-2 w-[240px]">
-                  <div className="bg-card border border-border rounded-[14px] shadow-lg p-2">
-                    {["Home Cleaning", "Home Services", "Shop Local"].map((label) => (
-                      <a
-                        key={label}
-                        href="#services"
-                        className="block px-3 py-2 rounded-[10px] text-[13px] text-foreground hover:bg-muted"
-                      >
-                        {label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+              Services
+            </a>
             <a
               href="#why"
               className="px-3 py-2 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
