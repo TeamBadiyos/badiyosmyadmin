@@ -267,24 +267,6 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
         />
 
         <div>
-          <ServiceGroup
-            eyebrow="Group 2"
-            title="Home Services"
-            desc="The everyday fixes and chores, handled by verified local professionals."
-            items={GROUP_HOME}
-            soon
-          />
-        </div>
-
-        <div>
-          <ServiceGroup
-            eyebrow="Group 3"
-            title="Shop Local"
-            desc="Order from the shops around your neighbourhood, delivered to your door."
-            items={GROUP_SHOP}
-            soon
-          />
-
           <Reveal delay={80}>
             <div className="mt-8 rounded-[24px] border border-primary/25 bg-primary-tint p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 justify-between">
               <div>
