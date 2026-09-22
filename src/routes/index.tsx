@@ -14,6 +14,7 @@ import {
   MapPin,
   ArrowRight,
   Brush,
+  Car,
   type LucideIcon,
 } from "lucide-react";
 import { MarketingShell, PlayStoreButton } from "@/components/marketing/shell";
