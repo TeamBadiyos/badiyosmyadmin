@@ -14,6 +14,7 @@ import {
   MapPin,
   ArrowRight,
   Brush,
+  Bike,
   Car,
   type LucideIcon,
 } from "lucide-react";
