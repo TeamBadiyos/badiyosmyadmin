@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, MessageCircle, Play } from "lucide-react";
+import { MessageCircle, Play } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { LEGAL_ENTITY_NAME, whatsappLink } from "@/lib/brand";
 import { getPlayStoreUrl, PLAY_STORE_URL } from "@/lib/playstore.functions";
