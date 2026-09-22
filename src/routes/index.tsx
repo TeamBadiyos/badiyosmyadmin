@@ -433,9 +433,6 @@ function WhyBadiyos() {
                   approved experts appear in your app.
                 </p>
               </div>
-              <p className="relative mt-8 text-[11px] uppercase tracking-widest text-white/60">
-                [ Stats to be added post-launch ]
-              </p>
             </div>
           </Reveal>
 
