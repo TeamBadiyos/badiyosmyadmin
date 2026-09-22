@@ -14,6 +14,7 @@ import {
   MapPin,
   ArrowRight,
   Brush,
+  Car,
   type LucideIcon,
 } from "lucide-react";
 import { MarketingShell, PlayStoreButton } from "@/components/marketing/shell";
@@ -232,6 +233,8 @@ type ServiceItem = { name: string; icon: LucideIcon };
 
 const GROUP_LIVE: ServiceItem[] = [{ name: "Maid / Home Cleaning", icon: Brush }];
 
+const GROUP_HOME: ServiceItem[] = [{ name: "Car & Bike Wash", icon: Car }];
+
 function Services({ onShowInterest }: { onShowInterest: () => void }) {
   return (
     <section id="services" className="w-full bg-card">
@@ -255,6 +258,15 @@ function Services({ onShowInterest }: { onShowInterest: () => void }) {
           items={GROUP_LIVE}
           soon={false}
         />
+
+        <ServiceGroup
+          eyebrow="Home services"
+          title="Home Services"
+          desc="Doorstep care for your vehicle by a verified Badiyos expert."
+          items={GROUP_HOME}
+          soon={false}
+        />
+
 
         <div>
           <Reveal delay={80}>
