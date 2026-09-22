@@ -9,7 +9,6 @@ import { getPlayStoreUrl, PLAY_STORE_URL } from "@/lib/playstore.functions";
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
-  const [servicesOpen, setServicesOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
