@@ -462,7 +462,7 @@ function WhyBadiyos() {
 const FAQ_ITEMS: Array<{ q: string; a: string }> = [
   {
     q: "What is badiyos?",
-    a: "Badiyos is a home-services app that connects you with verified Home Experts for everyday tasks like cleaning, dishwashing, laundry and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
+    a: "Badiyos is a home-services app that connects you with verified Home Experts for everyday tasks like home cleaning, dishwashing, kitchen deep clean and bathroom cleaning. Book in the app, pay online, and a nearby expert is assigned to you.",
   },
   {
     q: "How do I book a service?",
