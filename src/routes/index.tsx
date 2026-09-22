@@ -321,11 +321,6 @@ function ServiceGroup({
               <p className="mt-4 text-[15px] font-bold text-foreground leading-snug">
                 {item.name}
               </p>
-              {item.name === "Local Businesses" && (
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  Mobile, bakery, cloth shops and more
-                </p>
-              )}
             </div>
           </Reveal>
         ))}
