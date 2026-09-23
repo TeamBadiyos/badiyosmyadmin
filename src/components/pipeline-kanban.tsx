@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, UserPlus, Volume2, VolumeX, Package } from "lucide-react";
+import {
+  X,
+  UserPlus,
+  Volume2,
+  VolumeX,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -302,6 +310,45 @@ export function PipelineKanban({
   useEffect(() => {
     return () => stopBeep(audioRef);
   }, []);
+
+  // Horizontal scroll controls shown at the top of the board.
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
+  const topBarInnerRef = useRef<HTMLDivElement | null>(null);
+  const syncingRef = useRef(false);
+
+  const syncScroll = (
+    from: React.MutableRefObject<HTMLDivElement | null>,
+    to: React.MutableRefObject<HTMLDivElement | null>,
+  ) => {
+    if (syncingRef.current) return;
+    if (!from.current || !to.current) return;
+    syncingRef.current = true;
+    to.current.scrollLeft = from.current.scrollLeft;
+    requestAnimationFrame(() => {
+      syncingRef.current = false;
+    });
+  };
+
+  const scrollBoard = (dir: 1 | -1) => {
+    const el = boardRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+
+  // Keep the top scrollbar's width in sync with the board's real content width.
+  useEffect(() => {
+    const board = boardRef.current;
+    const inner = topBarInnerRef.current;
+    if (!board || !inner) return;
+    const update = () => {
+      inner.style.width = `${board.scrollWidth}px`;
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(board);
+    return () => ro.disconnect();
+  }, [data, courierData]);
 
   return (
     <section className="bg-card border border-border rounded-[18px] p-4 sm:p-6">
