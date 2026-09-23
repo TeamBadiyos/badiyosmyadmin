@@ -429,7 +429,7 @@ export function ServiceStatusSection({
 
       {flags.map((f) => (
         <StatusRow
-          key={f.id}
+          key={`${f.id}:${f.status_updated_at ?? f.updated_at ?? ""}`}
           flag={f}
           canWrite={canWrite}
           activeOrders={activeOrdersByKey.get(f.service_key) ?? 0}
