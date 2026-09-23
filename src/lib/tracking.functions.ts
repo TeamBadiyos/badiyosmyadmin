@@ -241,3 +241,81 @@ export const getBookingTracking = createServerFn({ method: "POST" })
       fetchedAt: new Date().toISOString(),
     };
   });
+
+/* --------------------------- Road route (Routes API) --------------------------- */
+
+export type RoadRoute = {
+  polyline: string | null;
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+};
+
+type LatLng = { lat: number; lng: number };
+
+// Google removed the legacy Directions API for new projects, so the browser
+// DirectionsService returns REQUEST_DENIED and the map falls back to a straight
+// line. We call the current Routes API server-side instead and hand the encoded
+// polyline to the map.
+export const getRoadRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { stops: LatLng[] }) => {
+    const stops = Array.isArray(input?.stops) ? input.stops : [];
+    if (stops.length < 2) throw new Error("At least two stops required");
+    if (stops.length > 5) throw new Error("Too many stops");
+    for (const s of stops) {
+      if (typeof s?.lat !== "number" || typeof s?.lng !== "number") {
+        throw new Error("Invalid stop");
+      }
+    }
+    return { stops };
+  })
+  .handler(async ({ data, context }): Promise<RoadRoute> => {
+    await requireStaff(context);
+    const key = process.env.GOOGLE_API_KEY;
+    if (!key) throw new Error("Google Maps key not configured.");
+
+    const point = (p: LatLng) => ({
+      location: { latLng: { latitude: p.lat, longitude: p.lng } },
+    });
+    const stops = data.stops;
+    const body = {
+      origin: point(stops[0]),
+      destination: point(stops[stops.length - 1]),
+      intermediates: stops.slice(1, -1).map(point),
+      travelMode: "TWO_WHEELER",
+      polylineQuality: "HIGH_QUALITY",
+    };
+
+    const res = await fetch(
+      "https://routes.googleapis.com/directions/v2:computeRoutes",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": key,
+          // The project key is referrer-restricted; server calls must present one.
+          Referer: "https://badiyosmyadmin.lovable.app",
+          "X-Goog-FieldMask":
+            "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Route lookup failed [${res.status}]: ${text}`);
+    }
+    const json = (await res.json()) as {
+      routes?: Array<{
+        polyline?: { encodedPolyline?: string };
+        distanceMeters?: number;
+        duration?: string;
+      }>;
+    };
+    const r = json.routes?.[0];
+    return {
+      polyline: r?.polyline?.encodedPolyline ?? null,
+      distanceMeters: r?.distanceMeters ?? null,
+      durationSeconds: r?.duration ? Number(String(r.duration).replace("s", "")) : null,
+    };
+  });
