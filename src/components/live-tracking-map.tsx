@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Crosshair, Maximize2, MapPin, Navigation, Phone } from "lucide-react";
@@ -7,6 +7,7 @@ import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import {
   getBookingTracking,
   getCourierTracking,
+  getRoadRoute,
   type TrackingSnapshot,
 } from "@/lib/tracking.functions";
 
@@ -18,6 +19,37 @@ function agoLabel(iso: string | null): string {
   if (mins < 60) return `updated ${mins} min ago`;
   const hrs = Math.round(mins / 60);
   return `updated ${hrs} h ago`;
+}
+
+// Decodes a Google encoded polyline into lat/lng points.
+function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+  const points: Array<{ lat: number; lng: number }> = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let result = 0;
+    let shift = 0;
+    let b: number;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    result = 0;
+    shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
 }
 
 // Delivery rider on a bike, inside a pin-style badge.
@@ -44,6 +76,7 @@ export function LiveTrackingMap({
 }) {
   const fetchCourier = useServerFn(getCourierTracking);
   const fetchBooking = useServerFn(getBookingTracking);
+  const fetchRoute = useServerFn(getRoadRoute);
 
   const { data, isLoading, isError, error } = useQuery<TrackingSnapshot>({
     queryKey: ["tracking", kind, id],
@@ -61,15 +94,54 @@ export function LiveTrackingMap({
   const markersRef = useRef<Record<string, any>>({});
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lineRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const directionsRef = useRef<any>(null);
-  // Cache key of the last road route we requested, so polling does not
-  // re-hit Directions on every 5s refresh.
-  const routeKeyRef = useRef<string>("");
-  const routeBusyRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [follow, setFollow] = useState(true);
+
+  const agentPos = useMemo(
+    () =>
+      data?.agent && data.agent.lat != null && data.agent.lng != null
+        ? { lat: data.agent.lat, lng: data.agent.lng }
+        : null,
+    [data],
+  );
+
+  // Stops for the road route: agent -> next stop -> final stop.
+  const stops = useMemo(() => {
+    if (!data) return [] as Array<{ lat: number; lng: number }>;
+    const list: Array<{ lat: number; lng: number }> = [];
+    if (agentPos) list.push(agentPos);
+    if (data.phase === "to_pickup" && data.pickup) {
+      list.push({ lat: data.pickup.lat, lng: data.pickup.lng });
+      if (data.drop) list.push({ lat: data.drop.lat, lng: data.drop.lng });
+    } else if (data.drop) {
+      list.push({ lat: data.drop.lat, lng: data.drop.lng });
+    } else if (data.pickup) {
+      list.push({ lat: data.pickup.lat, lng: data.pickup.lng });
+    }
+    return list;
+  }, [data, agentPos]);
+
+  // Rounded key so the 5s poll only re-asks for a route when a point really moved.
+  const stopsKey = useMemo(
+    () => stops.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|"),
+    [stops],
+  );
+
+  const routeQuery = useQuery({
+    queryKey: ["tracking", "route", stopsKey],
+    queryFn: () => fetchRoute({ data: { stops } }),
+    enabled: stops.length >= 2,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+
+  const routePath = useMemo(() => {
+    const encoded = routeQuery.data?.polyline;
+    if (!encoded) return null;
+    const pts = decodePolyline(encoded);
+    return pts.length > 1 ? pts : null;
+  }, [routeQuery.data]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +155,7 @@ export function LiveTrackingMap({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          clickableIcons: false,
         });
         setMapReady(true);
       })
@@ -107,14 +180,23 @@ export function LiveTrackingMap({
       key: string,
       pos: { lat: number; lng: number },
       title: string,
-      icon?: string | Record<string, unknown>,
+      icon: string | Record<string, unknown>,
+      zIndex: number,
     ) {
       const existing = markersRef.current[key];
       if (existing) {
         existing.setPosition(pos);
         existing.setTitle(title);
+        existing.setIcon(icon);
+        existing.setZIndex(zIndex);
       } else {
-        markersRef.current[key] = new g.Marker({ map, position: pos, title, icon });
+        markersRef.current[key] = new g.Marker({
+          map,
+          position: pos,
+          title,
+          icon,
+          zIndex,
+        });
       }
       bounds.extend(pos);
     }
@@ -132,6 +214,7 @@ export function LiveTrackingMap({
           strokeColor: "#ffffff",
           strokeWeight: 3,
         },
+        10,
       );
     }
     if (data.drop) {
@@ -147,93 +230,57 @@ export function LiveTrackingMap({
           strokeColor: "#ffffff",
           strokeWeight: 3,
         },
+        11,
       );
     }
 
-    const agentPos =
-      data.agent && data.agent.lat != null && data.agent.lng != null
-        ? { lat: data.agent.lat, lng: data.agent.lng }
-        : null;
     if (agentPos) {
-      place("agent", agentPos, data.agent?.name ?? "On the way", {
-        url: AGENT_ICON,
-        scaledSize: new g.Size(44, 44),
-        anchor: new g.Point(22, 22),
-      });
+      // Highest zIndex so the rider is never hidden under the pick-up / drop pins.
+      place(
+        "agent",
+        agentPos,
+        data.agent?.name ?? "On the way",
+        {
+          url: AGENT_ICON,
+          scaledSize: new g.Size(46, 46),
+          anchor: new g.Point(23, 23),
+        },
+        999,
+      );
     } else if (markersRef.current["agent"]) {
       markersRef.current["agent"].setMap(null);
       delete markersRef.current["agent"];
     }
 
-    // Stops: agent -> next stop -> final stop.
-    const stops: Array<{ lat: number; lng: number }> = [];
-    if (agentPos) stops.push(agentPos);
-    if (data.phase === "to_pickup" && data.pickup) {
-      stops.push({ lat: data.pickup.lat, lng: data.pickup.lng });
-      if (data.drop) stops.push({ lat: data.drop.lat, lng: data.drop.lng });
-    } else if (data.drop) {
-      stops.push({ lat: data.drop.lat, lng: data.drop.lng });
-    }
-
-    function drawPath(pathPoints: Array<{ lat: number; lng: number }>) {
+    // Prefer the real road route; fall back to a connector line until it loads.
+    const path = routePath ?? (stops.length >= 2 ? stops : null);
+    if (path) {
       if (lineRef.current) {
-        lineRef.current.setPath(pathPoints);
+        lineRef.current.setPath(path);
         lineRef.current.setMap(map);
       } else {
         lineRef.current = new g.Polyline({
           map,
-          path: pathPoints,
+          path,
           strokeColor: "#00B97A",
           strokeOpacity: 0.9,
           strokeWeight: 5,
+          zIndex: 5,
         });
       }
-    }
-
-    if (stops.length >= 2) {
-      // Only ask Google for a fresh road route when a stop moved ~11m or more.
-      const key = stops.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|");
-      if (key !== routeKeyRef.current && !routeBusyRef.current) {
-        routeBusyRef.current = true;
-        if (!directionsRef.current) directionsRef.current = new g.DirectionsService();
-        const origin = stops[0];
-        const destination = stops[stops.length - 1];
-        const waypoints = stops.slice(1, -1).map((p) => ({ location: p, stopover: true }));
-        directionsRef.current.route(
-          {
-            origin,
-            destination,
-            waypoints,
-            travelMode: g.TravelMode.DRIVING,
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (result: any, status: string) => {
-            routeBusyRef.current = false;
-            if (status === "OK" && result?.routes?.[0]?.overview_path?.length) {
-              routeKeyRef.current = key;
-              drawPath(result.routes[0].overview_path);
-            } else {
-              // Roads unavailable (or quota): keep a simple connector line.
-              drawPath(stops);
-            }
-          },
-        );
-        if (!lineRef.current) drawPath(stops);
-      } else if (!lineRef.current) {
-        drawPath(stops);
-      }
+      path.forEach((p) => bounds.extend(p));
     } else if (lineRef.current) {
       lineRef.current.setMap(null);
       lineRef.current = null;
-      routeKeyRef.current = "";
     }
 
     if (follow && agentPos) {
       map.panTo(agentPos);
     } else if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, 60);
+      // Generous padding keeps pins clear of the map edges and the footer card.
+      map.fitBounds(bounds, { top: 56, right: 48, bottom: 72, left: 48 });
     }
-  }, [mapReady, data, follow]);
+  }, [mapReady, data, follow, agentPos, stops, routePath]);
 
   const agent = data?.agent ?? null;
 
@@ -291,6 +338,15 @@ export function LiveTrackingMap({
           <p className="text-destructive">
             Could not load tracking
             {error instanceof Error && error.message ? `: ${error.message}` : ""}.
+          </p>
+        )}
+        {routeQuery.data?.distanceMeters != null && (
+          <p className="text-muted-foreground">
+            <span className="font-semibold text-foreground">Route: </span>
+            {(routeQuery.data.distanceMeters / 1000).toFixed(1)} km
+            {routeQuery.data.durationSeconds != null
+              ? ` · about ${Math.max(1, Math.round(routeQuery.data.durationSeconds / 60))} min`
+              : ""}
           </p>
         )}
         {data?.pickup && (

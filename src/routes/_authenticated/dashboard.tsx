@@ -743,7 +743,8 @@ function DashboardHome({
         })}
       </div>
 
-      <div className={showCommerce ? "grid gap-6 2xl:grid-cols-2" : ""}>
+      {/* Live Orders on top, merchant commerce stacked below it. */}
+      <div className="space-y-6">
         <PipelineKanban role={role} segmentId={segmentId} />
         {showCommerce && <CommerceKanban segmentId={segmentId} />}
       </div>
