@@ -61,6 +61,12 @@ export function LiveTrackingMap({
   const markersRef = useRef<Record<string, any>>({});
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lineRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const directionsRef = useRef<any>(null);
+  // Cache key of the last road route we requested, so polling does not
+  // re-hit Directions on every 5s refresh.
+  const routeKeyRef = useRef<string>("");
+  const routeBusyRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [follow, setFollow] = useState(true);
