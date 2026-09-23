@@ -169,9 +169,9 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     const { data: out, error } = await context.supabase.rpc("staff_set_service_status", {
       _service_key: data.serviceKey,
       _status: data.status,
-      _message_en: data.messageEn ?? null,
-      _message_mr: data.messageMr ?? null,
-      _resume_at: data.resumeAt ?? null,
+      _message_en: data.messageEn ?? undefined,
+      _message_mr: data.messageMr ?? undefined,
+      _resume_at: data.resumeAt ?? undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const, result: out };
