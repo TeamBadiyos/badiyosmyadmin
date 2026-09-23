@@ -38,6 +38,8 @@ import {
   listActiveExperts,
 } from "@/lib/live-orders.functions";
 
+import { LiveTrackingMap } from "@/components/live-tracking-map";
+
 
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
@@ -417,6 +419,15 @@ export function BookingDetailsModal({
                 </div>
                 <Timeline current={data.status} />
               </section>
+
+              {/* Live tracking */}
+              <section>
+                <h3 className="text-[13px] font-bold text-foreground mb-2">
+                  Live tracking
+                </h3>
+                <LiveTrackingMap kind="booking" id={bookingId} />
+              </section>
+
 
               {/* Grid */}
               <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
