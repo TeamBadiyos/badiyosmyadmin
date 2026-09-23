@@ -142,8 +142,13 @@ async function guardConcurrentEdit(
     .eq("service_key", serviceKey)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const current = (data?.status_updated_at as string | null) ?? (data?.updated_at as string | null);
-  if (current && knownUpdatedAt && current !== knownUpdatedAt) {
+  // A token is still valid if it matches either timestamp — different sections
+  // (status vs hours) hold different fields as their "known" token.
+  const candidates = [
+    data?.status_updated_at as string | null,
+    data?.updated_at as string | null,
+  ].filter(Boolean) as string[];
+  if (knownUpdatedAt && candidates.length > 0 && !candidates.includes(knownUpdatedAt)) {
     throw new Error("Kisi ne abhi is service ko badla hai — refresh karke dobara dekhiye.");
   }
 }

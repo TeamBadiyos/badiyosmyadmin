@@ -146,15 +146,26 @@ export function BookingsPage({
   const courierRows = useMemo(() => {
     if (orderType === "service" || !canSeeCourier) return [];
     if (orderType === "all" && page > 1) return [];
+    // Parcel orders are not zone-tagged, so a zone filter excludes them.
+    if (zoneId) return [];
     const fromMs = from ? new Date(`${from}T00:00:00`).getTime() : null;
     const toMs = to ? new Date(`${to}T23:59:59`).getTime() : null;
+    // Map the booking-status filter onto courier statuses.
+    const statusMap: Record<string, string[]> = {
+      active: ["SEARCHING", "ASSIGNED", "DRIVER_ASSIGNED", "ARRIVED_PICKUP", "PICKED_UP", "IN_TRANSIT", "FAILED_DELIVERY"],
+      completed: ["DELIVERED", "COMPLETED"],
+      cancelled: ["CANCELLED"],
+    };
+    const wanted = status ? (statusMap[status] ?? null) : null;
     return (courierAll ?? []).filter((o) => {
+      if (status && !wanted) return false; // service-only statuses (confirmed etc.) have no parcel equivalent
+      if (wanted && !wanted.includes(o.status)) return false;
       const t = new Date(o.created_at).getTime();
       if (fromMs != null && t < fromMs) return false;
       if (toMs != null && t > toMs) return false;
       return true;
     });
-  }, [courierAll, orderType, page, from, to, canSeeCourier]);
+  }, [courierAll, orderType, page, from, to, status, zoneId, canSeeCourier]);
 
 
   function updateFilter(fn: () => void) {
