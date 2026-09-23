@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { X, UserPlus, Volume2, VolumeX, Package } from "lucide-react";
+import {
+  X,
+  UserPlus,
+  Volume2,
+  VolumeX,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -303,6 +311,45 @@ export function PipelineKanban({
     return () => stopBeep(audioRef);
   }, []);
 
+  // Horizontal scroll controls shown at the top of the board.
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
+  const topBarInnerRef = useRef<HTMLDivElement | null>(null);
+  const syncingRef = useRef(false);
+
+  const syncScroll = (
+    from: React.MutableRefObject<HTMLDivElement | null>,
+    to: React.MutableRefObject<HTMLDivElement | null>,
+  ) => {
+    if (syncingRef.current) return;
+    if (!from.current || !to.current) return;
+    syncingRef.current = true;
+    to.current.scrollLeft = from.current.scrollLeft;
+    requestAnimationFrame(() => {
+      syncingRef.current = false;
+    });
+  };
+
+  const scrollBoard = (dir: 1 | -1) => {
+    const el = boardRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+
+  // Keep the top scrollbar's width in sync with the board's real content width.
+  useEffect(() => {
+    const board = boardRef.current;
+    const inner = topBarInnerRef.current;
+    if (!board || !inner) return;
+    const update = () => {
+      inner.style.width = `${board.scrollWidth}px`;
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(board);
+    return () => ro.disconnect();
+  }, [data, courierData]);
+
   return (
     <section className="bg-card border border-border rounded-[18px] p-4 sm:p-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-4">
@@ -322,6 +369,23 @@ export function PipelineKanban({
             </p>
           )}
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => scrollBoard(-1)}
+          className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full border border-border text-muted-foreground hover:text-foreground bg-background"
+          aria-label="Scroll board left"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollBoard(1)}
+          className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full border border-border text-muted-foreground hover:text-foreground bg-background"
+          aria-label="Scroll board right"
+        >
+          <ChevronRight size={18} />
+        </button>
         <button
           type="button"
           onClick={() => setMuted((v) => !v)}
@@ -336,11 +400,23 @@ export function PipelineKanban({
         >
           {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
+        </div>
       </div>
 
+      {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
+      <div
+        ref={topBarRef}
+        onScroll={() => syncScroll(topBarRef, boardRef)}
+        className="overflow-x-auto overflow-y-hidden mb-2"
+      >
+        <div ref={topBarInnerRef} className="h-[1px]" />
+      </div>
 
-
-      <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
+      <div
+        ref={boardRef}
+        onScroll={() => syncScroll(boardRef, topBarRef)}
+        className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
+      >
         {COLUMNS.map((col) => {
           const items = grouped.get(col.key) ?? [];
           const courierItems = courierGrouped.get(col.key) ?? [];
