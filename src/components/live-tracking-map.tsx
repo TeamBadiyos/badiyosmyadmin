@@ -20,12 +20,18 @@ function agoLabel(iso: string | null): string {
   return `updated ${hrs} h ago`;
 }
 
+// Delivery rider on a bike, inside a pin-style badge.
 const AGENT_ICON =
   "data:image/svg+xml;charset=UTF-8," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-      <circle cx="22" cy="22" r="20" fill="#00B97A" fill-opacity="0.18"/>
-      <circle cx="22" cy="22" r="11" fill="#00B97A" stroke="#ffffff" stroke-width="3"/>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 52 52">
+      <circle cx="26" cy="26" r="24" fill="#00B97A" fill-opacity="0.16"/>
+      <circle cx="26" cy="26" r="16" fill="#ffffff" stroke="#00B97A" stroke-width="3"/>
+      <g transform="translate(26 26) scale(0.052) translate(-256 -256)" fill="#0f6b4f">
+        <path d="M400 320a80 80 0 1 0 0 160 80 80 0 0 0 0-160zm0 120a40 40 0 1 1 0-80 40 40 0 0 1 0 80z"/>
+        <path d="M112 320a80 80 0 1 0 0 160 80 80 0 0 0 0-160zm0 120a40 40 0 1 1 0-80 40 40 0 0 1 0 80z"/>
+        <path d="M400 288c-9 0-17 1-25 3l-37-67h35c11 0 20-9 20-20s-9-20-20-20h-69c-7 0-14 4-17 10-4 6-4 14 0 20l14 26-63 88-46-84c-4-6-10-10-18-10h-62c-11 0-20 9-20 20s9 20 20 20h50l13 24H112c-62 0-112 50-112 112s50 112 112 112c57 0 104-42 111-97h58c7 0 13-3 17-9l84-117 16 29c-27 20-45 53-45 90 0 62 50 112 112 112s112-50 112-112-50-112-112-112zM112 472c-40 0-72-32-72-72s32-72 72-72 72 32 72 72-32 72-72 72zm288 0c-40 0-72-32-72-72s32-72 72-72 72 32 72 72-32 72-72 72z"/>
+      </g>
     </svg>`,
   );
 
