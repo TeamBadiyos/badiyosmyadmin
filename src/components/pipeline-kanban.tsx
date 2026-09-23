@@ -353,11 +353,23 @@ export function PipelineKanban({
         >
           {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
+        </div>
       </div>
 
+      {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
+      <div
+        ref={topBarRef}
+        onScroll={() => syncScroll(topBarRef, boardRef)}
+        className="overflow-x-auto overflow-y-hidden mb-2"
+      >
+        <div ref={topBarInnerRef} className="h-[1px]" />
+      </div>
 
-
-      <div className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
+      <div
+        ref={boardRef}
+        onScroll={() => syncScroll(boardRef, topBarRef)}
+        className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
+      >
         {COLUMNS.map((col) => {
           const items = grouped.get(col.key) ?? [];
           const courierItems = courierGrouped.get(col.key) ?? [];
