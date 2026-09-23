@@ -1046,6 +1046,10 @@ export function OrderDetail({
         </div>
       </div>
 
+      <div className="mt-4">
+        <LiveTrackingMap kind="courier" id={order.id} />
+      </div>
+
       {canWrite ? (
         <div className="mt-4 space-y-4">
           <div className="rounded-[12px] border border-border p-3">
