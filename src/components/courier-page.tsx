@@ -47,6 +47,7 @@ import {
 import { listServiceControl } from "@/lib/service-control.functions";
 import { ServiceStatusSection } from "@/components/courier/service-status-section";
 import { ServiceHoursSection } from "@/components/courier/service-hours-section";
+import { LiveTrackingMap } from "@/components/live-tracking-map";
 
 /* --------------------------------- shared -------------------------------- */
 
