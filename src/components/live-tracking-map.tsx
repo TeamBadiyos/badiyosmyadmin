@@ -165,30 +165,67 @@ export function LiveTrackingMap({
       delete markersRef.current["agent"];
     }
 
-    // Route line: agent -> next stop -> final stop.
-    const path: Array<{ lat: number; lng: number }> = [];
-    if (agentPos) path.push(agentPos);
+    // Stops: agent -> next stop -> final stop.
+    const stops: Array<{ lat: number; lng: number }> = [];
+    if (agentPos) stops.push(agentPos);
     if (data.phase === "to_pickup" && data.pickup) {
-      path.push({ lat: data.pickup.lat, lng: data.pickup.lng });
-      if (data.drop) path.push({ lat: data.drop.lat, lng: data.drop.lng });
+      stops.push({ lat: data.pickup.lat, lng: data.pickup.lng });
+      if (data.drop) stops.push({ lat: data.drop.lat, lng: data.drop.lng });
     } else if (data.drop) {
-      path.push({ lat: data.drop.lat, lng: data.drop.lng });
+      stops.push({ lat: data.drop.lat, lng: data.drop.lng });
     }
-    if (path.length >= 2) {
+
+    function drawPath(pathPoints: Array<{ lat: number; lng: number }>) {
       if (lineRef.current) {
-        lineRef.current.setPath(path);
+        lineRef.current.setPath(pathPoints);
+        lineRef.current.setMap(map);
       } else {
         lineRef.current = new g.Polyline({
           map,
-          path,
+          path: pathPoints,
           strokeColor: "#00B97A",
-          strokeOpacity: 0.85,
-          strokeWeight: 4,
+          strokeOpacity: 0.9,
+          strokeWeight: 5,
         });
+      }
+    }
+
+    if (stops.length >= 2) {
+      // Only ask Google for a fresh road route when a stop moved ~11m or more.
+      const key = stops.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join("|");
+      if (key !== routeKeyRef.current && !routeBusyRef.current) {
+        routeBusyRef.current = true;
+        if (!directionsRef.current) directionsRef.current = new g.DirectionsService();
+        const origin = stops[0];
+        const destination = stops[stops.length - 1];
+        const waypoints = stops.slice(1, -1).map((p) => ({ location: p, stopover: true }));
+        directionsRef.current.route(
+          {
+            origin,
+            destination,
+            waypoints,
+            travelMode: g.TravelMode.DRIVING,
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (result: any, status: string) => {
+            routeBusyRef.current = false;
+            if (status === "OK" && result?.routes?.[0]?.overview_path?.length) {
+              routeKeyRef.current = key;
+              drawPath(result.routes[0].overview_path);
+            } else {
+              // Roads unavailable (or quota): keep a simple connector line.
+              drawPath(stops);
+            }
+          },
+        );
+        if (!lineRef.current) drawPath(stops);
+      } else if (!lineRef.current) {
+        drawPath(stops);
       }
     } else if (lineRef.current) {
       lineRef.current.setMap(null);
       lineRef.current = null;
+      routeKeyRef.current = "";
     }
 
     if (follow && agentPos) {
