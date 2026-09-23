@@ -322,6 +322,23 @@ export function PipelineKanban({
             </p>
           )}
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => scrollBoard(-1)}
+          className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full border border-border text-muted-foreground hover:text-foreground bg-background"
+          aria-label="Scroll board left"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollBoard(1)}
+          className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full border border-border text-muted-foreground hover:text-foreground bg-background"
+          aria-label="Scroll board right"
+        >
+          <ChevronRight size={18} />
+        </button>
         <button
           type="button"
           onClick={() => setMuted((v) => !v)}
