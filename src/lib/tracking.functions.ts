@@ -286,24 +286,34 @@ export const getRoadRoute = createServerFn({ method: "POST" })
       polylineQuality: "HIGH_QUALITY",
     };
 
-    const res = await fetch(
-      "https://routes.googleapis.com/directions/v2:computeRoutes",
-      {
+    // The project key is referrer-restricted, so a server call must present an
+    // allowed referrer. Try the known site referrers in turn.
+    const referrers = [
+      "https://badiyosmyadmin.lovable.app",
+      "https://www.badiyos.com",
+      "https://badiyos.com",
+    ];
+    let res: Response | null = null;
+    let lastBody = "";
+    for (const referer of referrers) {
+      res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": key,
-          // The project key is referrer-restricted; server calls must present one.
-          Referer: "https://badiyosmyadmin.lovable.app",
+          Referer: referer,
+          Origin: referer,
           "X-Goog-FieldMask":
             "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration",
         },
         body: JSON.stringify(body),
-      },
-    );
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Route lookup failed [${res.status}]: ${text}`);
+      });
+      if (res.ok) break;
+      lastBody = await res.text();
+      if (res.status !== 403) break;
+    }
+    if (!res || !res.ok) {
+      throw new Error(`Route lookup failed [${res?.status ?? 0}]: ${lastBody}`);
     }
     const json = (await res.json()) as {
       routes?: Array<{
