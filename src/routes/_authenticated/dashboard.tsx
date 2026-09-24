@@ -486,6 +486,8 @@ function Shell() {
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
+        ) : active === "store-categories" ? (
+          <StoreCategoriesPage role={role} />
         ) : active === "task-types" ? (
           <TaskTypesPage />
         ) : active === "homepage" ? (
