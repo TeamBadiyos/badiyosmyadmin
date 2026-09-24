@@ -148,3 +148,192 @@ export const decideMerchant = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// Edit merchant details (staff only, fully audited)
+// ---------------------------------------------------------------------------
+
+export type MerchantEditOptions = {
+  categories: { id: string; name: string; segment_id: string }[];
+  segments: { id: string; name: string }[];
+  zones: { id: string; name: string; city: string }[];
+};
+
+export const listMerchantEditOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MerchantEditOptions> => {
+    const db = context.supabase;
+    await assertStaff(db, context.userId);
+
+    const [cats, segs, zones] = await Promise.all([
+      db
+        .from("store_categories")
+        .select("id, name, segment_id, is_active, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      db.from("segments").select("id, name, vertical_type").eq("vertical_type", "CATALOG"),
+      db
+        .from("zones")
+        .select("id, name, city, status, deleted_at")
+        .is("deleted_at", null)
+        .order("name", { ascending: true }),
+    ]);
+
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      categories: ((cats.data ?? []) as any[]).map((c) => ({
+        id: c.id,
+        name: c.name,
+        segment_id: c.segment_id,
+      })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      segments: ((segs.data ?? []) as any[]).map((s) => ({ id: s.id, name: s.name })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      zones: ((zones.data ?? []) as any[]).map((z) => ({ id: z.id, name: z.name, city: z.city })),
+    };
+  });
+
+export type MerchantDetail = {
+  id: string;
+  storeName: string | null;
+  ownerName: string | null;
+  phone: string;
+  status: MerchantStatus;
+  storeCategoryId: string | null;
+  segmentId: string | null;
+  zoneId: string | null;
+  address: string | null;
+  city: string | null;
+  pincode: string | null;
+  state: string | null;
+  isAcceptingOrders: boolean;
+  isGstRegistered: boolean | null;
+  gstin: string | null;
+  gstLegalName: string | null;
+};
+
+export const getMerchantDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string }) => {
+    if (!input?.merchantId) throw new Error("Merchant is required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<MerchantDetail> => {
+    const db = context.supabase;
+    await assertStaff(db, context.userId);
+    const { data: m, error } = await db
+      .from("merchants")
+      .select(
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name",
+      )
+      .eq("id", data.merchantId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!m) throw new Error("Merchant not found");
+    return {
+      id: m.id,
+      storeName: m.store_name,
+      ownerName: m.owner_name,
+      phone: m.phone,
+      status: m.status as MerchantStatus,
+      storeCategoryId: m.store_category_id,
+      segmentId: m.segment_id,
+      zoneId: m.zone_id,
+      address: m.address,
+      city: m.city,
+      pincode: m.pincode,
+      state: m.state,
+      isAcceptingOrders: !!m.is_accepting_orders,
+      isGstRegistered: m.is_gst_registered,
+      gstin: m.gstin,
+      gstLegalName: m.gst_legal_name,
+    };
+  });
+
+export type UpdateMerchantInput = {
+  merchantId: string;
+  storeName: string;
+  ownerName: string | null;
+  phone: string;
+  storeCategoryId: string | null;
+  segmentId: string | null;
+  zoneId: string | null;
+  address: string | null;
+  city: string | null;
+  pincode: string | null;
+  state: string | null;
+  isAcceptingOrders: boolean;
+  status: MerchantStatus;
+  isGstRegistered: boolean;
+  gstin: string | null;
+  gstLegalName: string | null;
+};
+
+export const updateMerchantDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpdateMerchantInput) => {
+    if (!input?.merchantId) throw new Error("Merchant is required");
+    if (!input.storeName?.trim()) throw new Error("Store name is required");
+    if (!/^\d{10}$/.test((input.phone ?? "").replace(/\D/g, "").slice(-10)))
+      throw new Error("Enter a valid 10-digit phone number");
+    if (input.pincode && !/^\d{6}$/.test(input.pincode.trim()))
+      throw new Error("Pincode must be 6 digits");
+    if (input.isGstRegistered && !input.gstin?.trim())
+      throw new Error("GSTIN is required when GST registered is on");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const db = context.supabase;
+    await assertStaff(db, context.userId);
+
+    const { data: before, error: beforeErr } = await db
+      .from("merchants")
+      .select("*")
+      .eq("id", data.merchantId)
+      .maybeSingle();
+    if (beforeErr) throw new Error(beforeErr.message);
+    if (!before) throw new Error("Merchant not found");
+
+    const trimmed = (v: string | null | undefined) => {
+      const s = (v ?? "").trim();
+      return s.length ? s : null;
+    };
+
+    const patch = {
+      store_name: data.storeName.trim(),
+      owner_name: trimmed(data.ownerName),
+      phone: data.phone.replace(/\D/g, "").slice(-10),
+      store_category_id: data.storeCategoryId || null,
+      segment_id: data.segmentId || null,
+      zone_id: data.zoneId || null,
+      address: trimmed(data.address),
+      city: trimmed(data.city),
+      pincode: trimmed(data.pincode),
+      state: trimmed(data.state),
+      is_accepting_orders: data.isAcceptingOrders,
+      status: data.status,
+      is_gst_registered: data.isGstRegistered,
+      gstin: data.isGstRegistered ? trimmed(data.gstin) : null,
+      gst_legal_name: data.isGstRegistered ? trimmed(data.gstLegalName) : null,
+    };
+
+    const { data: after, error } = await db
+      .from("merchants")
+      .update(patch)
+      .eq("id", data.merchantId)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "update_merchant_details",
+      target_table: "merchants",
+      target_id: data.merchantId,
+      before_state: before,
+      after_state: after,
+    });
+
+    return { ok: true };
+  });
