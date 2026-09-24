@@ -249,6 +249,8 @@ function Shell() {
     isActive: (g.keys as ReadonlyArray<string>).includes(active),
   })).filter((g) => g.items.length > 0);
 
+  const activeGroup = groups.find((g) => g.items.some((i) => i.key === active)) ?? null;
+
   useEffect(() => {
     const g = NAV_GROUPS.find((grp) => (grp.keys as ReadonlyArray<string>).includes(active));
     if (g) setOpenGroups((prev) => (prev[g.id] ? prev : { ...prev, [g.id]: true }));
