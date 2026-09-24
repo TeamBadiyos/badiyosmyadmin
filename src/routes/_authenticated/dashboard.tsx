@@ -130,6 +130,11 @@ const NAV_ITEMS = [
   { key: "audit", label: "Audit Logs", icon: ScrollText },
   { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
   { key: "courier", label: "Courier", icon: PackageCheck },
+  { key: "courier-orders", label: "Orders", icon: PackageCheck },
+  { key: "courier-rates", label: "Rates", icon: IndianRupee },
+  { key: "courier-types", label: "Parcel & Vehicle Types", icon: Boxes },
+  { key: "courier-settings", label: "Settings", icon: Settings },
+  { key: "store-orders", label: "Orders", icon: Receipt },
   { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
 
@@ -137,40 +142,52 @@ type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const NAV_GROUPS = [
   {
-    id: "clean-hub",
-    label: "Clean Services",
+    id: "live-ops",
+    label: "Live Ops",
+    icon: Activity,
+    keys: ["emergency", "support"],
+  },
+  {
+    id: "clean",
+    label: "Clean",
     icon: Boxes,
-    keys: ["bookings", "catalogue", "experts", "skills", "task-types", "emergency"],
+    keys: ["bookings", "catalogue", "task-types"],
   },
   {
-    id: "courier-hub",
-    label: "Courier & Parcels",
+    id: "courier",
+    label: "Courier",
     icon: PackageCheck,
-    keys: ["courier", "dispatch-alerts"],
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-settings"],
   },
   {
-    id: "store-hub",
-    label: "Stores & Merchants",
+    id: "store",
+    label: "Store",
     icon: Store,
-    keys: ["merchants", "store-categories", "merchant-billing"],
+    keys: ["store-orders", "merchants", "store-categories"],
+  },
+  {
+    id: "people",
+    label: "People",
+    icon: Users,
+    keys: ["users", "experts", "skills", "partners", "deletion-requests"],
   },
   {
     id: "growth",
-    label: "Customers & Growth",
+    label: "Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers", "partners"],
+    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads"],
   },
   {
     id: "finance",
-    label: "Finance & Reports",
+    label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "reports"],
+    keys: ["wallets", "merchant-billing", "reports"],
   },
   {
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
+    keys: ["services", "zones", "dispatch-alerts", "notification-sounds", "legal", "roles", "audit"],
   },
 ] as const;
 
@@ -242,7 +259,9 @@ function Shell() {
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
 
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
-  const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
+  const topLevelItems = visibleItems.filter(
+    (n) => !GROUPED_KEYS.includes(n.key) && n.key !== "courier",
+  );
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
     items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
