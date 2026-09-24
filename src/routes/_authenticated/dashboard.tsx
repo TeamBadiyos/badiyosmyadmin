@@ -12,6 +12,7 @@ import { ExpertsPage } from "@/components/experts-page";
 import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
+import { StoreCategoriesPage } from "@/components/store-categories-page";
 import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
@@ -113,6 +114,7 @@ const NAV_ITEMS = [
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
+  { key: "store-categories", label: "Store Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
@@ -150,7 +152,7 @@ const NAV_GROUPS = [
     id: "catalog",
     label: "Catalog",
     icon: Boxes,
-    keys: ["zones", "catalogue", "task-types", "homepage"],
+    keys: ["zones", "catalogue", "store-categories", "task-types", "homepage"],
   },
   {
     id: "finance",
@@ -484,6 +486,8 @@ function Shell() {
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
+        ) : active === "store-categories" ? (
+          <StoreCategoriesPage role={role} />
         ) : active === "task-types" ? (
           <TaskTypesPage />
         ) : active === "homepage" ? (
