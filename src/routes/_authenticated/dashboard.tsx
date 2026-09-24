@@ -137,22 +137,28 @@ type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const NAV_GROUPS = [
   {
-    id: "partners",
-    label: "Partners & Merchants",
-    icon: Users,
-    keys: ["experts", "partners", "skills", "merchants", "merchant-billing"],
+    id: "clean-hub",
+    label: "Clean Services",
+    icon: Boxes,
+    keys: ["bookings", "catalogue", "experts", "skills", "task-types", "emergency"],
+  },
+  {
+    id: "courier-hub",
+    label: "Courier & Parcels",
+    icon: PackageCheck,
+    keys: ["courier", "dispatch-alerts", "capacity-messages"],
+  },
+  {
+    id: "store-hub",
+    label: "Stores & Merchants",
+    icon: Store,
+    keys: ["merchants", "store-categories", "merchant-billing"],
   },
   {
     id: "growth",
-    label: "Growth",
+    label: "Customers & Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers"],
-  },
-  {
-    id: "catalog",
-    label: "Catalog",
-    icon: Boxes,
-    keys: ["zones", "catalogue", "store-categories", "task-types", "homepage"],
+    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers", "partners"],
   },
   {
     id: "finance",
@@ -162,9 +168,9 @@ const NAV_GROUPS = [
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "System Settings",
     icon: Settings,
-    keys: ["roles", "legal", "notification-sounds", "support", "deletion-requests", "dispatch-alerts", "capacity-messages", "audit"],
+    keys: ["zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
   },
 ] as const;
 
