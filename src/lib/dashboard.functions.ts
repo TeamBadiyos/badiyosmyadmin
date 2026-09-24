@@ -195,8 +195,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           ),
       noMerchants
         ? emptyCount
-      noMerchants
-        ? emptyCount
         : scopeMerchant(
             db
               .from("offline_sales")
