@@ -195,15 +195,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           ),
       noMerchants
         ? emptyCount
-        : (() => {
-            let q = db
-              .from("merchants")
-              .select("*", countOnly)
-              .eq("status", "approved")
-              .eq("is_accepting_orders", true);
-            if (merchantIds) q = q.in("id", merchantIds);
-            return q;
-          })(),
       noMerchants
         ? emptyCount
         : scopeMerchant(
@@ -228,7 +219,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      openMerchantsRes,
       offlineRevenueRes,
     ]) {
       if (res.error) throw res.error;
