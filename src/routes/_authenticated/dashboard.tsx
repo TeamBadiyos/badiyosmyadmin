@@ -416,7 +416,15 @@ function Shell() {
             <Menu size={22} />
           </button>
           <h1 className="truncate text-[18px] font-bold text-foreground">
-            {activeItem.label}
+            {activeGroup ? (
+              <>
+                <span className="text-muted-foreground font-semibold">{activeGroup.label}</span>
+                <span className="text-muted-foreground font-semibold"> · </span>
+                {activeItem.label}
+              </>
+            ) : (
+              activeItem.label
+            )}
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
