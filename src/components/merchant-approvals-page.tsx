@@ -37,6 +37,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<MerchantStatus | "">("pending_review");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchRows = useServerFn(listMerchants);
   const decide = useServerFn(decideMerchant);
