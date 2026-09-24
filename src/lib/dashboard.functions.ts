@@ -14,7 +14,6 @@ export type DashboardStats = {
   courierToday: number;
   courierRevenue: number;
   onlineExperts: number;
-  openMerchants: number;
   // offers & campaigns
   couponsUsed: number;
   discountGiven: number;
@@ -92,7 +91,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      openMerchantsRes,
       offlineRevenueRes,
     ] = await Promise.all([
       noBookings
@@ -197,17 +195,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
           ),
       noMerchants
         ? emptyCount
-        : (() => {
-            let q = db
-              .from("merchants")
-              .select("*", countOnly)
-              .eq("status", "approved")
-              .eq("is_accepting_orders", true);
-            if (merchantIds) q = q.in("id", merchantIds);
-            return q;
-          })(),
-      noMerchants
-        ? emptyCount
         : scopeMerchant(
             db
               .from("offline_sales")
@@ -230,7 +217,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      openMerchantsRes,
       offlineRevenueRes,
     ]) {
       if (res.error) throw res.error;
@@ -249,7 +235,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const todayBookings = todayBookingsRes.count ?? 0;
     const todayOrders = todayOrdersRes.count ?? 0;
     const onlineExperts = expertsRes.count ?? 0;
-    const openMerchants = openMerchantsRes.count ?? 0;
 
     // Offers & campaigns (not segment-scoped)
     const [redemptionsRes, activeCampaignsRes, awardsRes] = await Promise.all([
@@ -324,13 +309,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         (pendingBookingsRes.count ?? 0) +
         (pendingOrdersRes.count ?? 0) +
         (courierPendingRes.count ?? 0),
-      onlineNow: onlineExperts + openMerchants,
+      onlineNow: onlineExperts,
       todayBookings,
       todayOrders,
       courierToday,
       courierRevenue,
       onlineExperts,
-      openMerchants,
       couponsUsed: redemptionRows.length,
       discountGiven: redemptionRows.reduce((a, r) => a + Number(r.discount_amount ?? 0), 0),
       activeCampaigns: activeCampaignsRes.count ?? 0,

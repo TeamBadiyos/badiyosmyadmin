@@ -735,7 +735,7 @@ function DashboardHome({
     {
       label: "Online Right Now",
       value: String(data?.onlineNow ?? 0),
-      hint: `${data?.onlineExperts ?? 0} experts · ${data?.openMerchants ?? 0} stores`,
+      hint: "Experts online now",
       icon: Users,
       onClick: () => onGoExperts(true),
     },
