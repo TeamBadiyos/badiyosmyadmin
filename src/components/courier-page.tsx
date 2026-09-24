@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  AlertTriangle,
   Bike,
   CheckCircle2,
   History,
@@ -30,7 +29,6 @@ import {
   listCourierTypes,
   listCourierZoneMapping,
   listRates,
-  listServiceFlags,
   listVehicleTypes,
   refundOrder,
   reassignRider,
@@ -40,18 +38,13 @@ import {
   saveRate,
   saveVehicleType,
   setCourierTypeActive,
-  setServiceFlag,
   setVehicleCourierType,
   setVehicleTypeActive,
   type CourierOrderRow,
   type CourierTypeRow,
   type RateRow,
-  type ServiceFlagRow,
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
-import { listServiceControl } from "@/lib/service-control.functions";
-import { ServiceStatusSection } from "@/components/courier/service-status-section";
-import { ServiceHoursSection } from "@/components/courier/service-hours-section";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
 
 /* --------------------------------- shared -------------------------------- */
@@ -147,7 +140,6 @@ function Toggle({
 }
 
 const TABS = [
-  { key: "flags", label: "Service Toggle" },
   { key: "vehicles", label: "Vehicle Types" },
   { key: "rates", label: "Rates" },
   { key: "types", label: "Courier Types" },
@@ -155,131 +147,6 @@ const TABS = [
   { key: "orders", label: "Live Orders" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
-
-/* ------------------------------ 1. Service flags -------------------------- */
-
-function ServiceFlagsTab({ canWrite }: { canWrite: boolean }) {
-  const qc = useQueryClient();
-  const fetchFlags = useServerFn(listServiceFlags);
-  const fetchControl = useServerFn(listServiceControl);
-  const save = useServerFn(setServiceFlag);
-  const [confirming, setConfirming] = useState<ServiceFlagRow | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const { data } = useQuery({ queryKey: ["courier", "flags"], queryFn: () => fetchFlags() });
-  const { data: control } = useQuery({
-    queryKey: ["courier", "service-control"],
-    queryFn: () => fetchControl(),
-  });
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["courier", "flags"] });
-    qc.invalidateQueries({ queryKey: ["courier", "service-control"] });
-  };
-
-  const activeOrdersByKey = new Map<string, number>(
-    (data ?? []).map((r) => [r.service_key, r.activeOrders]),
-  );
-
-  async function apply(row: ServiceFlagRow, isActive: boolean) {
-    setBusy(true);
-    try {
-      await save({ data: { serviceKey: row.service_key, city: row.city, isActive } });
-      toast.success(isActive ? "Service turned on" : "Service turned off");
-      setConfirming(null);
-      refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const rows = data ?? [];
-
-  return (
-    <div className="space-y-6">
-      {control ? (
-        <ServiceStatusSection
-          flags={control.flags}
-          canWrite={canWrite && control.canWrite}
-          activeOrdersByKey={activeOrdersByKey}
-          undo={control.undo}
-          onSaved={refresh}
-        />
-      ) : null}
-      {control ? (
-        <ServiceHoursSection
-          flags={control.flags}
-          hours={control.hours}
-          holidays={control.holidays}
-          canWrite={canWrite && control.canWrite}
-          onSaved={refresh}
-        />
-      ) : null}
-      <div className="space-y-3">
-      {rows.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">No services configured yet.</p>
-      ) : null}
-      {rows.map((r) => (
-        <div
-          key={r.id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-card p-4"
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[14px] font-bold text-foreground">
-                {r.label ?? r.service_key}
-              </span>
-              <Pill tone="info">{r.city}</Pill>
-              {r.is_active ? <Pill tone="ok">On</Pill> : <Pill tone="off">Off</Pill>}
-            </div>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {r.activeOrders} active order{r.activeOrders === 1 ? "" : "s"} right now
-            </p>
-          </div>
-          <Toggle
-            on={r.is_active}
-            disabled={!canWrite || busy}
-            onChange={(next) => (next ? apply(r, true) : setConfirming(r))}
-          />
-        </div>
-      ))}
-      </div>
-
-      {confirming ? (
-        <Modal title="Turn this service off?" onClose={() => setConfirming(null)}>
-          <div className="rounded-[12px] border border-warning/40 bg-warning/10 p-4">
-            <div className="flex items-center gap-2 text-[13px] font-bold text-foreground">
-              <AlertTriangle size={15} className="text-warning" />
-              {confirming.label ?? confirming.service_key} — {confirming.city}
-            </div>
-            <p className="mt-2 text-[13px] text-foreground">
-              There {confirming.activeOrders === 1 ? "is" : "are"}{" "}
-              <strong>{confirming.activeOrders}</strong> active order
-              {confirming.activeOrders === 1 ? "" : "s"} on this service. Turning it off stops new
-              orders; running ones continue.
-            </p>
-          </div>
-          <div className="mt-5 flex justify-end gap-2">
-            <button
-              onClick={() => setConfirming(null)}
-              className="rounded-[10px] border border-border px-4 py-2 text-[13px] font-semibold text-foreground hover:bg-muted"
-            >
-              Keep it on
-            </button>
-            <button
-              onClick={() => apply(confirming, false)}
-              disabled={busy}
-              className="rounded-[10px] bg-destructive px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
-            >
-              Turn off
-            </button>
-          </div>
-        </Modal>
-      ) : null}
-    </div>
-  );
-}
 
 /* ----------------------------- 2. Vehicle types --------------------------- */
 
@@ -1857,7 +1724,7 @@ function ZoneMappingTab({ canWrite }: { canWrite: boolean }) {
 
 export function CourierPage() {
   const fetchAccess = useServerFn(getCourierAccess);
-  const [tab, setTab] = useState<TabKey>("flags");
+  const [tab, setTab] = useState<TabKey>("vehicles");
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["courier", "access"],
@@ -1899,7 +1766,6 @@ export function CourierPage() {
         ))}
       </div>
 
-      {tab === "flags" ? <ServiceFlagsTab canWrite={canWrite} /> : null}
       {tab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
       {tab === "rates" ? <RatesTab canWrite={canWrite} /> : null}
       {tab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}

@@ -325,12 +325,14 @@ export function ServiceStatusSection({
   activeOrdersByKey,
   undo,
   onSaved,
+  showRows = true,
 }: {
   flags: ServiceFlagControl[];
   canWrite: boolean;
   activeOrdersByKey: Map<string, number>;
   undo: FocusSnapshot | null;
   onSaved: () => void;
+  showRows?: boolean;
 }) {
   const qc = useQueryClient();
   const focus = useServerFn(applyServiceFocus);
@@ -427,15 +429,17 @@ export function ServiceStatusSection({
         </div>
       ) : null}
 
-      {flags.map((f) => (
-        <ServiceStatusCard
-          key={`${f.id}:${f.status_updated_at ?? f.updated_at ?? ""}`}
-          flag={f}
-          canWrite={canWrite}
-          activeOrders={activeOrdersByKey.get(f.service_key) ?? 0}
-          onSaved={onSaved}
-        />
-      ))}
+      {showRows
+        ? flags.map((f) => (
+            <ServiceStatusCard
+              key={`${f.id}:${f.status_updated_at ?? f.updated_at ?? ""}`}
+              flag={f}
+              canWrite={canWrite}
+              activeOrders={activeOrdersByKey.get(f.service_key) ?? 0}
+              onSaved={onSaved}
+            />
+          ))
+        : null}
 
       {presetOpen ? (
         <MiniModal title="Sirf ek live, baaki Coming Soon" onClose={() => setPresetOpen(false)}>

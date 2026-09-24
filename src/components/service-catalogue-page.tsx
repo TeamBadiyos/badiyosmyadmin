@@ -82,10 +82,13 @@ export function ServiceCataloguePage() {
   const taskTypes: TaskType[] = taskTypesData ?? [];
   const itemLinks: ItemTaskTypeLink[] = linksData ?? [];
 
-  const segments = data?.segments ?? [];
-  const categories = data?.categories ?? [];
-  const services = data?.services ?? [];
-  const priceOptions = data?.priceOptions ?? [];
+  const segments = (data?.segments ?? []).filter((segment) => segment.slug === "clean");
+  const cleanSegmentIds = useMemo(() => new Set(segments.map((segment) => segment.id)), [segments]);
+  const categories = (data?.categories ?? []).filter((category) => cleanSegmentIds.has(category.segment_id));
+  const cleanCategoryIds = useMemo(() => new Set(categories.map((category) => category.id)), [categories]);
+  const services = (data?.services ?? []).filter((service) => cleanCategoryIds.has(service.category_id));
+  const cleanServiceIds = useMemo(() => new Set(services.map((service) => service.id)), [services]);
+  const priceOptions = (data?.priceOptions ?? []).filter((option) => cleanServiceIds.has(option.service_id));
 
   const [openSegments, setOpenSegments] = useState<Record<string, boolean>>({});
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
