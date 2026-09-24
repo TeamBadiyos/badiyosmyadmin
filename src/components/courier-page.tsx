@@ -18,6 +18,11 @@ import {
   COURIER_STATUSES,
   confirmRate,
   forceCancelOrder,
+  getCourierOrderStops,
+  getCourierSettings,
+  saveCourierSetting,
+  verifyCourierStop,
+  waiveCourierCharge,
   getCourierAccess,
   listCourierOrderEvents,
   listCourierOrders,
@@ -519,9 +524,22 @@ type RateDraft = {
   minFare: string;
   platformFee: string;
   commissionPct: string;
+  segment: "regular" | "corporate";
+  extraPickupFee: string;
+  extraDropFee: string;
+  maxPickups: string;
+  maxDrops: string;
+  noLimitPickups: boolean;
+  noLimitDrops: boolean;
+  returnPerKm: string;
 };
 
-function rateDraft(r?: RateRow, firstVehicle?: string): RateDraft {
+function rateDraft(
+  r?: RateRow,
+  firstVehicle?: string,
+  segment: "regular" | "corporate" = "regular",
+): RateDraft {
+  const seg = r?.customer_segment ?? segment;
   return {
     id: r?.id ?? null,
     city: r?.city ?? "",
@@ -532,7 +550,72 @@ function rateDraft(r?: RateRow, firstVehicle?: string): RateDraft {
     minFare: String(r?.min_fare ?? 0),
     platformFee: String(r?.platform_fee ?? 0),
     commissionPct: String(r?.commission_pct ?? 0),
+    segment: seg,
+    extraPickupFee: String(r?.extra_pickup_fee ?? 0),
+    extraDropFee: String(r?.extra_drop_fee ?? 0),
+    maxPickups: String(r ? (r.max_pickups ?? "") : 1),
+    maxDrops: String(r ? (r.max_drops ?? "") : 1),
+    noLimitPickups: seg === "corporate" && !!r && r.max_pickups == null,
+    noLimitDrops: seg === "corporate" && !!r && r.max_drops == null,
+    returnPerKm: String(r?.return_per_km ?? 0),
   };
+}
+
+function CourierSettingsCard({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const fetchSettings = useServerFn(getCourierSettings);
+  const save = useServerFn(saveCourierSetting);
+  const { data } = useQuery({ queryKey: ["courier", "settings"], queryFn: () => fetchSettings() });
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="rounded-[16px] border border-border bg-card p-4">
+      <h4 className="text-[13px] font-bold text-foreground">Courier settings</h4>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {(data ?? []).map((st) => {
+          const v = vals[st.key] ?? String(st.value);
+          return (
+            <Field key={st.key} label={st.label}>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  disabled={!canEdit}
+                  className={inputCls}
+                  value={v}
+                  onChange={(e) => setVals({ ...vals, [st.key]: e.target.value })}
+                />
+                {canEdit ? (
+                  <button
+                    disabled={busy === st.key || v === String(st.value)}
+                    onClick={async () => {
+                      setBusy(st.key);
+                      try {
+                        await save({ data: { key: st.key, value: Number(v) } });
+                        toast.success("Setting saved");
+                        qc.invalidateQueries({ queryKey: ["courier", "settings"] });
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Save failed");
+                      } finally {
+                        setBusy(null);
+                      }
+                    }}
+                    className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                ) : null}
+              </div>
+              {st.isDefault ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">Using default</p>
+              ) : null}
+            </Field>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function RatesTab({ canWrite }: { canWrite: boolean }) {
@@ -542,15 +625,23 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
   const confirm = useServerFn(confirmRate);
   const [draft, setDraft] = useState<RateDraft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [segTab, setSegTab] = useState<"regular" | "corporate">("regular");
 
   const { data } = useQuery({ queryKey: ["courier", "rates"], queryFn: () => fetchRates() });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "rates"] });
 
-  const rows = data?.rows ?? [];
+  const rows = (data?.rows ?? []).filter((r) => r.customer_segment === segTab);
   const vehicles = data?.vehicles ?? [];
 
   async function submit() {
     if (!draft) return;
+    const corp = draft.segment === "corporate";
+    const maxP = corp && draft.noLimitPickups ? null : Number(draft.maxPickups || 0);
+    const maxD = corp && draft.noLimitDrops ? null : Number(draft.maxDrops || 0);
+    if ((maxP !== null && (!Number.isInteger(maxP) || maxP < 1)) || (maxD !== null && (!Number.isInteger(maxD) || maxD < 1))) {
+      toast.error("Max pickups and max drops must be at least 1");
+      return;
+    }
     setBusy(true);
     try {
       await save({
@@ -564,6 +655,12 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
           minFare: Number(draft.minFare || 0),
           platformFee: Number(draft.platformFee || 0),
           commissionPct: Number(draft.commissionPct || 0),
+          segment: draft.segment,
+          extraPickupFee: Number(draft.extraPickupFee || 0),
+          extraDropFee: Number(draft.extraDropFee || 0),
+          maxPickups: maxP,
+          maxDrops: maxD,
+          returnPerKm: Number(draft.returnPerKm || 0),
         },
       });
       toast.success("Rate saved");
@@ -578,13 +675,25 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
+      <CourierSettingsCard canEdit />
+      <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
+        {(["regular", "corporate"] as const).map((sg) => (
+          <button
+            key={sg}
+            onClick={() => setSegTab(sg)}
+            className={`rounded-[10px] px-4 py-1.5 text-[12px] font-bold ${segTab === sg ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            {sg === "regular" ? "Regular" : "Corporate"}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-muted-foreground">
           Cancellation fee (all cities): ₹{data?.cancellationFee ?? 0} — set in ops settings.
         </p>
         {canWrite ? (
           <button
-            onClick={() => setDraft(rateDraft(undefined, vehicles[0]?.id))}
+            onClick={() => setDraft(rateDraft(undefined, vehicles[0]?.id, segTab))}
             className="flex items-center gap-1.5 rounded-[10px] bg-primary px-3.5 py-2 text-[12px] font-bold text-primary-foreground"
           >
             <Plus size={14} /> New rate
@@ -633,6 +742,13 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
             <span>Per km ₹{r.per_km} · Min ₹{r.min_fare}</span>
             <span>Platform ₹{r.platform_fee} · Commission {r.commission_pct}%</span>
           </div>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Extra pickup ₹{r.extra_pickup_fee} · Extra drop ₹{r.extra_drop_fee} · Max{" "}
+            {r.max_pickups == null && r.max_drops == null
+              ? "No limit"
+              : `${r.max_pickups ?? "No limit"}/${r.max_drops ?? "No limit"}`}{" "}
+            · Return ₹{r.return_per_km}/km
+          </p>
         </div>
       ))}
 
@@ -679,6 +795,61 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 />
               </Field>
             ))}
+            <Field label="Segment">
+              <select
+                className={inputCls}
+                disabled={!!draft.id}
+                value={draft.segment}
+                onChange={(e) =>
+                  setDraft({ ...draft, segment: e.target.value as "regular" | "corporate", noLimitPickups: false, noLimitDrops: false })
+                }
+              >
+                <option value="regular">Regular</option>
+                <option value="corporate">Corporate</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4 rounded-[12px] border border-border p-3">
+            <h4 className="text-[13px] font-bold text-foreground">Multi-stop charges</h4>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Base fare includes 1 pickup + 1 drop. Each additional stop adds the fee above.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Extra pickup fee (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.extraPickupFee}
+                  onChange={(e) => setDraft({ ...draft, extraPickupFee: e.target.value })} />
+              </Field>
+              <Field label="Extra drop fee (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.extraDropFee}
+                  onChange={(e) => setDraft({ ...draft, extraDropFee: e.target.value })} />
+              </Field>
+              {(
+                [
+                  ["Max pickups", "maxPickups", "noLimitPickups"],
+                  ["Max drops", "maxDrops", "noLimitDrops"],
+                ] as const
+              ).map(([label, key, nl]) => (
+                <Field key={key} label={label}>
+                  <div className="flex items-center gap-2">
+                    <input type="number" min={1} className={inputCls}
+                      disabled={draft.segment === "corporate" && draft[nl]}
+                      value={draft.segment === "corporate" && draft[nl] ? "" : draft[key]}
+                      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} />
+                    {draft.segment === "corporate" ? (
+                      <label className="flex shrink-0 items-center gap-1 text-[12px] text-foreground">
+                        <input type="checkbox" checked={draft[nl]}
+                          onChange={(e) => setDraft({ ...draft, [nl]: e.target.checked })} />
+                        No limit
+                      </label>
+                    ) : null}
+                  </div>
+                </Field>
+              ))}
+              <Field label="Return charge per km (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.returnPerKm}
+                  onChange={(e) => setDraft({ ...draft, returnPerKm: e.target.value })} />
+              </Field>
+            </div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button
@@ -957,6 +1128,7 @@ export function OrderDetail({
   const doCancel = useServerFn(forceCancelOrder);
   const doRefund = useServerFn(refundOrder);
   const doResolve = useServerFn(resolveIncident);
+  const fetchStops = useServerFn(getCourierOrderStops);
 
   const [riderId, setRiderId] = useState("");
   const [cancelReason, setCancelReason] = useState("");
@@ -1045,6 +1217,14 @@ export function OrderDetail({
           </div>
         </div>
       </div>
+
+      {order.stopsFee > 0 ? (
+        <p className="mt-3 text-[12px] text-muted-foreground">
+          Fare breakdown · Extra stops fee: <span className="font-semibold text-foreground">₹{order.stopsFee}</span>
+        </p>
+      ) : null}
+
+      <MultiStopSections order={order} fetchStops={fetchStops} onChanged={onChanged} />
 
       <div className="mt-4">
         <LiveTrackingMap kind="courier" id={order.id} />
@@ -1218,16 +1398,229 @@ export function OrderDetail({
   );
 }
 
+const STOP_TYPE_LABEL: Record<string, string> = { pickup: "Pickup", drop: "Drop", return: "Return" };
+function toneFor(st: string): "ok" | "warn" | "info" | "off" {
+  if (["completed", "delivered", "returned", "paid", "waived"].includes(st)) return "ok";
+  if (["failed", "cancelled", "pending"].includes(st)) return st === "pending" ? "off" : "warn";
+  return "info";
+}
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1).replace(/_/g, " ");
+const fmt = (t: string | null) => (t ? new Date(t).toLocaleString() : null);
+
+function MultiStopSections({
+  order,
+  fetchStops,
+  onChanged,
+}: {
+  order: CourierOrderRow;
+  fetchStops: ReturnType<typeof useServerFn<typeof getCourierOrderStops>>;
+  onChanged: () => void;
+}) {
+  const qc = useQueryClient();
+  const waive = useServerFn(waiveCourierCharge);
+  const verify = useServerFn(verifyCourierStop);
+  const { data } = useQuery({
+    queryKey: ["courier", "stops", order.id],
+    queryFn: () => fetchStops({ data: { orderId: order.id } }),
+    refetchInterval: 15_000,
+  });
+  const [waiveFor, setWaiveFor] = useState<string | null>(null);
+  const [verifyFor, setVerifyFor] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const stops = data?.stops ?? [];
+  const parcels = data?.parcels ?? [];
+  const charges = data?.charges ?? [];
+  const pickupIdx = new Map(stops.filter((x) => x.stop_type === "pickup").map((x, i) => [x.id, i + 1]));
+  const dropIdx = new Map(stops.filter((x) => x.stop_type === "drop").map((x, i) => [x.id, i + 1]));
+
+  async function act(fn: () => Promise<unknown>, ok: string) {
+    setBusy(true);
+    try {
+      await fn();
+      toast.success(ok);
+      setWaiveFor(null);
+      setVerifyFor(null);
+      setReason("");
+      qc.invalidateQueries({ queryKey: ["courier", "stops", order.id] });
+      qc.invalidateQueries({ queryKey: ["courier", "events", order.id] });
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!data) return null;
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="rounded-[12px] border border-border p-3">
+        <h4 className="text-[13px] font-bold text-foreground">Route</h4>
+        <div className="mt-2 space-y-2">
+          {stops.map((st, i) => (
+            <div
+              key={st.id}
+              className={`rounded-[10px] border p-2.5 text-[12px] ${st.status === "arrived" ? "border-primary bg-primary/10" : "border-border"}`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-foreground">
+                  {i + 1}. {STOP_TYPE_LABEL[st.stop_type] ?? cap(st.stop_type)}
+                </span>
+                <Pill tone={toneFor(st.status)}>{cap(st.status)}</Pill>
+              </div>
+              <p className="mt-1 text-muted-foreground">{st.address ?? "—"}</p>
+              <p className="text-muted-foreground">
+                {st.contact_name ?? "—"} {st.contact_phone ? `· ${st.contact_phone}` : ""}
+              </p>
+              <p className="text-muted-foreground">
+                {[
+                  fmt(st.arrived_at) && `Arrived ${fmt(st.arrived_at)}`,
+                  fmt(st.completed_at) && `Completed ${fmt(st.completed_at)}`,
+                  fmt(st.failed_at) && `Failed ${fmt(st.failed_at)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {st.fail_reason_code ? (
+                <p className="font-semibold text-warning">Reason: {cap(st.fail_reason_code)}</p>
+              ) : null}
+              {st.status === "arrived" ? (
+                verifyFor === st.id ? (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[11px] font-semibold text-warning">
+                      Only use this after confirming by phone with the contact.
+                    </p>
+                    <input
+                      placeholder="Reason (min 10 characters)"
+                      className={inputCls}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busy || reason.trim().length < 10}
+                        onClick={() => {
+                          if (!window.confirm("Only use this after confirming by phone with the contact. Verify this stop?")) return;
+                          act(() => verify({ data: { stopId: st.id, reason } }), "Stop verified");
+                        }}
+                        className="rounded-[10px] bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                      >
+                        Confirm verify
+                      </button>
+                      <button onClick={() => setVerifyFor(null)} className="rounded-[10px] border border-border px-3 py-1.5 text-[12px]">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setVerifyFor(st.id);
+                      setWaiveFor(null);
+                      setReason("");
+                    }}
+                    className="mt-2 rounded-[10px] border border-primary px-3 py-1.5 text-[12px] font-bold text-primary"
+                  >
+                    Verify manually
+                  </button>
+                )
+              ) : null}
+            </div>
+          ))}
+          {stops.length === 0 ? <p className="text-[12px] text-muted-foreground">No stops recorded.</p> : null}
+        </div>
+      </div>
+
+      <div className="rounded-[12px] border border-border p-3">
+        <h4 className="text-[13px] font-bold text-foreground">Parcels</h4>
+        <div className="mt-2 space-y-1.5">
+          {parcels.map((pc) => (
+            <div key={pc.id} className="flex flex-wrap items-center gap-2 text-[12px]">
+              <span className="font-semibold text-foreground">
+                Pickup {pickupIdx.get(pc.pickup_stop_id ?? "") ?? "?"} → Drop {dropIdx.get(pc.drop_stop_id ?? "") ?? "?"}
+              </span>
+              <span className="text-muted-foreground">{pc.description ?? ""}</span>
+              <Pill tone={toneFor(pc.status)}>{cap(pc.status)}</Pill>
+            </div>
+          ))}
+          {parcels.length === 0 ? <p className="text-[12px] text-muted-foreground">No parcels recorded.</p> : null}
+        </div>
+      </div>
+
+      {charges.length > 0 ? (
+        <div className="rounded-[12px] border border-border p-3">
+          <h4 className="text-[13px] font-bold text-foreground">Charges</h4>
+          <div className="mt-2 space-y-2">
+            {charges.map((c) => (
+              <div key={c.id} className="rounded-[10px] border border-border p-2.5 text-[12px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-foreground">{cap(c.charge_type)}</span>
+                  <Pill tone={toneFor(c.status)}>{cap(c.status)}</Pill>
+                </div>
+                <p className="mt-1 text-muted-foreground">
+                  {c.distance_km} km · ₹{c.amount} + GST ₹{c.gst_amount} = <span className="font-semibold text-foreground">₹{c.total_amount}</span>
+                  {c.paid_at ? ` · Paid ${fmt(c.paid_at)}` : ""}
+                  {c.razorpay_payment_id ? ` · ${c.razorpay_payment_id}` : ""}
+                </p>
+                {c.status === "pending" ? (
+                  waiveFor === c.id ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <input
+                        placeholder="Reason"
+                        className={`${inputCls} max-w-xs`}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                      <button
+                        disabled={busy || !reason.trim()}
+                        onClick={() => {
+                          if (!window.confirm(`Waive ₹${c.total_amount} return charge?`)) return;
+                          act(() => waive({ data: { chargeId: c.id, reason } }), "Charge waived");
+                        }}
+                        className="rounded-[10px] bg-destructive px-3 py-1.5 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                      >
+                        Confirm waive
+                      </button>
+                      <button onClick={() => setWaiveFor(null)} className="rounded-[10px] border border-border px-3 py-1.5 text-[12px]">
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setWaiveFor(c.id);
+                        setVerifyFor(null);
+                        setReason("");
+                      }}
+                      className="mt-2 rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-bold text-foreground hover:bg-muted"
+                    >
+                      Waive
+                    </button>
+                  )
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function OrdersTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const fetchOrders = useServerFn(listCourierOrders);
   const [status, setStatus] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [multiStop, setMultiStop] = useState(false);
   const [selected, setSelected] = useState<CourierOrderRow | null>(null);
 
   const { data } = useQuery({
-    queryKey: ["courier", "orders", status, search],
-    queryFn: () => fetchOrders({ data: { status: status || null, search: search || null } }),
+    queryKey: ["courier", "orders", status, search, multiStop],
+    queryFn: () =>
+      fetchOrders({ data: { status: status || null, search: search || null, multiStop } }),
     refetchInterval: 30_000,
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "orders"] });
@@ -1255,6 +1648,10 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <label className="flex items-center gap-2 rounded-[10px] border border-border px-3 text-[12px] font-semibold text-foreground">
+          <input type="checkbox" checked={multiStop} onChange={(e) => setMultiStop(e.target.checked)} />
+          Multi-stop
+        </label>
       </div>
 
       {rows.length === 0 ? (
@@ -1272,6 +1669,10 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
               <span className="text-[14px] font-bold text-foreground">{o.order_code}</span>
               <Pill tone="info">{o.status}</Pill>
               {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+              {o.pickup_count > 1 || o.drop_count > 1 ? (
+                <Pill tone="off">{`${o.pickup_count}P · ${o.drop_count}D`}</Pill>
+              ) : null}
+              {o.returnPaymentPending ? <Pill tone="warn">Return payment pending</Pill> : null}
             </div>
             <span className="text-[13px] font-bold text-foreground">₹{o.total_amount}</span>
           </div>
