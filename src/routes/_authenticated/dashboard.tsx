@@ -137,22 +137,28 @@ type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const NAV_GROUPS = [
   {
-    id: "partners",
-    label: "Partners & Merchants",
-    icon: Users,
-    keys: ["experts", "partners", "skills", "merchants", "merchant-billing"],
+    id: "clean-hub",
+    label: "Clean Services",
+    icon: Boxes,
+    keys: ["bookings", "catalogue", "experts", "skills", "task-types", "emergency"],
+  },
+  {
+    id: "courier-hub",
+    label: "Courier & Parcels",
+    icon: PackageCheck,
+    keys: ["courier", "dispatch-alerts", "capacity-messages"],
+  },
+  {
+    id: "store-hub",
+    label: "Stores & Merchants",
+    icon: Store,
+    keys: ["merchants", "store-categories", "merchant-billing"],
   },
   {
     id: "growth",
-    label: "Growth",
+    label: "Customers & Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers"],
-  },
-  {
-    id: "catalog",
-    label: "Catalog",
-    icon: Boxes,
-    keys: ["zones", "catalogue", "store-categories", "task-types", "homepage"],
+    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers", "partners"],
   },
   {
     id: "finance",
@@ -162,9 +168,9 @@ const NAV_GROUPS = [
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "System Settings",
     icon: Settings,
-    keys: ["roles", "legal", "notification-sounds", "support", "deletion-requests", "dispatch-alerts", "capacity-messages", "audit"],
+    keys: ["zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
   },
 ] as const;
 
@@ -242,6 +248,8 @@ function Shell() {
     items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
     isActive: (g.keys as ReadonlyArray<string>).includes(active),
   })).filter((g) => g.items.length > 0);
+
+  const activeGroup = groups.find((g) => g.items.some((i) => i.key === active)) ?? null;
 
   useEffect(() => {
     const g = NAV_GROUPS.find((grp) => (grp.keys as ReadonlyArray<string>).includes(active));
@@ -322,7 +330,14 @@ function Shell() {
             return (
               <div key={group.id}>
                 <button
-                  onClick={() => setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }))}
+                  onClick={() => {
+                    setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
+                    if (!group.isActive && group.items[0]) {
+                      setActive(group.items[0].key);
+                      setNavNonce((n) => n + 1);
+                      setMobileOpen(false);
+                    }
+                  }}
                   aria-expanded={open}
                   className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                     group.isActive && !open
@@ -408,7 +423,15 @@ function Shell() {
             <Menu size={22} />
           </button>
           <h1 className="truncate text-[18px] font-bold text-foreground">
-            {activeItem.label}
+            {activeGroup ? (
+              <>
+                <span className="text-muted-foreground font-semibold">{activeGroup.label}</span>
+                <span className="text-muted-foreground font-semibold"> · </span>
+                {activeItem.label}
+              </>
+            ) : (
+              activeItem.label
+            )}
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -443,6 +466,35 @@ function Shell() {
           </button>
         </div>
       </header>
+
+      {/* Hub sub-tabs */}
+      {activeGroup && activeGroup.items.length > 1 && (
+        <div className="sticky top-16 z-10 bg-card border-b border-border px-4 sm:px-8">
+          <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {activeGroup.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.key === active;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => {
+                    setActive(item.key);
+                    setNavNonce((n) => n + 1);
+                  }}
+                  className={`shrink-0 flex items-center gap-2 px-3 py-3 text-[13px] font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    isActive
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={15} strokeWidth={isActive ? 2.25 : 2} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
