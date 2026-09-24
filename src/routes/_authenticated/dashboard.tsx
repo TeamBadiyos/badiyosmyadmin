@@ -355,7 +355,7 @@ function Shell() {
                 <button
                   onClick={() => {
                     setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
-                    if (!group.isActive && group.items[0]) {
+                    if (!open && group.items[0]) {
                       setActive(group.items[0].key);
                       setNavNonce((n) => n + 1);
                       setMobileOpen(false);

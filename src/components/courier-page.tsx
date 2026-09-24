@@ -1770,7 +1770,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       {section === "rates" ? <RatesTab canWrite={canWrite} /> : null}
       {section === "settings" ? (
         <div className="space-y-5">
-          <CourierSettingsCard canEdit={canWrite} />
+          <CourierSettingsCard canEdit />
           <ZoneMappingTab canWrite={canWrite} />
         </div>
       ) : null}
