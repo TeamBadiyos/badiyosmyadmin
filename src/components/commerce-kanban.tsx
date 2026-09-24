@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   cancelStoreOrderWithRefund,
   listCommercePipeline,
-  listStoreOrderRiders,
   reassignStoreRider,
   type CommerceAlert,
   type CommerceOrder,
