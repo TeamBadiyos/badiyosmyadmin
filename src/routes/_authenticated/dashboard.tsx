@@ -470,7 +470,7 @@ function Shell() {
       {/* Hub sub-tabs */}
       {activeGroup && activeGroup.items.length > 1 && (
         <div className="sticky top-16 z-10 bg-card border-b border-border px-4 sm:px-8">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {activeGroup.items.map((item) => {
               const Icon = item.icon;
               const isActive = item.key === active;
