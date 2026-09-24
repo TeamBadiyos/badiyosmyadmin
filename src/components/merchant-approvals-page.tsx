@@ -245,6 +245,10 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
           ))}
         </div>
       )}
+
+      {editingId && (
+        <MerchantEditModal merchantId={editingId} onClose={() => setEditingId(null)} />
+      )}
     </div>
   );
 }
