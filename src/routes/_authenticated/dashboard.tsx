@@ -34,7 +34,7 @@ import { SupportTicketsPage } from "@/components/support-tickets-page";
 import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
-import { CapacityMessagesPage } from "@/components/capacity-messages-page";
+import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { CourierPage } from "@/components/courier-page";
 import { getStaffAlerts } from "@/lib/alerts.functions";
@@ -82,9 +82,9 @@ import {
   LifeBuoy,
   UserMinus,
   BellRing,
-  MessageSquareText,
   Megaphone,
   PackageCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,8 +129,8 @@ const NAV_ITEMS = [
   { key: "deletion-requests", label: "Deletion Requests", icon: UserMinus },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
   { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
-  { key: "capacity-messages", label: "Capacity Messages", icon: MessageSquareText },
   { key: "courier", label: "Courier", icon: PackageCheck },
+  { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -146,7 +146,7 @@ const NAV_GROUPS = [
     id: "courier-hub",
     label: "Courier & Parcels",
     icon: PackageCheck,
-    keys: ["courier", "dispatch-alerts", "capacity-messages"],
+    keys: ["courier", "dispatch-alerts"],
   },
   {
     id: "store-hub",
@@ -168,9 +168,9 @@ const NAV_GROUPS = [
   },
   {
     id: "settings",
-    label: "System Settings",
+    label: "Platform Settings",
     icon: Settings,
-    keys: ["zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
+    keys: ["services", "zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
   },
 ] as const;
 
@@ -562,8 +562,8 @@ function Shell() {
           <DeletionRequestsPage role={role} />
         ) : active === "dispatch-alerts" ? (
           <DispatchAlertsPage />
-        ) : active === "capacity-messages" ? (
-          <CapacityMessagesPage />
+        ) : active === "services" ? (
+          <ServicesPage />
         ) : active === "offers" ? (
           <OffersPage />
         ) : active === "courier" ? (
