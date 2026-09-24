@@ -83,9 +83,6 @@ import {
   BellRing,
   MessageSquareText,
   Megaphone,
-  Ticket,
-  BadgePercent,
-  Sparkles,
   PackageCheck,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
