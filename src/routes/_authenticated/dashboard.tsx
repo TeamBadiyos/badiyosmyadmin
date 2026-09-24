@@ -656,34 +656,6 @@ function DashboardHome({
     },
   ];
 
-  if (role === "super_admin" || role === "ops_manager") {
-    cards.push(
-      {
-        label: "Coupons Used",
-        value: String(data?.couponsUsed ?? 0),
-        hint: "All-time redemptions",
-        icon: Ticket,
-      },
-      {
-        label: "Discount Given",
-        value: inr.format(data?.discountGiven ?? 0),
-        hint: "Total customer savings",
-        icon: BadgePercent,
-      },
-      {
-        label: "Active Campaigns",
-        value: String(data?.activeCampaigns ?? 0),
-        hint: "Live in the Offers tab",
-        icon: Megaphone,
-      },
-      {
-        label: "Rewards Issued",
-        value: String(data?.rewardsIssued ?? 0),
-        hint: "Referral milestone rewards",
-        icon: Sparkles,
-      },
-    );
-  }
 
   return (
     <div className="w-full space-y-6">
