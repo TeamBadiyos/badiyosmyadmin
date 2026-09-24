@@ -14,7 +14,6 @@ export type DashboardStats = {
   courierToday: number;
   courierRevenue: number;
   onlineExperts: number;
-  openMerchants: number;
   // offers & campaigns
   couponsUsed: number;
   discountGiven: number;
@@ -92,7 +91,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      openMerchantsRes,
       offlineRevenueRes,
     ] = await Promise.all([
       noBookings
