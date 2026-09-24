@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import {
   listMerchantProducts,
-  setMerchantProductActive,
+  setProductAdminHidden,
 } from "@/lib/merchants.functions";
 
 function inr(n: number) {
@@ -22,7 +22,7 @@ export function MerchantProductsModal({
 }) {
   const queryClient = useQueryClient();
   const fetchProducts = useServerFn(listMerchantProducts);
-  const toggleFn = useServerFn(setMerchantProductActive);
+  const toggleFn = useServerFn(setProductAdminHidden);
   const [q, setQ] = useState("");
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -47,13 +47,14 @@ export function MerchantProductsModal({
   const lowStock = products.filter(
     (p) => p.stockQuantity <= p.lowStockThreshold,
   ).length;
-  const inactive = products.filter((p) => !p.isActive).length;
+  const merchantHidden = products.filter((p) => !p.isActive).length;
+  const adminHidden = products.filter((p) => p.adminHidden).length;
 
   const toggle = useMutation({
-    mutationFn: (p: { productId: string; isActive: boolean }) =>
+    mutationFn: (p: { productId: string; hidden: boolean; reason?: string | null }) =>
       toggleFn({ data: p }),
     onSuccess: (_r, p) => {
-      toast.success(p.isActive ? "Item is live" : "Item hidden");
+      toast.success(p.hidden ? "Hidden by admin" : "Admin hide removed");
       queryClient.invalidateQueries({
         queryKey: ["merchant", "products", merchantId],
       });
@@ -61,6 +62,16 @@ export function MerchantProductsModal({
     onError: (e) =>
       toast.error(e instanceof Error ? e.message : "Could not update item"),
   });
+
+  const onToggle = (productId: string, currentlyHidden: boolean) => {
+    if (currentlyHidden) {
+      toggle.mutate({ productId, hidden: false });
+      return;
+    }
+    const reason = window.prompt("Reason for hiding this item (optional)");
+    if (reason === null) return;
+    toggle.mutate({ productId, hidden: true, reason });
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-3 sm:p-6">
@@ -73,7 +84,8 @@ export function MerchantProductsModal({
             <p className="text-[12px] text-muted-foreground truncate">
               {products.length} item{products.length === 1 ? "" : "s"}
               {lowStock > 0 ? ` · ${lowStock} low stock` : ""}
-              {inactive > 0 ? ` · ${inactive} hidden` : ""}
+              {merchantHidden > 0 ? ` · ${merchantHidden} hidden by merchant` : ""}
+              {adminHidden > 0 ? ` · ${adminHidden} hidden by admin` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -153,6 +165,23 @@ export function MerchantProductsModal({
                     {p.categoryLabel ?? "Uncategorised"}
                     {p.unit ? ` · ${p.unit}` : ""}
                   </p>
+                  {(!p.isActive || p.adminHidden) && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {!p.isActive && (
+                        <span className="inline-flex h-6 px-2 items-center rounded-full bg-muted text-muted-foreground text-[11px] font-semibold">
+                          Hidden by merchant
+                        </span>
+                      )}
+                      {p.adminHidden && (
+                        <span
+                          title={p.adminHiddenReason ?? undefined}
+                          className="inline-flex h-6 px-2 items-center rounded-full bg-destructive/10 text-destructive text-[11px] font-semibold"
+                        >
+                          Hidden by admin
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-[14px] font-bold sm:text-left text-right">
@@ -174,20 +203,15 @@ export function MerchantProductsModal({
                 <div className="hidden sm:flex justify-end">
                   <button
                     disabled={!canManage || toggle.isPending}
-                    onClick={() =>
-                      toggle.mutate({
-                        productId: p.id,
-                        isActive: !p.isActive,
-                      })
-                    }
+                    onClick={() => onToggle(p.id, p.adminHidden)}
                     className={`h-7 w-12 rounded-full transition-colors relative disabled:opacity-50 ${
-                      p.isActive ? "bg-primary" : "bg-muted-foreground/30"
+                      !p.adminHidden ? "bg-primary" : "bg-muted-foreground/30"
                     }`}
-                    aria-label={p.isActive ? "Hide item" : "Show item"}
+                    aria-label={p.adminHidden ? "Remove admin hide" : "Hide by admin"}
                   >
                     <span
-                      className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                        p.isActive ? "left-6" : "left-1"
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow transition-all ${
+                        !p.adminHidden ? "left-6" : "left-1"
                       }`}
                     />
                   </button>

@@ -348,6 +348,8 @@ export type MerchantProduct = {
   stockQuantity: number;
   lowStockThreshold: number;
   isActive: boolean;
+  adminHidden: boolean;
+  adminHiddenReason: string | null;
   imageUrl: string | null;
   createdAt: string;
 };
@@ -392,7 +394,7 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
       db
         .from("products")
         .select(
-          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, image_url, created_at",
+          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, admin_hidden, admin_hidden_reason, image_url, created_at",
         )
         .eq("merchant_id", data.merchantId)
         .order("created_at", { ascending: false })
@@ -416,23 +418,30 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         stockQuantity: Number(r.stock_quantity ?? 0),
         lowStockThreshold: Number(r.low_stock_threshold ?? 0),
         isActive: !!r.is_active,
+        adminHidden: !!r.admin_hidden,
+        adminHiddenReason: r.admin_hidden_reason ?? null,
         imageUrl: r.image_url ?? null,
         createdAt: r.created_at,
       })),
     };
   });
 
-export const setMerchantProductActive = createServerFn({ method: "POST" })
+export const setProductAdminHidden = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { productId: string; isActive: boolean }) => input)
+  .inputValidator((input: { productId: string; hidden: boolean; reason?: string | null }) => {
+    if (!input?.productId) throw new Error("Product is required");
+    return input;
+  })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const db = context.supabase;
     const role = await staffRole(db, context.userId);
     if (role !== "super_admin") throw new Error("insufficient_role");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
 
-    const { data: before, error: beforeErr } = await supabaseAdmin
+    const { data: before, error: beforeErr } = await admin
       .from("products")
       .select("*")
       .eq("id", data.productId)
@@ -440,9 +449,10 @@ export const setMerchantProductActive = createServerFn({ method: "POST" })
     if (beforeErr) throw new Error(beforeErr.message);
     if (!before) throw new Error("Product not found");
 
-    const { data: after, error } = await supabaseAdmin
+    const reason = data.hidden ? (data.reason ?? "").trim() || null : null;
+    const { data: after, error } = await admin
       .from("products")
-      .update({ is_active: data.isActive })
+      .update({ admin_hidden: data.hidden, admin_hidden_reason: reason })
       .eq("id", data.productId)
       .select("*")
       .single();
@@ -450,7 +460,7 @@ export const setMerchantProductActive = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
-      action: "set_product_active",
+      action: "set_product_admin_hidden",
       target_table: "products",
       target_id: data.productId,
       before_state: before,
