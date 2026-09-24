@@ -5765,6 +5765,7 @@ export type Database = {
         Args: { _order_id: string; _purpose: string }
         Returns: string
       }
+      courier_issue_stop_otp: { Args: { _stop_id: string }; Returns: string }
       courier_log_otp_send: {
         Args: {
           _detail: string
@@ -5774,13 +5775,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      courier_mark_charge_paid: {
+        Args: { _payment_id: string; _razorpay_order_id: string }
+        Returns: boolean
+      }
       courier_mark_refund_pending: {
         Args: { _amount: number; _order_id: string; _reason: string }
         Returns: undefined
       }
+      courier_min_route_km: { Args: { _stops: Json }; Returns: number }
       courier_offer_respond: {
         Args: { _accept: boolean; _offer_id: string }
         Returns: Json
+      }
+      courier_order_clean_return: {
+        Args: { _order_id: string }
+        Returns: boolean
       }
       courier_otp_key: { Args: never; Returns: string }
       courier_otp_owner_gate: {
@@ -5869,6 +5879,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      courier_plan_stops: { Args: { _stops: Json }; Returns: Json }
       courier_quote_internal: {
         Args: {
           _city: string
@@ -5876,9 +5887,15 @@ export type Database = {
           _courier_type_id: string
           _customer_id: string
           _distance_km: number
+          _drop_count?: number
+          _pickup_count?: number
           _vehicle_type_id: string
           _weight_kg: number
         }
+        Returns: Json
+      }
+      courier_recompute_order_progress: {
+        Args: { _order_id: string }
         Returns: Json
       }
       courier_refresh_otp: {
@@ -5893,6 +5910,10 @@ export type Database = {
         Args: { _order_id: string; _purpose: string }
         Returns: Json
       }
+      courier_resolve_stop: {
+        Args: { _order_id: string; _purpose: string }
+        Returns: string
+      }
       courier_rider_advance: {
         Args: {
           _accuracy_m?: number
@@ -5904,8 +5925,27 @@ export type Database = {
         }
         Returns: Json
       }
+      courier_rider_arrive_stop: {
+        Args: {
+          _accuracy_m?: number
+          _fix_at?: string
+          _lat?: number
+          _lng?: number
+          _stop_id: string
+        }
+        Returns: Json
+      }
       courier_rider_cancel: {
         Args: { _order_id: string; _reason: string }
+        Returns: Json
+      }
+      courier_rider_fail_stop: {
+        Args: {
+          _notes?: string
+          _reason_code: string
+          _return_distances?: Json
+          _stop_id: string
+        }
         Returns: Json
       }
       courier_rider_offers: { Args: never; Returns: Json }
@@ -5918,11 +5958,16 @@ export type Database = {
         Args: { _order_id: string }
         Returns: undefined
       }
+      courier_stop_purpose: { Args: { _stop_type: string }; Returns: string }
       courier_store_info: { Args: { _order_id: string }; Returns: Json }
       courier_sweeper: { Args: never; Returns: undefined }
       courier_sweeper_tick: { Args: never; Returns: undefined }
       courier_update_contact: {
         Args: { _new_phone: string; _order_id: string; _purpose: string }
+        Returns: Json
+      }
+      courier_update_stop_contact: {
+        Args: { _name: string; _phone: string; _stop_id: string }
         Returns: Json
       }
       courier_validate_local_route: {
@@ -5943,6 +5988,10 @@ export type Database = {
           _proof_url?: string
           _purpose: string
         }
+        Returns: Json
+      }
+      courier_verify_stop_otp: {
+        Args: { _otp: string; _proof_url?: string; _stop_id: string }
         Returns: Json
       }
       credit_booking_completion: {
@@ -6580,6 +6629,10 @@ export type Database = {
           _sort_order: number
         }
         Returns: string
+      }
+      staff_courier_waive_charge: {
+        Args: { _charge_id: string; _reason: string }
+        Returns: Json
       }
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
