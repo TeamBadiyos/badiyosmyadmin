@@ -640,7 +640,7 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     const stopsFeeOf = (fb: unknown) => {
       if (!fb || typeof fb !== "object") return 0;
       const o = fb as Record<string, unknown>;
-      const direct = Number(o["stops_fee"] ?? o["stop_fee"] ?? o["stopsFee"] ?? NaN);
+      const direct = Number(o["stops_fee"] ?? NaN);
       if (Number.isFinite(direct)) return direct;
       return Number(o["extra_pickup_fee"] ?? 0) + Number(o["extra_drop_fee"] ?? 0);
     };
