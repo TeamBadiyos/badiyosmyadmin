@@ -55,7 +55,7 @@ function cutoffLabel(flag: ServiceFlagControl): string {
   return `${base}: close se ${min} min pehle`;
 }
 
-function HoursEditor({
+export function ServiceHoursEditor({
   flag,
   hours,
   holidays,
@@ -541,7 +541,7 @@ function HoursEditor({
   );
 }
 
-function PreviewTable({ canWrite }: { canWrite: boolean }) {
+export function ServicePreviewTable({ canWrite }: { canWrite: boolean }) {
   const preview = useServerFn(getServicePreview);
   const [lang, setLang] = useState<"en" | "mr">("en");
   const [testTime, setTestTime] = useState(() => isoToIstInput(new Date().toISOString()));
@@ -697,7 +697,7 @@ export function ServiceHoursSection({
             />
           </button>
           {openKey === f.service_key ? (
-            <HoursEditor
+            <ServiceHoursEditor
               flag={f}
               hours={hours}
               holidays={holidays}
@@ -707,7 +707,7 @@ export function ServiceHoursSection({
           ) : null}
         </div>
       ))}
-      <PreviewTable canWrite={canWrite} />
+      <ServicePreviewTable canWrite={canWrite} />
     </div>
   );
 }

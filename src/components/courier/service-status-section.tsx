@@ -138,7 +138,7 @@ function MiniModal({
 
 /* ------------------------------ status section ---------------------------- */
 
-function StatusRow({
+export function ServiceStatusCard({
   flag,
   canWrite,
   activeOrders,
@@ -428,7 +428,7 @@ export function ServiceStatusSection({
       ) : null}
 
       {flags.map((f) => (
-        <StatusRow
+        <ServiceStatusCard
           key={`${f.id}:${f.status_updated_at ?? f.updated_at ?? ""}`}
           flag={f}
           canWrite={canWrite}
