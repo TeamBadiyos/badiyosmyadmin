@@ -107,6 +107,8 @@ export function ServicesPage() {
     (segmentsQuery.data ?? []).map((segment) => [segment.slug, segment]),
   );
   const canWrite = Boolean(accessQuery.data?.canWrite && controlQuery.data?.canWrite);
+  const canToggleVisibility =
+    accessQuery.data?.role === "super_admin" || accessQuery.data?.role === "ops_manager";
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ["services"] });
@@ -138,7 +140,7 @@ export function ServicesPage() {
     <div className="space-y-5">
       {!canWrite ? (
         <div className="rounded-[12px] border border-border bg-muted px-4 py-2 text-[12px] text-muted-foreground">
-          Read-only access — only a super admin can change service settings.
+          Status and hours are read-only — only a super admin can change them.
         </div>
       ) : null}
 
@@ -229,7 +231,7 @@ export function ServicesPage() {
                         <span className="text-[12px] font-semibold text-foreground">Show in app</span>
                         <Toggle
                           on={Boolean(segment?.is_active)}
-                          disabled={!canWrite || !segment || busySegment === segment.id}
+                          disabled={!canToggleVisibility || !segment || busySegment === segment.id}
                           label={`Show ${flag.label ?? flag.service_key} in app`}
                           onChange={(next) => {
                             if (segment) void setShown(segment, next);
