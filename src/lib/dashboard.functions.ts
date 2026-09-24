@@ -237,7 +237,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const todayBookings = todayBookingsRes.count ?? 0;
     const todayOrders = todayOrdersRes.count ?? 0;
     const onlineExperts = expertsRes.count ?? 0;
-    const openMerchants = openMerchantsRes.count ?? 0;
 
     // Offers & campaigns (not segment-scoped)
     const [redemptionsRes, activeCampaignsRes, awardsRes] = await Promise.all([
@@ -312,13 +311,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         (pendingBookingsRes.count ?? 0) +
         (pendingOrdersRes.count ?? 0) +
         (courierPendingRes.count ?? 0),
-      onlineNow: onlineExperts + openMerchants,
+      onlineNow: onlineExperts,
       todayBookings,
       todayOrders,
       courierToday,
       courierRevenue,
       onlineExperts,
-      openMerchants,
       couponsUsed: redemptionRows.length,
       discountGiven: redemptionRows.reduce((a, r) => a + Number(r.discount_amount ?? 0), 0),
       activeCampaigns: activeCampaignsRes.count ?? 0,
