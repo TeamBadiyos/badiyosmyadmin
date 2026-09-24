@@ -270,22 +270,32 @@ export const listStoreOrderRiders = createServerFn({ method: "POST" })
       .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
   });
 
+function friendlyStoreError(msg: string): string {
+  if (msg.includes("order_not_reassignable")) return "Can't reassign at this stage (a rider may already be on the way, or the order isn't paid).";
+  if (msg.includes("order_not_cancellable")) return "This order can't be cancelled any more.";
+  if (msg.includes("reason_required")) return "Please enter a reason.";
+  if (msg.includes("Forbidden")) return "Only super admin or ops manager can do this.";
+  return msg;
+}
+
+// Single source of truth: backend RPC staff_store_reassign (re-runs rider search
+// or creates a fresh courier job when none/cancelled).
 export const reassignStoreRider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; expertId: string }) => {
-    if (!input?.orderId || !input?.expertId) throw new Error("orderId and expertId required");
-    return input;
+  .inputValidator((input: { orderId: string }) => {
+    if (!input?.orderId) throw new Error("orderId required");
+    return { orderId: input.orderId };
   })
   .handler(async ({ data, context }) => {
-    await assertManager(context);
-    const { error } = await context.supabase.rpc("staff_reassign_store_rider", {
+    const { error } = await (context.supabase.rpc as any)("staff_store_reassign", {
       _order_id: data.orderId,
-      _expert_id: data.expertId,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyStoreError(error.message));
     return { ok: true as const };
   });
 
+// Single refund path: backend RPC staff_store_cancel_refund handles cancel,
+// courier cancel, restock and refund marking. No Razorpay call here.
 export const cancelStoreOrderWithRefund = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string; reason: string }) => {
@@ -295,77 +305,10 @@ export const cancelStoreOrderWithRefund = createServerFn({ method: "POST" })
     return { orderId: input.orderId, reason };
   })
   .handler(async ({ data, context }) => {
-    await assertManager(context);
-    const db = context.supabase;
-    const { data: mo, error } = await db
-      .from("merchant_orders")
-      .select("id, status, total_amount, razorpay_payment_id, payment_status")
-      .eq("id", data.orderId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!mo) throw new Error("Order not found");
-    if (["cancelled", "completed"].includes(mo.status)) throw new Error(`Order is already ${mo.status}`);
-
-    let refundId: string | null = null;
-    let refundStatus: string | null = null;
-    let refundAmount = 0;
-    let refundError: string | null = null;
-    const paymentId = mo.razorpay_payment_id as string | null;
-
-    if (paymentId) {
-      const keyId = process.env["RAZORPAY_KEY_ID"] || "";
-      const secret = process.env["RAZORPAY_KEY_SECRET"] || "";
-      if (!keyId || !secret) throw new Error("Payment gateway keys are not configured");
-      const auth = "Basic " + btoa(`${keyId}:${secret}`);
-      const payRes = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
-        headers: { Authorization: auth },
-      });
-      const payBody = await payRes.text();
-      let pay: any = null;
-      try { pay = JSON.parse(payBody); } catch { /* noop */ }
-      if (!payRes.ok || !pay) {
-        refundStatus = "failed";
-        refundError = `Payment lookup failed (${payRes.status})`;
-      } else if (pay.status !== "captured") {
-        refundStatus = "failed";
-        refundError = `Payment not refundable (status ${pay.status})`;
-      } else {
-        const available = Math.max(0, Number(pay.amount) - Number(pay.amount_refunded ?? 0));
-        if (available <= 0) {
-          refundStatus = "failed";
-          refundError = "Nothing left to refund";
-        } else {
-          const rRes = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
-            method: "POST",
-            headers: { Authorization: auth, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              amount: available,
-              speed: "normal",
-              notes: { merchant_order_id: mo.id, source: "admin_cancel" },
-            }),
-          });
-          const rBody = await rRes.text();
-          let r: any = null;
-          try { r = JSON.parse(rBody); } catch { /* noop */ }
-          if (rRes.ok && r?.id) {
-            refundId = r.id;
-            refundStatus = r.status ?? "processed";
-            refundAmount = available / 100;
-          } else {
-            refundStatus = "failed";
-            refundError = r?.error?.description ?? `Refund failed (${rRes.status})`;
-          }
-        }
-      }
-    }
-
-    const { error: applyErr } = await db.rpc("staff_cancel_store_order_apply", {
-      _order_id: mo.id,
+    const { error } = await (context.supabase.rpc as any)("staff_store_cancel_refund", {
+      _order_id: data.orderId,
       _reason: data.reason,
-      _refund_id: refundId as string,
-      _refund_status: refundStatus as string,
-      _refund_amount: refundAmount,
     });
-    if (applyErr) throw new Error(applyErr.message);
-    return { ok: true as const, refundAmount, refundStatus, refundError, paid: !!paymentId };
+    if (error) throw new Error(friendlyStoreError(error.message));
+    return { ok: true as const };
   });

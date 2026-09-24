@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   cancelStoreOrderWithRefund,
   listCommercePipeline,
-  listStoreOrderRiders,
   reassignStoreRider,
   type CommerceAlert,
   type CommerceOrder,
@@ -130,23 +129,15 @@ function OrderSheet({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const fetchRiders = useServerFn(listStoreOrderRiders);
   const reassign = useServerFn(reassignStoreRider);
   const cancel = useServerFn(cancelStoreOrderWithRefund);
   const [mode, setMode] = useState<"none" | "rider" | "cancel">("none");
-  const [riderId, setRiderId] = useState("");
   const [reason, setReason] = useState("");
 
-  const riders = useQuery({
-    queryKey: ["commerce", "riders", order.id],
-    queryFn: () => fetchRiders({ data: { orderId: order.id } }),
-    enabled: mode === "rider",
-  });
-
   const reassignM = useMutation({
-    mutationFn: () => reassign({ data: { orderId: order.id, expertId: riderId } }),
+    mutationFn: () => reassign({ data: { orderId: order.id } }),
     onSuccess: () => {
-      toast.success("Rider reassigned");
+      toast.success("Rider search restarted");
       qc.invalidateQueries({ queryKey: ["commerce", "board"] });
       onClose();
     },
@@ -155,11 +146,8 @@ function OrderSheet({
 
   const cancelM = useMutation({
     mutationFn: () => cancel({ data: { orderId: order.id, reason } }),
-    onSuccess: (r) => {
-      if (!r.paid) toast.success("Order cancelled (no online payment to refund)");
-      else if (r.refundStatus === "failed")
-        toast.warning(`Order cancelled, but refund failed: ${r.refundError ?? ""}`);
-      else toast.success(`Order cancelled · ${inr.format(r.refundAmount)} refunded`);
+    onSuccess: () => {
+      toast.success("Order cancelled · refund started");
       qc.invalidateQueries({ queryKey: ["commerce", "board"] });
       onClose();
     },
@@ -167,6 +155,7 @@ function OrderSheet({
   });
 
   const closed = order.status === "completed";
+  const canReassign = order.paymentStatus === "paid";
   const now = Date.now();
 
   return (
@@ -215,8 +204,8 @@ function OrderSheet({
             <div className="flex gap-2">
               <button
                 onClick={() => setMode(mode === "rider" ? "none" : "rider")}
-                disabled={!order.courierOrderId}
-                title={order.courierOrderId ? "" : "No delivery linked to this order yet"}
+                disabled={!canReassign}
+                title={canReassign ? "" : "Only paid, open orders can be reassigned"}
                 className="flex-1 h-10 rounded-[14px] border border-primary text-primary text-[13px] font-bold disabled:opacity-40"
               >
                 Reassign rider
@@ -231,24 +220,15 @@ function OrderSheet({
 
             {mode === "rider" && (
               <div className="rounded-[14px] border border-border p-3 space-y-2">
-                {riders.isLoading && <p className="text-[12px] text-muted-foreground">Loading riders…</p>}
-                {riders.isError && <p className="text-[12px] text-destructive">{(riders.error as Error).message}</p>}
-                {riders.data && riders.data.length === 0 && <p className="text-[12px] text-muted-foreground">No active riders found.</p>}
-                <div className="max-h-60 overflow-y-auto space-y-1">
-                  {riders.data?.map((r) => (
-                    <label key={r.id} className={`flex items-center gap-2 rounded-[10px] px-2 py-1.5 cursor-pointer text-[13px] ${riderId === r.id ? "bg-primary-tint" : "hover:bg-muted"}`}>
-                      <input type="radio" name="rider" checked={riderId === r.id} onChange={() => setRiderId(r.id)} />
-                      <span className="flex-1 truncate text-foreground">{r.name}</span>
-                      <span className="text-[11px] text-muted-foreground">{r.distanceKm != null ? `${r.distanceKm.toFixed(1)} km` : r.phone}</span>
-                    </label>
-                  ))}
-                </div>
+                <p className="text-[12px] text-foreground">
+                  The rider search will restart and the nearest free rider will be offered this job. If the old delivery was cancelled, a new one is created.
+                </p>
                 <button
-                  disabled={!riderId || reassignM.isPending}
+                  disabled={reassignM.isPending}
                   onClick={() => reassignM.mutate()}
                   className="w-full h-10 rounded-[14px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50"
                 >
-                  {reassignM.isPending ? "Assigning…" : "Assign this rider"}
+                  {reassignM.isPending ? "Searching…" : "Re-search rider"}
                 </button>
               </div>
             )}
