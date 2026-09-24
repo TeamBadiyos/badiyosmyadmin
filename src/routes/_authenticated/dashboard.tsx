@@ -330,7 +330,14 @@ function Shell() {
             return (
               <div key={group.id}>
                 <button
-                  onClick={() => setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }))}
+                  onClick={() => {
+                    setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
+                    if (!group.isActive && group.items[0]) {
+                      setActive(group.items[0].key);
+                      setNavNonce((n) => n + 1);
+                      setMobileOpen(false);
+                    }
+                  }}
                   aria-expanded={open}
                   className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                     group.isActive && !open
