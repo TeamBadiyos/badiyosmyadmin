@@ -237,6 +237,12 @@ export type RateRow = {
   platform_fee: number;
   commission_pct: number;
   is_placeholder: boolean;
+  customer_segment: "regular" | "corporate";
+  extra_pickup_fee: number;
+  extra_drop_fee: number;
+  max_pickups: number | null;
+  max_drops: number | null;
+  return_per_km: number;
 };
 
 export const listRates = createServerFn({ method: "GET" })
@@ -251,7 +257,7 @@ export const listRates = createServerFn({ method: "GET" })
         db
           .from("courier_vehicle_rates")
           .select(
-            "id, city, vehicle_type_id, base_fare, included_km, per_km, min_fare, platform_fee, commission_pct, is_placeholder",
+            "id, city, vehicle_type_id, base_fare, included_km, per_km, min_fare, platform_fee, commission_pct, is_placeholder, customer_segment, extra_pickup_fee, extra_drop_fee, max_pickups, max_drops, return_per_km",
           )
           .order("city", { ascending: true }),
         db.from("courier_vehicle_types").select("id, name").order("sort_order", { ascending: true }),
@@ -274,6 +280,12 @@ export const listRates = createServerFn({ method: "GET" })
         platform_fee: Number(r["platform_fee"] ?? 0),
         commission_pct: Number(r["commission_pct"] ?? 0),
         is_placeholder: !!r["is_placeholder"],
+        customer_segment: (r["customer_segment"] === "corporate" ? "corporate" : "regular") as RateRow["customer_segment"],
+        extra_pickup_fee: Number(r["extra_pickup_fee"] ?? 0),
+        extra_drop_fee: Number(r["extra_drop_fee"] ?? 0),
+        max_pickups: r["max_pickups"] == null ? null : Number(r["max_pickups"]),
+        max_drops: r["max_drops"] == null ? null : Number(r["max_drops"]),
+        return_per_km: Number(r["return_per_km"] ?? 0),
       }));
       return { rows, vehicles, cancellationFee: Number(sRes?.data ?? 0) };
     },
@@ -289,6 +301,12 @@ export type RateInput = {
   minFare: number;
   platformFee: number;
   commissionPct: number;
+  segment: "regular" | "corporate";
+  extraPickupFee: number;
+  extraDropFee: number;
+  maxPickups: number | null;
+  maxDrops: number | null;
+  returnPerKm: number;
 };
 
 export const saveRate = createServerFn({ method: "POST" })
@@ -296,6 +314,10 @@ export const saveRate = createServerFn({ method: "POST" })
   .inputValidator((input: RateInput) => {
     if (!input?.city?.trim()) throw new Error("City is required");
     if (!input?.vehicleTypeId) throw new Error("Vehicle is required");
+    if (input.extraPickupFee < 0 || input.extraDropFee < 0) throw new Error("Stop fees must be 0 or more");
+    if (input.returnPerKm < 0) throw new Error("Return charge per km must be 0 or more");
+    if (input.segment === "regular" && (!input.maxPickups || !input.maxDrops || input.maxPickups < 1 || input.maxDrops < 1))
+      throw new Error("Regular rates need max pickups and max drops of at least 1");
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -310,6 +332,12 @@ export const saveRate = createServerFn({ method: "POST" })
       _min_fare: Number(data.minFare ?? 0),
       _platform_fee: Number(data.platformFee ?? 0),
       _commission_pct: Number(data.commissionPct ?? 0),
+      _customer_segment: data.segment,
+      _extra_pickup_fee: Number(data.extraPickupFee ?? 0),
+      _extra_drop_fee: Number(data.extraDropFee ?? 0),
+      _max_pickups: data.maxPickups,
+      _max_drops: data.maxDrops,
+      _return_per_km: Number(data.returnPerKm ?? 0),
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
@@ -540,6 +568,10 @@ export type CourierOrderRow = {
   riderName: string | null;
   assigned_expert_id: string | null;
   created_at: string;
+  pickup_count: number;
+  drop_count: number;
+  returnPaymentPending: boolean;
+  stopsFee: number;
 };
 
 export const COURIER_STATUSES = [
@@ -558,10 +590,13 @@ export const COURIER_STATUSES = [
 
 export const listCourierOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { status?: string | null; search?: string | null }) => ({
-    status: input?.status ?? null,
-    search: input?.search?.trim() || null,
-  }))
+  .inputValidator(
+    (input?: { status?: string | null; search?: string | null; multiStop?: boolean }) => ({
+      status: input?.status ?? null,
+      search: input?.search?.trim() || null,
+      multiStop: !!input?.multiStop,
+    }),
+  )
   .handler(async ({ data, context }): Promise<CourierOrderRow[]> => {
     await requireCourierStaff(context);
     const db = context.supabase;
@@ -569,12 +604,13 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     let q = db
       .from("courier_orders")
       .select(
-        "id, order_code, city, status, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at",
+        "id, order_code, city, status, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown",
       )
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status) q = q.eq("status", data.status);
     if (data.search) q = q.ilike("order_code", `%${data.search}%`);
+    if (data.multiStop) q = q.or("pickup_count.gt.1,drop_count.gt.1");
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
@@ -588,14 +624,26 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       new Set(list.map((r) => r["assigned_expert_id"]).filter(Boolean) as string[]),
     );
 
-    const [uRes, eRes] = await Promise.all([
+    const orderIds = list.map((r) => r["id"] as string);
+    const [uRes, eRes, cRes] = await Promise.all([
       customerIds.length
         ? db.from("users").select("id, full_name").in("id", customerIds)
         : Promise.resolve({ data: [], error: null }),
       expertIds.length
         ? db.from("experts").select("id, name").in("id", expertIds)
         : Promise.resolve({ data: [], error: null }),
+      db.from("courier_order_charges").select("order_id").eq("status", "pending").in("order_id", orderIds),
     ]);
+    const pendingSet = new Set(
+      ((cRes.data ?? []) as Array<{ order_id: string }>).map((c) => c.order_id),
+    );
+    const stopsFeeOf = (fb: unknown) => {
+      if (!fb || typeof fb !== "object") return 0;
+      const o = fb as Record<string, unknown>;
+      const direct = Number(o["stops_fee"] ?? o["stop_fee"] ?? o["stopsFee"] ?? NaN);
+      if (Number.isFinite(direct)) return direct;
+      return Number(o["extra_pickup_fee"] ?? 0) + Number(o["extra_drop_fee"] ?? 0);
+    };
     const uMap = new Map(
       ((uRes.data ?? []) as Array<{ id: string; full_name: string | null }>).map((u) => [
         u.id,
@@ -625,6 +673,10 @@ export const listCourierOrders = createServerFn({ method: "POST" })
         : null,
       assigned_expert_id: (r["assigned_expert_id"] as string | null) ?? null,
       created_at: r["created_at"] as string,
+      pickup_count: Number(r["pickup_count"] ?? 1),
+      drop_count: Number(r["drop_count"] ?? 1),
+      returnPaymentPending: pendingSet.has(r["id"] as string),
+      stopsFee: stopsFeeOf(r["fare_breakdown"]),
     }));
   });
 
@@ -751,6 +803,171 @@ export const resolveIncident = createServerFn({ method: "POST" })
       _resolution: data.resolution,
       _refund_amount: data.resolution === "no_refund" ? 0 : Number(data.refundAmount ?? 0),
       _pay_rider: !!data.payRider,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/* --------------------------- Multi-stop details --------------------------- */
+
+export type CourierStopRow = {
+  id: string;
+  stop_type: string;
+  sequence: number;
+  address: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  status: string;
+  arrived_at: string | null;
+  completed_at: string | null;
+  failed_at: string | null;
+  fail_reason_code: string | null;
+};
+export type CourierParcelRow = {
+  id: string;
+  pickup_stop_id: string | null;
+  drop_stop_id: string | null;
+  return_stop_id: string | null;
+  description: string | null;
+  status: string;
+};
+export type CourierChargeRow = {
+  id: string;
+  parcel_id: string | null;
+  charge_type: string;
+  distance_km: number;
+  amount: number;
+  gst_amount: number;
+  total_amount: number;
+  status: string;
+  paid_at: string | null;
+  razorpay_payment_id: string | null;
+};
+
+export const getCourierOrderStops = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string }) => {
+    if (!input?.orderId) throw new Error("orderId required");
+    return input;
+  })
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ stops: CourierStopRow[]; parcels: CourierParcelRow[]; charges: CourierChargeRow[] }> => {
+      await requireCourierStaff(context);
+      const db = context.supabase;
+      const [s, p, c] = await Promise.all([
+        db
+          .from("courier_order_stops")
+          .select(
+            "id, stop_type, sequence, address, contact_name, contact_phone, status, arrived_at, completed_at, failed_at, fail_reason_code",
+          )
+          .eq("order_id", data.orderId)
+          .order("sequence", { ascending: true }),
+        db
+          .from("courier_order_parcels")
+          .select("id, pickup_stop_id, drop_stop_id, return_stop_id, description, status")
+          .eq("order_id", data.orderId)
+          .order("created_at", { ascending: true }),
+        db
+          .from("courier_order_charges")
+          .select(
+            "id, parcel_id, charge_type, distance_km, amount, gst_amount, total_amount, status, paid_at, razorpay_payment_id",
+          )
+          .eq("order_id", data.orderId)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (s.error) throw new Error(s.error.message);
+      if (p.error) throw new Error(p.error.message);
+      if (c.error) throw new Error(c.error.message);
+      return {
+        stops: (s.data ?? []) as CourierStopRow[],
+        parcels: (p.data ?? []) as CourierParcelRow[],
+        charges: ((c.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+          ...(r as unknown as CourierChargeRow),
+          distance_km: Number(r["distance_km"] ?? 0),
+          amount: Number(r["amount"] ?? 0),
+          gst_amount: Number(r["gst_amount"] ?? 0),
+          total_amount: Number(r["total_amount"] ?? 0),
+        })),
+      };
+    },
+  );
+
+export const waiveCourierCharge = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { chargeId: string; reason: string }) => {
+    if (!input?.chargeId) throw new Error("chargeId required");
+    if (!input.reason?.trim()) throw new Error("Reason is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCourierStaff(context);
+    const { error } = await rpc(context.supabase, "staff_courier_waive_charge", {
+      _charge_id: data.chargeId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const verifyCourierStop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { stopId: string; reason: string }) => {
+    if (!input?.stopId) throw new Error("stopId required");
+    if ((input.reason ?? "").trim().length < 10) throw new Error("Reason must be at least 10 characters");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCourierStaff(context);
+    const { error } = await rpc(context.supabase, "staff_courier_verify_stop", {
+      _stop_id: data.stopId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const COURIER_SETTING_KEYS = [
+  { key: "courier_fail_wait_minutes", label: "Wait before rider can mark a stop failed (minutes)", def: 10 },
+  {
+    key: "courier_return_payment_escalation_minutes",
+    label: "Escalate unpaid return charge after (minutes)",
+    def: 15,
+  },
+] as const;
+
+export const getCourierSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<Array<{ key: string; label: string; value: number; isDefault: boolean }>> => {
+    await requireCourierStaff(context);
+    const { data, error } = await context.supabase
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", COURIER_SETTING_KEYS.map((k) => k.key));
+    if (error) throw new Error(error.message);
+    const m = new Map(((data ?? []) as Array<{ key: string; value: string }>).map((r) => [r.key, r.value]));
+    return COURIER_SETTING_KEYS.map((k) => {
+      const raw = m.get(k.key);
+      const n = raw != null && raw !== "" ? Number(raw) : NaN;
+      return { key: k.key, label: k.label, value: Number.isFinite(n) ? n : k.def, isDefault: !Number.isFinite(n) };
+    });
+  });
+
+export const saveCourierSetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { key: string; value: number }) => {
+    if (!COURIER_SETTING_KEYS.some((k) => k.key === input?.key)) throw new Error("Unknown setting");
+    const v = Number(input.value);
+    if (!Number.isInteger(v) || v < 1 || v > 120) throw new Error("Enter a whole number from 1 to 120");
+    return { key: input.key, value: v };
+  })
+  .handler(async ({ data, context }) => {
+    await requireCourierStaff(context);
+    const { error } = await rpc(context.supabase, "staff_courier_set_setting", {
+      _key: data.key,
+      _value: data.value,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
