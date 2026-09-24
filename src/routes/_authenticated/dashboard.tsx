@@ -106,15 +106,15 @@ const NAV_ITEMS = [
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
-  { key: "merchants", label: "Merchant Approvals", icon: Store },
+  { key: "merchants", label: "Merchants", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
-  { key: "users", label: "Users", icon: Users },
+  { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
-  { key: "interest-leads", label: "Business Interest", icon: Sprout },
+  { key: "interest-leads", label: "Business Leads", icon: Sprout },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
-  { key: "store-categories", label: "Store Categories", icon: Store },
+  { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
@@ -192,6 +192,10 @@ const NAV_GROUPS = [
 ] as const;
 
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
+
+const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
+  courier: "courier-orders",
+};
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -457,7 +461,8 @@ function Shell() {
           <NotificationBell
             onOpenTarget={(a) => {
               const match = NAV_ITEMS.find((n) => n.key === a.target);
-              const key = match ? match.key : ("dashboard" as const);
+              const matchedKey = match ? match.key : ("dashboard" as const);
+              const key = LEGACY_NAV_ALIASES[matchedKey] ?? matchedKey;
               setActive(key);
               setNavNonce((n) => n + 1);
               const group = NAV_GROUPS.find((g) =>
@@ -585,8 +590,16 @@ function Shell() {
           <ServicesPage />
         ) : active === "offers" ? (
           <OffersPage />
-        ) : active === "courier" ? (
-          <CourierPage />
+        ) : active === "courier" || active === "courier-orders" ? (
+          <CourierPage section="orders" />
+        ) : active === "courier-rates" ? (
+          <CourierPage section="rates" />
+        ) : active === "courier-types" ? (
+          <CourierPage section="types" />
+        ) : active === "courier-settings" ? (
+          <CourierPage section="settings" />
+        ) : active === "store-orders" ? (
+          <CommerceKanban segmentId={null} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (

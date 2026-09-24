@@ -536,7 +536,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
-      <CourierSettingsCard canEdit />
       <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
         {(["regular", "corporate"] as const).map((sg) => (
           <button
@@ -1771,7 +1770,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       {section === "rates" ? <RatesTab canWrite={canWrite} /> : null}
       {section === "settings" ? (
         <div className="space-y-5">
-          <CourierSettingsCard canEdit />
+          <CourierSettingsCard canEdit={canWrite} />
           <ZoneMappingTab canWrite={canWrite} />
         </div>
       ) : null}
