@@ -362,8 +362,8 @@ export const cancelStoreOrderWithRefund = createServerFn({ method: "POST" })
     const { error: applyErr } = await db.rpc("staff_cancel_store_order_apply", {
       _order_id: mo.id,
       _reason: data.reason,
-      _refund_id: refundId,
-      _refund_status: refundStatus,
+      _refund_id: refundId as string,
+      _refund_status: refundStatus as string,
       _refund_amount: refundAmount,
     });
     if (applyErr) throw new Error(applyErr.message);
