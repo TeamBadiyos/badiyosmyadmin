@@ -160,24 +160,34 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     {fmt(m.createdAt)}
                   </p>
                 </div>
-                {canManage && (m.status === "pending_review" || m.status === "draft") && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  {canManage && (
                     <button
-                      disabled={mutation.isPending}
-                      onClick={() => mutation.mutate({ merchantId: m.id, decision: "approved" })}
-                      className="h-9 px-3 rounded-[12px] bg-primary text-white font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
+                      onClick={() => setEditingId(m.id)}
+                      className="h-9 px-3 rounded-[12px] border border-border font-bold text-[13px] inline-flex items-center gap-1"
                     >
-                      <Check size={14} /> Approve
+                      <Pencil size={14} /> Edit
                     </button>
-                    <button
-                      disabled={mutation.isPending}
-                      onClick={() => onReject(m)}
-                      className="h-9 px-3 rounded-[12px] border border-border text-destructive font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <Ban size={14} /> Reject
-                    </button>
-                  </div>
-                )}
+                  )}
+                  {canManage && (m.status === "pending_review" || m.status === "draft") && (
+                    <>
+                      <button
+                        disabled={mutation.isPending}
+                        onClick={() => mutation.mutate({ merchantId: m.id, decision: "approved" })}
+                        className="h-9 px-3 rounded-[12px] bg-primary text-white font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Check size={14} /> Approve
+                      </button>
+                      <button
+                        disabled={mutation.isPending}
+                        onClick={() => onReject(m)}
+                        className="h-9 px-3 rounded-[12px] border border-border text-destructive font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Ban size={14} /> Reject
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-[13px]">
