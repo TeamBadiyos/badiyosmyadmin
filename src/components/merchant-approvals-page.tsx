@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Ban, FileText, RefreshCw, Pencil } from "lucide-react";
+import { Check, Ban, FileText, RefreshCw, Pencil, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMerchants,
@@ -10,6 +10,7 @@ import {
   type MerchantRow,
 } from "@/lib/merchants.functions";
 import { MerchantEditModal } from "@/components/merchant-edit-modal";
+import { MerchantProductsModal } from "@/components/merchant-products-modal";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -38,6 +39,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<MerchantStatus | "">("pending_review");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [productsId, setProductsId] = useState<string | null>(null);
 
   const fetchRows = useServerFn(listMerchants);
   const decide = useServerFn(decideMerchant);
@@ -107,17 +109,17 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
 
       {isDraftTab ? (
         <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_90px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_190px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>Store / Owner</span>
             <span>Phone</span>
             <span>Step</span>
             <span>Last updated</span>
-            <span className="text-right">Edit</span>
+            <span className="text-right">Actions</span>
           </div>
           {rows.map((m) => (
             <div
               key={m.id}
-              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_90px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_190px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
             >
               <span className="truncate">
                 <span className="font-semibold text-foreground">{m.storeName || "Unnamed store"}</span>
@@ -126,7 +128,13 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
               <span className="font-mono text-[13px] text-muted-foreground">{m.phone}</span>
               <span className="text-[13px] text-muted-foreground">Step {m.onboardingStep}</span>
               <span className="text-[13px] text-muted-foreground">{fmt(m.updatedAt)}</span>
-              <span className="text-right">
+              <span className="text-right flex justify-end gap-2">
+                <button
+                  onClick={() => setProductsId(m.id)}
+                  className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1"
+                >
+                  <Package size={13} /> Items
+                </button>
                 {canManage && (
                   <button
                     onClick={() => setEditingId(m.id)}
@@ -161,6 +169,12 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => setProductsId(m.id)}
+                    className="h-9 px-3 rounded-[12px] border border-border font-bold text-[13px] inline-flex items-center gap-1"
+                  >
+                    <Package size={14} /> Items
+                  </button>
                   {canManage && (
                     <button
                       onClick={() => setEditingId(m.id)}
@@ -248,6 +262,10 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
 
       {editingId && (
         <MerchantEditModal merchantId={editingId} onClose={() => setEditingId(null)} />
+      )}
+
+      {productsId && (
+        <MerchantProductsModal merchantId={productsId} onClose={() => setProductsId(null)} />
       )}
     </div>
   );
