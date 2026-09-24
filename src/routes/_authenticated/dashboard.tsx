@@ -34,7 +34,6 @@ import { SupportTicketsPage } from "@/components/support-tickets-page";
 import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
-import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { CourierPage } from "@/components/courier-page";
@@ -83,7 +82,6 @@ import {
   LifeBuoy,
   UserMinus,
   BellRing,
-  MessageSquareText,
   Megaphone,
   PackageCheck,
   SlidersHorizontal,
@@ -131,7 +129,6 @@ const NAV_ITEMS = [
   { key: "deletion-requests", label: "Deletion Requests", icon: UserMinus },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
   { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
-  { key: "capacity-messages", label: "Capacity Messages", icon: MessageSquareText },
   { key: "courier", label: "Courier", icon: PackageCheck },
   { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
