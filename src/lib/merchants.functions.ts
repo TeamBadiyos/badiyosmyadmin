@@ -337,3 +337,125 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+export type MerchantProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  categoryLabel: string | null;
+  price: number;
+  unit: string | null;
+  stockQuantity: number;
+  lowStockThreshold: number;
+  isActive: boolean;
+  imageUrl: string | null;
+  createdAt: string;
+};
+
+export type MerchantProductsResult = {
+  role: "super_admin" | "ops_manager";
+  storeName: string | null;
+  ownerName: string | null;
+  phone: string | null;
+  products: MerchantProduct[];
+};
+
+async function staffRole(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  userId: string,
+): Promise<"super_admin" | "ops_manager"> {
+  const { data } = await db
+    .from("staff_users")
+    .select("role, status")
+    .eq("auth_user_id", userId)
+    .maybeSingle();
+  if (!data || data.status !== "active" || !["super_admin", "ops_manager"].includes(data.role)) {
+    throw new Error("insufficient_role");
+  }
+  return data.role as "super_admin" | "ops_manager";
+}
+
+export const listMerchantProducts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string }) => input)
+  .handler(async ({ data, context }): Promise<MerchantProductsResult> => {
+    const db = context.supabase;
+    const role = await staffRole(db, context.userId);
+
+    const [{ data: merchant }, { data: rows, error }] = await Promise.all([
+      db
+        .from("merchants")
+        .select("store_name, owner_name, phone")
+        .eq("id", data.merchantId)
+        .maybeSingle(),
+      db
+        .from("products")
+        .select(
+          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, image_url, created_at",
+        )
+        .eq("merchant_id", data.merchantId)
+        .order("created_at", { ascending: false })
+        .limit(500),
+    ]);
+    if (error) throw new Error(error.message);
+
+    return {
+      role,
+      storeName: merchant?.store_name ?? null,
+      ownerName: merchant?.owner_name ?? null,
+      phone: merchant?.phone ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      products: ((rows ?? []) as any[]).map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description ?? null,
+        categoryLabel: r.category_label ?? null,
+        price: Number(r.price ?? 0),
+        unit: r.unit ?? null,
+        stockQuantity: Number(r.stock_quantity ?? 0),
+        lowStockThreshold: Number(r.low_stock_threshold ?? 0),
+        isActive: !!r.is_active,
+        imageUrl: r.image_url ?? null,
+        createdAt: r.created_at,
+      })),
+    };
+  });
+
+export const setMerchantProductActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { productId: string; isActive: boolean }) => input)
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const db = context.supabase;
+    const role = await staffRole(db, context.userId);
+    if (role !== "super_admin") throw new Error("insufficient_role");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: before, error: beforeErr } = await supabaseAdmin
+      .from("products")
+      .select("*")
+      .eq("id", data.productId)
+      .maybeSingle();
+    if (beforeErr) throw new Error(beforeErr.message);
+    if (!before) throw new Error("Product not found");
+
+    const { data: after, error } = await supabaseAdmin
+      .from("products")
+      .update({ is_active: data.isActive })
+      .eq("id", data.productId)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "set_product_active",
+      target_table: "products",
+      target_id: data.productId,
+      before_state: before,
+      after_state: after,
+    });
+
+    return { ok: true };
+  });
