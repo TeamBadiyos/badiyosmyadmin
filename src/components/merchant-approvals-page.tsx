@@ -107,16 +107,17 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
 
       {isDraftTab ? (
         <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_90px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>Store / Owner</span>
             <span>Phone</span>
             <span>Step</span>
             <span>Last updated</span>
+            <span className="text-right">Edit</span>
           </div>
           {rows.map((m) => (
             <div
               key={m.id}
-              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+              className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_90px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
             >
               <span className="truncate">
                 <span className="font-semibold text-foreground">{m.storeName || "Unnamed store"}</span>
@@ -125,6 +126,16 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
               <span className="font-mono text-[13px] text-muted-foreground">{m.phone}</span>
               <span className="text-[13px] text-muted-foreground">Step {m.onboardingStep}</span>
               <span className="text-[13px] text-muted-foreground">{fmt(m.updatedAt)}</span>
+              <span className="text-right">
+                {canManage && (
+                  <button
+                    onClick={() => setEditingId(m.id)}
+                    className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1"
+                  >
+                    <Pencil size={13} /> Edit
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
