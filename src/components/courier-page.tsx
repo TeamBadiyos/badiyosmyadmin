@@ -139,14 +139,8 @@ function Toggle({
   );
 }
 
-const TABS = [
-  { key: "vehicles", label: "Vehicle Types" },
-  { key: "rates", label: "Rates" },
-  { key: "types", label: "Courier Types" },
-  { key: "zones", label: "Zone Mapping" },
-  { key: "orders", label: "Live Orders" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
+export type CourierSection = "orders" | "rates" | "types" | "settings";
+type TypeTab = "vehicles" | "types";
 
 /* ----------------------------- 2. Vehicle types --------------------------- */
 
@@ -542,7 +536,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
-      <CourierSettingsCard canEdit />
       <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
         {(["regular", "corporate"] as const).map((sg) => (
           <button
@@ -1722,9 +1715,9 @@ function ZoneMappingTab({ canWrite }: { canWrite: boolean }) {
 
 /* --------------------------------- page ---------------------------------- */
 
-export function CourierPage() {
+export function CourierPage({ section = "orders" }: { section?: CourierSection }) {
   const fetchAccess = useServerFn(getCourierAccess);
-  const [tab, setTab] = useState<TabKey>("vehicles");
+  const [typeTab, setTypeTab] = useState<TypeTab>("vehicles");
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["courier", "access"],
@@ -1750,27 +1743,38 @@ export function CourierPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`rounded-[10px] px-3.5 py-2 text-[12px] font-semibold ${
-              tab === t.key
-                ? "bg-primary text-primary-foreground"
-                : "border border-border text-foreground hover:bg-muted"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
-      {tab === "rates" ? <RatesTab canWrite={canWrite} /> : null}
-      {tab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
-      {tab === "zones" ? <ZoneMappingTab canWrite={canWrite} /> : null}
-      {tab === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
+      {section === "types" ? (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: "vehicles", label: "Vehicle Types" },
+              { key: "types", label: "Courier Types" },
+            ] as const).map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setTypeTab(item.key)}
+                className={`rounded-[10px] px-3.5 py-2 text-[12px] font-semibold ${
+                  typeTab === item.key
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border text-foreground hover:bg-muted"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {typeTab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
+          {typeTab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
+        </>
+      ) : null}
+      {section === "rates" ? <RatesTab canWrite={canWrite} /> : null}
+      {section === "settings" ? (
+        <div className="space-y-5">
+          <CourierSettingsCard canEdit={canWrite} />
+          <ZoneMappingTab canWrite={canWrite} />
+        </div>
+      ) : null}
+      {section === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
     </div>
   );
 }

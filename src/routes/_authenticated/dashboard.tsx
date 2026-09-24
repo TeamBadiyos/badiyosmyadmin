@@ -106,15 +106,15 @@ const NAV_ITEMS = [
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "partners", label: "Area Partners", icon: Handshake },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
-  { key: "merchants", label: "Merchant Approvals", icon: Store },
+  { key: "merchants", label: "Merchants", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
-  { key: "users", label: "Users", icon: Users },
+  { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
-  { key: "interest-leads", label: "Business Interest", icon: Sprout },
+  { key: "interest-leads", label: "Business Leads", icon: Sprout },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
-  { key: "store-categories", label: "Store Categories", icon: Store },
+  { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
@@ -130,6 +130,11 @@ const NAV_ITEMS = [
   { key: "audit", label: "Audit Logs", icon: ScrollText },
   { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
   { key: "courier", label: "Courier", icon: PackageCheck },
+  { key: "courier-orders", label: "Orders", icon: PackageCheck },
+  { key: "courier-rates", label: "Rates", icon: IndianRupee },
+  { key: "courier-types", label: "Parcel & Vehicle Types", icon: Boxes },
+  { key: "courier-settings", label: "Settings", icon: Settings },
+  { key: "store-orders", label: "Orders", icon: Receipt },
   { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
 
@@ -137,44 +142,60 @@ type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
 const NAV_GROUPS = [
   {
-    id: "clean-hub",
-    label: "Clean Services",
+    id: "live-ops",
+    label: "Live Ops",
+    icon: Activity,
+    keys: ["emergency", "support"],
+  },
+  {
+    id: "clean",
+    label: "Clean",
     icon: Boxes,
-    keys: ["bookings", "catalogue", "experts", "skills", "task-types", "emergency"],
+    keys: ["bookings", "catalogue", "task-types"],
   },
   {
-    id: "courier-hub",
-    label: "Courier & Parcels",
+    id: "courier",
+    label: "Courier",
     icon: PackageCheck,
-    keys: ["courier", "dispatch-alerts"],
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-settings"],
   },
   {
-    id: "store-hub",
-    label: "Stores & Merchants",
+    id: "store",
+    label: "Store",
     icon: Store,
-    keys: ["merchants", "store-categories", "merchant-billing"],
+    keys: ["store-orders", "merchants", "store-categories"],
+  },
+  {
+    id: "people",
+    label: "People",
+    icon: Users,
+    keys: ["users", "experts", "skills", "partners", "deletion-requests"],
   },
   {
     id: "growth",
-    label: "Customers & Growth",
+    label: "Growth",
     icon: TrendingUp,
-    keys: ["users", "waitlist", "interest-leads", "referrals", "rewards", "offers", "partners"],
+    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads"],
   },
   {
     id: "finance",
-    label: "Finance & Reports",
+    label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "reports"],
+    keys: ["wallets", "merchant-billing", "reports"],
   },
   {
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "zones", "homepage", "roles", "legal", "notification-sounds", "support", "deletion-requests", "audit"],
+    keys: ["services", "zones", "dispatch-alerts", "notification-sounds", "legal", "roles", "audit"],
   },
 ] as const;
 
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
+
+const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
+  courier: "courier-orders",
+};
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -242,7 +263,9 @@ function Shell() {
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
 
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
-  const topLevelItems = visibleItems.filter((n) => !GROUPED_KEYS.includes(n.key));
+  const topLevelItems = visibleItems.filter(
+    (n) => !GROUPED_KEYS.includes(n.key) && n.key !== "courier",
+  );
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
     items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
@@ -332,7 +355,7 @@ function Shell() {
                 <button
                   onClick={() => {
                     setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
-                    if (!group.isActive && group.items[0]) {
+                    if (!open && group.items[0]) {
                       setActive(group.items[0].key);
                       setNavNonce((n) => n + 1);
                       setMobileOpen(false);
@@ -438,7 +461,8 @@ function Shell() {
           <NotificationBell
             onOpenTarget={(a) => {
               const match = NAV_ITEMS.find((n) => n.key === a.target);
-              const key = match ? match.key : ("dashboard" as const);
+              const matchedKey = match ? match.key : ("dashboard" as const);
+              const key = LEGACY_NAV_ALIASES[matchedKey] ?? matchedKey;
               setActive(key);
               setNavNonce((n) => n + 1);
               const group = NAV_GROUPS.find((g) =>
@@ -566,8 +590,16 @@ function Shell() {
           <ServicesPage />
         ) : active === "offers" ? (
           <OffersPage />
-        ) : active === "courier" ? (
-          <CourierPage />
+        ) : active === "courier" || active === "courier-orders" ? (
+          <CourierPage section="orders" />
+        ) : active === "courier-rates" ? (
+          <CourierPage section="rates" />
+        ) : active === "courier-types" ? (
+          <CourierPage section="types" />
+        ) : active === "courier-settings" ? (
+          <CourierPage section="settings" />
+        ) : active === "store-orders" ? (
+          <CommerceKanban segmentId={null} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "reports" ? (
