@@ -18,6 +18,11 @@ import {
   COURIER_STATUSES,
   confirmRate,
   forceCancelOrder,
+  getCourierOrderStops,
+  getCourierSettings,
+  saveCourierSetting,
+  verifyCourierStop,
+  waiveCourierCharge,
   getCourierAccess,
   listCourierOrderEvents,
   listCourierOrders,
@@ -519,9 +524,22 @@ type RateDraft = {
   minFare: string;
   platformFee: string;
   commissionPct: string;
+  segment: "regular" | "corporate";
+  extraPickupFee: string;
+  extraDropFee: string;
+  maxPickups: string;
+  maxDrops: string;
+  noLimitPickups: boolean;
+  noLimitDrops: boolean;
+  returnPerKm: string;
 };
 
-function rateDraft(r?: RateRow, firstVehicle?: string): RateDraft {
+function rateDraft(
+  r?: RateRow,
+  firstVehicle?: string,
+  segment: "regular" | "corporate" = "regular",
+): RateDraft {
+  const seg = r?.customer_segment ?? segment;
   return {
     id: r?.id ?? null,
     city: r?.city ?? "",
@@ -532,7 +550,72 @@ function rateDraft(r?: RateRow, firstVehicle?: string): RateDraft {
     minFare: String(r?.min_fare ?? 0),
     platformFee: String(r?.platform_fee ?? 0),
     commissionPct: String(r?.commission_pct ?? 0),
+    segment: seg,
+    extraPickupFee: String(r?.extra_pickup_fee ?? 0),
+    extraDropFee: String(r?.extra_drop_fee ?? 0),
+    maxPickups: String(r ? (r.max_pickups ?? "") : 1),
+    maxDrops: String(r ? (r.max_drops ?? "") : 1),
+    noLimitPickups: seg === "corporate" && !!r && r.max_pickups == null,
+    noLimitDrops: seg === "corporate" && !!r && r.max_drops == null,
+    returnPerKm: String(r?.return_per_km ?? 0),
   };
+}
+
+function CourierSettingsCard({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const fetchSettings = useServerFn(getCourierSettings);
+  const save = useServerFn(saveCourierSetting);
+  const { data } = useQuery({ queryKey: ["courier", "settings"], queryFn: () => fetchSettings() });
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="rounded-[16px] border border-border bg-card p-4">
+      <h4 className="text-[13px] font-bold text-foreground">Courier settings</h4>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {(data ?? []).map((st) => {
+          const v = vals[st.key] ?? String(st.value);
+          return (
+            <Field key={st.key} label={st.label}>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  disabled={!canEdit}
+                  className={inputCls}
+                  value={v}
+                  onChange={(e) => setVals({ ...vals, [st.key]: e.target.value })}
+                />
+                {canEdit ? (
+                  <button
+                    disabled={busy === st.key || v === String(st.value)}
+                    onClick={async () => {
+                      setBusy(st.key);
+                      try {
+                        await save({ data: { key: st.key, value: Number(v) } });
+                        toast.success("Setting saved");
+                        qc.invalidateQueries({ queryKey: ["courier", "settings"] });
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Save failed");
+                      } finally {
+                        setBusy(null);
+                      }
+                    }}
+                    className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                ) : null}
+              </div>
+              {st.isDefault ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">Using default</p>
+              ) : null}
+            </Field>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function RatesTab({ canWrite }: { canWrite: boolean }) {
@@ -542,15 +625,23 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
   const confirm = useServerFn(confirmRate);
   const [draft, setDraft] = useState<RateDraft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [segTab, setSegTab] = useState<"regular" | "corporate">("regular");
 
   const { data } = useQuery({ queryKey: ["courier", "rates"], queryFn: () => fetchRates() });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "rates"] });
 
-  const rows = data?.rows ?? [];
+  const rows = (data?.rows ?? []).filter((r) => r.customer_segment === segTab);
   const vehicles = data?.vehicles ?? [];
 
   async function submit() {
     if (!draft) return;
+    const corp = draft.segment === "corporate";
+    const maxP = corp && draft.noLimitPickups ? null : Number(draft.maxPickups || 0);
+    const maxD = corp && draft.noLimitDrops ? null : Number(draft.maxDrops || 0);
+    if ((maxP !== null && (!Number.isInteger(maxP) || maxP < 1)) || (maxD !== null && (!Number.isInteger(maxD) || maxD < 1))) {
+      toast.error("Max pickups and max drops must be at least 1");
+      return;
+    }
     setBusy(true);
     try {
       await save({
@@ -564,6 +655,12 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
           minFare: Number(draft.minFare || 0),
           platformFee: Number(draft.platformFee || 0),
           commissionPct: Number(draft.commissionPct || 0),
+          segment: draft.segment,
+          extraPickupFee: Number(draft.extraPickupFee || 0),
+          extraDropFee: Number(draft.extraDropFee || 0),
+          maxPickups: maxP,
+          maxDrops: maxD,
+          returnPerKm: Number(draft.returnPerKm || 0),
         },
       });
       toast.success("Rate saved");
@@ -578,13 +675,25 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
+      <CourierSettingsCard canEdit={canEdit} />
+      <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
+        {(["regular", "corporate"] as const).map((sg) => (
+          <button
+            key={sg}
+            onClick={() => setSegTab(sg)}
+            className={`rounded-[10px] px-4 py-1.5 text-[12px] font-bold ${segTab === sg ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            {sg === "regular" ? "Regular" : "Corporate"}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-muted-foreground">
           Cancellation fee (all cities): ₹{data?.cancellationFee ?? 0} — set in ops settings.
         </p>
         {canWrite ? (
           <button
-            onClick={() => setDraft(rateDraft(undefined, vehicles[0]?.id))}
+            onClick={() => setDraft(rateDraft(undefined, vehicles[0]?.id, segTab))}
             className="flex items-center gap-1.5 rounded-[10px] bg-primary px-3.5 py-2 text-[12px] font-bold text-primary-foreground"
           >
             <Plus size={14} /> New rate
@@ -633,6 +742,13 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
             <span>Per km ₹{r.per_km} · Min ₹{r.min_fare}</span>
             <span>Platform ₹{r.platform_fee} · Commission {r.commission_pct}%</span>
           </div>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Extra pickup ₹{r.extra_pickup_fee} · Extra drop ₹{r.extra_drop_fee} · Max{" "}
+            {r.max_pickups == null && r.max_drops == null
+              ? "No limit"
+              : `${r.max_pickups ?? "No limit"}/${r.max_drops ?? "No limit"}`}{" "}
+            · Return ₹{r.return_per_km}/km
+          </p>
         </div>
       ))}
 
@@ -679,6 +795,61 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 />
               </Field>
             ))}
+            <Field label="Segment">
+              <select
+                className={inputCls}
+                disabled={!!draft.id}
+                value={draft.segment}
+                onChange={(e) =>
+                  setDraft({ ...draft, segment: e.target.value as "regular" | "corporate", noLimitPickups: false, noLimitDrops: false })
+                }
+              >
+                <option value="regular">Regular</option>
+                <option value="corporate">Corporate</option>
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4 rounded-[12px] border border-border p-3">
+            <h4 className="text-[13px] font-bold text-foreground">Multi-stop charges</h4>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Base fare includes 1 pickup + 1 drop. Each additional stop adds the fee above.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Extra pickup fee (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.extraPickupFee}
+                  onChange={(e) => setDraft({ ...draft, extraPickupFee: e.target.value })} />
+              </Field>
+              <Field label="Extra drop fee (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.extraDropFee}
+                  onChange={(e) => setDraft({ ...draft, extraDropFee: e.target.value })} />
+              </Field>
+              {(
+                [
+                  ["Max pickups", "maxPickups", "noLimitPickups"],
+                  ["Max drops", "maxDrops", "noLimitDrops"],
+                ] as const
+              ).map(([label, key, nl]) => (
+                <Field key={key} label={label}>
+                  <div className="flex items-center gap-2">
+                    <input type="number" min={1} className={inputCls}
+                      disabled={draft.segment === "corporate" && draft[nl]}
+                      value={draft.segment === "corporate" && draft[nl] ? "" : draft[key]}
+                      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} />
+                    {draft.segment === "corporate" ? (
+                      <label className="flex shrink-0 items-center gap-1 text-[12px] text-foreground">
+                        <input type="checkbox" checked={draft[nl]}
+                          onChange={(e) => setDraft({ ...draft, [nl]: e.target.checked })} />
+                        No limit
+                      </label>
+                    ) : null}
+                  </div>
+                </Field>
+              ))}
+              <Field label="Return charge per km (₹)">
+                <input type="number" min={0} className={inputCls} value={draft.returnPerKm}
+                  onChange={(e) => setDraft({ ...draft, returnPerKm: e.target.value })} />
+              </Field>
+            </div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button
