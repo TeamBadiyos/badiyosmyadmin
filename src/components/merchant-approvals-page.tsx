@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Ban, FileText, RefreshCw } from "lucide-react";
+import { Check, Ban, FileText, RefreshCw, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMerchants,
@@ -9,6 +9,7 @@ import {
   type MerchantStatus,
   type MerchantRow,
 } from "@/lib/merchants.functions";
+import { MerchantEditModal } from "@/components/merchant-edit-modal";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
