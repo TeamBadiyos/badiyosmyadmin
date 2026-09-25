@@ -572,6 +572,8 @@ export type CourierOrderRow = {
   drop_count: number;
   returnPaymentPending: boolean;
   stopsFee: number;
+  business_merchant_id: string | null;
+  businessName: string | null;
 };
 
 export const COURIER_STATUSES = [
@@ -591,7 +593,15 @@ export const COURIER_STATUSES = [
 export const listCourierOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input?: { status?: string | null; search?: string | null; multiStop?: boolean }) => ({
+    (input?: {
+      status?: string | null;
+      search?: string | null;
+      multiStop?: boolean;
+      businessId?: string | null;
+      orderId?: string | null;
+    }) => ({
+      businessId: input?.businessId ?? null,
+      orderId: input?.orderId ?? null,
       status: input?.status ?? null,
       search: input?.search?.trim() || null,
       multiStop: !!input?.multiStop,
@@ -604,13 +614,16 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     let q = db
       .from("courier_orders")
       .select(
-        "id, order_code, city, status, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown",
+        "id, order_code, city, status, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id",
       )
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status) q = q.eq("status", data.status);
     if (data.search) q = q.ilike("order_code", `%${data.search}%`);
     if (data.multiStop) q = q.or("pickup_count.gt.1,drop_count.gt.1");
+    if (data.businessId === "any") q = q.not("business_merchant_id", "is", null);
+    else if (data.businessId) q = q.eq("business_merchant_id", data.businessId);
+    if (data.orderId) q = q.eq("id", data.orderId);
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
@@ -625,6 +638,18 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     );
 
     const orderIds = list.map((r) => r["id"] as string);
+    const bizIds = Array.from(
+      new Set(list.map((r) => r["business_merchant_id"]).filter(Boolean) as string[]),
+    );
+    const bRes = bizIds.length
+      ? await db.from("business_profiles").select("merchant_id, business_name").in("merchant_id", bizIds)
+      : { data: [] };
+    const bMap = new Map(
+      ((bRes.data ?? []) as Array<{ merchant_id: string; business_name: string | null }>).map((b) => [
+        b.merchant_id,
+        b.business_name,
+      ]),
+    );
     const [uRes, eRes, cRes] = await Promise.all([
       customerIds.length
         ? db.from("users").select("id, full_name").in("id", customerIds)
@@ -677,6 +702,10 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       drop_count: Number(r["drop_count"] ?? 1),
       returnPaymentPending: pendingSet.has(r["id"] as string),
       stopsFee: stopsFeeOf(r["fare_breakdown"]),
+      business_merchant_id: (r["business_merchant_id"] as string | null) ?? null,
+      businessName: r["business_merchant_id"]
+        ? (bMap.get(r["business_merchant_id"] as string) ?? "Business")
+        : null,
     }));
   });
 
