@@ -13,7 +13,12 @@ async function requireOps(context: Ctx) {
   if (error) throw new Error(error.message);
   if (!data || data.status !== "active" || !["super_admin", "ops_manager"].includes(data.role))
     throw new Error("Forbidden");
-  return { role: data.role as string, canWrite: true };
+  return { role: data.role as string, canWrite: data.role === "super_admin", canOperate: true };
+}
+
+async function requireSuper(context: Ctx) {
+  const a = await requireOps(context);
+  if (!a.canWrite) throw new Error("Only a super admin can do this");
 }
 
 async function rpc(context: Ctx, name: string, args: Record<string, unknown>) {
@@ -64,7 +69,7 @@ export const savePricingPlan = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_upsert_pricing_plan", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_upsert_pricing_plan", {
       _id: i.id, _name: i.name.trim(), _base_fare: i.base_fare, _included_km: i.included_km,
       _per_km: i.per_km, _min_fare: i.min_fare, _extra_drop_fee: i.extra_drop_fee,
       _return_per_km: i.return_per_km, _commission_pct: i.commission_pct, _is_active: i.is_active,
@@ -81,7 +86,7 @@ export const saveDispatchPlan = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_upsert_dispatch_plan", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_upsert_dispatch_plan", {
       _id: i.id, _name: i.name.trim(), _manual_enabled: i.manual_enabled,
       _qty_enabled: i.qty_enabled, _qty_threshold: i.qty_enabled ? i.qty_threshold : null,
       _slots_enabled: i.slots_enabled, _slot_times: i.slots_enabled ? i.slot_times : [],
@@ -94,7 +99,7 @@ export const setPlanActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { kind: "pricing" | "dispatch"; id: string; active: boolean }) => i)
   .handler(async ({ data: i, context }) => {
-    const r = await rpc(context as Ctx, "staff_set_plan_active", {
+    const r = await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_set_plan_active", {
       _kind: i.kind, _id: i.id, _active: i.active, _reason: null,
     });
     return { ok: !!r?.ok, reason: (r?.reason as string) ?? null, used_by: Number(r?.used_by ?? 0) };
@@ -190,7 +195,7 @@ export const setBusinessModules = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_set_merchant_modules", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_set_merchant_modules", {
       _merchant_id: i.merchant_id, _store_enabled: i.store_enabled,
       _delivery_enabled: i.delivery_enabled, _reason: i.reason.trim(),
     });
@@ -204,7 +209,7 @@ export const setBusinessDeliveryStatus = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_set_delivery_status", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_set_delivery_status", {
       _merchant_id: i.merchant_id, _status: i.status, _reason: i.reason.trim(),
     });
     return { ok: true };
@@ -214,7 +219,7 @@ export const assignBusinessPlans = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { merchant_id: string; pricing_plan_id: string | null; dispatch_plan_id: string | null }) => i)
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_assign_business_plans", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_assign_business_plans", {
       _merchant_id: i.merchant_id, _pricing_plan_id: i.pricing_plan_id, _dispatch_plan_id: i.dispatch_plan_id,
     });
     return { ok: true };
@@ -308,7 +313,7 @@ export const businessWalletAdjust = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await rpc(context as Ctx, "staff_business_wallet_adjust", {
+    await rpc(await requireSuper(context as Ctx).then(() => context as Ctx), "staff_business_wallet_adjust", {
       _merchant_id: i.merchant_id, _type: i.type, _amount: i.amount, _reason: i.reason.trim(),
     });
     return { ok: true };

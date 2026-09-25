@@ -218,7 +218,7 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
 
 const lowBal = (b: BusinessRow) => b.wallet_balance < 0 || b.wallet_balance < b.low_balance_threshold;
 
-function BusinessesTab({ canWrite, canWriteOrders }: { canWrite: boolean; canWriteOrders: boolean }) {
+function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boolean; canOperate: boolean; canWriteOrders: boolean }) {
   const qc = useQueryClient();
   const fetchList = useServerFn(listBusinesses);
   const create = useServerFn(createBusiness);
@@ -260,14 +260,14 @@ function BusinessesTab({ canWrite, canWriteOrders }: { canWrite: boolean; canWri
           </div>
         </Modal>
       ) : null}
-      {selected ? <BusinessDetail biz={selected} canWrite={canWrite} canWriteOrders={canWriteOrders} onClose={() => setOpenId(null)} /> : null}
+      {selected ? <BusinessDetail biz={selected} canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} onClose={() => setOpenId(null)} /> : null}
     </div>
   );
 }
 
 type DTab = "setup" | "receivers" | "orders" | "trips" | "wallet";
 
-function BusinessDetail({ biz, canWrite, canWriteOrders, onClose }: { biz: BusinessRow; canWrite: boolean; canWriteOrders: boolean; onClose: () => void }) {
+function BusinessDetail({ biz, canWrite, canOperate, canWriteOrders, onClose }: { biz: BusinessRow; canWrite: boolean; canOperate: boolean; canWriteOrders: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const fetchDetail = useServerFn(getBusinessDetail);
   const { data } = useQuery({ queryKey: ["bulk", "detail", biz.merchant_id], queryFn: () => fetchDetail({ data: { merchant_id: biz.merchant_id } }), refetchInterval: 30_000 });
@@ -278,9 +278,9 @@ function BusinessDetail({ biz, canWrite, canWriteOrders, onClose }: { biz: Busin
       <div className="space-y-4">
         <Tabs value={tab} onChange={setTab} items={[{ key: "setup", label: "Setup" }, { key: "receivers", label: "Receivers" }, { key: "orders", label: "Orders" }, { key: "trips", label: "Trips" }, { key: "wallet", label: "Wallet" }] as const} />
         {!data ? <p className="text-[13px] text-muted-foreground">Loading…</p> : tab === "setup" ? (
-          <SetupTab biz={biz} canWrite={canWrite} pickups={data.pickups} vehicleTypes={data.vehicleTypes} courierTypes={data.courierTypes} onChanged={refresh} />
+          <SetupTab biz={biz} canWrite={canWrite} canOperate={canOperate} pickups={data.pickups} vehicleTypes={data.vehicleTypes} courierTypes={data.courierTypes} onChanged={refresh} />
         ) : tab === "receivers" ? <ReceiversTab rows={data.receivers} />
-          : tab === "orders" ? <BizOrdersTab biz={biz} canWrite={canWrite} rows={data.orders} receivers={data.receivers} onChanged={refresh} />
+          : tab === "orders" ? <BizOrdersTab biz={biz} canWrite={canOperate} rows={data.orders} receivers={data.receivers} onChanged={refresh} />
           : tab === "trips" ? <TripsTab rows={data.trips} canWriteOrders={canWriteOrders} />
           : <WalletTab biz={biz} canWrite={canWrite} ledger={data.ledger} topups={data.topups} onChanged={refresh} />}
       </div>
@@ -292,7 +292,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return <div className="space-y-2 rounded-[14px] border border-border p-4"><h4 className="text-[13px] font-bold text-foreground">{title}</h4>{children}</div>;
 }
 
-function SetupTab({ biz, canWrite, pickups, vehicleTypes, courierTypes, onChanged }: { biz: BusinessRow; canWrite: boolean; pickups: PickupPoint[]; vehicleTypes: Array<{ id: string; name: string }>; courierTypes: Array<{ id: string; name: string }>; onChanged: () => void }) {
+function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTypes, onChanged }: { biz: BusinessRow; canWrite: boolean; canOperate: boolean; pickups: PickupPoint[]; vehicleTypes: Array<{ id: string; name: string }>; courierTypes: Array<{ id: string; name: string }>; onChanged: () => void }) {
   const fetchPlans = useServerFn(listBulkPlans);
   const setModules = useServerFn(setBusinessModules);
   const setStatus = useServerFn(setBusinessDeliveryStatus);
@@ -308,7 +308,7 @@ function SetupTab({ biz, canWrite, pickups, vehicleTypes, courierTypes, onChange
   const [editPp, setEditPp] = useState<(Omit<PickupPoint, "id"> & { id: string | null }) | null>(null);
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<unknown>, msg: string) => { setBusy(true); try { await fn(); toast.success(msg); onChanged(); } catch (e) { err(e); } finally { setBusy(false); } };
-  const statuses = Array.from(new Set(["active", "paused", "suspended", "pending", biz.delivery_status ?? ""].filter(Boolean)));
+  const statuses = ["inactive", "active", "suspended"];
   return (
     <div className="space-y-3">
       <Section title="Modules">
@@ -337,11 +337,11 @@ function SetupTab({ biz, canWrite, pickups, vehicleTypes, courierTypes, onChange
       </Section>
       <Section title="Defaults">
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Default vehicle type"><select className={inputCls} disabled={!canWrite} value={def.vehicle} onChange={(e) => setDef({ ...def, vehicle: e.target.value })}><option value="">— None —</option>{vehicleTypes.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
-          <Field label="Default courier type"><select className={inputCls} disabled={!canWrite} value={def.courier} onChange={(e) => setDef({ ...def, courier: e.target.value })}><option value="">— None —</option>{courierTypes.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
-          <Field label="Low-balance limit ₹"><input type="number" className={inputCls} disabled={!canWrite} value={def.low} onChange={(e) => setDef({ ...def, low: Number(e.target.value) })} /></Field>
+          <Field label="Default vehicle type"><select className={inputCls} disabled={!canOperate} value={def.vehicle} onChange={(e) => setDef({ ...def, vehicle: e.target.value })}><option value="">— None —</option>{vehicleTypes.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
+          <Field label="Default courier type"><select className={inputCls} disabled={!canOperate} value={def.courier} onChange={(e) => setDef({ ...def, courier: e.target.value })}><option value="">— None —</option>{courierTypes.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
+          <Field label="Low-balance limit ₹"><input type="number" className={inputCls} disabled={!canOperate} value={def.low} onChange={(e) => setDef({ ...def, low: Number(e.target.value) })} /></Field>
         </div>
-        {canWrite ? <button className={btnGhost} disabled={busy} onClick={() => run(() => saveDefaults({ data: { merchant_id: biz.merchant_id, vehicle_type_id: def.vehicle || null, courier_type_id: def.courier || null, low_balance_threshold: def.low } }), "Defaults saved")}>Save defaults</button> : null}
+        {canOperate ? <button className={btnGhost} disabled={busy} onClick={() => run(() => saveDefaults({ data: { merchant_id: biz.merchant_id, vehicle_type_id: def.vehicle || null, courier_type_id: def.courier || null, low_balance_threshold: def.low } }), "Defaults saved")}>Save defaults</button> : null}
       </Section>
       <Section title="Pickup points">
         {pickups.length === 0 ? <p className="text-[12px] text-muted-foreground">No pickup points.</p> : null}
@@ -349,10 +349,10 @@ function SetupTab({ biz, canWrite, pickups, vehicleTypes, courierTypes, onChange
           <div key={p.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-border p-2 text-[13px]">
             <div><span className="font-semibold">{p.name}</span> {p.is_default ? <Pill tone="ok">Default</Pill> : null} {!p.is_active ? <Pill tone="off">Inactive</Pill> : null}
               <p className="text-[12px] text-muted-foreground">{p.address}{p.contact_phone ? ` · ${p.contact_name ?? ""} ${p.contact_phone}` : ""}</p></div>
-            {canWrite ? <button className={btnGhost} onClick={() => setEditPp({ ...p })}><Pencil size={12} /></button> : null}
+            {canOperate ? <button className={btnGhost} onClick={() => setEditPp({ ...p })}><Pencil size={12} /></button> : null}
           </div>
         ))}
-        {canWrite ? <button className={btnGhost} onClick={() => setEditPp({ id: null, name: "", address: "", lat: null, lng: null, contact_name: "", contact_phone: "", is_default: pickups.length === 0, is_active: true })}><Plus size={12} className="mr-1 inline" />Add pickup point</button> : null}
+        {canOperate ? <button className={btnGhost} onClick={() => setEditPp({ id: null, name: "", address: "", lat: null, lng: null, contact_name: "", contact_phone: "", is_default: pickups.length === 0, is_active: true })}><Plus size={12} className="mr-1 inline" />Add pickup point</button> : null}
       </Section>
       {reasonFor ? (
         <ReasonDialog title={reasonFor === "modules" ? "Change modules" : `Set delivery status to "${status}"`} confirmLabel="Save" onClose={() => setReasonFor(null)}
@@ -520,10 +520,16 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
   const { data: access } = useQuery({ queryKey: ["bulk", "access"], queryFn: () => fetchAccess(), retry: false });
   const [tab, setTab] = useState<BTab>("pricing");
   const canWrite = !!access?.canWrite;
+  const canOperate = !!access?.canOperate;
   return (
     <div className="space-y-4">
+      {access && !canWrite ? (
+        <div className="rounded-[12px] border border-border bg-muted px-4 py-2 text-[12px] text-muted-foreground">
+          Read-only — only a super admin can change plans, modules, delivery status or wallet. You can still dispatch now and manage pickup points.
+        </div>
+      ) : null}
       <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }] as const} />
-      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : <BusinessesTab canWrite={canWrite} canWriteOrders={canWriteOrders} />}
+      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
     </div>
   );
 }
