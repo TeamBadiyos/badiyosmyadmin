@@ -6361,6 +6361,10 @@ export type Database = {
         Args: { _courier_order_id: string }
         Returns: Json
       }
+      business_get_trip_rider: {
+        Args: { _courier_order_id: string }
+        Returns: Json
+      }
       business_get_wallet: { Args: never; Returns: Json }
       business_group_and_batch: {
         Args: { _group_filter?: Json; _merchant_id: string; _trigger: string }
