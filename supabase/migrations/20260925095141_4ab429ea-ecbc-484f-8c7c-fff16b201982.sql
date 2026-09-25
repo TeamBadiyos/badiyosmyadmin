@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.business_require_super_admin() FROM PUBLIC, anon, authenticated;
