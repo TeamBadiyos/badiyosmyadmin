@@ -305,7 +305,7 @@ function SetupTab({ biz, canWrite, pickups, vehicleTypes, courierTypes, onChange
   const [pp, setPp] = useState({ pricing: biz.pricing_plan_id ?? "", dispatch: biz.dispatch_plan_id ?? "" });
   const [def, setDef] = useState({ vehicle: biz.vehicle_type_id ?? "", courier: biz.courier_type_id ?? "", low: biz.low_balance_threshold });
   const [reasonFor, setReasonFor] = useState<"modules" | "status" | null>(null);
-  const [editPp, setEditPp] = useState<(PickupPoint & { id: string | null }) | null>(null);
+  const [editPp, setEditPp] = useState<(Omit<PickupPoint, "id"> & { id: string | null }) | null>(null);
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<unknown>, msg: string) => { setBusy(true); try { await fn(); toast.success(msg); onChanged(); } catch (e) { err(e); } finally { setBusy(false); } };
   const statuses = Array.from(new Set(["active", "paused", "suspended", "pending", biz.delivery_status ?? ""].filter(Boolean)));

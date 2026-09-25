@@ -274,7 +274,7 @@ export const getBusinessDetail = createServerFn({ method: "POST" })
 
 export const savePickupPoint = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: PickupPoint & { merchant_id: string; id: string | null }) => {
+  .inputValidator((i: Omit<PickupPoint, "id"> & { merchant_id: string; id: string | null }) => {
     if (!i?.name?.trim() || !i.address?.trim()) throw new Error("Name and address required");
     return i;
   })
