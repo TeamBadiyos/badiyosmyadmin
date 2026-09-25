@@ -85,6 +85,7 @@ import {
   Megaphone,
   PackageCheck,
   SlidersHorizontal,
+  Truck,
 } from "lucide-react";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,6 +134,7 @@ const NAV_ITEMS = [
   { key: "courier-orders", label: "Orders", icon: PackageCheck },
   { key: "courier-rates", label: "Rates", icon: IndianRupee },
   { key: "courier-types", label: "Parcel & Vehicle Types", icon: Boxes },
+  { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Orders", icon: Receipt },
   { key: "services", label: "Services", icon: SlidersHorizontal },
@@ -157,7 +159,7 @@ const NAV_GROUPS = [
     id: "courier",
     label: "Courier",
     icon: PackageCheck,
-    keys: ["courier-orders", "courier-rates", "courier-types", "courier-settings"],
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-settings"],
   },
   {
     id: "store",
@@ -596,6 +598,8 @@ function Shell() {
           <CourierPage section="rates" />
         ) : active === "courier-types" ? (
           <CourierPage section="types" />
+        ) : active === "courier-bulk" ? (
+          <CourierPage section="bulk" />
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
