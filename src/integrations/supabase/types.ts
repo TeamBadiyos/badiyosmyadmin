@@ -860,6 +860,260 @@ export type Database = {
         }
         Relationships: []
       }
+      business_pickup_points: {
+        Row: {
+          address: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          lat?: number
+          lng?: number
+          merchant_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_pickup_points_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_pickup_points_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_profiles: {
+        Row: {
+          auto_qty_enabled: boolean
+          auto_time_enabled: boolean
+          batch_capacity: number
+          business_name: string
+          city: string | null
+          courier_type_id: string | null
+          created_at: string
+          gstin: string | null
+          low_balance_threshold: number
+          merchant_id: string
+          qty_threshold: number
+          time_slab_minutes: number
+          updated_at: string
+          vehicle_type_id: string | null
+        }
+        Insert: {
+          auto_qty_enabled?: boolean
+          auto_time_enabled?: boolean
+          batch_capacity?: number
+          business_name: string
+          city?: string | null
+          courier_type_id?: string | null
+          created_at?: string
+          gstin?: string | null
+          low_balance_threshold?: number
+          merchant_id: string
+          qty_threshold?: number
+          time_slab_minutes?: number
+          updated_at?: string
+          vehicle_type_id?: string | null
+        }
+        Update: {
+          auto_qty_enabled?: boolean
+          auto_time_enabled?: boolean
+          batch_capacity?: number
+          business_name?: string
+          city?: string | null
+          courier_type_id?: string | null
+          created_at?: string
+          gstin?: string | null
+          low_balance_threshold?: number
+          merchant_id?: string
+          qty_threshold?: number
+          time_slab_minutes?: number
+          updated_at?: string
+          vehicle_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_profiles_courier_type_id_fkey"
+            columns: ["courier_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_profiles_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: true
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_profiles_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: true
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_profiles_vehicle_type_id_fkey"
+            columns: ["vehicle_type_id"]
+            isOneToOne: false
+            referencedRelation: "courier_vehicle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_receivers: {
+        Row: {
+          address: string
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          created_by_label: string | null
+          id: string
+          is_active: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          created_by_label?: string | null
+          id?: string
+          is_active?: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          created_by_label?: string | null
+          id?: string
+          is_active?: boolean
+          lat?: number
+          lng?: number
+          merchant_id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_receivers_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_receivers_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_wallet_topups: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by_label: string | null
+          id: string
+          merchant_id: string
+          paid_at: string | null
+          razorpay_order_id: string
+          razorpay_payment_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by_label?: string | null
+          id?: string
+          merchant_id: string
+          paid_at?: string | null
+          razorpay_order_id: string
+          razorpay_payment_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by_label?: string | null
+          id?: string
+          merchant_id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string
+          razorpay_payment_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_wallet_topups_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_wallet_topups_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_deliveries: {
         Row: {
           campaign_id: string
@@ -3314,7 +3568,10 @@ export type Database = {
           commission_value: number
           country: string | null
           created_at: string
+          delivery_enabled: boolean
           delivery_fee_payer: string
+          delivery_status: string
+          delivery_wallet_balance: number
           fee_tier_id: string | null
           fulfillment_mode: string
           gst_legal_name: string | null
@@ -3337,6 +3594,7 @@ export type Database = {
           state: string | null
           status: string
           store_category_id: string | null
+          store_enabled: boolean
           store_hours: Json | null
           store_name: string | null
           updated_at: string
@@ -3355,7 +3613,10 @@ export type Database = {
           commission_value?: number
           country?: string | null
           created_at?: string
+          delivery_enabled?: boolean
           delivery_fee_payer?: string
+          delivery_status?: string
+          delivery_wallet_balance?: number
           fee_tier_id?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
@@ -3378,6 +3639,7 @@ export type Database = {
           state?: string | null
           status?: string
           store_category_id?: string | null
+          store_enabled?: boolean
           store_hours?: Json | null
           store_name?: string | null
           updated_at?: string
@@ -3396,7 +3658,10 @@ export type Database = {
           commission_value?: number
           country?: string | null
           created_at?: string
+          delivery_enabled?: boolean
           delivery_fee_payer?: string
+          delivery_status?: string
+          delivery_wallet_balance?: number
           fee_tier_id?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
@@ -3419,6 +3684,7 @@ export type Database = {
           state?: string | null
           status?: string
           store_category_id?: string | null
+          store_enabled?: boolean
           store_hours?: Json | null
           store_name?: string | null
           updated_at?: string
@@ -5392,6 +5658,7 @@ export type Database = {
           owner_type: string
           reason: string
           type: string
+          wallet_type: string
         }
         Insert: {
           amount: number
@@ -5402,6 +5669,7 @@ export type Database = {
           owner_type: string
           reason: string
           type: string
+          wallet_type?: string
         }
         Update: {
           amount?: number
@@ -5412,6 +5680,7 @@ export type Database = {
           owner_type?: string
           reason?: string
           type?: string
+          wallet_type?: string
         }
         Relationships: [
           {
@@ -5620,6 +5889,102 @@ export type Database = {
       broadcast_booking_to_experts: {
         Args: { _booking_id: string; _radius?: number }
         Returns: number
+      }
+      business_audit: {
+        Args: {
+          _action: string
+          _actor_label: string
+          _after: Json
+          _before: Json
+          _id: string
+          _table: string
+        }
+        Returns: undefined
+      }
+      business_check_location: {
+        Args: { _lat: number; _lng: number }
+        Returns: undefined
+      }
+      business_confirm_topup: {
+        Args: {
+          _amount_paid: number
+          _payment_id: string
+          _razorpay_order_id: string
+        }
+        Returns: boolean
+      }
+      business_create_topup_intent: {
+        Args: {
+          _actor_label?: string
+          _amount: number
+          _razorpay_order_id: string
+        }
+        Returns: string
+      }
+      business_get_profile: { Args: never; Returns: Json }
+      business_get_wallet: { Args: never; Returns: Json }
+      business_phone10: { Args: { _p: string }; Returns: string }
+      business_pickup_write: {
+        Args: {
+          _actor_label: string
+          _address: string
+          _contact_name: string
+          _contact_phone: string
+          _id: string
+          _is_active: boolean
+          _is_default: boolean
+          _lat: number
+          _lng: number
+          _mid: string
+          _name: string
+        }
+        Returns: string
+      }
+      business_require_delivery: { Args: never; Returns: string }
+      business_require_ops: { Args: never; Returns: undefined }
+      business_set_receiver_active: {
+        Args: { _active: boolean; _actor_label?: string; _id: string }
+        Returns: undefined
+      }
+      business_upsert_pickup_point: {
+        Args: {
+          _actor_label?: string
+          _address: string
+          _contact_name: string
+          _contact_phone: string
+          _id: string
+          _is_active?: boolean
+          _is_default?: boolean
+          _lat: number
+          _lng: number
+          _name: string
+        }
+        Returns: string
+      }
+      business_upsert_receiver: {
+        Args: {
+          _actor_label?: string
+          _address: string
+          _contact_name: string
+          _contact_phone: string
+          _id: string
+          _lat: number
+          _lng: number
+          _name: string
+          _notes?: string
+        }
+        Returns: string
+      }
+      business_wallet_post: {
+        Args: {
+          _allow_negative?: boolean
+          _amount: number
+          _created_by?: string
+          _merchant_id: string
+          _reason: string
+          _type: string
+        }
+        Returns: string
       }
       check_booking_capacity: { Args: { _booking_id: string }; Returns: Json }
       check_serviceability: {
@@ -6265,6 +6630,7 @@ export type Database = {
         Args: { _new_status: string; _order_id: string }
         Returns: undefined
       }
+      merchant_caller_has_perm: { Args: { _perm: string }; Returns: boolean }
       merchant_claim_staff_invite: { Args: never; Returns: string }
       merchant_create_offline_sale: {
         Args: { _payload: Json }
@@ -6558,6 +6924,15 @@ export type Database = {
         Args: { _expert_id: string; _service_category_id: string }
         Returns: string
       }
+      staff_business_wallet_adjust: {
+        Args: {
+          _amount: number
+          _merchant_id: string
+          _reason: string
+          _type: string
+        }
+        Returns: string
+      }
       staff_campaign_audience_preview:
         | { Args: { _audience: string }; Returns: Json }
         | {
@@ -6696,6 +7071,10 @@ export type Database = {
       staff_courier_waive_charge: {
         Args: { _charge_id: string; _reason: string }
         Returns: Json
+      }
+      staff_create_business_account: {
+        Args: { _business_name: string; _city: string; _phone: string }
+        Returns: string
       }
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
@@ -6937,6 +7316,10 @@ export type Database = {
         Args: { _active: boolean; _id: string }
         Returns: undefined
       }
+      staff_set_delivery_status: {
+        Args: { _merchant_id: string; _reason: string; _status: string }
+        Returns: undefined
+      }
       staff_set_expert_zones: {
         Args: { _expert_id: string; _primary?: string; _zone_ids: string[] }
         Returns: undefined
@@ -6951,6 +7334,15 @@ export type Database = {
       }
       staff_set_merchant_fee_tier: {
         Args: { _fee_tier_id: string; _merchant_id: string }
+        Returns: undefined
+      }
+      staff_set_merchant_modules: {
+        Args: {
+          _delivery_enabled: boolean
+          _merchant_id: string
+          _reason: string
+          _store_enabled: boolean
+        }
         Returns: undefined
       }
       staff_set_milestone_active: {
@@ -7101,6 +7493,23 @@ export type Database = {
         Returns: undefined
       }
       staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
+      staff_upsert_business_profile: {
+        Args: {
+          _auto_qty_enabled: boolean
+          _auto_time_enabled: boolean
+          _batch_capacity: number
+          _business_name: string
+          _city: string
+          _courier_type_id: string
+          _gstin: string
+          _low_balance_threshold: number
+          _merchant_id: string
+          _qty_threshold: number
+          _time_slab_minutes: number
+          _vehicle_type_id: string
+        }
+        Returns: undefined
+      }
       staff_upsert_campaign: {
         Args: {
           _audience: string
@@ -7171,6 +7580,21 @@ export type Database = {
       }
       staff_upsert_notification_sound: {
         Args: { _payload: Json }
+        Returns: string
+      }
+      staff_upsert_pickup_point: {
+        Args: {
+          _address: string
+          _contact_name: string
+          _contact_phone: string
+          _id: string
+          _is_active?: boolean
+          _is_default?: boolean
+          _lat: number
+          _lng: number
+          _merchant_id: string
+          _name: string
+        }
         Returns: string
       }
       staff_upsert_reward_program: {
