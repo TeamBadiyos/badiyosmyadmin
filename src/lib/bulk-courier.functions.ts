@@ -110,7 +110,6 @@ export type BusinessRow = {
   vehicle_type_id: string | null; courier_type_id: string | null;
   low_balance_threshold: number; wallet_balance: number;
   pending_orders: number; trips_today: number;
-  profile: Record<string, unknown>;
 };
 
 export const listBusinesses = createServerFn({ method: "GET" })
@@ -165,7 +164,6 @@ export const listBusinesses = createServerFn({ method: "GET" })
           wallet_balance: Number(mm.delivery_wallet_balance ?? 0),
           pending_orders: oc.get(p.merchant_id) ?? 0,
           trips_today: bc.get(p.merchant_id) ?? 0,
-          profile: p,
         } as BusinessRow;
       })
       .sort((a, b) => a.business_name.localeCompare(b.business_name));

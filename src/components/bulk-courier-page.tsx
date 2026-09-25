@@ -94,7 +94,7 @@ function useActiveToggle() {
   };
 }
 
-const emptyPricing = { id: null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, is_active: true };
+const emptyPricing = { id: null as string | null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, is_active: true };
 
 function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
