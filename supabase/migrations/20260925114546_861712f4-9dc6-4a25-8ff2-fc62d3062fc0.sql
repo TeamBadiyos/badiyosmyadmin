@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.merchant_caller_has_perm(text) TO authenticated;

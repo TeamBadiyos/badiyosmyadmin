@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import {
   getBusinessDetail,
   listBulkPlans,
   listBusinesses,
+  lookupBusinessPhone,
   saveBusinessDefaults,
   saveDispatchPlan,
   savePickupPoint,
@@ -20,6 +21,7 @@ import {
   setBusinessModules,
   setPlanActive,
   type BusinessRow,
+  type PhoneLookup,
   type DispatchPlan,
   type PickupPoint,
   type PricingPlan,
@@ -222,15 +224,35 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
   const qc = useQueryClient();
   const fetchList = useServerFn(listBusinesses);
   const create = useServerFn(createBusiness);
-  const { data, isLoading } = useQuery({ queryKey: ["bulk", "businesses"], queryFn: () => fetchList(), refetchInterval: 60_000 });
+  const lookup = useServerFn(lookupBusinessPhone);
+  const { data, isLoading, error: listError } = useQuery({ queryKey: ["bulk", "businesses"], queryFn: () => fetchList(), refetchInterval: 60_000 });
   const [adding, setAdding] = useState<{ phone: string; business_name: string; city: string } | null>(null);
+  const [found, setFound] = useState<PhoneLookup>(null);
+  const [looking, setLooking] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const selected = (data ?? []).find((b) => b.merchant_id === openId) ?? null;
+  const p10 = (adding?.phone ?? "").replace(/\D/g, "").slice(-10);
+  useEffect(() => {
+    if (!adding || p10.length !== 10) { setFound(null); return; }
+    let alive = true;
+    setLooking(true);
+    lookup({ data: { phone: p10 } })
+      .then((r) => {
+        if (!alive) return;
+        setFound(r);
+        if (r) setAdding((a) => a ? { ...a, business_name: a.business_name || r.store_name || "", city: r.city || a.city } : a);
+      })
+      .catch(() => alive && setFound(null))
+      .finally(() => alive && setLooking(false));
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p10, !!adding]);
   return (
     <div className="space-y-3">
-      {canWrite ? <button className={btn} onClick={() => setAdding({ phone: "", business_name: "", city: "Latur" })}><Plus size={14} className="mr-1 inline" />Add business</button> : null}
+      {canWrite ? <button className={btn} onClick={() => { setFound(null); setAdding({ phone: "", business_name: "", city: "Latur" }); }}><Plus size={14} className="mr-1 inline" />Add business</button> : null}
       {isLoading ? <p className="text-[13px] text-muted-foreground">Loading…</p> : null}
+      {listError ? <p className="text-[13px] text-destructive">Could not load businesses: {(listError as Error).message}</p> : null}
       <Table head={["Business", "Phone", "City", "Delivery", "Pricing plan", "Dispatch plan", "Wallet", "Pending", "Trips today"]}>
         {(data ?? []).map((b) => (
           <tr key={b.merchant_id} className="cursor-pointer hover:bg-muted/40" onClick={() => setOpenId(b.merchant_id)}>
@@ -243,19 +265,39 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
           </tr>
         ))}
       </Table>
-      {!isLoading && (data ?? []).length === 0 ? <p className="text-[13px] text-muted-foreground">No businesses yet.</p> : null}
+      {!isLoading && !listError && (data ?? []).length === 0 ? <p className="text-[13px] text-muted-foreground">No businesses yet.</p> : null}
       {adding ? (
         <Modal title="Add business" onClose={() => setAdding(null)}>
           <div className="space-y-3">
-            <Field label="Phone"><input className={inputCls} value={adding.phone} onChange={(e) => setAdding({ ...adding, phone: e.target.value })} /></Field>
+            <Field label="Phone"><input className={inputCls} inputMode="numeric" value={adding.phone} onChange={(e) => setAdding({ ...adding, phone: e.target.value })} /></Field>
+            {looking ? <p className="text-[12px] text-muted-foreground">Checking number…</p> : null}
+            {found ? (
+              <div className="rounded-[14px] border border-border bg-muted/40 p-3 text-[12px]">
+                {found.is_business
+                  ? <p className="font-semibold text-foreground">Already a Bulk Courier business: {found.store_name ?? "—"}</p>
+                  : <p className="font-semibold text-foreground">Existing store found: {found.store_name ?? "—"}, {found.city ?? "—"} ({found.status ?? "—"})</p>}
+                {!found.is_business ? <p className="text-muted-foreground">Creating will link this store as a business; no new store is made.</p> : null}
+              </div>
+            ) : null}
             <Field label="Business name"><input className={inputCls} value={adding.business_name} onChange={(e) => setAdding({ ...adding, business_name: e.target.value })} /></Field>
             <Field label="City"><input className={inputCls} value={adding.city} onChange={(e) => setAdding({ ...adding, city: e.target.value })} /></Field>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setAdding(null)}>Cancel</button>
-              <button className={btn} disabled={busy || !adding.phone.trim() || !adding.business_name.trim() || !adding.city.trim()} onClick={async () => {
-                setBusy(true);
-                try { const r = await create({ data: adding }); toast.success("Business created"); setAdding(null); await qc.invalidateQueries({ queryKey: ["bulk", "businesses"] }); setOpenId(r.merchantId); } catch (e) { err(e); } finally { setBusy(false); }
-              }}>Create</button>
+              {found?.is_business ? (
+                <button className={btn} onClick={() => { const id = found.merchant_id; setAdding(null); setOpenId(id); }}>Open business</button>
+              ) : (
+                <button className={btn} disabled={busy || looking || p10.length !== 10 || !adding.business_name.trim() || !adding.city.trim()} onClick={async () => {
+                  if (busy) return;
+                  setBusy(true);
+                  try {
+                    const r = await create({ data: adding });
+                    toast.success(r.linkedExisting ? `Linked to existing store ${r.existingName ?? ""}`.trim() : "Business created");
+                    setAdding(null);
+                    await qc.invalidateQueries({ queryKey: ["bulk", "businesses"] });
+                    setOpenId(r.merchantId);
+                  } catch (e) { err(e); } finally { setBusy(false); }
+                }}>{busy ? "Saving…" : found ? "Link as business" : "Create"}</button>
+              )}
             </div>
           </div>
         </Modal>
