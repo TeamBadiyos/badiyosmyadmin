@@ -51,7 +51,7 @@ import { BulkCourierPage } from "@/components/bulk-courier-page";
 
 /* --------------------------------- shared -------------------------------- */
 
-function Modal({
+export function Modal({
   title,
   onClose,
   children,
@@ -82,7 +82,7 @@ function Modal({
   );
 }
 
-function Field({
+export function Field({
   label,
   children,
   hint,
@@ -100,10 +100,10 @@ function Field({
   );
 }
 
-const inputCls =
+export const inputCls =
   "w-full rounded-[10px] border border-border bg-background px-3 py-2 text-[13px] text-foreground";
 
-function Pill({ tone, children }: { tone: "ok" | "warn" | "off" | "info"; children: React.ReactNode }) {
+export function Pill({ tone, children }: { tone: "ok" | "warn" | "off" | "info"; children: React.ReactNode }) {
   const cls =
     tone === "ok"
       ? "bg-primary/10 text-primary"
@@ -973,7 +973,7 @@ function CourierTypesTab({ canWrite }: { canWrite: boolean }) {
 
 /* ------------------------------ 5. Live orders ---------------------------- */
 
-export export function OrderDetail({
+export function OrderDetail({
   order,
   canWrite,
   onClose,
