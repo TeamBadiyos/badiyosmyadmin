@@ -182,10 +182,39 @@ export const createBusiness = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
+    const found = await findByPhone(context as Ctx, i.phone);
     const id = await rpc(context as Ctx, "staff_create_business_account", {
       _phone: i.phone.trim(), _business_name: i.business_name.trim(), _city: i.city.trim(),
     });
-    return { merchantId: id as string };
+    return { merchantId: id as string, linkedExisting: !!found, existingName: found?.store_name ?? null };
+  });
+
+export type PhoneLookup = {
+  merchant_id: string; store_name: string | null; city: string | null; status: string | null; is_business: boolean;
+} | null;
+
+async function findByPhone(context: Ctx, phone: string): Promise<PhoneLookup> {
+  const p10 = (phone ?? "").replace(/\D/g, "").slice(-10);
+  if (p10.length !== 10) return null;
+  const { data, error } = await context.supabase
+    .from("merchants").select("id, phone, store_name, city, status, auth_user_id, created_at")
+    .ilike("phone", `%${p10}`).limit(10);
+  if (error) throw new Error(error.message);
+  const rows = ((data ?? []) as any[])
+    .filter((m) => String(m.phone ?? "").replace(/\D/g, "").slice(-10) === p10)
+    .sort((a, b) => Number(!!b.auth_user_id) - Number(!!a.auth_user_id) || String(a.created_at).localeCompare(String(b.created_at)));
+  const m = rows[0];
+  if (!m) return null;
+  const { data: bp } = await context.supabase.from("business_profiles").select("merchant_id").eq("merchant_id", m.id).maybeSingle();
+  return { merchant_id: m.id, store_name: m.store_name, city: m.city, status: m.status, is_business: !!bp };
+}
+
+export const lookupBusinessPhone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { phone: string }) => i)
+  .handler(async ({ data: i, context }): Promise<PhoneLookup> => {
+    await requireOps(context as Ctx);
+    return findByPhone(context as Ctx, i.phone);
   });
 
 export const setBusinessModules = createServerFn({ method: "POST" })
