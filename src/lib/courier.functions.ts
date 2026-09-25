@@ -743,18 +743,37 @@ export const listCourierOrderEvents = createServerFn({ method: "POST" })
     }));
   });
 
-export const listCourierRiders = createServerFn({ method: "GET" })
+export type AssignableRider = {
+  id: string;
+  name: string;
+  phone: string;
+  is_online: boolean;
+  distance_km: number | null;
+};
+
+export const listCourierRiders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<Array<{ id: string; name: string; phone: string }>> => {
+  .inputValidator((input: { orderId: string }) => {
+    if (!input?.orderId) throw new Error("orderId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<AssignableRider[]> => {
     await requireCourierStaff(context);
-    const { data, error } = await context.supabase
-      .from("experts")
-      .select("id, name, phone")
-      .eq("status", "active")
-      .order("name", { ascending: true })
-      .limit(500);
+    const { data: rows, error } = await (context.supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+      "staff_courier_assignable_riders",
+      { _order_id: data.orderId },
+    );
     if (error) throw new Error(error.message);
-    return (data ?? []) as Array<{ id: string; name: string; phone: string }>;
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r["id"] as string,
+      name: (r["name"] as string) ?? "",
+      phone: (r["phone"] as string) ?? "",
+      is_online: Boolean(r["is_online"]),
+      distance_km: r["distance_km"] == null ? null : Number(r["distance_km"]),
+    }));
   });
 
 export const reassignRider = createServerFn({ method: "POST" })

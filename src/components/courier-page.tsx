@@ -1008,9 +1008,9 @@ export function OrderDetail({
     queryKey: ["courier", "events", order.id],
     queryFn: () => fetchEvents({ data: { orderId: order.id } }),
   });
-  const { data: riders } = useQuery({
-    queryKey: ["courier", "riders"],
-    queryFn: () => fetchRiders(),
+  const { data: riders, refetch: refetchRiders } = useQuery({
+    queryKey: ["courier", "riders", order.id],
+    queryFn: () => fetchRiders({ data: { orderId: order.id } }),
     enabled: canWrite,
   });
 
@@ -1095,30 +1095,47 @@ export function OrderDetail({
       {canWrite ? (
         <div className="mt-4 space-y-4">
           <div className="rounded-[12px] border border-border p-3">
-            <h4 className="text-[13px] font-bold text-foreground">Reassign rider</h4>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <select
-                className={`${inputCls} max-w-xs`}
-                value={riderId}
-                onChange={(e) => setRiderId(e.target.value)}
-              >
-                <option value="">Select rider</option>
-                {(riders ?? []).map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} · {r.phone}
+            <h4 className="text-[13px] font-bold text-foreground">
+              {order.riderName ? "Reassign rider" : "Assign rider"}
+            </h4>
+            {!["SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status) ? (
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Riders can only be assigned before pickup.
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <select
+                  className={`${inputCls} max-w-xs`}
+                  value={riderId}
+                  onChange={(e) => setRiderId(e.target.value)}
+                >
+                  <option value="">
+                    {riders && riders.length === 0 ? "No eligible riders" : "Select rider"}
                   </option>
-                ))}
-              </select>
-              <button
-                disabled={busy || !riderId}
-                onClick={() =>
-                  run(() => doReassign({ data: { orderId: order.id, expertId: riderId } }), "Rider reassigned")
-                }
-                className="rounded-[10px] bg-primary px-3.5 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
-              >
-                Reassign
-              </button>
-            </div>
+                  {(riders ?? []).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.is_online ? "● " : "○ "}
+                      {r.name} · {r.phone}
+                      {r.distance_km != null ? ` · ${r.distance_km} km` : ""}
+                      {r.is_online ? "" : " (offline)"}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={busy || !riderId}
+                  onClick={() =>
+                    run(async () => {
+                      await doReassign({ data: { orderId: order.id, expertId: riderId } });
+                      setRiderId("");
+                      await refetchRiders();
+                    }, "Rider assigned and notified")
+                  }
+                  className="rounded-[10px] bg-primary px-3.5 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                >
+                  {order.riderName ? "Reassign" : "Assign"}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="rounded-[12px] border border-border p-3">
