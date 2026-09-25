@@ -46,6 +46,8 @@ import {
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
+import { listBusinesses } from "@/lib/bulk-courier.functions";
+import { BulkCourierPage } from "@/components/bulk-courier-page";
 
 /* --------------------------------- shared -------------------------------- */
 
@@ -139,7 +141,7 @@ function Toggle({
   );
 }
 
-export type CourierSection = "orders" | "rates" | "types" | "settings";
+export type CourierSection = "orders" | "rates" | "types" | "settings" | "bulk";
 type TypeTab = "vehicles" | "types";
 
 /* ----------------------------- 2. Vehicle types --------------------------- */
@@ -971,7 +973,7 @@ function CourierTypesTab({ canWrite }: { canWrite: boolean }) {
 
 /* ------------------------------ 5. Live orders ---------------------------- */
 
-export function OrderDetail({
+export export function OrderDetail({
   order,
   canWrite,
   onClose,
@@ -1475,12 +1477,21 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   const [status, setStatus] = useState<string>("");
   const [search, setSearch] = useState("");
   const [multiStop, setMultiStop] = useState(false);
+  const [business, setBusiness] = useState("");
   const [selected, setSelected] = useState<CourierOrderRow | null>(null);
+  const fetchBiz = useServerFn(listBusinesses);
+  const { data: bizList } = useQuery({
+    queryKey: ["bulk", "businesses"],
+    queryFn: () => fetchBiz(),
+    staleTime: 60_000,
+  });
 
   const { data } = useQuery({
-    queryKey: ["courier", "orders", status, search, multiStop],
+    queryKey: ["courier", "orders", status, search, multiStop, business],
     queryFn: () =>
-      fetchOrders({ data: { status: status || null, search: search || null, multiStop } }),
+      fetchOrders({
+        data: { status: status || null, search: search || null, multiStop, businessId: business || null },
+      }),
     refetchInterval: 30_000,
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "orders"] });
@@ -1512,6 +1523,19 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
           <input type="checkbox" checked={multiStop} onChange={(e) => setMultiStop(e.target.checked)} />
           Multi-stop
         </label>
+        <select
+          className={`${inputCls} max-w-[220px]`}
+          value={business}
+          onChange={(e) => setBusiness(e.target.value)}
+        >
+          <option value="">All orders</option>
+          <option value="any">Business trips only</option>
+          {(bizList ?? []).map((b) => (
+            <option key={b.merchant_id} value={b.merchant_id}>
+              {b.business_name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {rows.length === 0 ? (
@@ -1533,6 +1557,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
                 <Pill tone="off">{`${o.pickup_count}P · ${o.drop_count}D`}</Pill>
               ) : null}
               {o.returnPaymentPending ? <Pill tone="warn">Return payment pending</Pill> : null}
+              {o.businessName ? <Pill tone="ok">{`Business · ${o.businessName}`}</Pill> : null}
             </div>
             <span className="text-[13px] font-bold text-foreground">₹{o.total_amount}</span>
           </div>
@@ -1737,7 +1762,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
 
   return (
     <div className="space-y-5">
-      {!canWrite ? (
+      {!canWrite && section !== "bulk" ? (
         <div className="rounded-[12px] border border-border bg-muted px-4 py-2 text-[12px] text-muted-foreground">
           Read-only access — only a super admin can change courier settings.
         </div>
@@ -1775,6 +1800,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
         </div>
       ) : null}
       {section === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
+      {section === "bulk" ? <BulkCourierPage canWriteOrders={canWrite} /> : null}
     </div>
   );
 }
