@@ -88,7 +88,11 @@ export const listWalletOwners = createServerFn({ method: "GET" })
       await Promise.all([
         db.from("experts").select("id, name, phone, wallet_balance"),
         db.from("area_partners").select("id, name, phone"),
-        db.from("wallet_ledger").select("owner_type, owner_id, type, amount"),
+        db
+          .from("wallet_ledger")
+          .select("owner_type, owner_id, type, amount")
+          .eq("owner_type", "area_partner")
+          .eq("wallet_type", "earnings"),
       ]);
     if (e1) throw new Error(e1.message);
     if (e2) throw new Error(e2.message);
