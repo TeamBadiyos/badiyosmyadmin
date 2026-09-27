@@ -704,16 +704,15 @@ function DashboardHome({
     {
       label: "Today's Revenue",
       value: inr.format(data?.todayRevenue ?? 0),
-      hint: "Bookings + online orders + POS",
+      hint: "After refunds · bookings + orders + POS",
       icon: IndianRupee,
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },
     {
-      label: "Today's Transactions",
-      value: String(data?.todayTransactions ?? 0),
-      hint: `${data?.todayBookings ?? 0} bookings · ${data?.todayOrders ?? 0} orders`,
-      icon: CalendarCheck,
-      onClick: () => onGoBookings({ from: today, to: today }),
+      label: "Discount Given",
+      value: inr.format(data?.discountToday ?? 0),
+      hint: `Today · ${inr.format(data?.discountGiven ?? 0)} all time`,
+      icon: BadgePercent,
     },
     {
       label: "Active Right Now",
