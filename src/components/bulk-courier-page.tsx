@@ -360,7 +360,7 @@ function BusinessDetail({ biz, canWrite, canOperate, canWriteOrders, onClose }: 
           <SetupTab biz={biz} canWrite={canWrite} canOperate={canOperate} pickups={data.pickups} vehicleTypes={data.vehicleTypes} courierTypes={data.courierTypes} onChanged={refresh} />
         ) : tab === "receivers" ? <ReceiversTab rows={data.receivers} />
           : tab === "orders" ? <BizOrdersTab biz={biz} canWrite={canOperate} rows={data.orders} receivers={data.receivers} onChanged={refresh} />
-          : tab === "trips" ? <TripsTab rows={data.trips} canWriteOrders={canWriteOrders} />
+          : tab === "trips" ? <TripsTab rows={data.trips} runs={data.runs} canWriteOrders={canWriteOrders} />
           : <WalletTab biz={biz} canWrite={canWrite} ledger={data.ledger} topups={data.topups} onChanged={refresh} />}
       </div>
     </Modal>
@@ -517,7 +517,7 @@ function BizOrdersTab({ biz, canWrite, rows, receivers, onChanged }: { biz: Busi
   );
 }
 
-function TripsTab({ rows, canWriteOrders }: { rows: Array<Record<string, any>>; canWriteOrders: boolean }) {
+function TripsTab({ rows, runs: runRows, canWriteOrders }: { rows: Array<Record<string, any>>; runs: Array<Record<string, any>>; canWriteOrders: boolean }) {
   const qc = useQueryClient();
   const fetchOrders = useServerFn(listCourierOrders);
   const [order, setOrder] = useState<CourierOrderRow | null>(null);
@@ -526,38 +526,36 @@ function TripsTab({ rows, canWriteOrders }: { rows: Array<Record<string, any>>; 
     try { const r = await fetchOrders({ data: { orderId: id } }); if (r[0]) setOrder(r[0]); else toast.error("Courier order not found"); } catch (e) { err(e); }
   };
   const runs = useMemo(() => {
-    const m = new Map<string, { key: string; at: string; trigger: string; trips: Array<Record<string, any>> }>();
-    for (const b of [...rows].sort((x, y) => String(x.created_at).localeCompare(String(y.created_at)))) {
-      const key = `${b.trigger}|${String(b.created_at).slice(0, 16)}`;
-      if (!m.has(key)) m.set(key, { key, at: b.created_at, trigger: b.trigger, trips: [] });
-      m.get(key)!.trips.push(b);
+    const byRun = new Map<string, Array<Record<string, any>>>();
+    const loose: Array<Record<string, any>> = [];
+    for (const b of rows) {
+      if (b.dispatch_run_id) { if (!byRun.has(b.dispatch_run_id)) byRun.set(b.dispatch_run_id, []); byRun.get(b.dispatch_run_id)!.push(b); }
+      else loose.push(b);
     }
-    return [...m.values()].reverse().map((r) => {
-      const src = [...new Set(r.trips.map((t) => t.distance_source).filter(Boolean))] as string[];
-      return {
-        ...r,
-        method: src.length ? src.map((x) => (/google/i.test(x) ? "Google" : /fallback|haversine|straight/i.test(x) ? "Fallback" : x)).join(" / ") : "—",
-        drops: r.trips.reduce((a, t) => a + Number(t.drops_count ?? 0), 0),
-        km: r.trips.reduce((a, t) => a + Number(t.distance_km ?? 0), 0),
-      };
-    });
-  }, [rows]);
+    const sortTrips = (t: Array<Record<string, any>>) => [...t].sort((x, y) => Number(x.trip_no ?? 0) - Number(y.trip_no ?? 0));
+    const out = runRows
+      .filter((r) => byRun.has(r.id))
+      .map((r) => ({ key: r.id, at: r.created_at, trigger: r.trigger, method: r.method ?? "—", drops: r.drops, tripCount: r.trips, km: r.total_km as number | null, trips: sortTrips(byRun.get(r.id)!), noRun: false }));
+    if (loose.length) out.push({ key: "none", at: "", trigger: null, method: "—", drops: 0, tripCount: loose.length, km: null, trips: [...loose].sort((x, y) => String(y.created_at).localeCompare(String(x.created_at))), noRun: true });
+    return out;
+  }, [rows, runRows]);
   return (
     <div className="space-y-3">
       {runs.map((run) => (
         <div key={run.key} className="rounded-[14px] border border-border">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-muted/40 px-3 py-2 text-[12px]">
+            {run.noRun ? <span className="font-semibold">Earlier trips (no run)</span> : <>
             <span className="font-semibold">{new Date(run.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}</span>
             <span>Trigger: {String(run.trigger ?? "—").replace(/_/g, " ")}</span>
             <span>Method: {run.method}</span>
-            <span>{run.drops} drops</span><span>{run.trips.length} trip{run.trips.length === 1 ? "" : "s"}</span>
-            <span>{run.km.toFixed(1)} km</span>
+            <span>{run.drops} drops</span><span>{run.tripCount} trip{run.tripCount === 1 ? "" : "s"}</span>
+            <span>{run.km != null ? `${run.km} km` : "—"}</span></>}
           </div>
           <Table head={["Trip", "Label", "Drops", "Rider", "Status", "Distance", "Fare", "Courier order"]}>
-            {run.trips.map((b: Record<string, any>, idx: number) => (
+            {run.trips.map((b: Record<string, any>) => (
               <tr key={b.id}>
-                <td className={`${td} font-semibold`}>Trip {idx + 1}</td>
-                <td className={td}>{b.pickup_name ?? `#${String(b.id).slice(0, 8)}`}</td>
+                <td className={`${td} font-semibold`}>{b.trip_no != null ? `Trip ${b.trip_no}` : `#${String(b.id).slice(0, 8)}`}</td>
+                <td className={td}>{b.trip_label ?? "—"}</td>
                 <td className={td}>{b.drops_count ?? "—"}</td>
                 <td className={td}>{b.rider_name ?? <span className="text-warning">Unassigned</span>}</td>
                 <td className={td}><Pill tone={tone(b.status)}>{String(b.status).replace(/_/g, " ")}</Pill>{b.fail_reason ? <p className="text-[11px] text-muted-foreground">{b.fail_reason}</p> : null}</td>
