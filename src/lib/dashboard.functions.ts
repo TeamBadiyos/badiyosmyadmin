@@ -108,7 +108,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("price")
+              .select(
+                "price, total_amount, discount_amount, refund_amount, refund_status, status",
+              )
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay)
