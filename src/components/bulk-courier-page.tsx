@@ -30,6 +30,7 @@ import {
 } from "@/lib/bulk-courier.functions";
 import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
 import { Field, Modal, OrderDetail, Pill, inputCls } from "@/components/courier-page";
+import { SealStickersTab, SealStockCard } from "@/components/seal-stickers-tab";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
 const btnGhost = "rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-40";
@@ -98,7 +99,7 @@ function useActiveToggle() {
   };
 }
 
-const emptyPricing = { id: null as string | null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, cancel_fee_type: "percentage" as "percentage" | "fixed", cancel_fee_value: 50, is_active: true };
+const emptyPricing = { id: null as string | null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, cancel_fee_type: "percentage" as "percentage" | "fixed", cancel_fee_value: 50, drop_count_basis: "packet" as "packet" | "shop", is_active: true };
 
 function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
@@ -108,14 +109,14 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   const { data } = useQuery({ queryKey: ["bulk", "plans"], queryFn: () => fetchPlans() });
   const [edit, setEdit] = useState<(typeof emptyPricing & { id: string | null; used_by?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
-  const nums: Array<[Exclude<keyof typeof emptyPricing, "cancel_fee_type">, string]> = [["base_fare", "Base fare ₹"], ["included_km", "Included km"], ["per_km", "Per km ₹"], ["min_fare", "Min fare ₹"], ["extra_drop_fee", "Extra drop fee ₹"], ["return_per_km", "Return ₹/km"], ["commission_pct", "Commission %"]];
+  const nums: Array<[Exclude<keyof typeof emptyPricing, "cancel_fee_type" | "drop_count_basis">, string]> = [["base_fare", "Base fare ₹"], ["included_km", "Included km"], ["per_km", "Per km ₹"], ["min_fare", "Min fare ₹"], ["extra_drop_fee", "Extra drop fee ₹"], ["return_per_km", "Return ₹/km"], ["commission_pct", "Commission %"]];
   return (
     <div className="space-y-3">
       {canWrite ? <button className={btn} onClick={() => setEdit({ ...emptyPricing })}><Plus size={14} className="mr-1 inline" />Pricing plan</button> : null}
       <Table head={["Name", "Base", "Incl. km", "Per km", "Min fare", "Extra drop", "Return ₹/km", "Comm. %", "Cancel fee", "Used by", "Active", ""]}>
         {(data?.pricing ?? []).map((p: PricingPlan) => (
           <tr key={p.id}>
-            <td className={`${td} font-semibold`}>{p.name}</td><td className={td}>{inr(p.base_fare)}</td><td className={td}>{p.included_km}</td>
+            <td className={`${td} font-semibold`}>{p.name}<span className="ml-2"><Pill tone="off">{p.drop_count_basis === "shop" ? "Per shop" : "Per packet"}</Pill></span></td><td className={td}>{inr(p.base_fare)}</td><td className={td}>{p.included_km}</td>
             <td className={td}>{inr(p.per_km)}</td><td className={td}>{inr(p.min_fare)}</td><td className={td}>{inr(p.extra_drop_fee)}</td>
             <td className={td}>{inr(p.return_per_km)}</td><td className={td}>{p.commission_pct}%</td><td className={td}>{p.cancel_fee_type === "fixed" ? inr(p.cancel_fee_value) : `${p.cancel_fee_value}%`}</td><td className={td}>{p.used_by}</td>
             <td className={td}><input type="checkbox" className="h-4 w-4 accent-[#00B97A]" checked={p.is_active} disabled={!canWrite} onChange={(e) => toggle("pricing", p.id, e.target.checked)} /></td>
@@ -138,6 +139,10 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
               <Field label="Cancel fee after rider arrives"><select className={inputCls} value={edit.cancel_fee_type} onChange={(e) => setEdit({ ...edit, cancel_fee_type: e.target.value as "percentage" | "fixed" })}><option value="percentage">Percentage</option><option value="fixed">Fixed ₹</option></select></Field>
               <Field label={edit.cancel_fee_type === "fixed" ? "Fee ₹" : "Fee %"}><input type="number" min={0} max={edit.cancel_fee_type === "percentage" ? 100 : undefined} className={inputCls} value={String(edit.cancel_fee_value)} onChange={(e) => setEdit({ ...edit, cancel_fee_value: Number(e.target.value) })} /></Field>
             </div>
+            <Field label="Bill drops per">
+              <select className={inputCls} value={edit.drop_count_basis} onChange={(e) => setEdit({ ...edit, drop_count_basis: e.target.value as "packet" | "shop" })}><option value="packet">Packet</option><option value="shop">Shop</option></select>
+              <p className="mt-1 text-[11px] text-muted-foreground">Packet = har packet ek delivery. Shop = ek dukaan ek delivery chahe kitne packet ho.</p>
+            </Field>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setEdit(null)}>Cancel</button>
               <button className={btn} disabled={busy || !edit.name.trim()} onClick={async () => {
@@ -169,7 +174,7 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
   return (
     <div className="space-y-3">
       {canWrite ? <button className={btn} onClick={() => open({ ...emptyDispatch, cost_per_extra_trip: (data?.pricing ?? []).find((p: PricingPlan) => p.is_active)?.base_fare ?? null })}><Plus size={14} className="mr-1 inline" />Dispatch plan</button> : null}
-      <Table head={["Name", "Manual", "Min qty", "Time slots (IST)", "Max drops/trip", "Min/drop", "₹/extra trip", "Used by", "Active", ""]}>
+      <Table head={["Name", "Manual", "Min shops", "Time slots (IST)", "Max drops/trip", "Min/drop", "₹/extra trip", "Used by", "Active", ""]}>
         {(data?.dispatch ?? []).map((p: DispatchPlan) => (
           <tr key={p.id}>
             <td className={`${td} font-semibold`}>{p.name}</td>
@@ -192,8 +197,9 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
             {edit.id ? <div className="rounded-[10px] bg-info/10 p-3 text-[12px] text-foreground">Used by {edit.used_by ?? 0} businesses. Changes apply to new trips only.</div> : null}
             <Field label="Name"><input className={inputCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={edit.manual_enabled} onChange={(e) => setEdit({ ...edit, manual_enabled: e.target.checked })} />Manual dispatch</label>
-            <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={edit.qty_enabled} onChange={(e) => setEdit({ ...edit, qty_enabled: e.target.checked })} />Min qty
+            <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={edit.qty_enabled} onChange={(e) => setEdit({ ...edit, qty_enabled: e.target.checked })} />Min shops to dispatch
               <input type="number" min={1} disabled={!edit.qty_enabled} className={`${inputCls} max-w-[100px]`} value={edit.qty_threshold ?? ""} onChange={(e) => setEdit({ ...edit, qty_threshold: Number(e.target.value) || null })} /></label>
+            <p className="-mt-2 pl-6 text-[11px] text-muted-foreground">Kitni alag dukaanon ke orders jama hone par trip nikle</p>
             <div>
               <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={edit.slots_enabled} onChange={(e) => setEdit({ ...edit, slots_enabled: e.target.checked })} />Time slots (IST)</label>
               {edit.slots_enabled ? (
@@ -281,7 +287,7 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
       <Table head={["Business", "Phone", "City", "Delivery", "Pricing plan", "Dispatch plan", "Wallet", "Pending", "Trips today"]}>
         {(data ?? []).map((b) => (
           <tr key={b.merchant_id} className="cursor-pointer hover:bg-muted/40" onClick={() => setOpenId(b.merchant_id)}>
-            <td className={`${td} font-semibold`}>{b.business_name}{!b.pricing_plan_id || !b.dispatch_plan_id ? <span className="ml-2"><Pill tone="warn">No plans</Pill></span> : null}</td>
+            <td className={`${td} font-semibold`}>{b.business_name}{!b.pricing_plan_id || !b.dispatch_plan_id ? <span className="ml-2"><Pill tone="warn">No plans</Pill></span> : null}{b.seal_low ? <span className="ml-2"><Pill tone="bad">Low stickers</Pill></span> : null}</td>
             <td className={td}>{b.phone ?? "—"}</td><td className={td}>{b.city ?? "—"}</td>
             <td className={td}><Pill tone={b.delivery_status === "active" ? "ok" : "off"}>{b.delivery_status ?? "—"}</Pill></td>
             <td className={td}>{b.pricing_plan ?? "—"}</td><td className={td}>{b.dispatch_plan ?? "—"}</td>
@@ -400,6 +406,7 @@ function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTyp
   const statuses = ["inactive", "active", "suspended"];
   return (
     <div className="space-y-3">
+      <SealStockCard merchantId={biz.merchant_id} />
       <Section title="Modules">
         <div className="flex flex-wrap items-center gap-4 text-[13px]">
           <label className="flex items-center gap-2"><input type="checkbox" disabled={!canWrite} checked={mods.store} onChange={(e) => setMods({ ...mods, store: e.target.checked })} />Store</label>
@@ -630,7 +637,7 @@ function WalletTab({ biz, canWrite, ledger, topups, onChanged }: { biz: Business
 
 /* --------------------------------- page --------------------------------- */
 
-type BTab = "pricing" | "dispatch" | "businesses";
+type BTab = "pricing" | "dispatch" | "businesses" | "seals";
 
 export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean }) {
   const fetchAccess = useServerFn(getBulkAccess);
@@ -645,8 +652,8 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
           Read-only — only a super admin can change plans, modules, delivery status or wallet. You can still dispatch now and manage pickup points.
         </div>
       ) : null}
-      <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }] as const} />
-      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
+      <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }, { key: "seals", label: "Seal Stickers" }] as const} />
+      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
     </div>
   );
 }
