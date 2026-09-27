@@ -361,6 +361,76 @@ function ModulesSection({ merchantId }: { merchantId: string }) {
 
 
 
+/** Super-admin-only store delete with confirm + required reason. */
+function DeleteStoreButton({
+  merchantId,
+  storeName,
+  onClose,
+}: {
+  merchantId: string;
+  storeName: string;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const fetchModules = useServerFn(getMerchantModules);
+  const del = useServerFn(deleteMerchant);
+  const { data: modules } = useQuery({
+    queryKey: ["merchant", "modules", merchantId],
+    queryFn: () => fetchModules({ data: { merchant_id: merchantId } }),
+  });
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => del({ data: { merchantId, reason: reason.trim() } }),
+    onSuccess: () => {
+      toast.success("Store deleted");
+      queryClient.invalidateQueries({ queryKey: ["merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["merchant"] });
+      queryClient.invalidateQueries({ queryKey: ["bulk"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not delete"),
+  });
+
+  if (!modules?.canWrite) return null;
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="h-10 px-4 rounded-[12px] border border-destructive/50 text-destructive text-[13px] font-bold"
+      >
+        Delete store
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <input
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Reason (required)"
+        className="h-10 w-full sm:w-56 rounded-[12px] border border-border bg-background px-3 text-[14px]"
+      />
+      <button
+        disabled={!reason.trim() || mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="h-10 px-4 rounded-[12px] bg-destructive text-destructive-foreground text-[13px] font-bold disabled:opacity-50"
+      >
+        {mutation.isPending ? "Deleting…" : `Delete "${storeName || "store"}"`}
+      </button>
+      <button
+        onClick={() => setOpen(false)}
+        className="h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold"
+      >
+        Keep
+      </button>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
