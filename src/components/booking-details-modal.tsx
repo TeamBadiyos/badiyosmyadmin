@@ -147,17 +147,52 @@ export function BookingDetailsModal({
   });
 
 
+  const refreshAfterMoney = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+  };
+
   const cancelMutation = useMutation({
-    mutationFn: (reason: CancellationReason) =>
-      cancelFn({ data: { bookingId, reason } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
-      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    mutationFn: (payload: { reason: CancellationReason; refund: boolean }) =>
+      cancelFn({ data: { bookingId, reason: payload.reason, refund: payload.refund } }),
+    onSuccess: (res) => {
+      refreshAfterMoney();
       setCancelOpen(false);
       setCancelReason("");
+      const r = res?.refund;
+      if (!r?.attempted) {
+        toast.success("Booking cancelled");
+      } else if (r.ok) {
+        toast.success(`Booking cancelled and ₹${r.amount} refunded`);
+      } else {
+        toast.error("Booking cancelled, but the refund did not go through", {
+          description: r.message ?? undefined,
+        });
+      }
     },
   });
+
+  const refundMutation = useMutation({
+    mutationFn: () => refundFn({ data: { bookingId } }),
+    onSuccess: (r) => {
+      refreshAfterMoney();
+      setRefundConfirm(false);
+      if (r.ok && r.attempted) {
+        toast.success(`₹${r.amount} refunded to the customer`);
+      } else if (r.ok) {
+        toast.info(r.message ?? "Already refunded");
+      } else {
+        toast.error("Refund did not go through", {
+          description: r.message ?? undefined,
+        });
+      }
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Refund failed");
+    },
+  });
+
 
   // Edit
   const editFn = useServerFn(editBooking);
