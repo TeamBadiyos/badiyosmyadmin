@@ -979,30 +979,67 @@ export function BookingDetailsModal({
                       <p className="text-[13px] text-foreground">
                         Select a reason to cancel this booking. This cannot be undone.
                       </p>
+                      <select
+                        value={cancelReason}
+                        onChange={(e) =>
+                          setCancelReason(e.target.value as CancellationReason | "")
+                        }
+                        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] min-w-[220px]"
+                      >
+                        <option value="">Select reason…</option>
+                        {CANCELLATION_REASONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r.replace(/_/g, " ")}
+                          </option>
+                        ))}
+                      </select>
+
+                      {canRefund && (
+                        <div className="rounded-[14px] border border-border bg-muted/40 p-3 space-y-2">
+                          <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+                            Refund
+                          </p>
+                          <label className="flex items-start gap-2 text-[13px] text-foreground">
+                            <input
+                              type="radio"
+                              className="mt-1"
+                              checked={cancelRefund}
+                              onChange={() => setCancelRefund(true)}
+                            />
+                            <span>
+                              Refund the full amount (₹{refundableAmount}) to the customer now
+                            </span>
+                          </label>
+                          <label className="flex items-start gap-2 text-[13px] text-foreground">
+                            <input
+                              type="radio"
+                              className="mt-1"
+                              checked={!cancelRefund}
+                              onChange={() => setCancelRefund(false)}
+                            />
+                            <span>Do not refund</span>
+                          </label>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-3">
-                        <select
-                          value={cancelReason}
-                          onChange={(e) =>
-                            setCancelReason(e.target.value as CancellationReason | "")
-                          }
-                          className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] min-w-[220px]"
-                        >
-                          <option value="">Select reason…</option>
-                          {CANCELLATION_REASONS.map((r) => (
-                            <option key={r} value={r}>
-                              {r.replace(/_/g, " ")}
-                            </option>
-                          ))}
-                        </select>
                         <button
                           disabled={!cancelReason || cancelMutation.isPending}
                           onClick={() =>
-                            cancelReason && cancelMutation.mutate(cancelReason)
+                            cancelReason &&
+                            cancelMutation.mutate({
+                              reason: cancelReason,
+                              refund: canRefund && cancelRefund,
+                            })
                           }
                           className="h-11 px-5 rounded-[14px] bg-destructive text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
                         >
                           <Ban size={16} />
-                          {cancelMutation.isPending ? "Cancelling…" : "Confirm cancel"}
+                          {cancelMutation.isPending
+                            ? "Cancelling…"
+                            : canRefund && cancelRefund
+                              ? `Cancel & refund ₹${refundableAmount}`
+                              : "Confirm cancel"}
                         </button>
                         <button
                           onClick={() => {
@@ -1024,6 +1061,74 @@ export function BookingDetailsModal({
                 </section>
               )}
 
+              {/* Issue refund on an already-cancelled booking */}
+              {canEdit && isTerminal && canRefund && (
+                <section className="bg-background border border-border rounded-[18px] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Issue refund
+                      </h3>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        ₹{refundableAmount} was paid online and has not been refunded yet.
+                        The money goes back to the customer's original payment method.
+                      </p>
+                      {data.refundStatus === "failed" && (
+                        <p className="text-[12px] text-destructive mt-1">
+                          A previous refund attempt failed.
+                        </p>
+                      )}
+                    </div>
+                    {!refundConfirm && (
+                      <button
+                        onClick={() => setRefundConfirm(true)}
+                        className="h-11 px-4 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] inline-flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <IndianRupee size={16} />
+                        Refund ₹{refundableAmount}
+                      </button>
+                    )}
+                  </div>
+                  {refundConfirm && (
+                    <div className="mt-3 rounded-[14px] border border-border bg-card p-3 space-y-3">
+                      <p className="text-[13px] text-foreground">
+                        Refund ₹{refundableAmount} to {data.customerName || "the customer"}?
+                        This cannot be undone.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          disabled={refundMutation.isPending}
+                          onClick={() => refundMutation.mutate()}
+                          className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
+                        >
+                          {refundMutation.isPending
+                            ? "Refunding…"
+                            : `Yes, refund ₹${refundableAmount}`}
+                        </button>
+                        <button
+                          onClick={() => setRefundConfirm(false)}
+                          className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {data.paymentStatus === "refunded" && (
+                <section className="bg-background border border-border rounded-[18px] p-4">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
+                    Refunded
+                  </h3>
+                  <p className="text-[14px] font-semibold text-foreground">
+                    ₹{data.refundAmount ?? 0}
+                    {data.refundId ? ` · ${data.refundId}` : ""}
+                  </p>
+                </section>
+              )}
+
               {data.status === "cancelled" && data.cancellationReason && (
                 <section className="bg-red-50 border border-red-100 rounded-[18px] p-4">
                   <h3 className="text-[11px] font-bold uppercase tracking-wide text-red-700 mb-1">
@@ -1034,6 +1139,7 @@ export function BookingDetailsModal({
                   </p>
                 </section>
               )}
+
             </>
           )}
         </div>
