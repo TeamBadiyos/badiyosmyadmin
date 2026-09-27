@@ -12,7 +12,6 @@ import {
   generateSealStickerPdf,
   sealPdfFilename,
   type SealLabelColour,
-  type SealLabelSize,
 } from "@/lib/seal-sticker-pdf";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
@@ -103,7 +102,6 @@ type PdfDialogState = {
   batch: SealBatch;
   from: string;
   to: string;
-  size: SealLabelSize;
   colour: SealLabelColour;
 };
 
@@ -155,7 +153,6 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
         batchNo: pdfDialog.batch.batch_no,
         from: pdfFrom,
         to: pdfTo,
-        size: pdfDialog.size,
         colour: pdfDialog.colour,
         rows: selected,
         onProgress: (completed, total) => setPdfProgress(Math.round((completed / total) * 100)),
@@ -163,7 +160,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = sealPdfFilename({ batchNo: pdfDialog.batch.batch_no, from: pdfFrom, to: pdfTo, size: pdfDialog.size, colour: pdfDialog.colour });
+      a.download = sealPdfFilename({ batchNo: pdfDialog.batch.batch_no, from: pdfFrom, to: pdfTo, colour: pdfDialog.colour });
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(`${pdfCount.toLocaleString("en-IN")} sticker PDF ready`);
@@ -196,7 +193,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                 <td className={`${td} whitespace-nowrap`}>
                   {canWrite && !b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setAssignErr(null); setAssigning({ batch: b, merchant: "", charge: "" }); }}>Assign</button> : null}
                   <button className={`${btnGhost} mr-2`} onClick={() => download(b)}>Export CSV</button>
-                  <button className={btnGhost} onClick={() => { setPdfError(null); setPdfDialog({ batch: b, from: String(b.serial_from), to: String(b.serial_to), size: "25x50", colour: "green" }); }}><Download size={13} className="mr-1 inline" />Download PDF</button>
+                  <button className={btnGhost} onClick={() => { setPdfError(null); setPdfDialog({ batch: b, from: String(b.serial_from), to: String(b.serial_to), colour: "green" }); }}><Download size={13} className="mr-1 inline" />Download PDF</button>
                 </td>
               </tr>
             ))}
@@ -219,9 +216,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
               </p>
             </div>
             <Field label="Label size">
-              <div className="grid grid-cols-2 gap-2">
-                {(["25x50", "38x50"] as const).map((size) => <button key={size} type="button" disabled={pdfProgress != null} className={`${btnGhost} py-2 ${pdfDialog.size === size ? "border-primary bg-primary-tint text-primary" : ""}`} onClick={() => setPdfDialog({ ...pdfDialog, size })}>{size === "25x50" ? "25 × 50 mm" : "38 × 50 mm"}</button>)}
-              </div>
+              <p className="text-[12px] text-muted-foreground">4 × 11.5 inch fold-over seal — one sticker per page.</p>
             </Field>
             <Field label="Colour">
               <div className="grid grid-cols-2 gap-2">
