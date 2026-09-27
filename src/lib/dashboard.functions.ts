@@ -164,7 +164,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("total_amount")
+              .select("total_amount, refund_amount, refund_status")
               .eq("status", "completed")
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
