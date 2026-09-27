@@ -891,6 +891,30 @@ export type CourierChargeRow = {
   razorpay_payment_id: string | null;
 };
 
+export type CourierPacketRow = {
+  id: string;
+  drop_stop_id: string;
+  scanned_pickup_at: string | null;
+  scanned_drop_at: string | null;
+};
+
+export const skipCourierStopScan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { stopId: string; reason: string }) => {
+    if (!input?.stopId) throw new Error("stopId required");
+    if (!input.reason?.trim()) throw new Error("Reason is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCourierStaff(context);
+    const { error } = await rpc(context.supabase, "staff_courier_skip_scan", {
+      _stop_id: data.stopId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const getCourierOrderStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string }) => {
@@ -901,10 +925,15 @@ export const getCourierOrderStops = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ stops: CourierStopRow[]; parcels: CourierParcelRow[]; charges: CourierChargeRow[] }> => {
+    }): Promise<{
+      stops: CourierStopRow[];
+      parcels: CourierParcelRow[];
+      charges: CourierChargeRow[];
+      packets: CourierPacketRow[];
+    }> => {
       await requireCourierStaff(context);
       const db = context.supabase;
-      const [s, p, c] = await Promise.all([
+      const [s, p, c, k] = await Promise.all([
         db
           .from("courier_order_stops")
           .select(
@@ -924,12 +953,18 @@ export const getCourierOrderStops = createServerFn({ method: "POST" })
           )
           .eq("order_id", data.orderId)
           .order("created_at", { ascending: true }),
+        db
+          .from("business_trip_packets")
+          .select("id, drop_stop_id, scanned_pickup_at, scanned_drop_at")
+          .eq("courier_order_id", data.orderId),
       ]);
+      if (k.error) throw new Error(k.error.message);
       if (s.error) throw new Error(s.error.message);
       if (p.error) throw new Error(p.error.message);
       if (c.error) throw new Error(c.error.message);
       return {
         stops: (s.data ?? []) as CourierStopRow[],
+        packets: (k.data ?? []) as CourierPacketRow[],
         parcels: (p.data ?? []) as CourierParcelRow[],
         charges: ((c.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
           ...(r as unknown as CourierChargeRow),
