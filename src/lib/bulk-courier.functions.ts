@@ -217,6 +217,60 @@ export const lookupBusinessPhone = createServerFn({ method: "POST" })
     return findByPhone(context as Ctx, i.phone);
   });
 
+export type StoreSearchRow = {
+  merchant_id: string; store_name: string | null; phone: string | null;
+  city: string | null; status: string | null; is_business: boolean;
+};
+
+/** Search registered stores/merchants by name or phone for the Add business flow. */
+export const searchStores = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { q: string }) => i)
+  .handler(async ({ data: i, context }): Promise<StoreSearchRow[]> => {
+    await requireOps(context as Ctx);
+    const db = (context as Ctx).supabase;
+    const q = (i.q ?? "").trim();
+    if (q.length < 2) return [];
+    const digits = q.replace(/\D/g, "");
+    const filters = [`store_name.ilike.%${q}%`, `owner_name.ilike.%${q}%`];
+    if (digits.length >= 4) filters.push(`phone.ilike.%${digits}%`);
+    const { data, error } = await db
+      .from("merchants")
+      .select("id, store_name, owner_name, phone, city, status")
+      .or(filters.join(","))
+      .order("store_name")
+      .limit(20);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as any[];
+    if (!rows.length) return [];
+    const { data: bps } = await db
+      .from("business_profiles").select("merchant_id").in("merchant_id", rows.map((r) => r.id));
+    const bizIds = new Set(((bps ?? []) as any[]).map((b) => b.merchant_id));
+    return rows.map((m) => ({
+      merchant_id: m.id, store_name: m.store_name, phone: m.phone,
+      city: m.city, status: m.status, is_business: bizIds.has(m.id),
+    }));
+  });
+
+/** Read the Store / Bulk Delivery module flags for one merchant. */
+export const getMerchantModules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }): Promise<{ store_enabled: boolean; delivery_enabled: boolean; delivery_status: string | null; canWrite: boolean }> => {
+    const a = await requireOps(context as Ctx);
+    const { data, error } = await (context as Ctx).supabase
+      .from("merchants").select("store_enabled, delivery_enabled, delivery_status")
+      .eq("id", i.merchant_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return {
+      store_enabled: !!data?.store_enabled,
+      delivery_enabled: !!data?.delivery_enabled,
+      delivery_status: data?.delivery_status ?? null,
+      canWrite: a.canWrite,
+    };
+  });
+
+
 export const setBusinessModules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { merchant_id: string; store_enabled: boolean; delivery_enabled: boolean; reason: string }) => {
