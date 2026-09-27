@@ -1,3 +1,4 @@
+import { TripLeftBehind } from "@/components/left-behind";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -1423,6 +1424,7 @@ function MultiStopSections({
   if (!data) return null;
   return (
     <div className="mt-4 space-y-4">
+      <TripLeftBehind courierOrderId={order.id} />
       <div className="rounded-[12px] border border-border p-3">
         <h4 className="text-[13px] font-bold text-foreground">Route</h4>
         <div className="mt-2 space-y-2">
