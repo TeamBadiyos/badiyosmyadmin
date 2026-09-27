@@ -396,12 +396,10 @@ export async function generateSealStickerPdf(options: SealPdfOptions) {
     pdf.addImage(
       mark.url,
       "PNG",
-      ...(frect(back, cx - markSmallW / 2, backPanel.y + 5, markSmallW, markSmallH) as [
-        number,
-        number,
-        number,
-        number,
-      ]),
+      back.px(cx - markSmallW / 2),
+      back.py(backPanel.y + 5),
+      markSmallW,
+      markSmallH,
       "seal-wordmark",
       "FAST",
       back.s === 1 ? 0 : 180,
