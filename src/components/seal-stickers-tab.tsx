@@ -215,7 +215,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                 <Field label="To"><input type="number" min={pdfDialog.batch.serial_from} max={pdfDialog.batch.serial_to} className={inputCls} disabled={pdfProgress != null} value={pdfDialog.to} onChange={(e) => { setPdfError(null); setPdfDialog({ ...pdfDialog, to: e.target.value }); }} /></Field>
               </div>
               <p className={`mt-1 text-[11px] ${pdfRangeValid ? "text-muted-foreground" : "text-destructive"}`}>
-                {pdfCount > 5000 ? "Maximum 5,000 stickers per PDF." : pdfCount > 0 ? `${pdfCount.toLocaleString("en-IN")} stickers selected (maximum 5,000).` : "Enter a valid range within this batch."}
+                {pdfCount > 5000 ? "Maximum 5,000 stickers per PDF." : pdfFrom < pdfDialog.batch.serial_from || pdfTo > pdfDialog.batch.serial_to ? `Range must stay within ${pdfDialog.batch.serial_from}–${pdfDialog.batch.serial_to}.` : pdfCount > 0 ? `${pdfCount.toLocaleString("en-IN")} stickers selected (maximum 5,000).` : "Enter a valid range within this batch."}
               </p>
             </div>
             <Field label="Label size">
