@@ -22,6 +22,7 @@ import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
 import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
+import { UnassignedTripsPage } from "@/components/unassigned-trips-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { InterestLeadsPage } from "@/components/interest-leads-page";
 import { WaitlistPage } from "@/components/waitlist-page";
@@ -115,6 +116,7 @@ const NAV_ITEMS = [
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
+  { key: "unassigned-trips", label: "Unassigned Trips", icon: Truck },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
@@ -148,7 +150,7 @@ const NAV_GROUPS = [
     id: "live-ops",
     label: "Live Ops",
     icon: Activity,
-    keys: ["emergency", "support"],
+    keys: ["emergency", "support", "unassigned-trips"],
   },
   {
     id: "clean",
@@ -561,6 +563,8 @@ function Shell() {
         ) : active === "interest-leads" ? (
           <InterestLeadsPage role={role} />
 
+        ) : active === "unassigned-trips" ? (
+          <UnassignedTripsPage role={role} />
         ) : active === "emergency" ? (
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
