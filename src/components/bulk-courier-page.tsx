@@ -152,7 +152,7 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
-const emptyDispatch = { id: null as string | null, name: "", manual_enabled: false, qty_enabled: false, qty_threshold: 10 as number | null, slots_enabled: false, slot_times: [] as string[], max_drops_per_batch: null as number | null, time_per_drop_min: 3, is_active: true };
+const emptyDispatch = { id: null as string | null, name: "", manual_enabled: false, qty_enabled: false, qty_threshold: 10 as number | null, slots_enabled: false, slot_times: [] as string[], max_drops_per_batch: null as number | null, time_per_drop_min: 3, cost_per_extra_trip: null as number | null, is_active: true };
 
 function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
@@ -168,8 +168,8 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
   const valid = edit && edit.name.trim() && (edit.manual_enabled || edit.qty_enabled || (edit.slots_enabled && edit.slot_times.length > 0) || (maxOn && (edit.max_drops_per_batch ?? 0) > 0));
   return (
     <div className="space-y-3">
-      {canWrite ? <button className={btn} onClick={() => open({ ...emptyDispatch })}><Plus size={14} className="mr-1 inline" />Dispatch plan</button> : null}
-      <Table head={["Name", "Manual", "Min qty", "Time slots (IST)", "Max drops/trip", "Min/drop", "Used by", "Active", ""]}>
+      {canWrite ? <button className={btn} onClick={() => open({ ...emptyDispatch, cost_per_extra_trip: (data?.pricing ?? []).find((p: PricingPlan) => p.is_active)?.base_fare ?? null })}><Plus size={14} className="mr-1 inline" />Dispatch plan</button> : null}
+      <Table head={["Name", "Manual", "Min qty", "Time slots (IST)", "Max drops/trip", "Min/drop", "₹/extra trip", "Used by", "Active", ""]}>
         {(data?.dispatch ?? []).map((p: DispatchPlan) => (
           <tr key={p.id}>
             <td className={`${td} font-semibold`}>{p.name}</td>
@@ -178,6 +178,7 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
             <td className={td}>{p.slots_enabled && p.slot_times.length ? p.slot_times.join(", ") : "—"}</td>
             <td className={td}>{p.max_drops_per_batch ?? "—"}</td>
             <td className={td}>{p.time_per_drop_min}</td>
+            <td className={td}>{p.cost_per_extra_trip == null ? "—" : `₹${p.cost_per_extra_trip}`}</td>
             <td className={td}>{p.used_by}</td>
             <td className={td}><input type="checkbox" className="h-4 w-4 accent-[#00B97A]" checked={p.is_active} disabled={!canWrite} onChange={(e) => toggle("dispatch", p.id, e.target.checked)} /></td>
             <td className={td}>{canWrite ? <button className={btnGhost} onClick={() => open({ ...p })}><Pencil size={12} /></button> : null}</td>
