@@ -17,6 +17,7 @@ export type DashboardStats = {
   // offers & campaigns
   couponsUsed: number;
   discountGiven: number;
+  discountToday: number;
   activeCampaigns: number;
   rewardsIssued: number;
 };
