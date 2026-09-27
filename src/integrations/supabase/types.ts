@@ -7821,6 +7821,15 @@ export type Database = {
         }
         Returns: string
       }
+      staff_set_booking_refund: {
+        Args: {
+          _booking_id: string
+          _refund_amount: number
+          _refund_id: string
+          _refund_status: string
+        }
+        Returns: Json
+      }
       staff_set_commission_rule_active: {
         Args: { _id: string; _is_active: boolean }
         Returns: undefined
