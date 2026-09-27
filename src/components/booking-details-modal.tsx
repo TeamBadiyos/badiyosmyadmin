@@ -114,6 +114,8 @@ export function BookingDetailsModal({
   const [nextStatus, setNextStatus] = useState<BookingStatus | "">("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
+  const [cancelRefund, setCancelRefund] = useState(true);
+  const [refundConfirm, setRefundConfirm] = useState(false);
 
   const isDeleted = !!data?.deletedAt;
   const isTerminal =
