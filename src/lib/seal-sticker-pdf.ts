@@ -118,7 +118,24 @@ async function artworkDataUrl(src: string, black: false | "ink" | "knockout", ma
     }
     context.putImageData(pixels, 0, 0);
   }
-  return { url: canvas.toDataURL("image/png"), ratio: canvas.width / Math.max(1, canvas.height) };
+  const upright = canvas.toDataURL("image/png");
+
+  // 180 degree copy for the fold-over half of the seal.
+  const turned = document.createElement("canvas");
+  turned.width = canvas.width;
+  turned.height = canvas.height;
+  const turnedContext = turned.getContext("2d");
+  if (turnedContext) {
+    turnedContext.translate(turned.width, turned.height);
+    turnedContext.rotate(Math.PI);
+    turnedContext.drawImage(canvas, 0, 0);
+  }
+
+  return {
+    url: upright,
+    flippedUrl: turnedContext ? turned.toDataURL("image/png") : upright,
+    ratio: canvas.width / Math.max(1, canvas.height),
+  };
 }
 
 type Pdf = import("jspdf").jsPDF;
