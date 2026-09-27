@@ -1092,7 +1092,7 @@ export function BookingDetailsModal({
                   {refundConfirm && (
                     <div className="mt-3 rounded-[14px] border border-border bg-card p-3 space-y-3">
                       <p className="text-[13px] text-foreground">
-                        Refund ₹{refundableAmount} to {data.customerName || "the customer"}?
+                        Refund ₹{refundableAmount} to {data.customer.name || "the customer"}?
                         This cannot be undone.
                       </p>
                       <div className="flex flex-wrap items-center gap-3">
