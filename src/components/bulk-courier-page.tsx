@@ -653,7 +653,7 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
         </div>
       ) : null}
       <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }, { key: "seals", label: "Seal Stickers" }] as const} />
-      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
+      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
     </div>
   );
 }
