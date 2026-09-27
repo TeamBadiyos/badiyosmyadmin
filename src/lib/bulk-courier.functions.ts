@@ -237,6 +237,7 @@ export const searchStores = createServerFn({ method: "POST" })
     const { data, error } = await db
       .from("merchants")
       .select("id, store_name, owner_name, phone, city, status")
+      .is("deleted_at", null)
       .or(filters.join(","))
       .order("store_name")
       .limit(20);

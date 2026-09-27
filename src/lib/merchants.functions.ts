@@ -57,6 +57,7 @@ export const listMerchants = createServerFn({ method: "GET" })
       .select(
         "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, created_at, updated_at",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(300);
     if (data.status) q = q.eq("status", data.status);
@@ -210,6 +211,8 @@ export type MerchantDetail = {
   isGstRegistered: boolean | null;
   gstin: string | null;
   gstLegalName: string | null;
+  deletedAt: string | null;
+  deleteReason: string | null;
 };
 
 export const getMerchantDetail = createServerFn({ method: "GET" })
@@ -224,7 +227,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, deleted_at, delete_reason",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -247,7 +250,25 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       isGstRegistered: m.is_gst_registered,
       gstin: m.gstin,
       gstLegalName: m.gst_legal_name,
+      deletedAt: m.deleted_at ?? null,
+      deleteReason: m.delete_reason ?? null,
     };
+  });
+
+export const deleteMerchant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string; reason: string }) => {
+    if (!input?.merchantId) throw new Error("Merchant is required");
+    if (!input.reason?.trim()) throw new Error("A reason is required to delete a store");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await context.supabase.rpc("staff_soft_delete_merchant", {
+      _merchant_id: data.merchantId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export type UpdateMerchantInput = {
