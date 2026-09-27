@@ -211,6 +211,11 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
               <input type="number" min={1} disabled={!maxOn} className={`${inputCls} max-w-[100px]`} value={edit.max_drops_per_batch ?? ""} onChange={(e) => setEdit({ ...edit, max_drops_per_batch: Number(e.target.value) || null })} /></label>
             <label className="flex items-center gap-2 text-[13px]">Time per drop (minutes)
               <input type="number" min={1} max={15} className={`${inputCls} max-w-[100px]`} value={edit.time_per_drop_min ?? 3} onChange={(e) => setEdit({ ...edit, time_per_drop_min: Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 1))) })} /></label>
+            <div>
+              <label className="flex items-center gap-2 text-[13px]">Cost per extra trip (₹)
+                <input type="number" min={0} className={`${inputCls} max-w-[110px]`} value={edit.cost_per_extra_trip ?? ""} onChange={(e) => setEdit({ ...edit, cost_per_extra_trip: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} /></label>
+              <p className="mt-1 text-[12px] text-muted-foreground">Higher = fewer, longer trips. Lower = more, shorter trips.</p>
+            </div>
             {!valid ? <p className="text-[12px] text-warning">Enter a name and tick at least one option.</p> : null}
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setEdit(null)}>Cancel</button>
