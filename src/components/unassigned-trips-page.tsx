@@ -50,12 +50,12 @@ export function UnassignedTripsPage({ role }: { role: StaffRole | null }) {
           <thead className="bg-muted/40"><tr>{["Business", "Trip", "Drops", "Fare", "Waiting", ""].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-border">
             {rows.map((t) => (
-              <tr key={t.batch_id}>
+              <tr key={t.courier_order_id}>
                 <td className={`${td} font-semibold`}>{t.business_name}</td>
-                <td className={td}>Trip {t.trip_no} <span className="font-mono text-[11px] text-muted-foreground">#{t.batch_id.slice(0, 8)}</span></td>
+                <td className={td}>{t.trip_no != null ? `Trip ${t.trip_no}` : "Trip"}{t.trip_label ? ` · ${t.trip_label}` : ""} <span className="font-mono text-[11px] text-muted-foreground">{t.order_code ?? `#${t.courier_order_id.slice(0, 8)}`}</span></td>
                 <td className={td}>{t.drops}</td>
                 <td className={td}>{inr(t.total_amount)}</td>
-                <td className={td}>{ago(t.created_at)}</td>
+                <td className={td}>{t.search_started_at ? ago(t.search_started_at) : "—"}</td>
                 <td className={`${td} whitespace-nowrap text-right`}>
                   <div className="flex justify-end gap-2">
                     <button className={btn} onClick={() => openAssign(t.courier_order_id)}>Assign rider</button>
@@ -72,13 +72,13 @@ export function UnassignedTripsPage({ role }: { role: StaffRole | null }) {
       {order ? <OrderDetail order={order} canWrite={role === "super_admin"} onClose={() => setOrder(null)} onChanged={() => { setOrder(null); refresh(); }} /> : null}
       {rejecting ? (
         <ReasonDialog
-          title={`Reject trip ${rejecting.trip_no} — ${rejecting.business_name}`}
+          title={`Reject trip ${rejecting.trip_no ?? ""} — ${rejecting.business_name}`}
           confirmLabel="Reject trip"
           body={<p className="rounded-[10px] bg-warning/10 p-3 text-[13px] text-foreground">Orders go back to pending and join the next slot. Wallet will be refunded.</p>}
           onClose={() => setRejecting(null)}
           onConfirm={async (reason) => {
-            const r = await reject({ data: { batch_id: rejecting.batch_id, reason } });
-            toast.success(r.refunded ? `Trip rejected · ${inr(r.amount)} refunded to wallet` : "Trip rejected");
+            await reject({ data: { courier_order_id: rejecting.courier_order_id, reason } });
+            toast.success("Trip rejected");
             refresh();
           }}
         />

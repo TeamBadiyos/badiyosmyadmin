@@ -346,7 +346,7 @@ export const getBusinessDetail = createServerFn({ method: "POST" })
       db.from("business_pickup_points").select("*").eq("merchant_id", i.merchant_id).order("created_at"),
       db.from("business_receivers").select("id, name, contact_name, contact_phone, address, is_active").eq("merchant_id", i.merchant_id).order("name").limit(1000),
       db.from("business_orders").select("id, reference_no, receiver_id, status, batch_id, courier_order_id, packet_count, created_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(300),
-      db.from("business_batches").select("id, status, fail_reason, drops_count, distance_km, distance_source, pickup_point_id, total_amount, courier_order_id, trigger, created_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(200),
+      db.from("business_batches").select("id, status, fail_reason, drops_count, distance_km, distance_source, trip_no, trip_label, dispatch_run_id, total_amount, courier_order_id, trigger, created_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(200),
       db.from("wallet_ledger").select("id, amount, type, reason, created_at").eq("owner_type", "merchant").eq("owner_id", i.merchant_id).eq("wallet_type", "delivery").order("created_at", { ascending: false }).limit(300),
       db.from("business_wallet_topups").select("id, amount, status, razorpay_payment_id, created_by_label, created_at, paid_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(100),
       db.from("courier_vehicle_types").select("id, name").eq("is_active", true),
@@ -354,12 +354,16 @@ export const getBusinessDetail = createServerFn({ method: "POST" })
     ]);
     for (const r of [pp, rc, od, bt, wl, tu, vt, ct]) if (r.error) throw new Error(r.error.message);
     const riders = await riderNames(context as Ctx, ((bt.data ?? []) as any[]).map((b) => b.courier_order_id).filter(Boolean));
-    const ppName = new Map(((pp.data ?? []) as any[]).map((p) => [p.id, p.name]));
+    const { data: runRows, error: runErr } = await db.from("business_dispatch_runs")
+      .select("id, trigger, method, drops, trips, total_km, status, created_at")
+      .eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(200);
+    if (runErr) throw new Error(runErr.message);
     return {
+      runs: ((runRows ?? []) as any[]).map((r) => ({ ...r, drops: Number(r.drops ?? 0), trips: Number(r.trips ?? 0), total_km: r.total_km == null ? null : Number(r.total_km) })),
       pickups: (pp.data ?? []) as PickupPoint[],
       receivers: (rc.data ?? []) as any[],
       orders: (od.data ?? []) as any[],
-      trips: ((bt.data ?? []) as any[]).map((b) => ({ ...b, pickup_name: b.pickup_point_id ? (ppName.get(b.pickup_point_id) ?? null) : null, rider_name: b.courier_order_id ? (riders.get(b.courier_order_id) ?? null) : null, total_amount: Number(b.total_amount ?? 0), distance_km: b.distance_km == null ? null : Number(b.distance_km) })),
+      trips: ((bt.data ?? []) as any[]).map((b) => ({ ...b, rider_name: b.courier_order_id ? (riders.get(b.courier_order_id) ?? null) : null, total_amount: Number(b.total_amount ?? 0), distance_km: b.distance_km == null ? null : Number(b.distance_km) })),
       ledger: ((wl.data ?? []) as any[]).map((l) => ({ ...l, amount: Number(l.amount) })),
       topups: ((tu.data ?? []) as any[]).map((t) => ({ ...t, amount: Number(t.amount) })),
       vehicleTypes: (vt.data ?? []) as Array<{ id: string; name: string }>,
@@ -424,60 +428,37 @@ async function riderNames(context: Ctx, orderIds: string[]): Promise<Map<string,
 }
 
 export type UnassignedTrip = {
-  batch_id: string; merchant_id: string; business_name: string; courier_order_id: string;
-  trip_no: number; drops: number; total_amount: number; created_at: string; courier_status: string;
+  courier_order_id: string; order_code: string | null; status: string; merchant_id: string | null;
+  business_name: string; trip_no: number | null; trip_label: string | null; drops: number;
+  total_amount: number; search_started_at: string | null; needs_ops_attention: boolean;
 };
 
-/** Dispatched business trips whose courier order has no rider yet. */
+/** Backend list: business courier orders still searching with no rider. */
 export const listUnassignedBusinessTrips = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<UnassignedTrip[]> => {
-    await requireOps(context as Ctx);
-    const db = (context as Ctx).supabase;
-    const { data: bs, error } = await db.from("business_batches")
-      .select("id, merchant_id, trigger, drops_count, total_amount, courier_order_id, created_at")
-      .eq("status", "dispatched").not("courier_order_id", "is", null)
-      .order("created_at", { ascending: true }).limit(500);
-    if (error) throw new Error(error.message);
-    const list = (bs ?? []) as any[];
-    if (!list.length) return [];
-    const [co, pr] = await Promise.all([
-      db.from("courier_orders").select("id, status, assigned_expert_id").in("id", list.map((b) => b.courier_order_id)),
-      db.from("business_profiles").select("merchant_id, business_name").in("merchant_id", [...new Set(list.map((b) => b.merchant_id))]),
-    ]);
-    if (co.error) throw new Error(co.error.message);
-    const cMap = new Map(((co.data ?? []) as any[]).map((c) => [c.id, c]));
-    const nMap = new Map(((pr.data ?? []) as any[]).map((p) => [p.merchant_id, p.business_name]));
-    const runs = groupRuns(list);
-    return list
-      .filter((b) => { const c = cMap.get(b.courier_order_id); return c && !c.assigned_expert_id && !["CANCELLED", "COMPLETED"].includes(c.status); })
-      .map((b) => ({
-        batch_id: b.id, merchant_id: b.merchant_id, business_name: nMap.get(b.merchant_id) ?? "—",
-        courier_order_id: b.courier_order_id, trip_no: runs.get(b.id) ?? 1, drops: Number(b.drops_count ?? 0),
-        total_amount: Number(b.total_amount ?? 0), created_at: b.created_at, courier_status: cMap.get(b.courier_order_id).status,
-      }));
+    const rows = ((await rpc(context as Ctx, "staff_list_unassigned_business_trips", {})) ?? []) as any[];
+    return rows.map((r) => ({
+      courier_order_id: r.courier_order_id, order_code: r.order_code ?? null, status: r.status,
+      merchant_id: r.merchant_id ?? null, business_name: r.business_name ?? "—",
+      trip_no: r.trip_no == null ? null : Number(r.trip_no), trip_label: r.trip_label ?? null,
+      drops: Number(r.drops ?? 0), total_amount: Number(r.total_amount ?? 0),
+      search_started_at: r.search_started_at ?? null, needs_ops_attention: !!r.needs_ops_attention,
+    }));
   });
-
-/** Trip number within its run: same business + trigger + minute. */
-function groupRuns(rows: any[]): Map<string, number> {
-  const seen = new Map<string, number>();
-  const out = new Map<string, number>();
-  for (const b of [...rows].sort((a, z) => String(a.created_at).localeCompare(String(z.created_at)))) {
-    const k = `${b.merchant_id}|${b.trigger}|${String(b.created_at).slice(0, 16)}`;
-    const n = (seen.get(k) ?? 0) + 1; seen.set(k, n); out.set(b.id, n);
-  }
-  return out;
-}
 
 export const rejectBusinessTrip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { batch_id: string; reason: string }) => {
-    if (!i?.batch_id) throw new Error("Trip required");
+  .inputValidator((i: { courier_order_id: string; reason: string }) => {
+    if (!i?.courier_order_id) throw new Error("Trip required");
     if (!i.reason?.trim()) throw new Error("Reason required");
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await requireOps(context as Ctx);
-    const r = await rpc(context as Ctx, "staff_business_reject_trip", { _batch_id: i.batch_id, _reason: i.reason.trim() });
-    return { refunded: !!r?.refunded, amount: Number(r?.amount ?? 0) };
+    const db = (context as Ctx).supabase;
+    const { data: b, error } = await db.from("business_batches").select("id").eq("courier_order_id", i.courier_order_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!b) throw new Error("Trip not found");
+    await rpc(context as Ctx, "staff_business_reject_trip", { _batch_id: b.id, _reason: i.reason.trim() });
+    return { ok: true };
   });
