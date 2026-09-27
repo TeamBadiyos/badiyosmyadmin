@@ -31,6 +31,8 @@ import {
 import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
 import { Field, Modal, OrderDetail, Pill, inputCls } from "@/components/courier-page";
 import { SealStickersTab, SealStockCard } from "@/components/seal-stickers-tab";
+import { LeftBehindTodayCard } from "@/components/left-behind";
+import { getLeftBehindCounts } from "@/lib/left-behind.functions";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
 const btnGhost = "rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-40";
@@ -407,6 +409,7 @@ function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTyp
   return (
     <div className="space-y-3">
       <SealStockCard merchantId={biz.merchant_id} />
+      <LeftBehindTodayCard merchantId={biz.merchant_id} />
       <Section title="Modules">
         <div className="flex flex-wrap items-center gap-4 text-[13px]">
           <label className="flex items-center gap-2"><input type="checkbox" disabled={!canWrite} checked={mods.store} onChange={(e) => setMods({ ...mods, store: e.target.checked })} />Store</label>
@@ -542,6 +545,9 @@ function TripsTab({ rows, runs: runRows, canWriteOrders }: { rows: Array<Record<
   const openOrder = async (id: string) => {
     try { const r = await fetchOrders({ data: { orderId: id } }); if (r[0]) setOrder(r[0]); else toast.error("Courier order not found"); } catch (e) { err(e); }
   };
+  const lbFn = useServerFn(getLeftBehindCounts);
+  const batchIds = rows.map((b) => String(b.id));
+  const { data: lb } = useQuery({ queryKey: ["bulk", "left-behind-counts", batchIds.join(",")], queryFn: () => lbFn({ data: { batch_ids: batchIds } }), enabled: batchIds.length > 0 });
   const runs = useMemo(() => {
     const byRun = new Map<string, Array<Record<string, any>>>();
     const loose: Array<Record<string, any>> = [];
@@ -571,7 +577,7 @@ function TripsTab({ rows, runs: runRows, canWriteOrders }: { rows: Array<Record<
           <Table head={["Trip", "Label", "Drops", "Rider", "Status", "Distance", "Fare", "Courier order"]}>
             {run.trips.map((b: Record<string, any>) => (
               <tr key={b.id}>
-                <td className={`${td} font-semibold`}>{b.trip_no != null ? `Trip ${b.trip_no}` : `#${String(b.id).slice(0, 8)}`}</td>
+                <td className={`${td} font-semibold`}>{b.trip_no != null ? `T${b.trip_no}` : `#${String(b.id).slice(0, 8)}`}{lb?.[b.id] ? <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{lb[b.id]} left behind</span> : null}</td>
                 <td className={td}>{b.trip_label ?? "—"}</td>
                 <td className={td}>{b.drops_count ?? "—"}</td>
                 <td className={td}>{b.rider_name ?? <span className="text-warning">Unassigned</span>}</td>
