@@ -57,6 +57,7 @@ export const listMerchants = createServerFn({ method: "GET" })
       .select(
         "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, created_at, updated_at",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(300);
     if (data.status) q = q.eq("status", data.status);
