@@ -269,6 +269,27 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
       {adding ? (
         <Modal title="Add business" onClose={() => setAdding(null)}>
           <div className="space-y-3">
+            <Field label="Search registered stores (name or phone)">
+              <input className={inputCls} value={search} placeholder="Type a store name or number" onChange={(e) => setSearch(e.target.value)} />
+            </Field>
+            {search.trim().length >= 2 ? (
+              <div className="max-h-52 overflow-y-auto rounded-[14px] border border-border">
+                {searching ? <p className="p-3 text-[12px] text-muted-foreground">Searching…</p> : null}
+                {!searching && (results ?? []).length === 0 ? <p className="p-3 text-[12px] text-muted-foreground">No registered store matches. You can still create a new one below.</p> : null}
+                {(results ?? []).map((s) => (
+                  <button key={s.merchant_id} type="button"
+                    className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-left last:border-b-0 hover:bg-muted/50"
+                    onClick={() => {
+                      setSearch("");
+                      setFound({ merchant_id: s.merchant_id, store_name: s.store_name, city: s.city, status: s.status, is_business: s.is_business });
+                      setAdding((a) => a ? { ...a, phone: (s.phone ?? "").replace(/\D/g, "").slice(-10), business_name: s.store_name ?? a.business_name, city: s.city ?? a.city } : a);
+                    }}>
+                    <span className="text-[13px] font-semibold text-foreground">{s.store_name ?? "—"}<span className="ml-2 font-normal text-muted-foreground">{s.phone ?? "—"} · {s.city ?? "—"}</span></span>
+                    <Pill tone={s.is_business ? "ok" : "off"}>{s.is_business ? "Business" : (s.status ?? "store")}</Pill>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <Field label="Phone"><input className={inputCls} inputMode="numeric" value={adding.phone} onChange={(e) => setAdding({ ...adding, phone: e.target.value })} /></Field>
             {looking ? <p className="text-[12px] text-muted-foreground">Checking number…</p> : null}
             {found ? (
@@ -281,6 +302,7 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
             ) : null}
             <Field label="Business name"><input className={inputCls} value={adding.business_name} onChange={(e) => setAdding({ ...adding, business_name: e.target.value })} /></Field>
             <Field label="City"><input className={inputCls} value={adding.city} onChange={(e) => setAdding({ ...adding, city: e.target.value })} /></Field>
+
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setAdding(null)}>Cancel</button>
               {found?.is_business ? (
