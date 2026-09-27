@@ -24,6 +24,7 @@ import {
   getCourierSettings,
   saveCourierSetting,
   verifyCourierStop,
+  skipCourierStopScan,
   waiveCourierCharge,
   getCourierAccess,
   listCourierOrderEvents,
@@ -1369,6 +1370,8 @@ function MultiStopSections({
   const qc = useQueryClient();
   const waive = useServerFn(waiveCourierCharge);
   const verify = useServerFn(verifyCourierStop);
+  const skipScan = useServerFn(skipCourierStopScan);
+  const [skipFor, setSkipFor] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["courier", "stops", order.id],
     queryFn: () => fetchStops({ data: { orderId: order.id } }),
@@ -1382,6 +1385,19 @@ function MultiStopSections({
   const stops = data?.stops ?? [];
   const parcels = data?.parcels ?? [];
   const charges = data?.charges ?? [];
+  const packets = data?.packets ?? [];
+  function scanCount(st: { id: string; stop_type: string }) {
+    if (packets.length === 0) return null;
+    if (st.stop_type === "pickup") {
+      return { label: "pickup", done: packets.filter((k) => k.scanned_pickup_at).length, total: packets.length };
+    }
+    if (st.stop_type === "drop") {
+      const mine = packets.filter((k) => k.drop_stop_id === st.id);
+      if (mine.length === 0) return null;
+      return { label: "drop", done: mine.filter((k) => k.scanned_drop_at).length, total: mine.length };
+    }
+    return null;
+  }
   const pickupIdx = new Map(stops.filter((x) => x.stop_type === "pickup").map((x, i) => [x.id, i + 1]));
   const dropIdx = new Map(stops.filter((x) => x.stop_type === "drop").map((x, i) => [x.id, i + 1]));
 
@@ -1392,6 +1408,7 @@ function MultiStopSections({
       toast.success(ok);
       setWaiveFor(null);
       setVerifyFor(null);
+      setSkipFor(null);
       setReason("");
       qc.invalidateQueries({ queryKey: ["courier", "stops", order.id] });
       qc.invalidateQueries({ queryKey: ["courier", "events", order.id] });
@@ -1436,6 +1453,56 @@ function MultiStopSections({
               {st.fail_reason_code ? (
                 <p className="font-semibold text-warning">Reason: {cap(st.fail_reason_code)}</p>
               ) : null}
+              {(() => {
+                const sc = scanCount(st);
+                if (!sc) return null;
+                return (
+                  <div className="mt-1">
+                    <p className={`font-semibold ${sc.done >= sc.total ? "text-primary" : "text-foreground"}`}>
+                      Packets scanned at {sc.label}: {sc.done} / {sc.total}
+                    </p>
+                    {sc.done < sc.total ? (
+                      skipFor === st.id ? (
+                        <div className="mt-2 space-y-2">
+                          <input
+                            placeholder="Reason for skipping scan"
+                            className={inputCls}
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              disabled={busy || !reason.trim()}
+                              onClick={() => {
+                                if (!window.confirm("Skip packet scanning for this stop?")) return;
+                                act(() => skipScan({ data: { stopId: st.id, reason } }), "Scan skipped");
+                              }}
+                              className="rounded-[10px] bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+                            >
+                              Confirm skip
+                            </button>
+                            <button onClick={() => setSkipFor(null)} className="rounded-[10px] border border-border px-3 py-1.5 text-[12px]">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSkipFor(st.id);
+                            setVerifyFor(null);
+                            setWaiveFor(null);
+                            setReason("");
+                          }}
+                          className="mt-2 rounded-[10px] border border-primary px-3 py-1.5 text-[12px] font-bold text-primary"
+                        >
+                          Skip scan
+                        </button>
+                      )
+                    ) : null}
+                  </div>
+                );
+              })()}
               {st.status === "arrived" ? (
                 verifyFor === st.id ? (
                   <div className="mt-2 space-y-2">
