@@ -411,10 +411,10 @@ export async function generateSealStickerPdf(options: SealPdfOptions) {
     pdf.setFontSize(7.5);
     pdf.setTextColor(ink.dark);
     const foldMid = foldPanel.y + foldPanel.h / 2;
-    pdf.text("FOLD HERE", 9.6, foldMid, { align: "center", baseline: "middle", angle: 90 });
-    pdf.text("FOLD HERE", PAGE_W - 8.2, foldMid, { align: "center", baseline: "middle", angle: 90 });
+    pdf.text("FOLD HERE", 10.6, foldMid, { align: "center", baseline: "middle", angle: 90 });
+    pdf.text("FOLD HERE", PAGE_W - 9.4, foldMid, { align: "center", baseline: "middle", angle: 90 });
     pdf.setFontSize(7);
-    for (const x of [8.2, PAGE_W - 8.4]) {
+    for (const x of [8.6, PAGE_W - 8.6]) {
       pdf.setFillColor(ink.dark);
       pdf.triangle(x, foldMid - 15, x - 1.5, foldMid - 12.4, x + 1.5, foldMid - 12.4, "F");
       pdf.triangle(x, foldMid + 15, x - 1.5, foldMid + 12.4, x + 1.5, foldMid + 12.4, "F");
