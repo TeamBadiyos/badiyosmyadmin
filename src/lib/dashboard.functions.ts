@@ -355,6 +355,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       onlineExperts,
       couponsUsed: redemptionRows.length,
       discountGiven: redemptionRows.reduce((a, r) => a + Number(r.discount_amount ?? 0), 0),
+      discountToday,
       activeCampaigns: activeCampaignsRes.count ?? 0,
       rewardsIssued: awardsRes.count ?? 0,
     };
