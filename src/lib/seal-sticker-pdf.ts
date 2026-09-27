@@ -50,10 +50,13 @@ async function iconDataUrl(black: boolean) {
   if (black) {
     const pixels = context.getImageData(0, 0, size, size);
     for (let index = 0; index < pixels.data.length; index += 4) {
-      if (pixels.data[index + 3] > 8) {
+      const luminance = pixels.data[index] * 0.2126 + pixels.data[index + 1] * 0.7152 + pixels.data[index + 2] * 0.0722;
+      if (pixels.data[index + 3] > 8 && luminance > 180) {
         pixels.data[index] = 0;
         pixels.data[index + 1] = 0;
         pixels.data[index + 2] = 0;
+      } else {
+        pixels.data[index + 3] = 0;
       }
     }
     context.putImageData(pixels, 0, 0);
