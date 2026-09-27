@@ -10,6 +10,8 @@ import {
   updateMerchantDetails,
   type MerchantStatus,
 } from "@/lib/merchants.functions";
+import { getMerchantModules, setBusinessModules } from "@/lib/bulk-courier.functions";
+
 
 const STATUSES: { value: MerchantStatus; label: string }[] = [
   { value: "draft", label: "Draft / Incomplete" },
@@ -226,6 +228,9 @@ export function MerchantEditModal({
               />
             </Section>
 
+            <ModulesSection merchantId={merchantId} />
+
+
             <Section title="GST">
               <Toggle
                 label="GST registered"
@@ -265,6 +270,77 @@ export function MerchantEditModal({
     </div>
   );
 }
+
+/** Store / Bulk Delivery modules for this merchant (super admin only, reason required). */
+function ModulesSection({ merchantId }: { merchantId: string }) {
+  const queryClient = useQueryClient();
+  const fetchModules = useServerFn(getMerchantModules);
+  const saveModules = useServerFn(setBusinessModules);
+  const { data } = useQuery({
+    queryKey: ["merchant", "modules", merchantId],
+    queryFn: () => fetchModules({ data: { merchant_id: merchantId } }),
+  });
+  const [store, setStore] = useState<boolean | null>(null);
+  const [delivery, setDelivery] = useState<boolean | null>(null);
+  const [reason, setReason] = useState("");
+  useEffect(() => {
+    if (!data) return;
+    setStore(data.store_enabled);
+    setDelivery(data.delivery_enabled);
+  }, [data]);
+
+  const canWrite = !!data?.canWrite;
+  const dirty = !!data && (store !== data.store_enabled || delivery !== data.delivery_enabled);
+  const mutation = useMutation({
+    mutationFn: () =>
+      saveModules({
+        data: { merchant_id: merchantId, store_enabled: !!store, delivery_enabled: !!delivery, reason: reason.trim() },
+      }),
+    onSuccess: () => {
+      toast.success("Modules updated");
+      setReason("");
+      queryClient.invalidateQueries({ queryKey: ["merchant", "modules", merchantId] });
+      queryClient.invalidateQueries({ queryKey: ["bulk"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not save"),
+  });
+
+  if (!data) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-3">Modules</p>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Toggle label="badiyos Store" checked={!!store} onChange={(v) => canWrite && setStore(v)} />
+        <Toggle label="Bulk Delivery" checked={!!delivery} onChange={(v) => canWrite && setDelivery(v)} />
+      </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        Store lets them list products and take online orders. Bulk Delivery gives them parcel trips and a delivery wallet.
+        {data.delivery_status ? ` Delivery status: ${data.delivery_status}.` : ""}
+      </p>
+      {!canWrite ? (
+        <p className="mt-2 text-[12px] text-muted-foreground">Only a super admin can change these.</p>
+      ) : dirty ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason (required)"
+            className="h-10 flex-1 rounded-[12px] border border-border bg-background px-3 text-[14px]"
+          />
+          <button
+            disabled={!reason.trim() || mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="h-10 rounded-[12px] bg-primary px-4 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
+          >
+            {mutation.isPending ? "Saving…" : "Save modules"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
