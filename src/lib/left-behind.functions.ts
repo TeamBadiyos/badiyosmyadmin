@@ -42,7 +42,7 @@ export const getTripLeftBehind = createServerFn({ method: "POST" })
       batchIds.length ? db.from("business_batches").select("id, trip_no").in("id", batchIds) : { data: [] },
       recIds.length ? db.from("business_receivers").select("id, name").in("id", recIds) : { data: [] },
       riderIds.length ? db.from("experts").select("id, auth_user_id, name").or(`auth_user_id.in.(${riderIds.join(",")}),id.in.(${riderIds.join(",")})`) : { data: [] },
-      batchIds.length ? db.from("audit_logs").select("*").eq("action", "trip_packets_removed").in("entity_id", batchIds) : { data: [] },
+      batchIds.length ? db.from("audit_logs").select("*").eq("action", "trip_packets_removed").in("target_id", batchIds) : { data: [] },
       db.from("courier_order_events").select("meta, created_at").eq("order_id", i.courier_order_id),
     ]);
     const recName = new Map(((rc.data ?? []) as any[]).map((r) => [r.id, r.name]));
@@ -50,8 +50,8 @@ export const getTripLeftBehind = createServerFn({ method: "POST" })
     for (const e of (ex.data ?? []) as any[]) { riderName.set(e.id, e.name); if (e.auth_user_id) riderName.set(e.auth_user_id, e.name); }
     // audit rows: find new/old json fields generically
     const audits = ((au.data ?? []) as any[]).map((a) => {
-      const nv = a.new_data ?? a.new_values ?? a.after ?? a.details ?? {};
-      const ov = a.old_data ?? a.old_values ?? a.before ?? {};
+      const nv = a.after_state ?? {};
+      const ov = a.before_state ?? {};
       return { nv, ov };
     });
     const events = ((ev.data ?? []) as any[]).filter((e) => e.meta?.event === "packets_removed");
