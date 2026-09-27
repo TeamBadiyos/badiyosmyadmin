@@ -265,20 +265,25 @@ export function MerchantEditModal({
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={mutation.isPending || isLoading}
-            onClick={() => mutation.mutate()}
-            className="h-10 px-5 rounded-[12px] bg-primary text-white text-[13px] font-bold disabled:opacity-50"
-          >
-            {mutation.isPending ? "Saving…" : "Save changes"}
-          </button>
+        <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-border">
+          <div>{!isLoading && !detail?.deletedAt && <DeleteStoreButton merchantId={merchantId} storeName={form.storeName} onClose={onClose} />}</div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold"
+            >
+              Cancel
+            </button>
+            {!detail?.deletedAt && (
+              <button
+                disabled={mutation.isPending || isLoading}
+                onClick={() => mutation.mutate()}
+                className="h-10 px-5 rounded-[12px] bg-primary text-white text-[13px] font-bold disabled:opacity-50"
+              >
+                {mutation.isPending ? "Saving…" : "Save changes"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
