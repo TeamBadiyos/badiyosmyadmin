@@ -411,15 +411,16 @@ export async function generateSealStickerPdf(options: SealPdfOptions) {
 
     // ---- Back panel (upside down) ----
     pdf.addImage(
-      mark.url,
+      mark.flippedUrl,
       "PNG",
-      back.px(cx - markSmallW / 2),
-      back.py(backPanel.y + 5),
-      markSmallW,
-      markSmallH,
-      "seal-wordmark",
+      ...(frect(back, cx - markSmallW / 2, backPanel.y + 5, markSmallW, markSmallH) as [
+        number,
+        number,
+        number,
+        number,
+      ]),
+      "seal-wordmark-flipped",
       "FAST",
-      back.s === 1 ? 0 : 180,
     );
 
     pdf.setFont("helvetica", "normal");
