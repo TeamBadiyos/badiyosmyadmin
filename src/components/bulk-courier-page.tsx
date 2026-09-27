@@ -148,7 +148,7 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
-const emptyDispatch = { id: null as string | null, name: "", manual_enabled: false, qty_enabled: false, qty_threshold: 10 as number | null, slots_enabled: false, slot_times: [] as string[], max_drops_per_batch: null as number | null, is_active: true };
+const emptyDispatch = { id: null as string | null, name: "", manual_enabled: false, qty_enabled: false, qty_threshold: 10 as number | null, slots_enabled: false, slot_times: [] as string[], max_drops_per_batch: null as number | null, time_per_drop_min: 3, is_active: true };
 
 function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
@@ -165,7 +165,7 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
   return (
     <div className="space-y-3">
       {canWrite ? <button className={btn} onClick={() => open({ ...emptyDispatch })}><Plus size={14} className="mr-1 inline" />Dispatch plan</button> : null}
-      <Table head={["Name", "Manual", "Min qty", "Time slots (IST)", "Max drops/trip", "Used by", "Active", ""]}>
+      <Table head={["Name", "Manual", "Min qty", "Time slots (IST)", "Max drops/trip", "Min/drop", "Used by", "Active", ""]}>
         {(data?.dispatch ?? []).map((p: DispatchPlan) => (
           <tr key={p.id}>
             <td className={`${td} font-semibold`}>{p.name}</td>
@@ -173,6 +173,7 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
             <td className={td}>{p.qty_enabled ? p.qty_threshold : "—"}</td>
             <td className={td}>{p.slots_enabled && p.slot_times.length ? p.slot_times.join(", ") : "—"}</td>
             <td className={td}>{p.max_drops_per_batch ?? "—"}</td>
+            <td className={td}>{p.time_per_drop_min}</td>
             <td className={td}>{p.used_by}</td>
             <td className={td}><input type="checkbox" className="h-4 w-4 accent-[#00B97A]" checked={p.is_active} disabled={!canWrite} onChange={(e) => toggle("dispatch", p.id, e.target.checked)} /></td>
             <td className={td}>{canWrite ? <button className={btnGhost} onClick={() => open({ ...p })}><Pencil size={12} /></button> : null}</td>
@@ -203,6 +204,8 @@ function DispatchPlansTab({ canWrite }: { canWrite: boolean }) {
             </div>
             <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={maxOn} onChange={(e) => { setMaxOn(e.target.checked); if (!e.target.checked) setEdit({ ...edit, max_drops_per_batch: null }); }} />Max drops per trip
               <input type="number" min={1} disabled={!maxOn} className={`${inputCls} max-w-[100px]`} value={edit.max_drops_per_batch ?? ""} onChange={(e) => setEdit({ ...edit, max_drops_per_batch: Number(e.target.value) || null })} /></label>
+            <label className="flex items-center gap-2 text-[13px]">Time per drop (minutes)
+              <input type="number" min={1} max={15} className={`${inputCls} max-w-[100px]`} value={edit.time_per_drop_min ?? 3} onChange={(e) => setEdit({ ...edit, time_per_drop_min: Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 1))) })} /></label>
             {!valid ? <p className="text-[12px] text-warning">Enter a name and tick at least one option.</p> : null}
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setEdit(null)}>Cancel</button>
@@ -522,20 +525,50 @@ function TripsTab({ rows, canWriteOrders }: { rows: Array<Record<string, any>>; 
   const openOrder = async (id: string) => {
     try { const r = await fetchOrders({ data: { orderId: id } }); if (r[0]) setOrder(r[0]); else toast.error("Courier order not found"); } catch (e) { err(e); }
   };
+  const runs = useMemo(() => {
+    const m = new Map<string, { key: string; at: string; trigger: string; trips: Array<Record<string, any>> }>();
+    for (const b of [...rows].sort((x, y) => String(x.created_at).localeCompare(String(y.created_at)))) {
+      const key = `${b.trigger}|${String(b.created_at).slice(0, 16)}`;
+      if (!m.has(key)) m.set(key, { key, at: b.created_at, trigger: b.trigger, trips: [] });
+      m.get(key)!.trips.push(b);
+    }
+    return [...m.values()].reverse().map((r) => {
+      const src = [...new Set(r.trips.map((t) => t.distance_source).filter(Boolean))] as string[];
+      return {
+        ...r,
+        method: src.length ? src.map((x) => (/google/i.test(x) ? "Google" : /fallback|haversine|straight/i.test(x) ? "Fallback" : x)).join(" / ") : "—",
+        drops: r.trips.reduce((a, t) => a + Number(t.drops_count ?? 0), 0),
+        km: r.trips.reduce((a, t) => a + Number(t.distance_km ?? 0), 0),
+      };
+    });
+  }, [rows]);
   return (
     <div className="space-y-3">
-      <Table head={["Trip", "Status", "Drops", "Distance", "Fare", "Courier order", "Created"]}>
-        {rows.map((b) => (
-          <tr key={b.id}>
-            <td className={`${td} font-mono text-[11px]`}>#{String(b.id).slice(0, 8)}</td>
-            <td className={td}><Pill tone={tone(b.status)}>{String(b.status).replace(/_/g, " ")}</Pill>{b.fail_reason ? <p className="text-[11px] text-muted-foreground">{b.fail_reason}</p> : null}</td>
-            <td className={td}>{b.drops_count ?? "—"}</td><td className={td}>{b.distance_km != null ? `${b.distance_km} km` : "—"}</td>
-            <td className={td}>{inr(b.total_amount)}</td>
-            <td className={td}>{b.courier_order_id ? <button className={btnGhost} onClick={() => openOrder(b.courier_order_id)}>Open order</button> : "—"}</td>
-            <td className={td}>{new Date(b.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
-          </tr>
-        ))}
-      </Table>
+      {runs.map((run) => (
+        <div key={run.key} className="rounded-[14px] border border-border">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-muted/40 px-3 py-2 text-[12px]">
+            <span className="font-semibold">{new Date(run.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}</span>
+            <span>Trigger: {String(run.trigger ?? "—").replace(/_/g, " ")}</span>
+            <span>Method: {run.method}</span>
+            <span>{run.drops} drops</span><span>{run.trips.length} trip{run.trips.length === 1 ? "" : "s"}</span>
+            <span>{run.km.toFixed(1)} km</span>
+          </div>
+          <Table head={["Trip", "Label", "Drops", "Rider", "Status", "Distance", "Fare", "Courier order"]}>
+            {run.trips.map((b: Record<string, any>, idx: number) => (
+              <tr key={b.id}>
+                <td className={`${td} font-semibold`}>Trip {idx + 1}</td>
+                <td className={td}>{b.pickup_name ?? `#${String(b.id).slice(0, 8)}`}</td>
+                <td className={td}>{b.drops_count ?? "—"}</td>
+                <td className={td}>{b.rider_name ?? <span className="text-warning">Unassigned</span>}</td>
+                <td className={td}><Pill tone={tone(b.status)}>{String(b.status).replace(/_/g, " ")}</Pill>{b.fail_reason ? <p className="text-[11px] text-muted-foreground">{b.fail_reason}</p> : null}</td>
+                <td className={td}>{b.distance_km != null ? `${b.distance_km} km` : "—"}</td>
+                <td className={td}>{inr(b.total_amount)}</td>
+                <td className={td}>{b.courier_order_id ? <button className={btnGhost} onClick={() => openOrder(b.courier_order_id)}>Open order</button> : "—"}</td>
+              </tr>
+            ))}
+          </Table>
+        </div>
+      ))}
       {rows.length === 0 ? <p className="text-[13px] text-muted-foreground">No trips yet.</p> : null}
       {order ? <OrderDetail order={order} canWrite={canWriteOrders} onClose={() => setOrder(null)} onChanged={() => { setOrder(null); qc.invalidateQueries({ queryKey: ["bulk"] }); qc.invalidateQueries({ queryKey: ["courier", "orders"] }); }} /> : null}
     </div>
