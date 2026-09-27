@@ -36,7 +36,7 @@ export type PricingPlan = {
 export type DispatchPlan = {
   id: string; name: string; manual_enabled: boolean; qty_enabled: boolean; qty_threshold: number | null;
   slots_enabled: boolean; slot_times: string[]; max_drops_per_batch: number | null;
-  time_per_drop_min: number; is_active: boolean; used_by: number;
+  time_per_drop_min: number; cost_per_extra_trip: number | null; is_active: boolean; used_by: number;
 };
 
 export const getBulkAccess = createServerFn({ method: "GET" })
@@ -61,6 +61,7 @@ export const listBulkPlans = createServerFn({ method: "GET" })
         ...p,
         slot_times: ((p.slot_times ?? []) as string[]).map((t) => String(t).slice(0, 5)),
         time_per_drop_min: Number(p.time_per_drop_min ?? 3),
+        cost_per_extra_trip: p.cost_per_extra_trip == null ? null : Number(p.cost_per_extra_trip),
         used_by: Number(p.used_by ?? 0),
       })),
     };
@@ -101,6 +102,7 @@ export const saveDispatchPlan = createServerFn({ method: "POST" })
       _slots_enabled: i.slots_enabled, _slot_times: i.slots_enabled ? i.slot_times : [],
       _max_drops_per_batch: i.max_drops_per_batch, _is_active: i.is_active,
       _time_per_drop_min: Number(i.time_per_drop_min ?? 3),
+      _cost_per_extra_trip: i.cost_per_extra_trip == null ? null : Number(i.cost_per_extra_trip),
     });
     return { ok: true };
   });
