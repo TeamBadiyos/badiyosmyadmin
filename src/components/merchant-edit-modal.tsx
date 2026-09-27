@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  deleteMerchant,
   getMerchantDetail,
   listMerchantEditOptions,
   updateMerchantDetails,
@@ -166,6 +167,19 @@ export function MerchantEditModal({
 
         {isLoading ? (
           <p className="text-[13px] text-muted-foreground py-14 text-center">Loading…</p>
+        ) : detail?.deletedAt ? (
+          <div className="p-6">
+            <div className="rounded-[14px] border border-destructive/40 bg-destructive/5 p-4">
+              <p className="text-[14px] font-bold text-destructive">This store is deleted</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Deleted on {new Date(detail.deletedAt).toLocaleString("en-IN")}
+                {detail.deleteReason ? ` · Reason: ${detail.deleteReason}` : ""}
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                It is hidden from the app and Bulk Courier. Order history and reports are kept.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="p-6 space-y-6">
             <Section title="Store & owner">
