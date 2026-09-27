@@ -600,7 +600,7 @@ export const voidSeal = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data: i, context }) => {
-    await requireSuper(context as Ctx);
+    await requireOps(context as Ctx);
     return sealErr(await rpc(context as Ctx, "staff_seal_void", { _code: i.code, _reason: i.reason.trim() }), "Could not void");
   });
 

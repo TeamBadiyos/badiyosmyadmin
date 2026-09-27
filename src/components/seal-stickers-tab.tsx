@@ -40,7 +40,7 @@ export function SealStockCard({ merchantId }: { merchantId: string }) {
   );
 }
 
-function Lookup({ canWrite }: { canWrite: boolean }) {
+function Lookup({ canVoid }: { canVoid: boolean }) {
   const qc = useQueryClient();
   const lookup = useServerFn(lookupSeal);
   const doVoid = useServerFn(voidSeal);
@@ -71,8 +71,8 @@ function Lookup({ canWrite }: { canWrite: boolean }) {
           <div>Batch: {res.batch ? `#${res.batch.batch_no}` : "—"}</div>
           <div>Order: {res.order ? `${res.order.display_no} · ${res.order.receiver_name ?? "—"} · ${res.order.status}` : "Not linked"}</div>
           {res.void_reason ? <div className="text-destructive">Void reason: {res.void_reason}</div> : null}
-          {canWrite ? <button className={btnGhost} disabled={picked} onClick={() => { setReason(""); setVoiding(true); }}>Void</button> : null}
-          {canWrite && picked && res.status !== "void" ? <p className="text-[11px] text-muted-foreground">Can't void once picked up.</p> : null}
+          {canVoid ? <button className={btnGhost} disabled={picked} onClick={() => { setReason(""); setVoiding(true); }}>Void</button> : null}
+          {canVoid && picked && res.status !== "void" ? <p className="text-[11px] text-muted-foreground">Can't void once picked up.</p> : null}
         </div>
       )) : null}
       {voiding && res?.code ? (
@@ -93,7 +93,7 @@ function Lookup({ canWrite }: { canWrite: boolean }) {
   );
 }
 
-export function SealStickersTab({ canWrite }: { canWrite: boolean }) {
+export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canVoid: boolean }) {
   const qc = useQueryClient();
   const list = useServerFn(listSealBatches);
   const merchantsFn = useServerFn(listDeliveryMerchants);
@@ -124,7 +124,7 @@ export function SealStickersTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-4">
-      <Lookup canWrite={canWrite} />
+      <Lookup canVoid={canVoid} />
       {canWrite ? <button className={btn} onClick={() => setCreating({ from: String(data?.nextSerial ?? ""), to: "", notes: "" })}><Plus size={14} className="mr-1 inline" />Create Batch</button> : null}
       {isLoading ? <p className="text-[13px] text-muted-foreground">Loading…</p> : null}
       {error ? <p className="text-[13px] text-destructive">{(error as Error).message}</p> : null}
