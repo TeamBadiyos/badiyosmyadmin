@@ -170,7 +170,8 @@ function ftext(pdf: Pdf, f: Frame, text: string, x: number, y: number, align: "c
   if (f.s === 1) {
     pdf.text(text, startX, y, { baseline: "middle" });
   } else {
-    pdf.text(text, f.px(startX + width), f.py(y), { baseline: "middle", angle: 180 });
+    void width;
+    pdf.text(text, f.px(startX), f.py(y), { baseline: "middle", angle: 180 });
   }
 }
 
