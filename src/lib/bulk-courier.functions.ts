@@ -428,7 +428,7 @@ async function riderNames(context: Ctx, orderIds: string[]): Promise<Map<string,
 }
 
 export type UnassignedTrip = {
-  courier_order_id: string; order_code: string | null; status: string; merchant_id: string | null;
+  courier_order_id: string; batch_id: string | null; order_code: string | null; status: string; merchant_id: string | null;
   business_name: string; trip_no: number | null; trip_label: string | null; drops: number;
   total_amount: number; search_started_at: string | null; needs_ops_attention: boolean;
 };
@@ -439,7 +439,8 @@ export const listUnassignedBusinessTrips = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<UnassignedTrip[]> => {
     const rows = ((await rpc(context as Ctx, "staff_list_unassigned_business_trips", {})) ?? []) as any[];
     return rows.map((r) => ({
-      courier_order_id: r.courier_order_id, order_code: r.order_code ?? null, status: r.status,
+      courier_order_id: r.courier_order_id, batch_id: r.batch_id ?? null,
+      order_code: r.order_code ?? null, status: r.status,
       merchant_id: r.merchant_id ?? null, business_name: r.business_name ?? "—",
       trip_no: r.trip_no == null ? null : Number(r.trip_no), trip_label: r.trip_label ?? null,
       drops: Number(r.drops ?? 0), total_amount: Number(r.total_amount ?? 0),
