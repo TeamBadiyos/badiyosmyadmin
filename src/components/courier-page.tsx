@@ -18,6 +18,9 @@ import {
   confirmRate,
   forceCancelOrder,
   getCourierOrderStops,
+  getCancelFeeSettings,
+  saveCancelFee,
+  getOrderCancelFee,
   getCourierSettings,
   saveCourierSetting,
   verifyCourierStop,
@@ -424,6 +427,62 @@ function rateDraft(
   };
 }
 
+function CancelFeeCard() {
+  const qc = useQueryClient();
+  const fetchFee = useServerFn(getCancelFeeSettings);
+  const save = useServerFn(saveCancelFee);
+  const { data } = useQuery({ queryKey: ["courier", "cancel-fee"], queryFn: () => fetchFee() });
+  const [draft, setDraft] = useState<{ type: "percentage" | "fixed"; value: string; share: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const canEdit = !!data?.canWrite;
+  const d = draft ?? { type: data?.type ?? "percentage", value: String(data?.value ?? 0), share: String(data?.riderSharePct ?? 0) };
+  return (
+    <div className="rounded-[16px] border border-border bg-card p-4">
+      <h4 className="text-[13px] font-bold text-foreground">Cancellation fee (after rider reaches pickup)</h4>
+      <p className="mt-1 text-[12px] text-muted-foreground">GST is added on the fee. The rest is refunded.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Type">
+          <select disabled={!canEdit} className={inputCls} value={d.type} onChange={(e) => setDraft({ ...d, type: e.target.value as "percentage" | "fixed" })}>
+            <option value="percentage">Percentage</option>
+            <option value="fixed">Fixed ₹</option>
+          </select>
+        </Field>
+        <Field label={d.type === "fixed" ? "Value (₹)" : "Value (%)"}>
+          <input type="number" min={0} disabled={!canEdit} className={inputCls} value={d.value} onChange={(e) => setDraft({ ...d, value: e.target.value })} />
+        </Field>
+        <Field label="Rider's share of the fee (%)">
+          <input type="number" min={0} max={100} disabled={!canEdit} className={inputCls} value={d.share} onChange={(e) => setDraft({ ...d, share: e.target.value })} />
+        </Field>
+      </div>
+      {canEdit ? (
+        <div className="mt-3 flex justify-end">
+          <button
+            disabled={busy || !draft}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await save({ data: { type: d.type, value: Number(d.value), riderSharePct: Number(d.share) } });
+                toast.success("Cancellation fee saved");
+                setDraft(null);
+                qc.invalidateQueries({ queryKey: ["courier", "cancel-fee"] });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+      ) : (
+        <p className="mt-3 text-[12px] text-muted-foreground">Read-only — only a super admin can change this.</p>
+      )}
+    </div>
+  );
+}
+
 function CourierSettingsCard({ canEdit }: { canEdit: boolean }) {
   const qc = useQueryClient();
   const fetchSettings = useServerFn(getCourierSettings);
@@ -550,9 +609,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
         ))}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12px] text-muted-foreground">
-          Cancellation fee (all cities): ₹{data?.cancellationFee ?? 0} — set in ops settings.
-        </p>
+        <span />
         {canWrite ? (
           <button
             onClick={() => setDraft(rateDraft(undefined, vehicles[0]?.id, segTab))}
@@ -991,6 +1048,13 @@ export function OrderDetail({
   const doRefund = useServerFn(refundOrder);
   const doResolve = useServerFn(resolveIncident);
   const fetchStops = useServerFn(getCourierOrderStops);
+  const fetchCancelFee = useServerFn(getOrderCancelFee);
+  const isCancelled = String(order.status).toUpperCase().startsWith("CANCEL");
+  const { data: cancelFee } = useQuery({
+    queryKey: ["courier", "cancel-fee-order", order.id],
+    queryFn: () => fetchCancelFee({ data: { orderId: order.id } }),
+    enabled: isCancelled,
+  });
 
   const [riderId, setRiderId] = useState("");
   const [cancelReason, setCancelReason] = useState("");
@@ -1049,6 +1113,13 @@ export function OrderDetail({
             <br />
             Drop: {order.drop_address ?? "—"}
           </p>
+          {isCancelled && cancelFee ? (
+            <div className="mt-2 rounded-[10px] bg-muted p-2 text-[12px] text-foreground">
+              <p className="font-bold">Cancellation</p>
+              <p>Fee: ₹{cancelFee.feeBase} · GST on fee: ₹{cancelFee.feeGst}</p>
+              <p>Refund to customer: ₹{cancelFee.refund} · Rider share: ₹{cancelFee.riderShare}</p>
+            </div>
+          ) : null}
           {order.incident_code ? (
             <p className="mt-2 text-[12px] font-semibold text-warning">
               Incident: {order.incident_code}
@@ -1813,6 +1884,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       {section === "settings" ? (
         <div className="space-y-5">
           <CourierSettingsCard canEdit={canWrite} />
+          <CancelFeeCard />
           <ZoneMappingTab canWrite={canWrite} />
         </div>
       ) : null}

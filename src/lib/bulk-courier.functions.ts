@@ -30,6 +30,7 @@ async function rpc(context: Ctx, name: string, args: Record<string, unknown>) {
 export type PricingPlan = {
   id: string; name: string; base_fare: number; included_km: number; per_km: number;
   min_fare: number; extra_drop_fee: number; return_per_km: number; commission_pct: number;
+  cancel_fee_type: "percentage" | "fixed"; cancel_fee_value: number;
   is_active: boolean; used_by: number;
 };
 export type DispatchPlan = {
@@ -53,6 +54,8 @@ export const listBulkPlans = createServerFn({ method: "GET" })
         per_km: Number(p.per_km ?? 0), min_fare: Number(p.min_fare ?? 0),
         extra_drop_fee: Number(p.extra_drop_fee ?? 0), return_per_km: Number(p.return_per_km ?? 0),
         commission_pct: Number(p.commission_pct ?? 0), used_by: Number(p.used_by ?? 0),
+        cancel_fee_type: String(p.cancel_fee_type ?? "percentage").toLowerCase().startsWith("fix") ? "fixed" : "percentage",
+        cancel_fee_value: p.cancel_fee_value == null ? 50 : Number(p.cancel_fee_value),
       })),
       dispatch: ((d.dispatch ?? []) as any[]).map((p) => ({
         ...p,
@@ -67,6 +70,8 @@ export const savePricingPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: Omit<PricingPlan, "used_by" | "id"> & { id: string | null }) => {
     if (!i?.name?.trim()) throw new Error("Name required");
+    if (i.cancel_fee_type === "percentage" && (i.cancel_fee_value < 0 || i.cancel_fee_value > 100)) throw new Error("Cancel fee % must be 0-100");
+    if (i.cancel_fee_value < 0) throw new Error("Cancel fee cannot be negative");
     return i;
   })
   .handler(async ({ data: i, context }) => {
@@ -74,6 +79,7 @@ export const savePricingPlan = createServerFn({ method: "POST" })
       _id: i.id, _name: i.name.trim(), _base_fare: i.base_fare, _included_km: i.included_km,
       _per_km: i.per_km, _min_fare: i.min_fare, _extra_drop_fee: i.extra_drop_fee,
       _return_per_km: i.return_per_km, _commission_pct: i.commission_pct, _is_active: i.is_active,
+      _cancel_fee_type: i.cancel_fee_type ?? "percentage", _cancel_fee_value: i.cancel_fee_value ?? 50,
     });
     return { ok: true };
   });
