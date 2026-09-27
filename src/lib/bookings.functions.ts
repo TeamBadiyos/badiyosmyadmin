@@ -466,21 +466,201 @@ export const CANCELLATION_REASONS = [
 ] as const;
 export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
 
+export type RefundOutcome = {
+  attempted: boolean;
+  ok: boolean;
+  amount: number;
+  refundId: string | null;
+  status: string | null;
+  message: string | null;
+};
+
+const NO_REFUND: RefundOutcome = {
+  attempted: false,
+  ok: false,
+  amount: 0,
+  refundId: null,
+  status: null,
+  message: null,
+};
+
+function razorpayAuthHeader(): string | null {
+  const id = (process.env["RAZORPAY_KEY_ID"] ?? "").trim();
+  const secret = (process.env["RAZORPAY_KEY_SECRET"] ?? "").trim();
+  if (!id || !secret) return null;
+  return "Basic " + btoa(`${id}:${secret}`);
+}
+
+/**
+ * Refunds a booking's captured Razorpay payment (full remaining amount, capped
+ * at what is still refundable) and records the outcome on the booking through
+ * staff_set_booking_refund. Never throws — a failed refund is still recorded so
+ * ops can see it.
+ */
+async function processBookingRefund(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  bookingId: string,
+): Promise<RefundOutcome> {
+  const { data: b, error } = await supabase
+    .from("bookings")
+    .select("id, price, razorpay_payment_id, refund_status, refund_id")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!b) throw new Error("Booking not found");
+
+  if (b.refund_id && b.refund_status && b.refund_status !== "failed") {
+    return {
+      attempted: false,
+      ok: true,
+      amount: 0,
+      refundId: b.refund_id,
+      status: b.refund_status,
+      message: "This booking has already been refunded.",
+    };
+  }
+
+  const paymentId: string | null = b.razorpay_payment_id ?? null;
+  const price = Number(b.price ?? 0);
+
+  if (!paymentId || !paymentId.startsWith("pay_")) {
+    return {
+      attempted: true,
+      ok: false,
+      amount: 0,
+      refundId: null,
+      status: "no_payment_recorded",
+      message: "No online payment is recorded on this booking, so nothing can be refunded.",
+    };
+  }
+
+  const auth = razorpayAuthHeader();
+  if (!auth) {
+    return {
+      attempted: true,
+      ok: false,
+      amount: 0,
+      refundId: null,
+      status: null,
+      message: "Payment gateway keys are not configured, so the refund could not be sent.",
+    };
+  }
+
+  let refundId: string | null = null;
+  let refundStatus = "failed";
+  let refundAmount = 0;
+  let message: string | null = null;
+
+  const lookup = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: auth },
+  });
+  const lookupBody = await lookup.text();
+
+  if (!lookup.ok) {
+    message =
+      lookup.status === 401
+        ? "The payment gateway rejected our keys, so the refund could not be sent. Please check the Razorpay keys."
+        : `Could not look up the payment (${lookup.status}).`;
+    console.error("[refundBooking] payment lookup failed", {
+      bookingId,
+      status: lookup.status,
+      body: lookupBody,
+    });
+  } else {
+    const pay = JSON.parse(lookupBody) as {
+      status: string;
+      amount: number;
+      amount_refunded?: number;
+    };
+    if (pay.status !== "captured") {
+      message = `The payment is not refundable (it is "${pay.status}").`;
+    } else {
+      const availablePaise = Math.max(0, pay.amount - (pay.amount_refunded ?? 0));
+      const requestedPaise = Math.round(price * 100) || availablePaise;
+      const refundPaise = Math.min(requestedPaise, availablePaise);
+      if (refundPaise <= 0) {
+        message = "There is no refundable amount left on this payment.";
+      } else {
+        const res = await fetch(
+          `https://api.razorpay.com/v1/payments/${paymentId}/refund`,
+          {
+            method: "POST",
+            headers: { Authorization: auth, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: refundPaise,
+              speed: "normal",
+              notes: { booking_id: bookingId, source: "command_center" },
+            }),
+          },
+        );
+        const body = await res.text();
+        if (res.ok) {
+          const parsed = JSON.parse(body) as { id: string; status: string };
+          refundId = parsed.id;
+          refundStatus = parsed.status || "processed";
+          refundAmount = refundPaise / 100;
+        } else {
+          message = `The payment gateway refused the refund (${res.status}).`;
+          console.error("[refundBooking] refund failed", {
+            bookingId,
+            status: res.status,
+            body,
+          });
+        }
+      }
+    }
+  }
+
+  const { error: applyErr } = await supabase.rpc("staff_set_booking_refund", {
+    _booking_id: bookingId,
+    _refund_amount: refundAmount,
+    _refund_id: refundId,
+    _refund_status: refundStatus,
+  });
+  if (applyErr) throw new Error(applyErr.message);
+
+  return {
+    attempted: true,
+    ok: !!refundId,
+    amount: refundAmount,
+    refundId,
+    status: refundStatus,
+    message,
+  };
+}
+
 export const cancelBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { bookingId: string; reason: CancellationReason }) => {
-    if (!input?.bookingId) throw new Error("bookingId required");
-    if (!CANCELLATION_REASONS.includes(input.reason)) throw new Error("Invalid reason");
-    return input;
-  })
-  .handler(async ({ data, context }) => {
+  .inputValidator(
+    (input: { bookingId: string; reason: CancellationReason; refund?: boolean }) => {
+      if (!input?.bookingId) throw new Error("bookingId required");
+      if (!CANCELLATION_REASONS.includes(input.reason)) throw new Error("Invalid reason");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }): Promise<{ ok: true; refund: RefundOutcome }> => {
     const { error } = await context.supabase.rpc("staff_cancel_booking", {
       _booking_id: data.bookingId,
       _reason: data.reason,
     });
     if (error) throw new Error(error.message);
-    return { ok: true };
+
+    if (!data.refund) return { ok: true, refund: NO_REFUND };
+    const refund = await processBookingRefund(context.supabase, data.bookingId);
+    return { ok: true, refund };
   });
+
+export const refundBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<RefundOutcome> => {
+    return processBookingRefund(context.supabase, data.bookingId);
+  });
+
 
 export const reassignExpert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
