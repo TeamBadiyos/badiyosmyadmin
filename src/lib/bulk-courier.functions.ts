@@ -31,6 +31,7 @@ export type PricingPlan = {
   id: string; name: string; base_fare: number; included_km: number; per_km: number;
   min_fare: number; extra_drop_fee: number; return_per_km: number; commission_pct: number;
   cancel_fee_type: "percentage" | "fixed"; cancel_fee_value: number;
+  drop_count_basis: "packet" | "shop";
   is_active: boolean; used_by: number;
 };
 export type DispatchPlan = {
@@ -56,6 +57,7 @@ export const listBulkPlans = createServerFn({ method: "GET" })
         commission_pct: Number(p.commission_pct ?? 0), used_by: Number(p.used_by ?? 0),
         cancel_fee_type: ["flat", "fixed"].includes(String(p.cancel_fee_type ?? "").toLowerCase()) ? "fixed" : "percentage",
         cancel_fee_value: p.cancel_fee_value == null ? 50 : Number(p.cancel_fee_value),
+        drop_count_basis: p.drop_count_basis === "shop" ? "shop" : "packet",
       })),
       dispatch: ((d.dispatch ?? []) as any[]).map((p) => ({
         ...p,
@@ -81,6 +83,7 @@ export const savePricingPlan = createServerFn({ method: "POST" })
       _per_km: i.per_km, _min_fare: i.min_fare, _extra_drop_fee: i.extra_drop_fee,
       _return_per_km: i.return_per_km, _commission_pct: i.commission_pct, _is_active: i.is_active,
       _cancel_fee_type: i.cancel_fee_type === "fixed" ? "flat" : "percent", _cancel_fee_value: i.cancel_fee_value ?? 50,
+      _drop_count_basis: i.drop_count_basis === "shop" ? "shop" : "packet",
     });
     return { ok: true };
   });
@@ -127,6 +130,7 @@ export type BusinessRow = {
   vehicle_type_id: string | null; courier_type_id: string | null;
   low_balance_threshold: number; wallet_balance: number;
   pending_orders: number; trips_today: number;
+  seal_low: boolean;
 };
 
 export const listBusinesses = createServerFn({ method: "GET" })
@@ -158,6 +162,11 @@ export const listBusinesses = createServerFn({ method: "GET" })
       for (const r of rows) c.set(r.merchant_id, (c.get(r.merchant_id) ?? 0) + 1);
       return c;
     };
+    const stock = await Promise.all(ids.map(async (id: string) => {
+      const { data } = await db.rpc("business_seal_stock", { _merchant_id: id });
+      return [id, sealLow(data)] as const;
+    }));
+    const lowMap = new Map(stock);
     const oc = count(ord.data ?? []);
     const bc = count(bat.data ?? []);
     return list
@@ -181,6 +190,7 @@ export const listBusinesses = createServerFn({ method: "GET" })
           wallet_balance: Number(mm.delivery_wallet_balance ?? 0),
           pending_orders: oc.get(p.merchant_id) ?? 0,
           trips_today: bc.get(p.merchant_id) ?? 0,
+          seal_low: lowMap.get(p.merchant_id) ?? false,
         } as BusinessRow;
       })
       .sort((a, b) => a.business_name.localeCompare(b.business_name));
@@ -470,4 +480,143 @@ export const rejectBusinessTrip = createServerFn({ method: "POST" })
     if (!b) throw new Error("Trip not found");
     await rpc(context as Ctx, "staff_business_reject_trip", { _batch_id: b.id, _reason: i.reason.trim() });
     return { ok: true };
+  });
+
+/* ------------------------------ seal stickers ------------------------------ */
+
+function sealLow(d: any): boolean {
+  const avg = Number(d?.avg_used_per_day_7d ?? 0);
+  return avg > 0 && Number(d?.available ?? 0) < avg * 3;
+}
+
+export type SealBatch = {
+  id: string; batch_no: number; serial_from: number; serial_to: number; total: number;
+  merchant_id: string | null; business: string | null; notes: string | null; created_at: string;
+  available: number; used: number; void: number; charge_amount: number;
+};
+
+export const listSealBatches = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ batches: SealBatch[]; nextSerial: number }> => {
+    await requireOps(context as Ctx);
+    const db = (context as Ctx).supabase;
+    const { data: b, error } = await db.from("business_seal_batches").select("*").order("batch_no", { ascending: false });
+    if (error) throw new Error(error.message);
+    const batches = (b ?? []) as any[];
+    const mids = [...new Set(batches.map((x) => x.merchant_id).filter(Boolean))];
+    const names = new Map<string, string>();
+    if (mids.length) {
+      const { data: m } = await db.from("merchants").select("id, store_name").in("id", mids);
+      for (const r of (m ?? []) as any[]) names.set(r.id, r.store_name);
+    }
+    const counts = new Map<string, { available: number; used: number; void: number }>();
+    await Promise.all(batches.map(async (x) => {
+      const c = { available: 0, used: 0, void: 0 };
+      await Promise.all((["available", "used", "void"] as const).map(async (st) => {
+        const { count } = await db.from("business_seal_stickers").select("serial", { count: "exact", head: true }).eq("batch_id", x.id).eq("status", st);
+        c[st] = count ?? 0;
+      }));
+      counts.set(x.id, c);
+    }));
+    const maxTo = batches.reduce((m, x) => Math.max(m, Number(x.serial_to ?? 0)), 0);
+    return {
+      nextSerial: maxTo ? maxTo + 1 : 1000001,
+      batches: batches.map((x) => ({
+        id: x.id, batch_no: Number(x.batch_no), serial_from: Number(x.serial_from), serial_to: Number(x.serial_to),
+        total: Number(x.serial_to) - Number(x.serial_from) + 1, merchant_id: x.merchant_id,
+        business: x.merchant_id ? (names.get(x.merchant_id) ?? "—") : null, notes: x.notes, created_at: x.created_at,
+        charge_amount: Number(x.charge_amount ?? 0), ...(counts.get(x.id) ?? { available: 0, used: 0, void: 0 }),
+      })),
+    };
+  });
+
+export const listDeliveryMerchants = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireOps(context as Ctx);
+    const { data, error } = await (context as Ctx).supabase.from("merchants")
+      .select("id, store_name, delivery_wallet_balance").eq("delivery_enabled", true).is("deleted_at", null).order("store_name");
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as any[]).map((m) => ({ id: m.id as string, name: (m.store_name as string) ?? "—", balance: Number(m.delivery_wallet_balance ?? 0) }));
+  });
+
+function sealErr(r: any, fallback: string) {
+  if (r && typeof r === "object" && r.ok === false) {
+    const e = String(r.error ?? "");
+    if (e === "INSUFFICIENT_WALLET") throw new Error("Not enough balance in the delivery wallet for this sticker charge.");
+    throw new Error(String(r.message ?? e) || fallback);
+  }
+  return r;
+}
+
+export const createSealBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { from: number; to: number; notes: string }) => {
+    if (!Number.isInteger(i.from) || !Number.isInteger(i.to) || i.from <= 0 || i.to < i.from) throw new Error("Enter a valid serial range");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireSuper(context as Ctx);
+    return sealErr(await rpc(context as Ctx, "staff_seal_create_batch", { _serial_from: i.from, _serial_to: i.to, _notes: i.notes.trim() || null }), "Could not create batch");
+  });
+
+export const assignSealBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { batch_id: string; merchant_id: string; charge: number | null }) => {
+    if (!i.merchant_id) throw new Error("Pick a business");
+    if (i.charge != null && i.charge < 0) throw new Error("Charge cannot be negative");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireSuper(context as Ctx);
+    try {
+      return sealErr(await rpc(context as Ctx, "staff_seal_assign_batch", { _batch_id: i.batch_id, _merchant_id: i.merchant_id, _charge_amount: i.charge ?? 0 }), "Could not assign");
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("INSUFFICIENT_WALLET")) throw new Error("Not enough balance in the delivery wallet for this sticker charge.");
+      throw e;
+    }
+  });
+
+export const exportSealBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { batch_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    return ((await rpc(context as Ctx, "staff_seal_batch_export", { _batch_id: i.batch_id })) ?? []) as Array<{ serial: number; code: string; qr_payload: string; printed_text: string }>;
+  });
+
+export const lookupSeal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { q: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    return (await rpc(context as Ctx, "staff_seal_lookup", { _raw: i.q.trim() })) as Record<string, any>;
+  });
+
+export const voidSeal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { code: string; reason: string }) => {
+    if (!i.reason?.trim()) throw new Error("Reason required");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireSuper(context as Ctx);
+    return sealErr(await rpc(context as Ctx, "staff_seal_void", { _code: i.code, _reason: i.reason.trim() }), "Could not void");
+  });
+
+export const getSealStock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    const db = (context as Ctx).supabase;
+    const d = (await rpc(context as Ctx, "business_seal_stock", { _merchant_id: i.merchant_id })) ?? {};
+    const startIst = new Date(Date.now() + 5.5 * 3600e3);
+    startIst.setUTCHours(0, 0, 0, 0);
+    const todayStart = new Date(startIst.getTime() - 5.5 * 3600e3).toISOString();
+    const { count } = await db.from("business_seal_stickers").select("serial", { count: "exact", head: true })
+      .eq("merchant_id", i.merchant_id).eq("status", "used").gte("used_at", todayStart);
+    const available = Number(d.available ?? 0);
+    const avg = Number(d.avg_used_per_day_7d ?? 0);
+    return { available, usedToday: count ?? 0, avgPerDay: avg, daysLeft: avg > 0 ? available / avg : null, low: sealLow(d) };
   });
