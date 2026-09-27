@@ -230,8 +230,34 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         0,
       );
 
-    const bookingRevenue = sum(bookingRevenueRes.data, "price");
-    const orderRevenue = sum(orderRevenueRes.data, "total_amount");
+    /** Amount actually refunded on a row (0 when the refund failed / none). */
+    const refundedOf = (row: Record<string, unknown>, charged: number) => {
+      const status = String(row.refund_status ?? "").toLowerCase();
+      if (!status || status === "failed") return 0;
+      const amt = Number(row.refund_amount ?? 0);
+      return amt > 0 ? Math.min(amt, charged) : charged;
+    };
+
+    const bookingRows = (bookingRevenueRes.data ?? []) as Array<
+      Record<string, unknown>
+    >;
+    let bookingRevenue = 0;
+    let bookingDiscountToday = 0;
+    for (const r of bookingRows) {
+      const total = Number(r.total_amount ?? 0);
+      const discount = Number(r.discount_amount ?? 0);
+      const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+      bookingDiscountToday += discount;
+      bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
+
+    const orderRows = (orderRevenueRes.data ?? []) as Array<Record<string, unknown>>;
+    let orderRevenue = 0;
+    for (const r of orderRows) {
+      const charged = Number(r.total_amount ?? 0);
+      orderRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
+
     const offlineRevenue = sum(offlineRevenueRes.data, "total_amount");
 
     const todayBookings = todayBookingsRes.count ?? 0;
