@@ -13,6 +13,7 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  IndianRupee,
 } from "lucide-react";
 import { toast } from "sonner";
 
