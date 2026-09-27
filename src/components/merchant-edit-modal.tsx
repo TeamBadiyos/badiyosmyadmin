@@ -226,6 +226,9 @@ export function MerchantEditModal({
               />
             </Section>
 
+            <ModulesSection merchantId={merchantId} />
+
+
             <Section title="GST">
               <Toggle
                 label="GST registered"
