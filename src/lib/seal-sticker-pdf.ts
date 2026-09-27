@@ -291,8 +291,8 @@ export async function generateSealStickerPdf(options: SealPdfOptions) {
   const qrSize = 56;
   const qrX = cx - qrSize / 2;
   const qrY = 76;
-  const logoW = qrSize * 0.19;
-  const logoBox = logoW + Math.max(0.8, logoW * 0.24) * 2;
+  const logoW = qrSize * 0.155;
+  const logoBox = logoW + Math.max(0.7, logoW * 0.2) * 2;
 
   const markW = 58;
   const markH = markW / Math.max(0.2, mark.ratio);
