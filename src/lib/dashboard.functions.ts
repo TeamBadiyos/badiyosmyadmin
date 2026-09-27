@@ -17,6 +17,7 @@ export type DashboardStats = {
   // offers & campaigns
   couponsUsed: number;
   discountGiven: number;
+  discountToday: number;
   activeCampaigns: number;
   rewardsIssued: number;
 };
@@ -108,7 +109,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("price")
+              .select(
+                "price, total_amount, discount_amount, refund_amount, refund_status, status",
+              )
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay)
@@ -162,7 +165,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("total_amount")
+              .select("total_amount, refund_amount, refund_status")
               .eq("status", "completed")
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
@@ -228,8 +231,34 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         0,
       );
 
-    const bookingRevenue = sum(bookingRevenueRes.data, "price");
-    const orderRevenue = sum(orderRevenueRes.data, "total_amount");
+    /** Amount actually refunded on a row (0 when the refund failed / none). */
+    const refundedOf = (row: Record<string, unknown>, charged: number) => {
+      const status = String(row.refund_status ?? "").toLowerCase();
+      if (!status || status === "failed") return 0;
+      const amt = Number(row.refund_amount ?? 0);
+      return amt > 0 ? Math.min(amt, charged) : charged;
+    };
+
+    const bookingRows = (bookingRevenueRes.data ?? []) as Array<
+      Record<string, unknown>
+    >;
+    let bookingRevenue = 0;
+    let bookingDiscountToday = 0;
+    for (const r of bookingRows) {
+      const total = Number(r.total_amount ?? 0);
+      const discount = Number(r.discount_amount ?? 0);
+      const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+      bookingDiscountToday += discount;
+      bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
+
+    const orderRows = (orderRevenueRes.data ?? []) as Array<Record<string, unknown>>;
+    let orderRevenue = 0;
+    for (const r of orderRows) {
+      const charged = Number(r.total_amount ?? 0);
+      orderRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
+
     const offlineRevenue = sum(offlineRevenueRes.data, "total_amount");
 
     const todayBookings = todayBookingsRes.count ?? 0;
@@ -270,7 +299,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .lt("created_at", endOfDay),
       db
         .from("courier_orders")
-        .select("total_amount")
+        .select("total_amount, discount_amount, refund_amount, refund_status")
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
@@ -289,10 +318,20 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     ]);
 
 
-    const courierRevenue = sum(courierRevenueRes.data, "total_amount");
+    const courierRows = (courierRevenueRes.data ?? []) as Array<
+      Record<string, unknown>
+    >;
+    let courierRevenue = 0;
+    let courierDiscountToday = 0;
+    for (const r of courierRows) {
+      const charged = Number(r.total_amount ?? 0);
+      courierDiscountToday += Number(r.discount_amount ?? 0);
+      courierRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
     const courierToday = courierTodayRes.count ?? 0;
 
     const redemptionRows = (redemptionsRes.data ?? []) as Array<{ discount_amount: number }>;
+    const discountToday = bookingDiscountToday + courierDiscountToday;
 
     return {
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
@@ -317,6 +356,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       onlineExperts,
       couponsUsed: redemptionRows.length,
       discountGiven: redemptionRows.reduce((a, r) => a + Number(r.discount_amount ?? 0), 0),
+      discountToday,
       activeCampaigns: activeCampaignsRes.count ?? 0,
       rewardsIssued: awardsRes.count ?? 0,
     };
