@@ -123,6 +123,12 @@ export function BookingDetailsModal({
   const canCancel = canEdit && !!data && !isTerminal && !isDeleted;
   const canEditFields = canEdit && !!data && !isTerminal && !isDeleted;
   const canDelete = role === "super_admin" && !!data && !isDeleted;
+  const refundableAmount = data?.price ?? 0;
+  const canRefund =
+    !!data &&
+    !!data.razorpayPaymentId &&
+    data.paymentStatus !== "refunded" &&
+    refundableAmount > 0;
 
   const mutation = useMutation({
     mutationFn: (payload: { newStatus: BookingStatus }) =>
