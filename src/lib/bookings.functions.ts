@@ -280,6 +280,8 @@ export type BookingDetails = {
   paid: boolean;
   paymentStatus: PaymentStatus;
   refundStatus: string | null;
+  refundAmount: number | null;
+  refundId: string | null;
   extensions: BookingExtension[];
   extensionMinutes: number;
   extensionAmount: number;
