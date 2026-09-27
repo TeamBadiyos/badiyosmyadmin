@@ -225,14 +225,24 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
   const fetchList = useServerFn(listBusinesses);
   const create = useServerFn(createBusiness);
   const lookup = useServerFn(lookupBusinessPhone);
+  const runSearch = useServerFn(searchStores);
   const { data, isLoading, error: listError } = useQuery({ queryKey: ["bulk", "businesses"], queryFn: () => fetchList(), refetchInterval: 60_000 });
   const [adding, setAdding] = useState<{ phone: string; business_name: string; city: string } | null>(null);
   const [found, setFound] = useState<PhoneLookup>(null);
   const [looking, setLooking] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(t); }, [search]);
+  const { data: results, isFetching: searching } = useQuery({
+    queryKey: ["bulk", "store-search", debounced],
+    queryFn: () => runSearch({ data: { q: debounced } }),
+    enabled: !!adding && debounced.length >= 2,
+  });
   const selected = (data ?? []).find((b) => b.merchant_id === openId) ?? null;
   const p10 = (adding?.phone ?? "").replace(/\D/g, "").slice(-10);
+
   useEffect(() => {
     if (!adding || p10.length !== 10) { setFound(null); return; }
     let alive = true;
