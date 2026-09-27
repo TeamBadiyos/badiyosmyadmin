@@ -287,7 +287,7 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
       <Table head={["Business", "Phone", "City", "Delivery", "Pricing plan", "Dispatch plan", "Wallet", "Pending", "Trips today"]}>
         {(data ?? []).map((b) => (
           <tr key={b.merchant_id} className="cursor-pointer hover:bg-muted/40" onClick={() => setOpenId(b.merchant_id)}>
-            <td className={`${td} font-semibold`}>{b.business_name}{!b.pricing_plan_id || !b.dispatch_plan_id ? <span className="ml-2"><Pill tone="warn">No plans</Pill></span> : null}{b.seal_low ? <span className="ml-2"><Pill tone="bad">Low stickers</Pill></span> : null}</td>
+            <td className={`${td} font-semibold`}>{b.business_name}{!b.pricing_plan_id || !b.dispatch_plan_id ? <span className="ml-2"><Pill tone="warn">No plans</Pill></span> : null}{b.seal_low ? <span className="ml-2"><span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">Low stickers</span></span> : null}</td>
             <td className={td}>{b.phone ?? "—"}</td><td className={td}>{b.city ?? "—"}</td>
             <td className={td}><Pill tone={b.delivery_status === "active" ? "ok" : "off"}>{b.delivery_status ?? "—"}</Pill></td>
             <td className={td}>{b.pricing_plan ?? "—"}</td><td className={td}>{b.dispatch_plan ?? "—"}</td>

@@ -27,7 +27,7 @@ export function SealStockCard({ merchantId }: { merchantId: string }) {
   const { data, error } = useQuery({ queryKey: ["bulk", "seal-stock", merchantId], queryFn: () => fn({ data: { merchant_id: merchantId } }) });
   return (
     <div className="rounded-[14px] border border-border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2 text-[13px] font-bold text-foreground">Stickers {data?.low ? <Pill tone="bad">Low stock</Pill> : null}</div>
+      <div className="mb-2 flex items-center gap-2 text-[13px] font-bold text-foreground">Stickers {data?.low ? <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">Low stock</span> : null}</div>
       {error ? <p className="text-[12px] text-destructive">{(error as Error).message}</p> : !data ? <p className="text-[12px] text-muted-foreground">Loading…</p> : (
         <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
           <div><div className="text-[11px] text-muted-foreground">Available</div><div className="font-bold">{data.available}</div></div>
@@ -66,7 +66,7 @@ function Lookup({ canWrite }: { canWrite: boolean }) {
         <p className="text-[13px] text-destructive">{res.error === "NOT_FOUND" ? `No sticker found for ${res.code}` : "Invalid sticker number"}</p>
       ) : (
         <div className="space-y-1 text-[13px]">
-          <div className="flex items-center gap-2 font-semibold">{res.printed_text ?? res.code} <Pill tone={res.status === "available" ? "ok" : res.status === "void" ? "bad" : "off"}>{res.status}</Pill></div>
+          <div className="flex items-center gap-2 font-semibold">{res.printed_text ?? res.code} <Pill tone={res.status === "available" ? "ok" : res.status === "void" ? "warn" : "off"}>{res.status}</Pill></div>
           <div>Business: {res.business?.name ?? "Unassigned"}</div>
           <div>Batch: {res.batch ? `#${res.batch.batch_no}` : "—"}</div>
           <div>Order: {res.order ? `${res.order.display_no} · ${res.order.receiver_name ?? "—"} · ${res.order.status}` : "Not linked"}</div>
