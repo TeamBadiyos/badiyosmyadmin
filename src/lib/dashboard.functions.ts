@@ -317,10 +317,20 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     ]);
 
 
-    const courierRevenue = sum(courierRevenueRes.data, "total_amount");
+    const courierRows = (courierRevenueRes.data ?? []) as Array<
+      Record<string, unknown>
+    >;
+    let courierRevenue = 0;
+    let courierDiscountToday = 0;
+    for (const r of courierRows) {
+      const charged = Number(r.total_amount ?? 0);
+      courierDiscountToday += Number(r.discount_amount ?? 0);
+      courierRevenue += Math.max(0, charged - refundedOf(r, charged));
+    }
     const courierToday = courierTodayRes.count ?? 0;
 
     const redemptionRows = (redemptionsRes.data ?? []) as Array<{ discount_amount: number }>;
+    const discountToday = bookingDiscountToday + courierDiscountToday;
 
     return {
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
