@@ -298,7 +298,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .lt("created_at", endOfDay),
       db
         .from("courier_orders")
-        .select("total_amount")
+        .select("total_amount, discount_amount, refund_amount, refund_status")
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
