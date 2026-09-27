@@ -99,6 +99,7 @@ export function BookingDetailsModal({
   const fetchDetails = useServerFn(getBookingDetails);
   const updateStatus = useServerFn(updateBookingStatus);
   const cancelFn = useServerFn(cancelBooking);
+  const refundFn = useServerFn(refundBooking);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["bookings", "details", bookingId],
