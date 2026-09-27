@@ -46,6 +46,7 @@ import {
   Award,
   LayoutDashboard,
   CalendarCheck,
+  BadgePercent,
   Map,
   UserCog,
   Handshake,
