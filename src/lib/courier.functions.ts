@@ -250,10 +250,10 @@ export const listRates = createServerFn({ method: "GET" })
   .handler(
     async ({
       context,
-    }): Promise<{ rows: RateRow[]; vehicles: Array<{ id: string; name: string }>; cancellationFee: number }> => {
+    }): Promise<{ rows: RateRow[]; vehicles: Array<{ id: string; name: string }> }> => {
       await requireCourierStaff(context);
       const db = context.supabase;
-      const [rRes, vRes, sRes] = await Promise.all([
+      const [rRes, vRes] = await Promise.all([
         db
           .from("courier_vehicle_rates")
           .select(
@@ -261,7 +261,6 @@ export const listRates = createServerFn({ method: "GET" })
           )
           .order("city", { ascending: true }),
         db.from("courier_vehicle_types").select("id, name").order("sort_order", { ascending: true }),
-        db.rpc("courier_setting", { _key: "cancellation_fee", _default: 0 }),
       ]);
       if (rRes.error) throw new Error(rRes.error.message);
       if (vRes.error) throw new Error(vRes.error.message);
@@ -287,7 +286,7 @@ export const listRates = createServerFn({ method: "GET" })
         max_drops: r["max_drops"] == null ? null : Number(r["max_drops"]),
         return_per_km: Number(r["return_per_km"] ?? 0),
       }));
-      return { rows, vehicles, cancellationFee: Number(sRes?.data ?? 0) };
+      return { rows, vehicles };
     },
   );
 
@@ -1019,4 +1018,75 @@ export const saveCourierSetting = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
+  });
+
+/* ---------------------------- Cancellation fee ---------------------------- */
+
+export type CancelFeeSettings = { type: "percentage" | "fixed"; value: number; riderSharePct: number; canWrite: boolean };
+
+export const getCancelFeeSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CancelFeeSettings> => {
+    const access = await requireCourierStaff(context);
+    const db = context.supabase;
+    const [t, v, r] = await Promise.all([
+      rpc(db, "courier_setting_text", { _key: "courier_cancel_fee_type", _default: "percentage" }),
+      rpc(db, "courier_setting", { _key: "courier_cancel_fee_value", _default: 0 }),
+      rpc(db, "courier_setting", { _key: "cancel_fee_expert_share_pct", _default: 0 }),
+    ]);
+    for (const x of [t, v, r]) if (x.error) throw new Error(x.error.message);
+    return {
+      type: String(t.data ?? "percentage").toLowerCase().startsWith("fix") ? "fixed" : "percentage",
+      value: Number(v.data ?? 0),
+      riderSharePct: Number(r.data ?? 0),
+      canWrite: access.canWrite,
+    };
+  });
+
+export const saveCancelFee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { type: "percentage" | "fixed"; value: number; riderSharePct: number }) => {
+    if (d.type !== "percentage" && d.type !== "fixed") throw new Error("Invalid type");
+    if (!Number.isFinite(d.value) || d.value < 0) throw new Error("Invalid value");
+    if (d.type === "percentage" && d.value > 100) throw new Error("Percentage must be 0-100");
+    if (!Number.isFinite(d.riderSharePct) || d.riderSharePct < 0 || d.riderSharePct > 100)
+      throw new Error("Rider share must be 0-100");
+    return d;
+  })
+  .handler(async ({ context, data }) => {
+    await requireCourierWriter(context);
+    const { error } = await rpc(context.supabase, "staff_set_cancel_fee", {
+      _type: data.type,
+      _value: data.value,
+      _rider_share_pct: data.riderSharePct,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export type CancelFeeBreakdown = { feeBase: number; feeGst: number; feeTotal: number; refund: number; riderShare: number };
+
+export const getOrderCancelFee = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { orderId: string }) => d)
+  .handler(async ({ context, data }): Promise<CancelFeeBreakdown | null> => {
+    await requireCourierStaff(context);
+    const db = context.supabase;
+    const [fn, ord] = await Promise.all([
+      rpc(db, "courier_cancel_fee_for", { _order_id: data.orderId }),
+      db.from("courier_orders").select("cancellation_fee, cancellation_fee_base, cancellation_fee_gst").eq("id", data.orderId).maybeSingle(),
+    ]);
+    if (fn.error) throw new Error(fn.error.message);
+    const row = (Array.isArray(fn.data) ? fn.data[0] : fn.data) as Record<string, unknown> | undefined;
+    const o = (ord?.data ?? null) as Record<string, unknown> | null;
+    if (!row && !o) return null;
+    const base = o?.["cancellation_fee_base"] != null ? Number(o["cancellation_fee_base"]) : Number(row?.["fee_base"] ?? 0);
+    const gst = o?.["cancellation_fee_gst"] != null ? Number(o["cancellation_fee_gst"]) : Number(row?.["fee_gst"] ?? 0);
+    return {
+      feeBase: base,
+      feeGst: gst,
+      feeTotal: Number(row?.["fee_total"] ?? base + gst),
+      refund: Number(row?.["refund_amount"] ?? 0),
+      riderShare: Number(row?.["rider_share"] ?? 0),
+    };
   });

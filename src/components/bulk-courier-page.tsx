@@ -98,7 +98,7 @@ function useActiveToggle() {
   };
 }
 
-const emptyPricing = { id: null as string | null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, is_active: true };
+const emptyPricing = { id: null as string | null, name: "", base_fare: 0, included_km: 0, per_km: 0, min_fare: 0, extra_drop_fee: 0, return_per_km: 0, commission_pct: 0, cancel_fee_type: "percentage" as "percentage" | "fixed", cancel_fee_value: 50, is_active: true };
 
 function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
@@ -108,16 +108,16 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
   const { data } = useQuery({ queryKey: ["bulk", "plans"], queryFn: () => fetchPlans() });
   const [edit, setEdit] = useState<(typeof emptyPricing & { id: string | null; used_by?: number }) | null>(null);
   const [busy, setBusy] = useState(false);
-  const nums: Array<[keyof typeof emptyPricing, string]> = [["base_fare", "Base fare ₹"], ["included_km", "Included km"], ["per_km", "Per km ₹"], ["min_fare", "Min fare ₹"], ["extra_drop_fee", "Extra drop fee ₹"], ["return_per_km", "Return ₹/km"], ["commission_pct", "Commission %"]];
+  const nums: Array<[Exclude<keyof typeof emptyPricing, "cancel_fee_type">, string]> = [["base_fare", "Base fare ₹"], ["included_km", "Included km"], ["per_km", "Per km ₹"], ["min_fare", "Min fare ₹"], ["extra_drop_fee", "Extra drop fee ₹"], ["return_per_km", "Return ₹/km"], ["commission_pct", "Commission %"]];
   return (
     <div className="space-y-3">
       {canWrite ? <button className={btn} onClick={() => setEdit({ ...emptyPricing })}><Plus size={14} className="mr-1 inline" />Pricing plan</button> : null}
-      <Table head={["Name", "Base", "Incl. km", "Per km", "Min fare", "Extra drop", "Return ₹/km", "Comm. %", "Used by", "Active", ""]}>
+      <Table head={["Name", "Base", "Incl. km", "Per km", "Min fare", "Extra drop", "Return ₹/km", "Comm. %", "Cancel fee", "Used by", "Active", ""]}>
         {(data?.pricing ?? []).map((p: PricingPlan) => (
           <tr key={p.id}>
             <td className={`${td} font-semibold`}>{p.name}</td><td className={td}>{inr(p.base_fare)}</td><td className={td}>{p.included_km}</td>
             <td className={td}>{inr(p.per_km)}</td><td className={td}>{inr(p.min_fare)}</td><td className={td}>{inr(p.extra_drop_fee)}</td>
-            <td className={td}>{inr(p.return_per_km)}</td><td className={td}>{p.commission_pct}%</td><td className={td}>{p.used_by}</td>
+            <td className={td}>{inr(p.return_per_km)}</td><td className={td}>{p.commission_pct}%</td><td className={td}>{p.cancel_fee_type === "fixed" ? inr(p.cancel_fee_value) : `${p.cancel_fee_value}%`}</td><td className={td}>{p.used_by}</td>
             <td className={td}><input type="checkbox" className="h-4 w-4 accent-[#00B97A]" checked={p.is_active} disabled={!canWrite} onChange={(e) => toggle("pricing", p.id, e.target.checked)} /></td>
             <td className={td}>{canWrite ? <button className={btnGhost} onClick={() => setEdit({ ...p })}><Pencil size={12} /></button> : null}</td>
           </tr>
@@ -133,6 +133,10 @@ function PricingPlansTab({ canWrite }: { canWrite: boolean }) {
               {nums.map(([k, l]) => (
                 <Field key={k} label={l}><input type="number" min={0} className={inputCls} value={String(edit[k] ?? 0)} onChange={(e) => setEdit({ ...edit, [k]: Number(e.target.value) })} /></Field>
               ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Cancel fee after rider arrives"><select className={inputCls} value={edit.cancel_fee_type} onChange={(e) => setEdit({ ...edit, cancel_fee_type: e.target.value as "percentage" | "fixed" })}><option value="percentage">Percentage</option><option value="fixed">Fixed ₹</option></select></Field>
+              <Field label={edit.cancel_fee_type === "fixed" ? "Fee ₹" : "Fee %"}><input type="number" min={0} max={edit.cancel_fee_type === "percentage" ? 100 : undefined} className={inputCls} value={String(edit.cancel_fee_value)} onChange={(e) => setEdit({ ...edit, cancel_fee_value: Number(e.target.value) })} /></Field>
             </div>
             <div className="flex justify-end gap-2">
               <button className={btnGhost} onClick={() => setEdit(null)}>Cancel</button>
