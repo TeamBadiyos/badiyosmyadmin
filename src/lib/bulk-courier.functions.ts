@@ -80,7 +80,7 @@ export const savePricingPlan = createServerFn({ method: "POST" })
       _id: i.id, _name: i.name.trim(), _base_fare: i.base_fare, _included_km: i.included_km,
       _per_km: i.per_km, _min_fare: i.min_fare, _extra_drop_fee: i.extra_drop_fee,
       _return_per_km: i.return_per_km, _commission_pct: i.commission_pct, _is_active: i.is_active,
-      _cancel_fee_type: i.cancel_fee_type ?? "percentage", _cancel_fee_value: i.cancel_fee_value ?? 50,
+      _cancel_fee_type: i.cancel_fee_type === "fixed" ? "flat" : "percent", _cancel_fee_value: i.cancel_fee_value ?? 50,
     });
     return { ok: true };
   });
