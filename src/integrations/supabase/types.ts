@@ -3969,6 +3969,8 @@ export type Database = {
           commission_value: number
           country: string | null
           created_at: string
+          delete_reason: string | null
+          deleted_at: string | null
           delivery_enabled: boolean
           delivery_fee_payer: string
           delivery_status: string
@@ -4014,6 +4016,8 @@ export type Database = {
           commission_value?: number
           country?: string | null
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
           delivery_enabled?: boolean
           delivery_fee_payer?: string
           delivery_status?: string
@@ -4059,6 +4063,8 @@ export type Database = {
           commission_value?: number
           country?: string | null
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
           delivery_enabled?: boolean
           delivery_fee_payer?: string
           delivery_status?: string
@@ -7949,6 +7955,10 @@ export type Database = {
       staff_soft_delete_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
+      }
+      staff_soft_delete_merchant: {
+        Args: { _merchant_id: string; _reason: string }
+        Returns: Json
       }
       staff_soft_delete_zone: {
         Args: { _reason: string; _zone_id: string }
