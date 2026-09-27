@@ -383,8 +383,15 @@ async function loadBookingDetails(
     slotType: b.slot_type ?? null,
     price: b.price != null ? Number(b.price) : null,
     paid: !!b.razorpay_payment_id,
-    paymentStatus: b.refund_status ? "refunded" : b.razorpay_payment_id ? "paid" : "unpaid",
+    paymentStatus:
+      b.refund_status && b.refund_status !== "failed"
+        ? "refunded"
+        : b.razorpay_payment_id
+          ? "paid"
+          : "unpaid",
     refundStatus: b.refund_status ?? null,
+    refundAmount: b.refund_amount != null ? Number(b.refund_amount) : null,
+    refundId: b.refund_id ?? null,
     extensions,
     extensionMinutes: approved.reduce((s, e) => s + e.extraMinutes, 0),
     extensionAmount: approved.reduce((s, e) => s + e.price, 0),
