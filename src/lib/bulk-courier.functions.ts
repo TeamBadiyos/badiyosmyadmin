@@ -54,7 +54,7 @@ export const listBulkPlans = createServerFn({ method: "GET" })
         per_km: Number(p.per_km ?? 0), min_fare: Number(p.min_fare ?? 0),
         extra_drop_fee: Number(p.extra_drop_fee ?? 0), return_per_km: Number(p.return_per_km ?? 0),
         commission_pct: Number(p.commission_pct ?? 0), used_by: Number(p.used_by ?? 0),
-        cancel_fee_type: String(p.cancel_fee_type ?? "percentage").toLowerCase().startsWith("fix") ? "fixed" : "percentage",
+        cancel_fee_type: ["flat", "fixed"].includes(String(p.cancel_fee_type ?? "").toLowerCase()) ? "fixed" : "percentage",
         cancel_fee_value: p.cancel_fee_value == null ? 50 : Number(p.cancel_fee_value),
       })),
       dispatch: ((d.dispatch ?? []) as any[]).map((p) => ({
