@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Generate seal-sticker PDFs entirely in the browser from the existing staff export RPC so no duplicate export backend exists.

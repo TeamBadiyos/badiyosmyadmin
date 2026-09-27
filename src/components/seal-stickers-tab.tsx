@@ -2,12 +2,18 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
 import {
   assignSealBatch, createSealBatch, exportSealBatch, getSealStock, listDeliveryMerchants,
   listSealBatches, lookupSeal, voidSeal, type SealBatch,
 } from "@/lib/bulk-courier.functions";
 import { Field, Modal, Pill, inputCls } from "@/components/courier-page";
+import {
+  generateSealStickerPdf,
+  sealPdfFilename,
+  type SealLabelColour,
+  type SealLabelSize,
+} from "@/lib/seal-sticker-pdf";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
 const btnGhost = "rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-40";
@@ -93,6 +99,14 @@ function Lookup({ canVoid }: { canVoid: boolean }) {
   );
 }
 
+type PdfDialogState = {
+  batch: SealBatch;
+  from: string;
+  to: string;
+  size: SealLabelSize;
+  colour: SealLabelColour;
+};
+
 export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canVoid: boolean }) {
   const qc = useQueryClient();
   const list = useServerFn(listSealBatches);
@@ -103,6 +117,9 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
   const { data, isLoading, error } = useQuery({ queryKey: ["bulk", "seal-batches"], queryFn: () => list() });
   const [creating, setCreating] = useState<{ from: string; to: string; notes: string } | null>(null);
   const [assigning, setAssigning] = useState<{ batch: SealBatch; merchant: string; charge: string } | null>(null);
+  const [pdfDialog, setPdfDialog] = useState<PdfDialogState | null>(null);
+  const [pdfProgress, setPdfProgress] = useState<number | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [assignErr, setAssignErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { data: merchants } = useQuery({ queryKey: ["bulk", "delivery-merchants"], queryFn: () => merchantsFn(), enabled: !!assigning });
@@ -110,6 +127,10 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
   const from = Number(creating?.from), to = Number(creating?.to);
   const previewCount = creating && Number.isInteger(from) && Number.isInteger(to) && to >= from && from > 0 ? to - from + 1 : 0;
   const picked = merchants?.find((m) => m.id === assigning?.merchant);
+  const pdfFrom = Number(pdfDialog?.from);
+  const pdfTo = Number(pdfDialog?.to);
+  const pdfCount = pdfDialog && Number.isInteger(pdfFrom) && Number.isInteger(pdfTo) && pdfTo >= pdfFrom ? pdfTo - pdfFrom + 1 : 0;
+  const pdfRangeValid = !!pdfDialog && pdfCount > 0 && pdfCount <= 5000 && pdfFrom >= pdfDialog.batch.serial_from && pdfTo <= pdfDialog.batch.serial_to;
 
   const download = async (b: SealBatch) => {
     try {
@@ -120,6 +141,38 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
       a.href = url; a.download = `badiyos-seal-batch-${b.batch_no}.csv`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) { err(e); }
+  };
+
+  const downloadPdf = async () => {
+    if (!pdfDialog || !pdfRangeValid) return;
+    setPdfProgress(0);
+    setPdfError(null);
+    try {
+      const rows = await exp({ data: { batch_id: pdfDialog.batch.id } });
+      const selected = rows.filter((row) => row.serial >= pdfFrom && row.serial <= pdfTo);
+      if (selected.length !== pdfCount) throw new Error(`Only ${selected.length.toLocaleString("en-IN")} of ${pdfCount.toLocaleString("en-IN")} selected stickers were returned.`);
+      const blob = await generateSealStickerPdf({
+        batchNo: pdfDialog.batch.batch_no,
+        from: pdfFrom,
+        to: pdfTo,
+        size: pdfDialog.size,
+        colour: pdfDialog.colour,
+        rows: selected,
+        onProgress: (completed, total) => setPdfProgress(Math.round((completed / total) * 100)),
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = sealPdfFilename({ batchNo: pdfDialog.batch.batch_no, from: pdfFrom, to: pdfTo, size: pdfDialog.size, colour: pdfDialog.colour });
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`${pdfCount.toLocaleString("en-IN")} sticker PDF ready`);
+      setPdfDialog(null);
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : "Could not generate PDF");
+    } finally {
+      setPdfProgress(null);
+    }
   };
 
   return (
@@ -142,7 +195,8 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                 <td className={td}>{new Date(b.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className={`${td} whitespace-nowrap`}>
                   {canWrite && !b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setAssignErr(null); setAssigning({ batch: b, merchant: "", charge: "" }); }}>Assign</button> : null}
-                  <button className={btnGhost} onClick={() => download(b)}>Export CSV</button>
+                  <button className={`${btnGhost} mr-2`} onClick={() => download(b)}>Export CSV</button>
+                  <button className={btnGhost} onClick={() => { setPdfError(null); setPdfDialog({ batch: b, from: String(b.serial_from), to: String(b.serial_to), size: "25x50", colour: "green" }); }}><Download size={13} className="mr-1 inline" />Download PDF</button>
                 </td>
               </tr>
             ))}
@@ -150,6 +204,44 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
         </table>
       </div>
       {!isLoading && (data?.batches ?? []).length === 0 ? <p className="text-[13px] text-muted-foreground">No batches yet.</p> : null}
+
+      {pdfDialog ? (
+        <Modal title={`Download batch #${pdfDialog.batch.batch_no} PDF`} onClose={() => { if (pdfProgress == null) setPdfDialog(null); }}>
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 text-[12px] font-semibold text-foreground">Serial range</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="From"><input type="number" min={pdfDialog.batch.serial_from} max={pdfDialog.batch.serial_to} className={inputCls} disabled={pdfProgress != null} value={pdfDialog.from} onChange={(e) => { setPdfError(null); setPdfDialog({ ...pdfDialog, from: e.target.value }); }} /></Field>
+                <Field label="To"><input type="number" min={pdfDialog.batch.serial_from} max={pdfDialog.batch.serial_to} className={inputCls} disabled={pdfProgress != null} value={pdfDialog.to} onChange={(e) => { setPdfError(null); setPdfDialog({ ...pdfDialog, to: e.target.value }); }} /></Field>
+              </div>
+              <p className={`mt-1 text-[11px] ${pdfRangeValid ? "text-muted-foreground" : "text-destructive"}`}>
+                {pdfCount > 5000 ? "Maximum 5,000 stickers per PDF." : pdfFrom < pdfDialog.batch.serial_from || pdfTo > pdfDialog.batch.serial_to ? `Range must stay within ${pdfDialog.batch.serial_from}–${pdfDialog.batch.serial_to}.` : pdfCount > 0 ? `${pdfCount.toLocaleString("en-IN")} stickers selected (maximum 5,000).` : "Enter a valid range within this batch."}
+              </p>
+            </div>
+            <Field label="Label size">
+              <div className="grid grid-cols-2 gap-2">
+                {(["25x50", "38x50"] as const).map((size) => <button key={size} type="button" disabled={pdfProgress != null} className={`${btnGhost} py-2 ${pdfDialog.size === size ? "border-primary bg-primary-tint text-primary" : ""}`} onClick={() => setPdfDialog({ ...pdfDialog, size })}>{size === "25x50" ? "25 × 50 mm" : "38 × 50 mm"}</button>)}
+              </div>
+            </Field>
+            <Field label="Colour">
+              <div className="grid grid-cols-2 gap-2">
+                {(["green", "black"] as const).map((colour) => <button key={colour} type="button" disabled={pdfProgress != null} className={`${btnGhost} py-2 capitalize ${pdfDialog.colour === colour ? "border-primary bg-primary-tint text-primary" : ""}`} onClick={() => setPdfDialog({ ...pdfDialog, colour })}><span className={`mr-2 inline-block size-2.5 rounded-full ${colour === "green" ? "bg-primary" : "bg-secondary"}`} />{colour}</button>)}
+              </div>
+            </Field>
+            {pdfProgress != null ? (
+              <div className="space-y-1" aria-live="polite">
+                <div className="flex justify-between text-[11px] font-semibold text-foreground"><span>Generating PDF</span><span>{pdfProgress}%</span></div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${pdfProgress}%` }} /></div>
+              </div>
+            ) : null}
+            {pdfError ? <div className="rounded-[10px] border border-destructive/40 bg-destructive/10 p-3 text-[13px] font-semibold text-destructive">{pdfError}</div> : null}
+            <div className="flex justify-end gap-2">
+              <button className={btnGhost} disabled={pdfProgress != null} onClick={() => setPdfDialog(null)}>Cancel</button>
+              <button className={btn} disabled={!pdfRangeValid || pdfProgress != null} onClick={downloadPdf}><Download size={14} className="mr-1 inline" />{pdfProgress == null ? "Download PDF" : "Generating…"}</button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
 
       {creating ? (
         <Modal title="Create sticker batch" onClose={() => setCreating(null)}>
