@@ -62,7 +62,7 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
   );
 }
 
-function ReasonDialog({ title, body, confirmLabel, onClose, onConfirm }: { title: string; body?: React.ReactNode; confirmLabel: string; onClose: () => void; onConfirm: (reason: string) => Promise<void> }) {
+export function ReasonDialog({ title, body, confirmLabel, onClose, onConfirm }: { title: string; body?: React.ReactNode; confirmLabel: string; onClose: () => void; onConfirm: (reason: string) => Promise<void> }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   return (
