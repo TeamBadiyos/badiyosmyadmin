@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Download, Plus, Search } from "lucide-react";
 import {
   assignSealBatch, createSealBatch, exportSealBatch, getSealStock, listDeliveryMerchants,
-  listSealBatches, lookupSeal, voidSeal, type SealBatch,
+  listSealBatches, lookupSeal, reassignSealBatch, voidSeal, type SealBatch,
 } from "@/lib/bulk-courier.functions";
 import { Field, Modal, Pill, inputCls } from "@/components/courier-page";
 import {
