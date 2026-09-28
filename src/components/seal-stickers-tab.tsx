@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Download, Plus, Search } from "lucide-react";
+import { ArrowLeftRight, Download, Plus, Search } from "lucide-react";
 import {
   assignSealBatch, createSealBatch, exportSealBatch, getSealStock, listDeliveryMerchants,
-  listSealBatches, lookupSeal, voidSeal, type SealBatch,
+  listSealBatches, lookupSeal, reassignSealBatch, voidSeal, type SealBatch,
 } from "@/lib/bulk-courier.functions";
 import { Field, Modal, Pill, inputCls } from "@/components/courier-page";
 import {
@@ -105,22 +105,34 @@ type PdfDialogState = {
   colour: SealLabelColour;
 };
 
+type MoveState = {
+  batch: SealBatch;
+  mode: "inventory" | "business";
+  merchant: string;
+  refund: string;
+  charge: string;
+  reason: string;
+};
+
 export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canVoid: boolean }) {
   const qc = useQueryClient();
   const list = useServerFn(listSealBatches);
   const merchantsFn = useServerFn(listDeliveryMerchants);
   const create = useServerFn(createSealBatch);
   const assign = useServerFn(assignSealBatch);
+  const reassign = useServerFn(reassignSealBatch);
   const exp = useServerFn(exportSealBatch);
   const { data, isLoading, error } = useQuery({ queryKey: ["bulk", "seal-batches"], queryFn: () => list() });
   const [creating, setCreating] = useState<{ from: string; to: string; notes: string } | null>(null);
   const [assigning, setAssigning] = useState<{ batch: SealBatch; merchant: string; charge: string } | null>(null);
+  const [moving, setMoving] = useState<MoveState | null>(null);
   const [pdfDialog, setPdfDialog] = useState<PdfDialogState | null>(null);
   const [pdfProgress, setPdfProgress] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [assignErr, setAssignErr] = useState<string | null>(null);
+  const [moveErr, setMoveErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data: merchants } = useQuery({ queryKey: ["bulk", "delivery-merchants"], queryFn: () => merchantsFn(), enabled: !!assigning });
+  const { data: merchants } = useQuery({ queryKey: ["bulk", "delivery-merchants"], queryFn: () => merchantsFn(), enabled: !!assigning || !!moving });
 
   const from = Number(creating?.from), to = Number(creating?.to);
   const previewCount = creating && Number.isInteger(from) && Number.isInteger(to) && to >= from && from > 0 ? to - from + 1 : 0;
@@ -192,6 +204,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                 <td className={td}>{new Date(b.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className={`${td} whitespace-nowrap`}>
                   {canWrite && !b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setAssignErr(null); setAssigning({ batch: b, merchant: "", charge: "" }); }}>Assign</button> : null}
+                  {canWrite && b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setMoveErr(null); setMoving({ batch: b, mode: "business", merchant: "", refund: "", charge: "", reason: "" }); }}><ArrowLeftRight size={13} className="mr-1 inline" />Reassign</button> : null}
                   <button className={`${btnGhost} mr-2`} onClick={() => download(b)}>Export CSV</button>
                   <button className={btnGhost} onClick={() => { setPdfError(null); setPdfDialog({ batch: b, from: String(b.serial_from), to: String(b.serial_to), colour: "green" }); }}><Download size={13} className="mr-1 inline" />Download PDF</button>
                 </td>
@@ -281,6 +294,60 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                   toast.success("Batch assigned"); setAssigning(null); qc.invalidateQueries({ queryKey: ["bulk"] });
                 } catch (e) { setAssignErr(e instanceof Error ? e.message : "Failed"); } finally { setBusy(false); }
               }}>Assign</button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {moving ? (
+        <Modal title={`Move batch #${moving.batch.batch_no}`} onClose={() => setMoving(null)}>
+          <div className="space-y-3">
+            <p className="text-[12px] text-muted-foreground">
+              Currently with <span className="font-semibold text-foreground">{moving.batch.business ?? "—"}</span>. {moving.batch.available} unused stickers will move. {moving.batch.used} already used stickers stay where they are.
+            </p>
+            <Field label="Move to">
+              <div className="grid grid-cols-2 gap-2">
+                {([["business", "Another business"], ["inventory", "Back to our inventory"]] as const).map(([m, label]) => (
+                  <button key={m} type="button" className={`${btnGhost} py-2 ${moving.mode === m ? "border-primary bg-primary-tint text-primary" : ""}`} onClick={() => { setMoveErr(null); setMoving({ ...moving, mode: m, merchant: "", charge: "" }); }}>{label}</button>
+                ))}
+              </div>
+            </Field>
+            {moving.mode === "business" ? (
+              <>
+                <Field label="New business">
+                  <select className={inputCls} value={moving.merchant} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, merchant: e.target.value }); }}>
+                    <option value="">Select business</option>
+                    {(merchants ?? []).filter((m) => m.id !== moving.batch.merchant_id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Sticker charge ₹ for the new business (optional)">
+                  <input type="number" min={0} className={inputCls} value={moving.charge} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, charge: e.target.value }); }} />
+                </Field>
+              </>
+            ) : null}
+            <Field label="Refund ₹ to the current business (optional)">
+              <input type="number" min={0} className={inputCls} value={moving.refund} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, refund: e.target.value }); }} />
+            </Field>
+            <Field label="Reason">
+              <input className={inputCls} value={moving.reason} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, reason: e.target.value }); }} placeholder="Why is this batch being moved?" />
+            </Field>
+            {moveErr ? <div className="rounded-[10px] border border-destructive/40 bg-destructive/10 p-3 text-[13px] font-semibold text-destructive">{moveErr}</div> : null}
+            <div className="flex justify-end gap-2">
+              <button className={btnGhost} onClick={() => setMoving(null)}>Cancel</button>
+              <button className={btn} disabled={busy || !moving.reason.trim() || (moving.mode === "business" && !moving.merchant)} onClick={async () => {
+                setBusy(true);
+                try {
+                  const res = await reassign({ data: {
+                    batch_id: moving.batch.id,
+                    merchant_id: moving.mode === "business" ? moving.merchant : null,
+                    refund: moving.refund ? Number(moving.refund) : null,
+                    charge: moving.mode === "business" && moving.charge ? Number(moving.charge) : null,
+                    reason: moving.reason,
+                  } });
+                  toast.success(`${(res as { moved?: number })?.moved ?? moving.batch.available} stickers moved`);
+                  setMoving(null); qc.invalidateQueries({ queryKey: ["bulk"] });
+                } catch (e) { setMoveErr(e instanceof Error ? e.message : "Failed"); } finally { setBusy(false); }
+              }}>Move batch</button>
             </div>
           </div>
         </Modal>
