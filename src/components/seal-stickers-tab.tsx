@@ -105,6 +105,15 @@ type PdfDialogState = {
   colour: SealLabelColour;
 };
 
+type MoveState = {
+  batch: SealBatch;
+  mode: "inventory" | "business";
+  merchant: string;
+  refund: string;
+  charge: string;
+  reason: string;
+};
+
 export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canVoid: boolean }) {
   const qc = useQueryClient();
   const list = useServerFn(listSealBatches);
