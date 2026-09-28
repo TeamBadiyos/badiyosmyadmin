@@ -1,4 +1,5 @@
 import { TripLeftBehind } from "@/components/left-behind";
+import { StopProofs } from "@/components/drop-proofs";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -1455,6 +1456,7 @@ function MultiStopSections({
               {st.fail_reason_code ? (
                 <p className="font-semibold text-warning">Reason: {cap(st.fail_reason_code)}</p>
               ) : null}
+              {st.stop_type === "drop" && st.status === "completed" && scanCount(st) ? <StopProofs stopId={st.id} /> : null}
               {(() => {
                 const sc = scanCount(st);
                 if (!sc) return null;

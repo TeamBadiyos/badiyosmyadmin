@@ -32,6 +32,7 @@ import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions
 import { Field, Modal, OrderDetail, Pill, inputCls } from "@/components/courier-page";
 import { SealStickersTab, SealStockCard } from "@/components/seal-stickers-tab";
 import { LeftBehindTodayCard } from "@/components/left-behind";
+import { FirstTimeTodayCard, ProofGlobalsCard, ProofSettingsCard, ReceiverLocationPanel } from "@/components/drop-proofs";
 import { getLeftBehindCounts } from "@/lib/left-behind.functions";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
@@ -376,7 +377,7 @@ function BusinessDetail({ biz, canWrite, canOperate, canWriteOrders, onClose }: 
         <Tabs value={tab} onChange={setTab} items={[{ key: "setup", label: "Setup" }, { key: "receivers", label: "Receivers" }, { key: "orders", label: "Orders" }, { key: "trips", label: "Trips" }, { key: "wallet", label: "Wallet" }] as const} />
         {!data ? <p className="text-[13px] text-muted-foreground">Loading…</p> : tab === "setup" ? (
           <SetupTab biz={biz} canWrite={canWrite} canOperate={canOperate} pickups={data.pickups} vehicleTypes={data.vehicleTypes} courierTypes={data.courierTypes} onChanged={refresh} />
-        ) : tab === "receivers" ? <ReceiversTab rows={data.receivers} />
+        ) : tab === "receivers" ? <ReceiversTab rows={data.receivers} canReset={canOperate} onChanged={refresh} />
           : tab === "orders" ? <BizOrdersTab biz={biz} canWrite={canOperate} rows={data.orders} receivers={data.receivers} onChanged={refresh} />
           : tab === "trips" ? <TripsTab rows={data.trips} runs={data.runs} canWriteOrders={canWriteOrders} />
           : <WalletTab biz={biz} canWrite={canWrite} ledger={data.ledger} topups={data.topups} onChanged={refresh} />}
@@ -410,6 +411,8 @@ function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTyp
     <div className="space-y-3">
       <SealStockCard merchantId={biz.merchant_id} />
       <LeftBehindTodayCard merchantId={biz.merchant_id} />
+      <FirstTimeTodayCard merchantId={biz.merchant_id} />
+      <ProofSettingsCard merchantId={biz.merchant_id} canEdit={canOperate} />
       <Section title="Modules">
         <div className="flex flex-wrap items-center gap-4 text-[13px]">
           <label className="flex items-center gap-2"><input type="checkbox" disabled={!canWrite} checked={mods.store} onChange={(e) => setMods({ ...mods, store: e.target.checked })} />Store</label>
@@ -487,14 +490,17 @@ function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTyp
   );
 }
 
-function ReceiversTab({ rows }: { rows: Array<Record<string, any>> }) {
+function ReceiversTab({ rows, canReset, onChanged }: { rows: Array<Record<string, any>>; canReset: boolean; onChanged: () => void }) {
   const [q, setQ] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openRow = rows.find((r) => r.id === openId);
   const list = rows.filter((r) => !q || [r.name, r.contact_name, r.contact_phone, r.address].some((v) => String(v ?? "").toLowerCase().includes(q.toLowerCase())));
   return (
     <div className="space-y-3">
       <input className={`${inputCls} max-w-[280px]`} placeholder="Search receivers" value={q} onChange={(e) => setQ(e.target.value)} />
-      <Table head={["Name", "Contact", "Phone", "Address", "Status"]}>
-        {list.map((r) => <tr key={r.id}><td className={`${td} font-semibold`}>{r.name}</td><td className={td}>{r.contact_name ?? "—"}</td><td className={td}>{r.contact_phone ?? "—"}</td><td className={td}>{r.address ?? "—"}</td><td className={td}>{r.is_active ? <Pill tone="ok">Active</Pill> : <Pill tone="off">Inactive</Pill>}</td></tr>)}
+      {openRow ? <ReceiverLocationPanel receiver={openRow} canReset={canReset} onClose={() => setOpenId(null)} onChanged={onChanged} /> : null}
+      <Table head={["Name", "Contact", "Phone", "Address", "Location", "Status"]}>
+        {list.map((r) => <tr key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(r.id)}><td className={`${td} font-semibold`}>{r.name}</td><td className={td}>{r.contact_name ?? "—"}</td><td className={td}>{r.contact_phone ?? "—"}</td><td className={td}>{r.address ?? "—"}</td><td className={td}>{r.verified_at ? <Pill tone="ok">Verified</Pill> : <Pill tone="off">Not verified</Pill>}</td><td className={td}>{r.is_active ? <Pill tone="ok">Active</Pill> : <Pill tone="off">Inactive</Pill>}</td></tr>)}
       </Table>
       {list.length === 0 ? <p className="text-[13px] text-muted-foreground">No receivers.</p> : null}
     </div>
@@ -659,7 +665,7 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
         </div>
       ) : null}
       <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }, { key: "seals", label: "Seal Stickers" }] as const} />
-      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} />}
+      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <div className="space-y-3">{access ? <ProofGlobalsCard canEdit={canOperate} /> : null}<BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} /></div>}
     </div>
   );
 }
