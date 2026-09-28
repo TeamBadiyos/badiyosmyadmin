@@ -362,7 +362,7 @@ export const getBusinessDetail = createServerFn({ method: "POST" })
     const db = (context as Ctx).supabase;
     const [pp, rc, od, bt, wl, tu, vt, ct] = await Promise.all([
       db.from("business_pickup_points").select("*").eq("merchant_id", i.merchant_id).order("created_at"),
-      db.from("business_receivers").select("id, name, contact_name, contact_phone, address, is_active").eq("merchant_id", i.merchant_id).order("name").limit(1000),
+      db.from("business_receivers").select("id, name, contact_name, contact_phone, address, is_active, lat, lng, verified_lat, verified_lng, verified_at").eq("merchant_id", i.merchant_id).order("name").limit(1000),
       db.from("business_orders").select("id, reference_no, receiver_id, status, batch_id, courier_order_id, packet_count, created_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(300),
       db.from("business_batches").select("id, status, fail_reason, drops_count, distance_km, distance_source, trip_no, trip_label, dispatch_run_id, total_amount, courier_order_id, trigger, created_at").eq("merchant_id", i.merchant_id).order("created_at", { ascending: false }).limit(200),
       db.from("wallet_ledger").select("id, amount, type, reason, created_at").eq("owner_type", "merchant").eq("owner_id", i.merchant_id).eq("wallet_type", "delivery").order("created_at", { ascending: false }).limit(300),
@@ -650,4 +650,145 @@ export const getSealStock = createServerFn({ method: "POST" })
     const available = Number(d.available ?? 0);
     const avg = Number(d.avg_used_per_day_7d ?? 0);
     return { available, usedToday: count ?? 0, avgPerDay: avg, daysLeft: avg > 0 ? available / avg : null, low: sealLow(d) };
+  });
+
+/* ------------------------------ drop proofs ------------------------------ */
+
+export type ProofPhoto = {
+  id: string; url: string | null; captured_at: string | null; created_at: string;
+  distance_from_pin_m: number | null; accuracy_m: number | null; first_time: boolean; seal_codes: string[];
+};
+
+async function signProofPaths(paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!paths.length) return out;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const bucket of ["delivery-proofs", "courier-proofs"]) {
+    const left = paths.filter((p) => !out.has(p));
+    if (!left.length) break;
+    const { data } = await supabaseAdmin.storage.from(bucket).createSignedUrls(left, 600);
+    for (const s of data ?? []) if (s.signedUrl && s.path && !s.error) out.set(s.path, s.signedUrl);
+  }
+  return out;
+}
+
+export const getStopProofs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { stop_id: string }) => { if (!i?.stop_id) throw new Error("stop_id required"); return i; })
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    const r: any = await rpc(context as Ctx, "business_stop_proofs", { _stop_id: i.stop_id });
+    const proofs = (r?.proofs ?? []) as any[];
+    // Only paths the backend just authorised are signed.
+    const urls = await signProofPaths(proofs.map((p) => p.storage_path).filter(Boolean));
+    return {
+      completed_via: (r?.completed_via ?? null) as string | null,
+      completed_at: (r?.completed_at ?? null) as string | null,
+      photos: proofs.map((p): ProofPhoto => ({
+        id: p.id, url: p.storage_path ? (urls.get(p.storage_path) ?? null) : null,
+        captured_at: p.captured_at ?? null, created_at: p.created_at,
+        distance_from_pin_m: p.distance_from_pin_m == null ? null : Number(p.distance_from_pin_m),
+        accuracy_m: p.accuracy_m == null ? null : Number(p.accuracy_m),
+        first_time: !!p.location_unverified, seal_codes: p.seal_codes ?? [],
+      })),
+    };
+  });
+
+export const getProofSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    const db = (context as Ctx).supabase;
+    const { data: bp, error } = await db.from("business_profiles").select("drop_proof_mode, proof_retention_days").eq("merchant_id", i.merchant_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: log } = await supabaseAdmin.from("audit_logs").select("actor_id, created_at, after_state")
+      .eq("action", "staff_set_business_proof_settings").eq("target_id", i.merchant_id)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    let by: string | null = null;
+    if (log?.actor_id) {
+      const { data: s } = await supabaseAdmin.from("staff_users").select("*").or(`auth_user_id.eq.${log.actor_id},id.eq.${log.actor_id}`).limit(1).maybeSingle();
+      const sa: any = s;
+      by = sa?.name ?? sa?.full_name ?? sa?.email ?? null;
+    }
+    return {
+      mode: ((bp as any)?.drop_proof_mode ?? "otp") as "otp" | "bill_photo" | "otp_or_photo",
+      retention: Number((bp as any)?.proof_retention_days ?? 180),
+      hasProfile: !!bp,
+      last: log ? { by: by ?? "Staff", at: log.created_at as string } : null,
+    };
+  });
+
+export const saveProofSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string; mode: string; retention: number; reason?: string }) => {
+    if (!["otp", "bill_photo", "otp_or_photo"].includes(i.mode)) throw new Error("Invalid proof mode");
+    if (![30, 90, 180, 365].includes(Number(i.retention))) throw new Error("Invalid retention");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    return rpc(context as Ctx, "staff_set_business_proof_settings", {
+      _merchant_id: i.merchant_id, _drop_proof_mode: i.mode, _proof_retention_days: Number(i.retention), _reason: i.reason?.trim() || null,
+    });
+  });
+
+const PROOF_KEYS = ["proof_geofence_m", "proof_first_delivery_radius_m"] as const;
+
+export const getProofGlobals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireOps(context as Ctx);
+    const { data, error } = await (context as Ctx).supabase.from("ops_settings").select("key, value").in("key", PROOF_KEYS as unknown as string[]);
+    if (error) throw new Error(error.message);
+    const m = new Map(((data ?? []) as any[]).map((r) => [r.key, Number(r.value)]));
+    return { geofence: m.get("proof_geofence_m") ?? 150, firstRadius: m.get("proof_first_delivery_radius_m") ?? 1000 };
+  });
+
+export const saveProofGlobals = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { geofence: number; firstRadius: number }) => {
+    for (const v of [i.geofence, i.firstRadius]) if (!Number.isInteger(v) || v < 10 || v > 10000) throw new Error("Values must be whole numbers between 10 and 10,000");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    const db = (context as Ctx).supabase;
+    const { data: before } = await db.from("ops_settings").select("key, value").in("key", PROOF_KEYS as unknown as string[]);
+    for (const [key, v] of [["proof_geofence_m", i.geofence], ["proof_first_delivery_radius_m", i.firstRadius]] as const) {
+      const { data: upd, error } = await db.from("ops_settings").update({ value: String(v), updated_at: new Date().toISOString() }).eq("key", key).select("key");
+      if (error) throw new Error(error.message);
+      if (!upd?.length) throw new Error(`Setting ${key} not found`);
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({ actor_id: (context as Ctx).userId, action: "update_proof_settings", target_table: "ops_settings", target_id: null, before_state: before ?? null, after_state: i });
+    return { ok: true };
+  });
+
+export const resetReceiverLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { receiver_id: string; reason: string }) => { if (!i.reason?.trim()) throw new Error("Reason is required"); return i; })
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    return rpc(context as Ctx, "staff_reset_receiver_location", { _receiver_id: i.receiver_id, _reason: i.reason.trim() });
+  });
+
+export const getFirstTimeToday = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    await requireOps(context as Ctx);
+    const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    const r: any = await rpc(context as Ctx, "business_proof_report", { _merchant_id: i.merchant_id, _from: today, _to: today, _receiver_id: null, _limit: 500, _offset: 0 });
+    const rows = (Array.isArray(r) ? r : (r?.rows ?? r?.items ?? [])) as any[];
+    const first = rows.filter((x) => x.location_unverified);
+    return {
+      count: first.length,
+      rows: first.map((x) => ({
+        stop_id: x.stop_id as string, completed_at: x.completed_at as string, completed_via: (x.completed_via ?? null) as string | null,
+        receiver_name: (x.receiver_name ?? null) as string | null, rider_name: (x.rider_name ?? null) as string | null,
+        seal_codes: (x.seal_codes ?? []) as string[], distance_from_pin_m: x.distance_from_pin_m == null ? null : Number(x.distance_from_pin_m),
+      })),
+    };
   });
