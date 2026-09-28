@@ -111,16 +111,19 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
   const merchantsFn = useServerFn(listDeliveryMerchants);
   const create = useServerFn(createSealBatch);
   const assign = useServerFn(assignSealBatch);
+  const reassign = useServerFn(reassignSealBatch);
   const exp = useServerFn(exportSealBatch);
   const { data, isLoading, error } = useQuery({ queryKey: ["bulk", "seal-batches"], queryFn: () => list() });
   const [creating, setCreating] = useState<{ from: string; to: string; notes: string } | null>(null);
   const [assigning, setAssigning] = useState<{ batch: SealBatch; merchant: string; charge: string } | null>(null);
+  const [moving, setMoving] = useState<MoveState | null>(null);
   const [pdfDialog, setPdfDialog] = useState<PdfDialogState | null>(null);
   const [pdfProgress, setPdfProgress] = useState<number | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [assignErr, setAssignErr] = useState<string | null>(null);
+  const [moveErr, setMoveErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data: merchants } = useQuery({ queryKey: ["bulk", "delivery-merchants"], queryFn: () => merchantsFn(), enabled: !!assigning });
+  const { data: merchants } = useQuery({ queryKey: ["bulk", "delivery-merchants"], queryFn: () => merchantsFn(), enabled: !!assigning || !!moving });
 
   const from = Number(creating?.from), to = Number(creating?.to);
   const previewCount = creating && Number.isInteger(from) && Number.isInteger(to) && to >= from && from > 0 ? to - from + 1 : 0;
