@@ -577,6 +577,37 @@ export const assignSealBatch = createServerFn({ method: "POST" })
     }
   });
 
+export const reassignSealBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { batch_id: string; merchant_id: string | null; refund: number | null; charge: number | null; reason: string }) => {
+    if (i.refund != null && i.refund < 0) throw new Error("Refund cannot be negative");
+    if (i.charge != null && i.charge < 0) throw new Error("Charge cannot be negative");
+    if (!i.reason?.trim()) throw new Error("Reason required");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    await requireSuper(context as Ctx);
+    try {
+      return sealErr(
+        await rpc(context as Ctx, "staff_seal_reassign_batch", {
+          _batch_id: i.batch_id,
+          _merchant_id: i.merchant_id,
+          _refund_amount: i.refund ?? 0,
+          _charge_amount: i.charge ?? 0,
+          _reason: i.reason.trim(),
+        }),
+        "Could not move this batch",
+      );
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "";
+      if (m.includes("INSUFFICIENT_WALLET")) throw new Error("Not enough balance in the delivery wallet for this sticker charge.");
+      if (m.includes("NO_AVAILABLE_STICKERS")) throw new Error("No unused stickers left in this batch to move.");
+      if (m.includes("BATCH_NOT_ASSIGNED")) throw new Error("This batch is already in platform inventory.");
+      if (m.includes("SAME_BUSINESS")) throw new Error("This batch is already with that business.");
+      throw e;
+    }
+  });
+
 export const exportSealBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { batch_id: string }) => i)
