@@ -298,6 +298,60 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
           </div>
         </Modal>
       ) : null}
+
+      {moving ? (
+        <Modal title={`Move batch #${moving.batch.batch_no}`} onClose={() => setMoving(null)}>
+          <div className="space-y-3">
+            <p className="text-[12px] text-muted-foreground">
+              Currently with <span className="font-semibold text-foreground">{moving.batch.business ?? "—"}</span>. {moving.batch.available} unused stickers will move. {moving.batch.used} already used stickers stay where they are.
+            </p>
+            <Field label="Move to">
+              <div className="grid grid-cols-2 gap-2">
+                {([["business", "Another business"], ["inventory", "Back to our inventory"]] as const).map(([m, label]) => (
+                  <button key={m} type="button" className={`${btnGhost} py-2 ${moving.mode === m ? "border-primary bg-primary-tint text-primary" : ""}`} onClick={() => { setMoveErr(null); setMoving({ ...moving, mode: m, merchant: "", charge: "" }); }}>{label}</button>
+                ))}
+              </div>
+            </Field>
+            {moving.mode === "business" ? (
+              <>
+                <Field label="New business">
+                  <select className={inputCls} value={moving.merchant} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, merchant: e.target.value }); }}>
+                    <option value="">Select business</option>
+                    {(merchants ?? []).filter((m) => m.id !== moving.batch.merchant_id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Sticker charge ₹ for the new business (optional)">
+                  <input type="number" min={0} className={inputCls} value={moving.charge} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, charge: e.target.value }); }} />
+                </Field>
+              </>
+            ) : null}
+            <Field label="Refund ₹ to the current business (optional)">
+              <input type="number" min={0} className={inputCls} value={moving.refund} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, refund: e.target.value }); }} />
+            </Field>
+            <Field label="Reason">
+              <input className={inputCls} value={moving.reason} onChange={(e) => { setMoveErr(null); setMoving({ ...moving, reason: e.target.value }); }} placeholder="Why is this batch being moved?" />
+            </Field>
+            {moveErr ? <div className="rounded-[10px] border border-destructive/40 bg-destructive/10 p-3 text-[13px] font-semibold text-destructive">{moveErr}</div> : null}
+            <div className="flex justify-end gap-2">
+              <button className={btnGhost} onClick={() => setMoving(null)}>Cancel</button>
+              <button className={btn} disabled={busy || !moving.reason.trim() || (moving.mode === "business" && !moving.merchant)} onClick={async () => {
+                setBusy(true);
+                try {
+                  const res = await reassign({ data: {
+                    batch_id: moving.batch.id,
+                    merchant_id: moving.mode === "business" ? moving.merchant : null,
+                    refund: moving.refund ? Number(moving.refund) : null,
+                    charge: moving.mode === "business" && moving.charge ? Number(moving.charge) : null,
+                    reason: moving.reason,
+                  } });
+                  toast.success(`${(res as { moved?: number })?.moved ?? moving.batch.available} stickers moved`);
+                  setMoving(null); qc.invalidateQueries({ queryKey: ["bulk"] });
+                } catch (e) { setMoveErr(e instanceof Error ? e.message : "Failed"); } finally { setBusy(false); }
+              }}>Move batch</button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }
