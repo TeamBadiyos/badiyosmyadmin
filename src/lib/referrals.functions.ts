@@ -114,7 +114,7 @@ export const listReferrals = createServerFn({ method: "GET" })
     let q = context.supabase
       .from("referral_transactions")
       .select(
-        "id, status, reward_amount, reward_date, booking_id, created_at, reversal_reason, referrer_id, referred_user_id",
+        "id, status, reward_amount, reward_date, signup_reward_amount, signup_reward_date, booking_reward_amount, booking_reward_date, booking_id, created_at, reversal_reason, referrer_id, referred_user_id",
       )
       .order("created_at", { ascending: false })
       .limit(200);
