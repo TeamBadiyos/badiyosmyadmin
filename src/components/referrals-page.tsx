@@ -51,12 +51,13 @@ export function ReferralsPage() {
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_140px_120px_160px_120px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_150px_130px_130px_100px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Referrer</span>
           <span>Referred</span>
           <span>Status</span>
-          <span className="text-right">Reward</span>
-          <span>Reward date</span>
+          <span className="text-right">Signup</span>
+          <span className="text-right">First booking</span>
+          <span className="text-right">Total</span>
           <span></span>
         </div>
         {isLoading && (
@@ -70,7 +71,7 @@ export function ReferralsPage() {
         {data.map((r) => (
           <div
             key={r.id}
-            className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_140px_120px_160px_120px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+            className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_150px_130px_130px_100px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
           >
             <UserCell name={r.referrer_name} phone={r.referrer_phone} />
             <UserCell name={r.referred_name} phone={r.referred_phone} />
@@ -80,7 +81,7 @@ export function ReferralsPage() {
                   r.status,
                 )}`}
               >
-                {r.status.replace(/_/g, " ")}
+                {statusLabel(r.status)}
               </span>
               {r.reversal_reason && (
                 <p className="text-[11px] text-muted-foreground mt-1 truncate">
@@ -88,9 +89,10 @@ export function ReferralsPage() {
                 </p>
               )}
             </span>
-            <span className="text-right font-semibold">{r.reward_amount || "—"}</span>
-            <span className="text-[13px] text-muted-foreground">
-              {r.reward_date ? new Date(r.reward_date).toLocaleDateString() : "—"}
+            <StepCell amount={r.signup_reward_amount} date={r.signup_reward_date} />
+            <StepCell amount={r.booking_reward_amount} date={r.booking_reward_date} />
+            <span className="text-right font-semibold">
+              {r.signup_reward_amount + r.booking_reward_amount || r.reward_amount || "—"}
             </span>
             <div className="flex justify-end">
               {r.status === "reward_credited" && (
@@ -105,6 +107,7 @@ export function ReferralsPage() {
           </div>
         ))}
       </div>
+
 
       {reversing && (
         <ReverseModal txn={reversing} onClose={() => setReversing(null)} />
@@ -122,12 +125,32 @@ function UserCell({ name, phone }: { name: string | null; phone: string | null }
   );
 }
 
+function StepCell({ amount, date }: { amount: number; date: string | null }) {
+  if (!amount) return <span className="text-right text-muted-foreground">—</span>;
+  return (
+    <span className="text-right">
+      <span className="font-semibold">{amount}</span>
+      <span className="block text-[11px] text-muted-foreground">
+        {date ? new Date(date).toLocaleDateString() : ""}
+      </span>
+    </span>
+  );
+}
+
+function statusLabel(status: string): string {
+  if (status === "registered") return "Joined";
+  if (status === "reward_credited") return "First booking done";
+  return status.replace(/_/g, " ");
+}
+
 function statusBadge(status: string): string {
   if (status === "reward_credited") return "bg-primary-tint text-primary";
   if (status === "reversed") return "bg-destructive/10 text-destructive";
   if (status === "pending") return "bg-amber-100 text-amber-700";
+  if (status === "registered") return "bg-sky-100 text-sky-700";
   return "bg-muted text-muted-foreground";
 }
+
 
 // ---------- Config ----------
 
@@ -141,24 +164,45 @@ function ConfigCard() {
     queryFn: () => fetchCfg(),
   });
 
-  const [reward, setReward] = useState<string>("");
+  const [signup, setSignup] = useState<string>("");
+  const [booking, setBooking] = useState<string>("");
+  const [mReferrals, setMReferrals] = useState<string>("");
+  const [mReward, setMReward] = useState<string>("");
   const [active, setActive] = useState<boolean>(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // hydrate once loaded
   const hydrated = data
-    ? reward === "" && !isLoading
-      ? (setReward(String(data.reward_coins)), setActive(data.is_active), true)
+    ? signup === "" && !isLoading
+      ? (setSignup(String(data.signup_reward_coins)),
+        setBooking(String(data.booking_reward_coins)),
+        setMReferrals(data.milestone_referrals == null ? "" : String(data.milestone_referrals)),
+        setMReward(
+          data.milestone_reward_coins == null ? "" : String(data.milestone_reward_coins),
+        ),
+        setActive(data.is_active),
+        true)
       : true
     : false;
   void hydrated;
 
+  const total = (Number(signup) || 0) + (Number(booking) || 0);
+
   const mutation = useMutation({
     mutationFn: () => {
-      const r = Number(reward);
-      if (!(r >= 0)) throw new Error("Reward must be non-negative");
-      return save({ data: { reward_coins: r, is_active: active } });
+      const s = Number(signup);
+      const b = Number(booking);
+      if (!(s >= 0) || !(b >= 0)) throw new Error("Rewards must be non-negative");
+      return save({
+        data: {
+          signup_reward_coins: s,
+          booking_reward_coins: b,
+          milestone_referrals: mReferrals === "" ? null : Number(mReferrals),
+          milestone_reward_coins: mReward === "" ? null : Number(mReward),
+          is_active: active,
+        },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referrals", "config"] });
@@ -174,20 +218,34 @@ function ConfigCard() {
         Program settings
       </p>
       <h2 className="text-[18px] font-bold text-foreground">Referral rewards</h2>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-[200px_1fr_auto] gap-4 items-end">
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Reward per referral (coins)
-          </label>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={reward}
-            onChange={(e) => setReward(e.target.value)}
-            className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-          />
-        </div>
+      <p className="text-[13px] text-muted-foreground mt-1">
+        Friend joins → signup points. Friend completes first booking → booking points.
+      </p>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Field
+          label="Signup points (friend joins)"
+          value={signup}
+          onChange={setSignup}
+        />
+        <Field
+          label="Booking points (first booking)"
+          value={booking}
+          onChange={setBooking}
+        />
+        <Field
+          label="Milestone after N referrals"
+          value={mReferrals}
+          onChange={setMReferrals}
+          placeholder="e.g. 5"
+        />
+        <Field
+          label="Milestone bonus points"
+          value={mReward}
+          onChange={setMReward}
+          placeholder="e.g. 50"
+        />
+      </div>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
         <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
           <div>
             <p className="text-[13px] font-semibold text-foreground">Program enabled</p>
@@ -202,6 +260,12 @@ function ConfigCard() {
             className="w-5 h-5 accent-primary"
           />
         </label>
+        <div className="px-4 py-3 rounded-[14px] bg-primary-tint">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
+            Total per referral
+          </p>
+          <p className="text-[18px] font-bold text-primary">{total} points</p>
+        </div>
         <button
           disabled={mutation.isPending}
           onClick={() => {
@@ -218,6 +282,36 @@ function ConfigCard() {
     </div>
   );
 }
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+      />
+    </div>
+  );
+}
+
 
 // ---------- Reverse modal ----------
 
