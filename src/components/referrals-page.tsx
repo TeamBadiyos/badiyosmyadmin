@@ -51,12 +51,13 @@ export function ReferralsPage() {
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_140px_120px_160px_120px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_150px_130px_130px_100px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Referrer</span>
           <span>Referred</span>
           <span>Status</span>
-          <span className="text-right">Reward</span>
-          <span>Reward date</span>
+          <span className="text-right">Signup</span>
+          <span className="text-right">First booking</span>
+          <span className="text-right">Total</span>
           <span></span>
         </div>
         {isLoading && (
@@ -70,7 +71,7 @@ export function ReferralsPage() {
         {data.map((r) => (
           <div
             key={r.id}
-            className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_140px_120px_160px_120px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+            className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_150px_130px_130px_100px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
           >
             <UserCell name={r.referrer_name} phone={r.referrer_phone} />
             <UserCell name={r.referred_name} phone={r.referred_phone} />
@@ -80,7 +81,7 @@ export function ReferralsPage() {
                   r.status,
                 )}`}
               >
-                {r.status.replace(/_/g, " ")}
+                {statusLabel(r.status)}
               </span>
               {r.reversal_reason && (
                 <p className="text-[11px] text-muted-foreground mt-1 truncate">
@@ -88,9 +89,10 @@ export function ReferralsPage() {
                 </p>
               )}
             </span>
-            <span className="text-right font-semibold">{r.reward_amount || "—"}</span>
-            <span className="text-[13px] text-muted-foreground">
-              {r.reward_date ? new Date(r.reward_date).toLocaleDateString() : "—"}
+            <StepCell amount={r.signup_reward_amount} date={r.signup_reward_date} />
+            <StepCell amount={r.booking_reward_amount} date={r.booking_reward_date} />
+            <span className="text-right font-semibold">
+              {r.signup_reward_amount + r.booking_reward_amount || r.reward_amount || "—"}
             </span>
             <div className="flex justify-end">
               {r.status === "reward_credited" && (
@@ -105,6 +107,7 @@ export function ReferralsPage() {
           </div>
         ))}
       </div>
+
 
       {reversing && (
         <ReverseModal txn={reversing} onClose={() => setReversing(null)} />
