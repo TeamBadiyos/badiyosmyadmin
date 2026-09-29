@@ -236,7 +236,13 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const status = String(row.refund_status ?? "").toLowerCase();
       if (!status || status === "failed") return 0;
       const amt = Number(row.refund_amount ?? 0);
-      return amt > 0 ? Math.min(amt, charged) : charged;
+      if (amt > 0) return Math.min(amt, charged);
+      // No amount recorded: only count as fully refunded when the status
+      // explicitly says the refund went through. Defaults like "none" /
+      // "not_requested" / "pending" mean no money was returned.
+      return ["refunded", "processed", "completed", "success"].includes(status)
+        ? charged
+        : 0;
     };
 
     const bookingRows = (bookingRevenueRes.data ?? []) as Array<
