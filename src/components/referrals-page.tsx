@@ -125,12 +125,32 @@ function UserCell({ name, phone }: { name: string | null; phone: string | null }
   );
 }
 
+function StepCell({ amount, date }: { amount: number; date: string | null }) {
+  if (!amount) return <span className="text-right text-muted-foreground">—</span>;
+  return (
+    <span className="text-right">
+      <span className="font-semibold">{amount}</span>
+      <span className="block text-[11px] text-muted-foreground">
+        {date ? new Date(date).toLocaleDateString() : ""}
+      </span>
+    </span>
+  );
+}
+
+function statusLabel(status: string): string {
+  if (status === "registered") return "Joined";
+  if (status === "reward_credited") return "First booking done";
+  return status.replace(/_/g, " ");
+}
+
 function statusBadge(status: string): string {
   if (status === "reward_credited") return "bg-primary-tint text-primary";
   if (status === "reversed") return "bg-destructive/10 text-destructive";
   if (status === "pending") return "bg-amber-100 text-amber-700";
+  if (status === "registered") return "bg-sky-100 text-sky-700";
   return "bg-muted text-muted-foreground";
 }
+
 
 // ---------- Config ----------
 
