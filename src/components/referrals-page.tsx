@@ -166,8 +166,6 @@ function ConfigCard() {
 
   const [signup, setSignup] = useState<string>("");
   const [booking, setBooking] = useState<string>("");
-  const [mReferrals, setMReferrals] = useState<string>("");
-  const [mReward, setMReward] = useState<string>("");
   const [active, setActive] = useState<boolean>(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -177,10 +175,6 @@ function ConfigCard() {
     ? signup === "" && !isLoading
       ? (setSignup(String(data.signup_reward_coins)),
         setBooking(String(data.booking_reward_coins)),
-        setMReferrals(data.milestone_referrals == null ? "" : String(data.milestone_referrals)),
-        setMReward(
-          data.milestone_reward_coins == null ? "" : String(data.milestone_reward_coins),
-        ),
         setActive(data.is_active),
         true)
       : true
@@ -198,8 +192,6 @@ function ConfigCard() {
         data: {
           signup_reward_coins: s,
           booking_reward_coins: b,
-          milestone_referrals: mReferrals === "" ? null : Number(mReferrals),
-          milestone_reward_coins: mReward === "" ? null : Number(mReward),
           is_active: active,
         },
       });
@@ -221,7 +213,7 @@ function ConfigCard() {
       <p className="text-[13px] text-muted-foreground mt-1">
         Friend joins → signup points. Friend completes first booking → booking points.
       </p>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field
           label="Signup points (friend joins)"
           value={signup}
@@ -232,19 +224,8 @@ function ConfigCard() {
           value={booking}
           onChange={setBooking}
         />
-        <Field
-          label="Milestone after N referrals"
-          value={mReferrals}
-          onChange={setMReferrals}
-          placeholder="e.g. 5"
-        />
-        <Field
-          label="Milestone bonus points"
-          value={mReward}
-          onChange={setMReward}
-          placeholder="e.g. 50"
-        />
       </div>
+
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-4 items-center">
         <label className="flex items-center justify-between gap-3 p-3 rounded-[14px] border border-border">
           <div>
