@@ -65,6 +65,9 @@ export type CustomerProfile = {
     full_address: string;
     area: string | null;
     city: string | null;
+    pincode: string | null;
+    latitude: number | null;
+    longitude: number | null;
     is_default: boolean | null;
   }>;
   bookings: Array<{
@@ -239,7 +242,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes] = await Promise.all([
       db
         .from("addresses")
-        .select("id, label, full_address, area, city, is_default")
+        .select("id, label, full_address, area, city, pincode, latitude, longitude, is_default")
         .eq("user_id", uid)
         .order("is_default", { ascending: false }),
       db
