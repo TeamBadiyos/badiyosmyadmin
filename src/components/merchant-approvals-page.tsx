@@ -337,6 +337,196 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
       {commissionFor && (
         <CommissionModal merchant={commissionFor} onClose={() => setCommissionFor(null)} />
       )}
+
+      {rejectFor && (
+        <RejectModal merchant={rejectFor} onClose={() => setRejectFor(null)} />
+      )}
+
+      {queryFor && <QueryModal merchant={queryFor} onClose={() => setQueryFor(null)} />}
+    </div>
+  );
+}
+
+/** Rejecting always needs a written reason, and only the Reject button rejects. */
+function RejectModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const decide = useServerFn(decideMerchant);
+  const [reason, setReason] = useState("");
+
+  const m = useMutation({
+    mutationFn: () =>
+      decide({ data: { merchantId: merchant.id, decision: "rejected" as const, notes: reason.trim() } }),
+    onSuccess: () => {
+      toast.success("Merchant rejected");
+      qc.invalidateQueries({ queryKey: ["merchants"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to reject"),
+  });
+
+  const valid = reason.trim().length >= 5;
+
+  return (
+    <ModalShell onClose={onClose} title="Reject application" subtitle={merchant.storeName || "Unnamed store"}>
+      <div>
+        <label className="text-[12px] font-semibold text-muted-foreground">
+          Reason for rejection (required)
+        </label>
+        <textarea
+          value={reason}
+          autoFocus
+          onChange={(e) => setReason(e.target.value)}
+          rows={4}
+          placeholder="Example: Documents do not match the store owner."
+          className="mt-1 w-full rounded-[12px] border border-border bg-background px-3 py-2 text-[14px]"
+        />
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          The merchant is told this reason. Nothing is rejected until you press Reject.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onClose}
+          className="flex-1 h-10 rounded-[12px] border border-border text-[13px] font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!valid || m.isPending}
+          onClick={() => m.mutate()}
+          className="flex-1 h-10 rounded-[12px] bg-destructive text-white text-[13px] font-bold disabled:opacity-50"
+        >
+          {m.isPending ? "Rejecting…" : "Reject"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+/** Ask the merchant to re-upload specific documents. */
+function QueryModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const raise = useServerFn(raiseMerchantQuery);
+  const [docs, setDocs] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+
+  const m = useMutation({
+    mutationFn: () =>
+      raise({ data: { merchantId: merchant.id, docTypes: docs, notes: notes.trim() } }),
+    onSuccess: () => {
+      toast.success("Query sent to the merchant");
+      qc.invalidateQueries({ queryKey: ["merchants"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to send query"),
+  });
+
+  function toggle(v: string) {
+    setDocs((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
+  }
+
+  const valid = docs.length > 0 && notes.trim().length >= 5;
+
+  return (
+    <ModalShell
+      onClose={onClose}
+      title="Ask for re-upload"
+      subtitle={merchant.storeName || "Unnamed store"}
+    >
+      <div>
+        <p className="text-[12px] font-semibold text-muted-foreground mb-2">
+          Which documents have a problem?
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {QUERY_DOC_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => toggle(o.value)}
+              className={`h-8 px-3 rounded-full text-[12px] font-semibold border ${
+                docs.includes(o.value)
+                  ? "bg-primary text-white border-primary"
+                  : "bg-card text-muted-foreground border-border"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[12px] font-semibold text-muted-foreground mb-2">Quick reasons</p>
+        <div className="flex flex-col gap-1">
+          {QUICK_REASONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => setNotes(r)}
+              className="text-left text-[12px] rounded-[10px] border border-border px-2 py-1.5 hover:border-primary"
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[12px] font-semibold text-muted-foreground">
+          Message to the merchant (required)
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          placeholder="Example: Bank document is wrong. Please upload the correct cancelled cheque."
+          className="mt-1 w-full rounded-[12px] border border-border bg-background px-3 py-2 text-[14px]"
+        />
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          The store goes back to draft, the owner gets a notification and can upload again.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onClose}
+          className="flex-1 h-10 rounded-[12px] border border-border text-[13px] font-semibold"
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!valid || m.isPending}
+          onClick={() => m.mutate()}
+          className="flex-1 h-10 rounded-[12px] bg-primary text-white text-[13px] font-bold disabled:opacity-50"
+        >
+          {m.isPending ? "Sending…" : "Send query"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-[18px] bg-card border border-border p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h3 className="text-[16px] font-bold text-foreground">{title}</h3>
+          {subtitle && <p className="text-[13px] text-muted-foreground">{subtitle}</p>}
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
