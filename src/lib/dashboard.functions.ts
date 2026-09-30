@@ -257,6 +257,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let bookingRevenue = 0;
     let bookingDiscountToday = 0;
     let bookingGross = 0;
+    /** Coin / fully-free checkouts carry a "free_" id: no cash was collected. */
+    const isCoinPayment = (id: unknown) =>
+      String(id ?? "").toLowerCase().startsWith("free_");
+
     for (const r of bookingRows) {
       const status = String(r.status ?? "").toLowerCase();
       if (status === "cancelled" || status === "canceled") continue;
@@ -264,6 +268,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const total = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
       const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+      if (isCoinPayment(r.razorpay_payment_id)) {
+        // Paid with coins: the whole value is a discount, cash revenue is zero.
+        bookingDiscountToday += charged + discount;
+        bookingGross += charged + discount;
+        continue;
+      }
       bookingDiscountToday += discount;
       bookingGross += charged + discount;
       bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
