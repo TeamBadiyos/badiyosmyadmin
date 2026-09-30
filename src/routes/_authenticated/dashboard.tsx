@@ -781,7 +781,7 @@ function DashboardHome({
         </label>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 xl:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 xl:gap-5">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -789,24 +789,23 @@ function DashboardHome({
               key={card.label}
               type="button"
               onClick={card.onClick}
-              className="text-left bg-card border border-border rounded-[18px] p-5 flex items-start justify-between gap-3 cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              title={card.hint}
+              className="text-left bg-card border border-border rounded-[18px] p-4 flex flex-col cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              <div className="min-w-0">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="flex items-start justify-between gap-2 min-h-[32px]">
+                <p className="text-[11px] font-semibold uppercase tracking-wide leading-[1.3] text-muted-foreground line-clamp-2">
                   {card.label}
                 </p>
-                <p className="mt-2 text-[26px] leading-none font-bold text-foreground truncate">
-                  {isLoading && !data ? "—" : card.value}
-                </p>
-                {card.hint && (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground truncate">
-                    {card.hint}
-                  </p>
-                )}
+                <div className="w-8 h-8 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
+                  <Icon size={16} />
+                </div>
               </div>
-              <div className="w-9 h-9 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
-                <Icon size={18} />
-              </div>
+              <p className="mt-3 text-[24px] leading-none font-bold text-foreground truncate">
+                {isLoading && !data ? "—" : card.value}
+              </p>
+              <p className="mt-2 text-[11px] leading-[1.35] text-muted-foreground line-clamp-2 min-h-[30px]">
+                {card.hint ?? ""}
+              </p>
             </button>
           );
         })}
