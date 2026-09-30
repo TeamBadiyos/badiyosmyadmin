@@ -467,6 +467,18 @@ export function BookingDetailsModal({
                 <Timeline current={data.status} />
               </section>
 
+              {/* Live service timer */}
+              <ServiceTimerCard
+                booking={{
+                  status: data.status,
+                  startedAt: data.startedAt,
+                  serviceEndAt: data.serviceEndAt,
+                  serviceDurationMinutes: data.serviceDurationMinutes,
+                }}
+                extensionMinutes={data.extensionMinutes}
+              />
+
+
               {/* Live tracking */}
               <section>
                 <h3 className="text-[13px] font-bold text-foreground mb-2">
