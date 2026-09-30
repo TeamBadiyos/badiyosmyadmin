@@ -41,6 +41,7 @@ import {
 } from "@/lib/live-orders.functions";
 
 import { LiveTrackingMap } from "@/components/live-tracking-map";
+import { ServiceTimerCard } from "@/components/service-timer";
 
 
 
@@ -465,6 +466,18 @@ export function BookingDetailsModal({
                 </div>
                 <Timeline current={data.status} />
               </section>
+
+              {/* Live service timer */}
+              <ServiceTimerCard
+                booking={{
+                  status: data.status,
+                  startedAt: data.startedAt,
+                  serviceEndAt: data.serviceEndAt,
+                  serviceDurationMinutes: data.serviceDurationMinutes,
+                }}
+                extensionMinutes={data.extensionMinutes}
+              />
+
 
               {/* Live tracking */}
               <section>

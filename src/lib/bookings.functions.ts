@@ -51,6 +51,9 @@ export type BookingRow = {
   extensionPending: boolean;
   createdAt: string;
   deletedAt: string | null;
+  startedAt: string | null;
+  serviceEndAt: string | null;
+  serviceDurationMinutes: number | null;
 };
 
 
@@ -97,7 +100,7 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes",
         ),
         { count: "exact" },
       )
@@ -233,6 +236,9 @@ export const listBookings = createServerFn({ method: "POST" })
         extensionPending: ext?.pending ?? false,
         createdAt: r.created_at,
         deletedAt: r.deleted_at ?? null,
+        startedAt: r.started_at ?? null,
+        serviceEndAt: r.service_end_at ?? null,
+        serviceDurationMinutes: r.service_duration_minutes ?? null,
       };
     });
 
@@ -273,6 +279,8 @@ export type BookingDetails = {
   status: BookingStatus;
   serviceLabel: string | null;
   serviceDurationMinutes: number | null;
+  startedAt: string | null;
+  serviceEndAt: string | null;
   scheduledDate: string | null;
   scheduledTimeSlot: string | null;
   slotType: string | null;
@@ -318,7 +326,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -378,6 +386,8 @@ async function loadBookingDetails(
     status: b.status as BookingStatus,
     serviceLabel: b.service_label ?? null,
     serviceDurationMinutes: b.service_duration_minutes ?? null,
+    startedAt: b.started_at ?? null,
+    serviceEndAt: b.service_end_at ?? null,
     scheduledDate: b.scheduled_date ?? null,
     scheduledTimeSlot: b.scheduled_time_slot ?? null,
     slotType: b.slot_type ?? null,

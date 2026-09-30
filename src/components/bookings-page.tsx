@@ -12,6 +12,7 @@ import {
 } from "@/lib/bookings.functions";
 import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
 import { OrderDetail } from "@/components/courier-page";
+import { ServiceTimerPill } from "@/components/service-timer";
 
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
@@ -505,11 +506,21 @@ function BookingRowItem({
         )}
       </td>
       <td className="px-4 py-3">
-        <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${STATUS_STYLES[row.status] ?? "bg-muted text-muted-foreground"}`}
-        >
-          {row.status.replace("_", " ")}
-        </span>
+        <div className="flex flex-col items-start gap-1">
+          <span
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${STATUS_STYLES[row.status] ?? "bg-muted text-muted-foreground"}`}
+          >
+            {row.status.replace("_", " ")}
+          </span>
+          <ServiceTimerPill
+            booking={{
+              status: row.status,
+              startedAt: row.startedAt,
+              serviceEndAt: row.serviceEndAt,
+              serviceDurationMinutes: row.serviceDurationMinutes,
+            }}
+          />
+        </div>
       </td>
       <td className="px-4 py-3">
         <span
