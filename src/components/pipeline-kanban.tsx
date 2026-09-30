@@ -161,6 +161,7 @@ export function PipelineKanban({
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
+  const fetchJourneyConfig = useServerFn(getBookingJourneyConfig);
   const fetchCourier = useServerFn(listCourierOrders);
 
   const [openId, setOpenId] = useState<string | null>(null);
