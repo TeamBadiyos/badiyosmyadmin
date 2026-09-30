@@ -381,7 +381,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent";
     let openQ = db
       .from("bookings")
       .select(cols)
