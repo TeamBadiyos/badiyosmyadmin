@@ -17,15 +17,18 @@ import {
 
   assignExpertToBooking,
   countEligibleExperts,
+  getBookingJourneyConfig,
   getDispatchConfig,
   listActiveExperts,
   listPipelineBookings,
   rejectPendingBooking,
   REJECT_REASONS,
+  type BookingJourneyConfig,
   type PipelineBooking,
   type PipelineStatus,
   type RejectReason,
 } from "@/lib/live-orders.functions";
+import { reassignExpert } from "@/lib/bookings.functions";
 import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
 import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
@@ -158,6 +161,7 @@ export function PipelineKanban({
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
+  const fetchJourneyConfig = useServerFn(getBookingJourneyConfig);
   const fetchCourier = useServerFn(listCourierOrders);
 
   const [openId, setOpenId] = useState<string | null>(null);
@@ -189,6 +193,20 @@ export function PipelineKanban({
     dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
   const noExpertTimeoutMinutes =
     dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
+
+  const journeyConfigQuery = useQuery({
+    queryKey: ["pipeline", "journey-config"],
+    queryFn: () => fetchJourneyConfig(),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const journeyConfig: BookingJourneyConfig = journeyConfigQuery.data ?? {
+    journeyStepsEnabled: false,
+    asapOnwayDeadlineMinutes: 3,
+    scheduledOnwayDeadlineBeforeSlotMinutes: 15,
+    noExpertAlertBeforeSlotMinutes: 5,
+    noExpertRefundAfterSlotMinutes: 30,
+  };
 
 
   // Realtime subscription: any booking or parcel order change refreshes the board.
@@ -452,6 +470,8 @@ export function PipelineKanban({
                     role={role}
                     broadcastTimeoutSeconds={broadcastTimeoutSeconds}
                     noExpertTimeoutMinutes={noExpertTimeoutMinutes}
+                    journeyConfig={journeyConfig}
+
 
                     onOpen={() => setOpenId(b.id)}
                   />
@@ -494,30 +514,59 @@ export function PipelineKanban({
 }
 
 
+/** Slot start as epoch ms, from "2026-10-01" + "10:00 AM - 11:00 AM" / "14:00". */
+function slotStartMs(booking: PipelineBooking): number | null {
+  if (!booking.scheduledDate || !booking.scheduledTimeSlot) return null;
+  const m = booking.scheduledTimeSlot.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const mins = Number(m[2] ?? "0");
+  const ampm = m[3]?.toLowerCase();
+  if (ampm === "pm" && hour < 12) hour += 12;
+  if (ampm === "am" && hour === 12) hour = 0;
+  // Slot times are stated in IST (UTC+5:30).
+  const base = Date.parse(`${booking.scheduledDate}T00:00:00+05:30`);
+  if (Number.isNaN(base)) return null;
+  return base + hour * 3_600_000 + mins * 60_000;
+}
+
+function clockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
 function BoardCard({
   booking,
   role,
   broadcastTimeoutSeconds,
   noExpertTimeoutMinutes,
+  journeyConfig,
   onOpen,
 }: {
   booking: PipelineBooking;
   role: StaffRole | null;
   broadcastTimeoutSeconds: number;
   noExpertTimeoutMinutes: number;
+  journeyConfig: BookingJourneyConfig;
   onOpen: () => void;
 }) {
 
   const canAct = role === "super_admin" || role === "ops_manager";
   const isBroadcasting = booking.status === "accepted";
+  const isAssigned = booking.status === "expert_assigned";
 
-  // Live-ticking elapsed seconds since the booking entered 'accepted'.
+  // Live-ticking clock for broadcast elapsed time and journey deadlines.
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const ticking = isBroadcasting || isAssigned;
   useEffect(() => {
-    if (!isBroadcasting) return;
+    if (!ticking) return;
     const t = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(t);
-  }, [isBroadcasting]);
+  }, [ticking]);
   const acceptedAtMs = isBroadcasting
     ? new Date(booking.updatedAt).getTime()
     : 0;
@@ -539,6 +588,33 @@ function BoardCard({
       )
     : null;
 
+  // ---- Journey steps: on the way / arrived, and the "running late" alert ----
+  const slotStart = slotStartMs(booking);
+  const isAsap =
+    (booking.slotType ?? "").toLowerCase() === "asap" || slotStart == null;
+  const onwayDeadlineMs = isAssigned
+    ? isAsap
+      ? (booking.expertAssignedAt
+          ? new Date(booking.expertAssignedAt).getTime()
+          : new Date(booking.updatedAt).getTime()) +
+        journeyConfig.asapOnwayDeadlineMinutes * 60_000
+      : (slotStart ?? 0) -
+        journeyConfig.scheduledOnwayDeadlineBeforeSlotMinutes * 60_000
+    : null;
+  const onwayLate =
+    isAssigned &&
+    !booking.onTheWayAt &&
+    (booking.onwayAlertSent ||
+      (onwayDeadlineMs != null && nowMs > onwayDeadlineMs));
+
+  // ---- No expert found ----
+  const noExpertFound =
+    isBroadcasting &&
+    (booking.noExpertAlertSent ||
+      (slotStart != null &&
+        nowMs > slotStart - journeyConfig.noExpertAlertBeforeSlotMinutes * 60_000));
+
+  const alerting = onwayLate || noExpertFound;
 
   // Eligible experts count for accepted (broadcasting) cards.
   const fetchCount = useServerFn(countEligibleExperts);
@@ -556,9 +632,11 @@ function BoardCard({
     <div
       onClick={onOpen}
       className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
-        timedOut
-          ? "border-warning bg-warning-tint/30"
-          : "border-border hover:border-primary/60"
+        alerting
+          ? "border-destructive bg-destructive/5"
+          : timedOut
+            ? "border-warning bg-warning-tint/30"
+            : "border-border hover:border-primary/60"
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -595,6 +673,42 @@ function BoardCard({
           </p>
         )}
       </div>
+
+      {(booking.onTheWayAt || booking.arrivedAt) && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {booking.onTheWayAt && (
+            <span className="rounded-full border border-primary/30 bg-primary-tint px-2 py-0.5 text-[10px] font-bold text-primary">
+              On the way · {clockTime(booking.onTheWayAt)}
+            </span>
+          )}
+          {booking.arrivedAt && (
+            <span className="rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">
+              Arrived · {clockTime(booking.arrivedAt)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {onwayLate && (
+        <div className="mt-2 rounded-[10px] border border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
+          <span className="block">Not on the way in time</span>
+          <span className="block font-normal">
+            {isAsap
+              ? `Expert has not started out within ${journeyConfig.asapOnwayDeadlineMinutes} min of being assigned.`
+              : `Expert should have been on the way ${journeyConfig.scheduledOnwayDeadlineBeforeSlotMinutes} min before the slot.`}
+          </span>
+        </div>
+      )}
+
+      {noExpertFound && (
+        <div className="mt-2 rounded-[10px] border border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
+          <span className="block">No Expert found</span>
+          <span className="block font-normal">
+            Slot is close and nobody has accepted — assign someone manually.
+          </span>
+        </div>
+      )}
+
 
       {isBroadcasting && (
         <div
@@ -640,6 +754,13 @@ function BoardCard({
       )}
       {canAct && booking.status === "accepted" && (
         <AssignExpertInline bookingId={booking.id} />
+      )}
+      {canAct && isAssigned && (
+        <ReassignExpertInline
+          bookingId={booking.id}
+          currentExpertId={booking.assignedExpertId}
+          highlight={onwayLate}
+        />
       )}
     </div>
   );
@@ -726,6 +847,102 @@ function ConfirmedActions({ bookingId }: { bookingId: string }) {
               className="flex-1 h-8 rounded-[10px] border border-border text-[12px] font-semibold"
             >
               Back
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Manual hand-over of an already-assigned booking to another expert. */
+function ReassignExpertInline({
+  bookingId,
+  currentExpertId,
+  highlight,
+}: {
+  bookingId: string;
+  currentExpertId: string | null;
+  highlight: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const fetchExperts = useServerFn(listActiveExperts);
+  const reassignFn = useServerFn(reassignExpert);
+  const [open, setOpen] = useState(false);
+  const [expertId, setExpertId] = useState("");
+
+  const expertsQuery = useQuery({
+    queryKey: ["pipeline", "reassignable-experts", bookingId],
+    queryFn: () => fetchExperts({ data: { bookingId } }),
+    enabled: open,
+    retry: 1,
+  });
+
+  const mut = useMutation({
+    mutationFn: () => reassignFn({ data: { bookingId, newExpertId: expertId } }),
+    onSuccess: () => {
+      toast.success("Booking reassigned");
+      setOpen(false);
+      setExpertId("");
+      queryClient.invalidateQueries({ queryKey: ["pipeline", "board"] });
+      queryClient.invalidateQueries({ queryKey: ["live-orders"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not reassign"),
+  });
+
+  const experts = (expertsQuery.data ?? []).filter((x) => x.id !== currentExpertId);
+
+  return (
+    <div
+      className="mt-3 border-t border-border pt-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`h-8 w-full rounded-[10px] border text-[12px] font-bold ${
+            highlight
+              ? "border-destructive bg-destructive text-white"
+              : "border-border text-foreground hover:bg-muted"
+          }`}
+        >
+          Reassign expert
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <select
+            value={expertId}
+            onChange={(e) => setExpertId(e.target.value)}
+            className="h-8 w-full rounded-[10px] border border-border bg-card px-2 text-[12px] text-foreground"
+          >
+            <option value="">
+              {expertsQuery.isLoading ? "Loading experts…" : "Choose an expert"}
+            </option>
+            {experts.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!expertId || mut.isPending}
+              onClick={() => mut.mutate()}
+              className="h-8 flex-1 rounded-[10px] bg-primary text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {mut.isPending ? "Reassigning…" : "Confirm"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setExpertId("");
+              }}
+              className="h-8 flex-1 rounded-[10px] border border-border text-[12px] font-semibold"
+            >
+              Cancel
             </button>
           </div>
         </div>

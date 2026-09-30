@@ -291,12 +291,63 @@ export type PipelineBooking = {
   price: number | null;
   scheduledDate: string | null;
   scheduledTimeSlot: string | null;
+  slotType: string | null;
   assignedExpertName: string | null;
+  assignedExpertId: string | null;
+  expertAssignedAt: string | null;
+  onTheWayAt: string | null;
+  arrivedAt: string | null;
+  onwayAlertSent: boolean;
+  noExpertAlertSent: boolean;
   createdAt: string;
   updatedAt: string;
   broadcastStartedAt: string | null;
   dispatchExhaustedAt: string | null;
 };
+
+/** Timing rules Live Ops needs to decide when a card is late. */
+export type BookingJourneyConfig = {
+  journeyStepsEnabled: boolean;
+  asapOnwayDeadlineMinutes: number;
+  scheduledOnwayDeadlineBeforeSlotMinutes: number;
+  noExpertAlertBeforeSlotMinutes: number;
+  noExpertRefundAfterSlotMinutes: number;
+};
+
+export const getBookingJourneyConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<BookingJourneyConfig> => {
+    await assertActiveStaff(context);
+    const { data, error } = await context.supabase
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", [
+        "expert_journey_steps_enabled",
+        "asap_onway_deadline_minutes",
+        "scheduled_onway_deadline_before_slot_minutes",
+        "no_expert_alert_before_slot_minutes",
+        "no_expert_refund_after_slot_minutes",
+      ]);
+    if (error) throw new Error(error.message);
+    const m = new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((data ?? []) as any[]).map((r) => [r.key as string, String(r.value ?? "")]),
+    );
+    const num = (key: string, fallback: number) => {
+      const n = Number(m.get(key));
+      return Number.isFinite(n) ? n : fallback;
+    };
+    return {
+      journeyStepsEnabled: m.get("expert_journey_steps_enabled") === "1",
+      asapOnwayDeadlineMinutes: num("asap_onway_deadline_minutes", 3),
+      scheduledOnwayDeadlineBeforeSlotMinutes: num(
+        "scheduled_onway_deadline_before_slot_minutes",
+        15,
+      ),
+      noExpertAlertBeforeSlotMinutes: num("no_expert_alert_before_slot_minutes", 5),
+      noExpertRefundAfterSlotMinutes: num("no_expert_refund_after_slot_minutes", 30),
+    };
+  });
 
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
@@ -330,7 +381,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent";
     let openQ = db
       .from("bookings")
       .select(cols)
@@ -406,10 +457,19 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       price: r.price != null ? Number(r.price) : null,
       scheduledDate: (r.scheduled_date as string | null) ?? null,
       scheduledTimeSlot: (r.scheduled_time_slot as string | null) ?? null,
+      slotType: ((r as Record<string, unknown>)["slot_type"] as string | null) ?? null,
       assignedExpertName: r.assigned_expert_id
         ? (expertMap.get(r.assigned_expert_id as string) as string | null) ??
           null
         : null,
+      assignedExpertId: (r.assigned_expert_id as string | null) ?? null,
+      expertAssignedAt:
+        ((r as Record<string, unknown>)["expert_assigned_at"] as string | null) ?? null,
+      onTheWayAt:
+        ((r as Record<string, unknown>)["on_the_way_at"] as string | null) ?? null,
+      arrivedAt: ((r as Record<string, unknown>)["arrived_at"] as string | null) ?? null,
+      onwayAlertSent: Boolean((r as Record<string, unknown>)["onway_alert_sent"]),
+      noExpertAlertSent: Boolean((r as Record<string, unknown>)["no_expert_alert_sent"]),
       createdAt: r.created_at as string,
       updatedAt: (r.updated_at as string | null) ?? (r.created_at as string),
       broadcastStartedAt:
@@ -420,6 +480,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         ((r as Record<string, unknown>)["dispatch_exhausted_at"] as
           | string
           | null) ?? null,
+
 
     }));
   });

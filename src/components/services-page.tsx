@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, ChevronDown, Info, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
+import { BookingTimingsTab } from "@/components/booking-timings-tab";
 import {
   ServiceStatusCard,
   ServiceStatusSection,
@@ -16,7 +17,7 @@ import { getCourierAccess, listServiceFlags } from "@/lib/courier.functions";
 import { listServiceControl } from "@/lib/service-control.functions";
 import { listSegments, setSegmentActive, type Segment } from "@/lib/segments.functions";
 
-type ServicesTab = "controls" | "capacity";
+type ServicesTab = "controls" | "capacity" | "timings";
 
 const SERVICE_ORDER = ["clean", "store", "courier"] as const;
 const SEGMENT_SLUG_BY_SERVICE: Partial<Record<(typeof SERVICE_ORDER)[number], string>> = {
@@ -148,6 +149,7 @@ export function ServicesPage() {
         <div className="flex gap-2">
           {([
             ["controls", "Service Controls"],
+            ["timings", "Booking Timings"],
             ["capacity", "Capacity Messages"],
           ] as const).map(([key, label]) => (
             <button
@@ -186,6 +188,7 @@ export function ServicesPage() {
       </div>
 
       {tab === "capacity" ? <CapacityMessagesPage /> : null}
+      {tab === "timings" ? <BookingTimingsTab /> : null}
 
       {tab === "controls" ? (
         <>
