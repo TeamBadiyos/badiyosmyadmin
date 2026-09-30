@@ -61,6 +61,8 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productsId, setProductsId] = useState<string | null>(null);
   const [commissionFor, setCommissionFor] = useState<MerchantRow | null>(null);
+  const [rejectFor, setRejectFor] = useState<MerchantRow | null>(null);
+  const [queryFor, setQueryFor] = useState<MerchantRow | null>(null);
 
   const fetchRows = useServerFn(listMerchants);
   const decide = useServerFn(decideMerchant);
