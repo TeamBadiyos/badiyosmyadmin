@@ -851,6 +851,102 @@ function ConfirmedActions({ bookingId }: { bookingId: string }) {
   );
 }
 
+/** Manual hand-over of an already-assigned booking to another expert. */
+function ReassignExpertInline({
+  bookingId,
+  currentExpertId,
+  highlight,
+}: {
+  bookingId: string;
+  currentExpertId: string | null;
+  highlight: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const fetchExperts = useServerFn(listActiveExperts);
+  const reassignFn = useServerFn(reassignExpert);
+  const [open, setOpen] = useState(false);
+  const [expertId, setExpertId] = useState("");
+
+  const expertsQuery = useQuery({
+    queryKey: ["pipeline", "reassignable-experts", bookingId],
+    queryFn: () => fetchExperts({ data: { bookingId } }),
+    enabled: open,
+    retry: 1,
+  });
+
+  const mut = useMutation({
+    mutationFn: () => reassignFn({ data: { bookingId, newExpertId: expertId } }),
+    onSuccess: () => {
+      toast.success("Booking reassigned");
+      setOpen(false);
+      setExpertId("");
+      queryClient.invalidateQueries({ queryKey: ["pipeline", "board"] });
+      queryClient.invalidateQueries({ queryKey: ["live-orders"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not reassign"),
+  });
+
+  const experts = (expertsQuery.data ?? []).filter((x) => x.id !== currentExpertId);
+
+  return (
+    <div
+      className="mt-3 border-t border-border pt-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`h-8 w-full rounded-[10px] border text-[12px] font-bold ${
+            highlight
+              ? "border-destructive bg-destructive text-white"
+              : "border-border text-foreground hover:bg-muted"
+          }`}
+        >
+          Reassign expert
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <select
+            value={expertId}
+            onChange={(e) => setExpertId(e.target.value)}
+            className="h-8 w-full rounded-[10px] border border-border bg-card px-2 text-[12px] text-foreground"
+          >
+            <option value="">
+              {expertsQuery.isLoading ? "Loading experts…" : "Choose an expert"}
+            </option>
+            {experts.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!expertId || mut.isPending}
+              onClick={() => mut.mutate()}
+              className="h-8 flex-1 rounded-[10px] bg-primary text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {mut.isPending ? "Reassigning…" : "Confirm"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setExpertId("");
+              }}
+              className="h-8 flex-1 rounded-[10px] border border-border text-[12px] font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AssignExpertInline({ bookingId }: { bookingId: string }) {
   const queryClient = useQueryClient();
   const fetchExperts = useServerFn(listActiveExperts);
