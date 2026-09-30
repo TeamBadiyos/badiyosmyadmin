@@ -149,6 +149,7 @@ export function ServicesPage() {
         <div className="flex gap-2">
           {([
             ["controls", "Service Controls"],
+            ["timings", "Booking Timings"],
             ["capacity", "Capacity Messages"],
           ] as const).map(([key, label]) => (
             <button
