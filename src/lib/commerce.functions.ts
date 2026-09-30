@@ -30,6 +30,12 @@ export type CommerceOrder = {
   riderName: string | null;
   riderState: RiderState;
   alerts: CommerceAlert[];
+  itemsTotal: number;
+  commissionPct: number;
+  commissionAmount: number;
+  commissionGstAmount: number;
+  merchantNet: number;
+  deliveryFee: number;
 };
 
 export type CommercePipeline = {
