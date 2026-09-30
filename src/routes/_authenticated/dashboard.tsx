@@ -13,6 +13,7 @@ import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
+import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
@@ -570,6 +571,8 @@ function Shell() {
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
+        ) : active === "store-settings" ? (
+          <StoreSettingsPage />
         ) : active === "store-categories" ? (
           <StoreCategoriesPage role={role} />
         ) : active === "task-types" ? (
