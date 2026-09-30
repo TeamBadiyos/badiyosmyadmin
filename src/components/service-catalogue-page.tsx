@@ -540,6 +540,11 @@ function ServiceRow({
                     {o.duration_minutes} min
                   </span>
                 )}
+                {service.pricing_type === "flat" && o.estimated_minutes != null && (
+                  <span className="text-[12px] text-muted-foreground">
+                    {o.estimated_minutes} min estimate
+                  </span>
+                )}
                 {o.unit_label && (
                   <span className="text-[12px] text-muted-foreground">{o.unit_label}</span>
                 )}

@@ -446,6 +446,7 @@ export function CommerceKanban({ segmentId }: { segmentId: string | null }) {
                         className="mt-1.5"
                         paid={o.paidAmount}
                         base={o.itemsTotal}
+                        coupon={o.discountAmount}
                         delivery={o.deliveryFee}
                       />
                       {red && (

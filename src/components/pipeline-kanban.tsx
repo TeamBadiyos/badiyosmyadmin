@@ -76,12 +76,6 @@ function courierColumn(status: string, createdAt: string): PipelineStatus | null
 
 
 
-const inr = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-});
-
 function formatPlacedAt(iso: string): string {
   try {
     const d = new Date(iso);
