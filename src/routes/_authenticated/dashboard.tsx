@@ -466,10 +466,13 @@ function Shell() {
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <NotificationBell
             onOpenTarget={(a) => {
-              const match = NAV_ITEMS.find((n) => n.key === a.target);
+              // Website lead notifications point at the Business Leads screen.
+              const target = a.kind === "lead" ? "interest-leads" : a.target;
+              const match = NAV_ITEMS.find((n) => n.key === target);
               const matchedKey = match ? match.key : ("dashboard" as const);
               const key = LEGACY_NAV_ALIASES[matchedKey] ?? matchedKey;
               setActive(key);
+
               setNavNonce((n) => n + 1);
               const group = NAV_GROUPS.find((g) =>
                 (g.keys as ReadonlyArray<string>).includes(key),
