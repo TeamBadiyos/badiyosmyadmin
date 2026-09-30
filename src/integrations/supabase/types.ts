@@ -4741,6 +4741,7 @@ export type Database = {
           query_doc_types: string[] | null
           query_notes: string | null
           rejection_reason: string | null
+          reuploaded_at: string | null
           segment_id: string | null
           shop_photo_url: string | null
           state: string | null
@@ -4794,6 +4795,7 @@ export type Database = {
           query_doc_types?: string[] | null
           query_notes?: string | null
           rejection_reason?: string | null
+          reuploaded_at?: string | null
           segment_id?: string | null
           shop_photo_url?: string | null
           state?: string | null
@@ -4847,6 +4849,7 @@ export type Database = {
           query_doc_types?: string[] | null
           query_notes?: string | null
           rejection_reason?: string | null
+          reuploaded_at?: string | null
           segment_id?: string | null
           shop_photo_url?: string | null
           state?: string | null
