@@ -51,6 +51,9 @@ export type BookingRow = {
   extensionPending: boolean;
   createdAt: string;
   deletedAt: string | null;
+  startedAt: string | null;
+  serviceEndAt: string | null;
+  serviceDurationMinutes: number | null;
 };
 
 
@@ -273,6 +276,8 @@ export type BookingDetails = {
   status: BookingStatus;
   serviceLabel: string | null;
   serviceDurationMinutes: number | null;
+  startedAt: string | null;
+  serviceEndAt: string | null;
   scheduledDate: string | null;
   scheduledTimeSlot: string | null;
   slotType: string | null;
