@@ -150,7 +150,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .from("experts")
         .select("*", countOnly)
         .eq("status", "active")
-        .eq("is_online", true),
+        .eq("is_online", true)
+        .eq("is_busy", false),
       noMerchants
         ? emptyCount
         : scopeMerchant(
