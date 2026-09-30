@@ -291,12 +291,63 @@ export type PipelineBooking = {
   price: number | null;
   scheduledDate: string | null;
   scheduledTimeSlot: string | null;
+  slotType: string | null;
   assignedExpertName: string | null;
+  assignedExpertId: string | null;
+  expertAssignedAt: string | null;
+  onTheWayAt: string | null;
+  arrivedAt: string | null;
+  onwayAlertSent: boolean;
+  noExpertAlertSent: boolean;
   createdAt: string;
   updatedAt: string;
   broadcastStartedAt: string | null;
   dispatchExhaustedAt: string | null;
 };
+
+/** Timing rules Live Ops needs to decide when a card is late. */
+export type BookingJourneyConfig = {
+  journeyStepsEnabled: boolean;
+  asapOnwayDeadlineMinutes: number;
+  scheduledOnwayDeadlineBeforeSlotMinutes: number;
+  noExpertAlertBeforeSlotMinutes: number;
+  noExpertRefundAfterSlotMinutes: number;
+};
+
+export const getBookingJourneyConfig = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<BookingJourneyConfig> => {
+    await assertActiveStaff(context);
+    const { data, error } = await context.supabase
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", [
+        "expert_journey_steps_enabled",
+        "asap_onway_deadline_minutes",
+        "scheduled_onway_deadline_before_slot_minutes",
+        "no_expert_alert_before_slot_minutes",
+        "no_expert_refund_after_slot_minutes",
+      ]);
+    if (error) throw new Error(error.message);
+    const m = new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((data ?? []) as any[]).map((r) => [r.key as string, String(r.value ?? "")]),
+    );
+    const num = (key: string, fallback: number) => {
+      const n = Number(m.get(key));
+      return Number.isFinite(n) ? n : fallback;
+    };
+    return {
+      journeyStepsEnabled: m.get("expert_journey_steps_enabled") === "1",
+      asapOnwayDeadlineMinutes: num("asap_onway_deadline_minutes", 3),
+      scheduledOnwayDeadlineBeforeSlotMinutes: num(
+        "scheduled_onway_deadline_before_slot_minutes",
+        15,
+      ),
+      noExpertAlertBeforeSlotMinutes: num("no_expert_alert_before_slot_minutes", 5),
+      noExpertRefundAfterSlotMinutes: num("no_expert_refund_after_slot_minutes", 30),
+    };
+  });
 
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
