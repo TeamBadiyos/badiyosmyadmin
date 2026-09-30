@@ -729,7 +729,7 @@ function DashboardHome({
     {
       label: "Actual Revenue",
       value: inr.format(data?.todayRevenue ?? 0),
-      hint: "Net collected after discounts & refunds",
+      hint: `Amount ${inr.format(Math.max(0, (data?.todayRevenue ?? 0) - (data?.gstCollectedToday ?? 0)))} · GST ${inr.format(data?.gstCollectedToday ?? 0)}`,
       icon: IndianRupee,
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },

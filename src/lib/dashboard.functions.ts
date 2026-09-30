@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export type DashboardStats = {
   grossToday: number;
   todayRevenue: number;
+  gstCollectedToday: number;
   todayTransactions: number;
   activeNow: number;
   completedToday: number;
@@ -111,7 +112,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             db
               .from("bookings")
               .select(
-                "price, total_amount, discount_amount, refund_amount, refund_status, status, razorpay_payment_id",
+                "price, total_amount, discount_amount, gst_amount, refund_amount, refund_status, status, razorpay_payment_id",
               )
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
@@ -257,6 +258,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let bookingRevenue = 0;
     let bookingDiscountToday = 0;
     let bookingGross = 0;
+    let bookingGst = 0;
     /** Coin / fully-free checkouts carry a "free_" id: no cash was collected. */
     const isCoinPayment = (id: unknown) =>
       String(id ?? "").toLowerCase().startsWith("free_");
@@ -276,7 +278,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
       bookingDiscountToday += discount;
       bookingGross += charged + discount;
-      bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
+      const kept = Math.max(0, charged - refundedOf(r, charged));
+      bookingRevenue += kept;
+      // GST kept in the same proportion as the kept (non-refunded) share.
+      const gst = Number(r.gst_amount ?? 0);
+      if (gst > 0 && charged > 0) bookingGst += gst * (kept / charged);
     }
 
     const orderRows = (orderRevenueRes.data ?? []) as Array<Record<string, unknown>>;
@@ -330,7 +336,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("courier_orders")
         .select(
-          "total_amount, discount_amount, refund_amount, refund_status, razorpay_payment_id",
+          "total_amount, discount_amount, gst_amount, refund_amount, refund_status, razorpay_payment_id",
         )
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
@@ -357,6 +363,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let courierRevenue = 0;
     let courierDiscountToday = 0;
     let courierGross = 0;
+    let courierGst = 0;
     for (const r of courierRows) {
       const charged = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
@@ -367,7 +374,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       }
       courierDiscountToday += discount;
       courierGross += charged + discount;
-      courierRevenue += Math.max(0, charged - refundedOf(r, charged));
+      const kept = Math.max(0, charged - refundedOf(r, charged));
+      courierRevenue += kept;
+      const gst = Number(r.gst_amount ?? 0);
+      if (gst > 0 && charged > 0) courierGst += gst * (kept / charged);
     }
     const courierToday = courierTodayRes.count ?? 0;
 
@@ -377,6 +387,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     return {
       grossToday: bookingGross + orderGross + offlineRevenue + courierGross,
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
+      gstCollectedToday: bookingGst + courierGst,
       todayTransactions: todayBookings + todayOrders + courierToday,
       activeNow:
         (activeBookingsRes.count ?? 0) +
