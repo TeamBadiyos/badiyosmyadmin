@@ -103,7 +103,7 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
     }
 
     const cols =
-      "id, order_number, status, merchant_id, user_id, customer_name, total_amount, payment_mode, payment_status, created_at, accepted_at, ready_at, picked_up_at, courier_order_id";
+      "id, order_number, status, merchant_id, user_id, customer_name, total_amount, payment_mode, payment_status, created_at, accepted_at, ready_at, picked_up_at, courier_order_id, items_total, commission_pct, commission_amount, commission_gst_amount, merchant_net, delivery_fee";
 
     let openQ = db
       .from("merchant_orders")
