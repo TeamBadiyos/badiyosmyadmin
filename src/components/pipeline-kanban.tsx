@@ -190,6 +190,20 @@ export function PipelineKanban({
   const noExpertTimeoutMinutes =
     dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
 
+  const journeyConfigQuery = useQuery({
+    queryKey: ["pipeline", "journey-config"],
+    queryFn: () => fetchJourneyConfig(),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const journeyConfig: BookingJourneyConfig = journeyConfigQuery.data ?? {
+    journeyStepsEnabled: false,
+    asapOnwayDeadlineMinutes: 3,
+    scheduledOnwayDeadlineBeforeSlotMinutes: 15,
+    noExpertAlertBeforeSlotMinutes: 5,
+    noExpertRefundAfterSlotMinutes: 30,
+  };
+
 
   // Realtime subscription: any booking or parcel order change refreshes the board.
   useEffect(() => {
