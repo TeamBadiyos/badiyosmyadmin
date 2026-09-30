@@ -27,6 +27,11 @@ export type MerchantRow = {
   pincode: string | null;
   onboardingStep: number;
   commissionPct: number;
+  rejectionReason: string | null;
+  queryNotes: string | null;
+  queryDocTypes: string[] | null;
+  queriedAt: string | null;
+  awaitingReupload: boolean;
   createdAt: string;
   updatedAt: string;
   docs: MerchantDoc[];
