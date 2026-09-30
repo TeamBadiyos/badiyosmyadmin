@@ -628,9 +628,11 @@ function BoardCard({
     <div
       onClick={onOpen}
       className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
-        timedOut
-          ? "border-warning bg-warning-tint/30"
-          : "border-border hover:border-primary/60"
+        alerting
+          ? "border-destructive bg-destructive/5"
+          : timedOut
+            ? "border-warning bg-warning-tint/30"
+            : "border-border hover:border-primary/60"
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
