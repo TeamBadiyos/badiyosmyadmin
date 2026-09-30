@@ -26,6 +26,7 @@ export type MerchantRow = {
   city: string | null;
   pincode: string | null;
   onboardingStep: number;
+  commissionPct: number;
   createdAt: string;
   updatedAt: string;
   docs: MerchantDoc[];
