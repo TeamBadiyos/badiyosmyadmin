@@ -247,6 +247,29 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                 </div>
               )}
 
+              {!m.awaitingReupload && m.reuploadedAt && m.queryNotes && (
+                <div className="rounded-[12px] border border-green-300 bg-green-50 px-3 py-2 text-[13px]">
+                  <p className="font-bold text-green-800">
+                    Merchant resubmitted · {fmt(m.reuploadedAt)} — please re-check
+                  </p>
+                  <p className="text-green-800 mt-0.5">Earlier query: {m.queryNotes}</p>
+                  {m.queryDocTypes?.length ? (
+                    <p className="text-[12px] text-green-700 mt-1">
+                      Asked for:{" "}
+                      {m.queryDocTypes
+                        .map((d) => {
+                          const label = QUERY_DOC_OPTIONS.find((o) => o.value === d)?.label ?? d;
+                          const fresh = m.docs.some(
+                            (x) => x.docType === d && m.queriedAt && x.uploadedAt > m.queriedAt,
+                          );
+                          return `${label} ${fresh ? "✓ new file" : "✗ not changed"}`;
+                        })
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
               {m.status === "rejected" && m.rejectionReason && (
                 <div className="rounded-[12px] border border-red-200 bg-red-50 px-3 py-2 text-[13px]">
                   <p className="font-bold text-red-700">Rejection reason</p>
@@ -315,7 +338,22 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                             <FileText size={20} className="text-muted-foreground" />
                           )}
                         </div>
-                        <p className="px-2 py-1.5 text-[12px] font-semibold truncate">{d.docType}</p>
+                        <p className="px-2 pt-1.5 text-[12px] font-semibold truncate">{d.docType}</p>
+                        {(() => {
+                          const asked = m.queriedAt && m.queryDocTypes?.includes(d.docType);
+                          const isNew = m.queriedAt && d.uploadedAt > m.queriedAt;
+                          return (
+                            <p className="px-2 pb-1.5 text-[10px]">
+                              {isNew ? (
+                                <span className="font-bold text-green-700">NEW · {fmt(d.uploadedAt)}</span>
+                              ) : asked ? (
+                                <span className="font-bold text-red-700">Old — not re-uploaded</span>
+                              ) : (
+                                <span className="text-muted-foreground">{fmt(d.uploadedAt)}</span>
+                              )}
+                            </p>
+                          );
+                        })()}
                       </a>
                     ))}
                   </div>
