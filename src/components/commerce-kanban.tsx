@@ -42,6 +42,13 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+const inr2 = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 function ago(iso: string, now: number): string {
   const m = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60000));
   if (m < 1) return "just now";
