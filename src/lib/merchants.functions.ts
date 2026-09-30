@@ -139,14 +139,37 @@ export const listMerchants = createServerFn({ method: "GET" })
 export const decideMerchant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { merchantId: string; decision: "approved" | "rejected"; notes?: string | null }) =>
-      input,
+    (input: { merchantId: string; decision: "approved" | "rejected"; notes?: string | null }) => {
+      if (input.decision === "rejected" && !input.notes?.trim()) {
+        throw new Error("A rejection reason is required.");
+      }
+      return input;
+    },
   )
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { error } = await context.supabase.rpc("staff_decide_merchant", {
       _merchant_id: data.merchantId,
       _decision: data.decision,
-      _notes: data.notes ?? undefined,
+      _notes: data.notes?.trim() || undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Ask a merchant to re-upload specific documents; sends them a notification. */
+export const raiseMerchantQuery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string; docTypes: string[]; notes: string }) => {
+    if (!input.merchantId) throw new Error("merchantId required");
+    if (!input.docTypes?.length) throw new Error("Select at least one document.");
+    if (!input.notes?.trim()) throw new Error("Write what the merchant must fix.");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await context.supabase.rpc("staff_merchant_raise_query", {
+      _merchant_id: data.merchantId,
+      _doc_types: data.docTypes,
+      _notes: data.notes.trim(),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
