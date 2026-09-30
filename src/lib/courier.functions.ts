@@ -556,6 +556,10 @@ export type CourierOrderRow = {
   city: string | null;
   status: string;
   total_amount: number;
+  base_amount: number;
+  extra_fee: number;
+  discount_amount: number;
+  gst_amount: number;
   payment_status: string | null;
   refund_status: string | null;
   needs_ops_attention: boolean;
@@ -613,7 +617,7 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     let q = db
       .from("courier_orders")
       .select(
-        "id, order_code, city, status, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id",
+        "id, order_code, city, status, base_amount, extra_fee, discount_amount, gst_amount, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id",
       )
       .order("created_at", { ascending: false })
       .limit(200);
@@ -692,6 +696,10 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       city: (r["city"] as string | null) ?? null,
       status: r["status"] as string,
       total_amount: Number(r["total_amount"] ?? 0),
+      base_amount: Number(r["base_amount"] ?? 0) + Number(r["extra_fee"] ?? 0),
+      extra_fee: Number(r["extra_fee"] ?? 0),
+      discount_amount: Number(r["discount_amount"] ?? 0),
+      gst_amount: Number(r["gst_amount"] ?? 0),
       payment_status: (r["payment_status"] as string | null) ?? null,
       refund_status: (r["refund_status"] as string | null) ?? null,
       needs_ops_attention: !!r["needs_ops_attention"],

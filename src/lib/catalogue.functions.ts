@@ -38,6 +38,7 @@ export type CataloguePriceOption = {
   service_id: string;
   label: string;
   duration_minutes: number | null;
+  estimated_minutes: number | null;
   unit_label: string | null;
   customer_price: number;
   strikethrough_price: number | null;
@@ -59,6 +60,7 @@ export type CatalogueTree = {
   categories: CatalogueCategory[];
   services: CatalogueService[];
   priceOptions: CataloguePriceOption[];
+  canEditEstimatedTime: boolean;
 };
 
 async function requireCatalogueStaff(
@@ -99,7 +101,7 @@ function num(v: unknown): number | null {
 export const listCatalogueTree = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CatalogueTree> => {
-    await requireCatalogueStaff(context.supabase, context.userId);
+    const staff = await requireCatalogueStaff(context.supabase, context.userId);
     const [segs, cats, svcs, opts] = await Promise.all([
       context.supabase
         .from("segments")
@@ -116,7 +118,7 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
       context.supabase
         .from("service_price_options")
         .select(
-          "id,service_id,label,duration_minutes,unit_label,customer_price,strikethrough_price,expert_payout,partner_commission,hq_share,display_order,is_active,image_url,gallery_urls,video_url,description,inclusions,exclusions",
+          "id,service_id,label,duration_minutes,estimated_minutes,unit_label,customer_price,strikethrough_price,expert_payout,partner_commission,hq_share,display_order,is_active,image_url,gallery_urls,video_url,description,inclusions,exclusions",
         )
         .order("display_order", { ascending: true }),
     ]);
@@ -129,6 +131,7 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
       service_id: r.service_id,
       label: r.label,
       duration_minutes: r.duration_minutes ?? null,
+      estimated_minutes: r.estimated_minutes ?? null,
       unit_label: r.unit_label ?? null,
       customer_price: Number(r.customer_price ?? 0),
       strikethrough_price: num(r.strikethrough_price),
@@ -150,6 +153,7 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
       services: (svcs.data ?? []) as CatalogueService[],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       priceOptions: ((opts.data ?? []) as any[]).map(mapOpt),
+      canEditEstimatedTime: staff.role === "super_admin",
     };
   });
 
@@ -305,6 +309,7 @@ export type UpsertPriceOptionInput = {
   service_id: string;
   label: string;
   duration_minutes: number | null;
+  estimated_minutes: number | null;
   unit_label: string | null;
   customer_price: number;
   strikethrough_price: number | null;
@@ -338,14 +343,51 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
     }
     if (input.duration_minutes != null && !(input.duration_minutes > 0))
       throw new Error("Duration minutes must be positive");
+    if (
+      input.estimated_minutes != null &&
+      (!Number.isInteger(input.estimated_minutes) || input.estimated_minutes <= 0)
+    ) {
+      throw new Error("Estimated time must be a positive whole number");
+    }
     return input;
   })
   .handler(async ({ data, context }) => {
-    await requireCatalogueStaff(context.supabase, context.userId);
+    const staff = await requireCatalogueStaff(context.supabase, context.userId);
+    const { data: service, error: serviceError } = await context.supabase
+      .from("services")
+      .select("pricing_type")
+      .eq("id", data.service_id)
+      .maybeSingle();
+    if (serviceError) throw new Error(serviceError.message);
+    if (!service) throw new Error("Service not found");
+
+    const { data: before, error: beforeError } = data.id
+      ? await context.supabase
+          .from("service_price_options")
+          .select("*")
+          .eq("id", data.id)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (beforeError) throw new Error(beforeError.message);
+
+    const requestedEstimate = data.estimated_minutes;
+    const previousEstimate = before?.estimated_minutes ?? null;
+    const estimateChanged = requestedEstimate !== previousEstimate;
+    if (estimateChanged && staff.role !== "super_admin") {
+      throw new Error("Only a super admin can change estimated time");
+    }
+    if (
+      service.pricing_type === "flat" &&
+      data.is_active &&
+      (requestedEstimate == null || requestedEstimate <= 0)
+    ) {
+      throw new Error("Estimated time is required for active flat-price options");
+    }
     const row = {
       service_id: data.service_id,
       label: data.label.trim(),
       duration_minutes: data.duration_minutes,
+      estimated_minutes: requestedEstimate,
       unit_label: data.unit_label?.trim() ? data.unit_label.trim() : null,
       customer_price: data.customer_price,
       strikethrough_price: data.strikethrough_price,
@@ -362,11 +404,23 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
       exclusions: (data.exclusions ?? []).map((t) => t.trim()).filter(Boolean),
     };
     if (data.id) {
-      const { error } = await context.supabase
+      const { data: updated, error } = await context.supabase
         .from("service_price_options")
         .update(row)
         .eq("id", data.id);
       if (error) throw new Error(error.message);
+      if (estimateChanged) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error: auditError } = await supabaseAdmin.from("audit_logs").insert({
+          actor_id: context.userId,
+          action: "update_service_estimated_minutes",
+          target_table: "service_price_options",
+          target_id: data.id,
+          before_state: { estimated_minutes: previousEstimate },
+          after_state: { estimated_minutes: requestedEstimate },
+        });
+        if (auditError) throw new Error(auditError.message);
+      }
       return { id: data.id };
     }
     const { data: created, error } = await context.supabase
@@ -375,6 +429,18 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+    if (requestedEstimate != null) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: auditError } = await supabaseAdmin.from("audit_logs").insert({
+        actor_id: context.userId,
+        action: "set_service_estimated_minutes",
+        target_table: "service_price_options",
+        target_id: created.id,
+        before_state: null,
+        after_state: { estimated_minutes: requestedEstimate },
+      });
+      if (auditError) throw new Error(auditError.message);
+    }
     return { id: created.id as string };
   });
 

@@ -289,6 +289,11 @@ export type PipelineBooking = {
   serviceLabel: string | null;
   serviceDurationMinutes: number | null;
   price: number | null;
+  gstAmount: number;
+  totalAmount: number;
+  discountAmount: number;
+  paid: boolean;
+  pricingType: "duration" | "flat" | "quantity" | null;
   scheduledDate: string | null;
   scheduledTimeSlot: string | null;
   slotType: string | null;
@@ -381,7 +386,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent";
     let openQ = db
       .from("bookings")
       .select(cols)
@@ -421,13 +426,26 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
           .filter((id): id is string => !!id),
       ),
     );
+    const priceOptionIds = Array.from(
+      new Set(
+        rows
+          .map((r) => r.price_option_id)
+          .filter((id): id is string => !!id),
+      ),
+    );
 
-    const [usersRes, expertsRes] = await Promise.all([
+    const [usersRes, expertsRes, priceOptionsRes] = await Promise.all([
       userIds.length
         ? db.from("users").select("id, full_name").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as const),
       expertIds.length
         ? db.from("experts").select("id, name").in("id", expertIds)
+        : Promise.resolve({ data: [], error: null } as const),
+      priceOptionIds.length
+        ? db
+            .from("service_price_options")
+            .select("id, services(pricing_type)")
+            .in("id", priceOptionIds)
         : Promise.resolve({ data: [], error: null } as const),
     ]);
     if ("error" in usersRes && usersRes.error) {
@@ -435,6 +453,9 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     }
     if ("error" in expertsRes && expertsRes.error) {
       throw new Error(expertsRes.error.message);
+    }
+    if ("error" in priceOptionsRes && priceOptionsRes.error) {
+      throw new Error(priceOptionsRes.error.message);
     }
 
     const userMap = new Map(
@@ -444,6 +465,15 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     const expertMap = new Map(
       ((expertsRes.data ?? []) as Array<{ id: string; name: string }>)
         .map((e) => [e.id, e.name]),
+    );
+    const pricingTypeMap = new Map(
+      ((priceOptionsRes.data ?? []) as Array<{
+        id: string;
+        services: { pricing_type: "duration" | "flat" | "quantity" } | Array<{ pricing_type: "duration" | "flat" | "quantity" }> | null;
+      }>).map((option) => {
+        const service = Array.isArray(option.services) ? option.services[0] : option.services;
+        return [option.id, service?.pricing_type ?? null] as const;
+      }),
     );
 
     return rows.map((r) => ({
@@ -455,6 +485,13 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       serviceDurationMinutes:
         (r.service_duration_minutes as number | null) ?? null,
       price: r.price != null ? Number(r.price) : null,
+      gstAmount: Number(r.gst_amount ?? 0),
+      totalAmount: Number(r.total_amount ?? 0),
+      discountAmount: Number(r.discount_amount ?? 0),
+      paid: Boolean(r.razorpay_payment_id),
+      pricingType: r.price_option_id
+        ? (pricingTypeMap.get(r.price_option_id as string) ?? null)
+        : null,
       scheduledDate: (r.scheduled_date as string | null) ?? null,
       scheduledTimeSlot: (r.scheduled_time_slot as string | null) ?? null,
       slotType: ((r as Record<string, unknown>)["slot_type"] as string | null) ?? null,
