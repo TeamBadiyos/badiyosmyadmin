@@ -214,9 +214,14 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                         <Check size={14} /> Approve
                       </button>
                       <button
-                        disabled={mutation.isPending}
-                        onClick={() => onReject(m)}
-                        className="h-9 px-3 rounded-[12px] border border-border text-destructive font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
+                        onClick={() => setQueryFor(m)}
+                        className="h-9 px-3 rounded-[12px] border border-amber-300 text-amber-700 font-bold text-[13px] inline-flex items-center gap-1"
+                      >
+                        <MessageSquareWarning size={14} /> Raise query
+                      </button>
+                      <button
+                        onClick={() => setRejectFor(m)}
+                        className="h-9 px-3 rounded-[12px] border border-border text-destructive font-bold text-[13px] inline-flex items-center gap-1"
                       >
                         <Ban size={14} /> Reject
                       </button>
@@ -224,6 +229,31 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                   )}
                 </div>
               </div>
+
+              {m.awaitingReupload && m.queryNotes && (
+                <div className="rounded-[12px] border border-amber-300 bg-amber-50 px-3 py-2 text-[13px]">
+                  <p className="font-bold text-amber-800">
+                    Query raised{m.queriedAt ? ` · ${fmt(m.queriedAt)}` : ""} — waiting for re-upload
+                  </p>
+                  <p className="text-amber-800 mt-0.5">{m.queryNotes}</p>
+                  {m.queryDocTypes?.length ? (
+                    <p className="text-[12px] text-amber-700 mt-1">
+                      Documents asked for:{" "}
+                      {m.queryDocTypes
+                        .map((d) => QUERY_DOC_OPTIONS.find((o) => o.value === d)?.label ?? d)
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {m.status === "rejected" && m.rejectionReason && (
+                <div className="rounded-[12px] border border-red-200 bg-red-50 px-3 py-2 text-[13px]">
+                  <p className="font-bold text-red-700">Rejection reason</p>
+                  <p className="text-red-700 mt-0.5">{m.rejectionReason}</p>
+                </div>
+              )}
+
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-[13px]">
                 <Field label="GST">
