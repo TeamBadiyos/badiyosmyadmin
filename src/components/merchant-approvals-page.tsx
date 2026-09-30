@@ -76,7 +76,9 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
         <p className="text-[14px] text-muted-foreground">
           {isDraftTab
             ? "Merchants stuck mid-onboarding — follow up manually so no lead is lost."
-            : "Review merchant applications, their GST details and uploaded documents."}
+            : tab === "suspended"
+              ? "Suspended stores — they can't take orders. Use Edit to review or set them live again."
+              : "Review merchant applications, their GST details and uploaded documents."}
         </p>
         <button
           onClick={() => refetch()}
