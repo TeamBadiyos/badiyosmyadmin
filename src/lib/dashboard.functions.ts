@@ -358,6 +358,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     for (const r of courierRows) {
       const charged = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
+      if (isCoinPayment(r.razorpay_payment_id)) {
+        courierDiscountToday += charged + discount;
+        courierGross += charged + discount;
+        continue;
+      }
       courierDiscountToday += discount;
       courierGross += charged + discount;
       courierRevenue += Math.max(0, charged - refundedOf(r, charged));
