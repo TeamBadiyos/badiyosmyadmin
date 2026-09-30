@@ -44,13 +44,15 @@ export function ExpertsPage({
   const [zoneId, setZoneId] = useState("");
   const [kycStatus, setKycStatus] = useState("");
   const [level, setLevel] = useState("");
-  const [availability, setAvailability] = useState<string>(initialOnlineOnly ? "online" : "");
+  const [availability, setAvailability] = useState<string>(
+    initialOnlineOnly ? "online_free" : "",
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
   useEffect(() => {
-    setAvailability(initialOnlineOnly ? "online" : "");
+    setAvailability(initialOnlineOnly ? "online_free" : "");
   }, [initialOnlineOnly]);
 
   const fetchExperts = useServerFn(listExperts);

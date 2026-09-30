@@ -745,9 +745,9 @@ function DashboardHome({
       onClick: () => onGoBookings({ status: "accepted" }),
     },
     {
-      label: "Online Right Now",
+      label: "Free Right Now",
       value: String(data?.onlineNow ?? 0),
-      hint: "Experts online now",
+      hint: "Online & available experts",
       icon: Users,
       onClick: () => onGoExperts(true),
     },
