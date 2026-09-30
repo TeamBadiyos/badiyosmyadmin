@@ -474,7 +474,8 @@ export const saveCustomerAddress = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireStaff(context.supabase, context.userId);
-    const { data: id, error } = await context.supabase.rpc("staff_upsert_customer_address", {
+    // Optional columns are genuinely nullable in the database.
+    const args = {
       _user_id: data.userId,
       _address_id: data.addressId ?? null,
       _label: data.label ?? null,
@@ -485,7 +486,9 @@ export const saveCustomerAddress = createServerFn({ method: "POST" })
       _latitude: data.latitude,
       _longitude: data.longitude,
       _is_default: data.isDefault,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    const { data: id, error } = await context.supabase.rpc("staff_upsert_customer_address", args);
     if (error) throw new Error(error.message);
     return { id: id as string };
   });
