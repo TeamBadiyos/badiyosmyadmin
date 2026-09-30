@@ -9057,6 +9057,10 @@ export type Database = {
         Args: { _minutes: number; _service_key: string }
         Returns: Json
       }
+      staff_set_lead_status: {
+        Args: { _kind: string; _lead_id: string; _status: string }
+        Returns: boolean
+      }
       staff_set_merchant_commission: {
         Args: { _merchant_id: string; _pct: number }
         Returns: Json
