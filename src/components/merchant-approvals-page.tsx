@@ -219,6 +219,21 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                 </Field>
               </div>
 
+              <div className="flex items-center gap-3 flex-wrap rounded-[12px] bg-muted/40 px-3 py-2">
+                <span className="text-[13px] font-semibold text-foreground">
+                  Commission: {m.commissionPct}%
+                </span>
+                {role === "super_admin" && (
+                  <button
+                    onClick={() => setCommissionFor(m)}
+                    className="h-8 px-3 rounded-[10px] border border-border bg-card text-[12px] font-semibold inline-flex items-center gap-1"
+                  >
+                    <Pencil size={12} /> Edit
+                  </button>
+                )}
+                <span className="text-[12px] text-muted-foreground">Applies to new orders only</span>
+              </div>
+
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
                   Documents ({m.docs.length})
