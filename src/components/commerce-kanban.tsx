@@ -195,6 +195,24 @@ function OrderSheet({
           <dt className="text-muted-foreground">Amount</dt><dd className="text-foreground font-semibold">{inr.format(order.totalAmount)} <span className="text-muted-foreground font-normal">· {order.paymentMode ?? "—"} / {order.paymentStatus ?? "—"}</span></dd>
         </dl>
 
+        <div className="mb-5 rounded-[14px] border border-border p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+            Money split
+          </p>
+          <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-[13px]">
+            <dt className="text-muted-foreground">Items</dt>
+            <dd className="text-foreground text-right">{inr2.format(order.itemsTotal)}</dd>
+            <dt className="text-muted-foreground">Commission ({order.commissionPct}%)</dt>
+            <dd className="text-foreground text-right">− {inr2.format(order.commissionAmount)}</dd>
+            <dt className="text-muted-foreground">GST on commission</dt>
+            <dd className="text-foreground text-right">− {inr2.format(order.commissionGstAmount)}</dd>
+            <dt className="text-foreground font-semibold">Merchant gets</dt>
+            <dd className="text-foreground font-semibold text-right">{inr2.format(order.merchantNet)}</dd>
+            <dt className="text-muted-foreground">Delivery fee (Rider)</dt>
+            <dd className="text-foreground text-right">{inr2.format(order.deliveryFee)}</dd>
+          </dl>
+        </div>
+
         {!canManage ? (
           <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this order.</p>
         ) : closed ? (
