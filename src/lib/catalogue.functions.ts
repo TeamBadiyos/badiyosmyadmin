@@ -81,6 +81,7 @@ async function requireCatalogueStaff(
   ) {
     throw new Error("Forbidden");
   }
+  return data as { role: "super_admin" | "ops_manager" };
 }
 
 function slugify(name: string) {
@@ -404,7 +405,7 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
       exclusions: (data.exclusions ?? []).map((t) => t.trim()).filter(Boolean),
     };
     if (data.id) {
-      const { data: updated, error } = await context.supabase
+      const { error } = await context.supabase
         .from("service_price_options")
         .update(row)
         .eq("id", data.id);

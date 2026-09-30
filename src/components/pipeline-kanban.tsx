@@ -33,6 +33,7 @@ import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions
 import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
+import { OrderPaymentSummary } from "@/components/order-payment-summary";
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
   { key: "confirmed", label: "Awaiting Payment" },
@@ -651,21 +652,18 @@ function BoardCard({
       <div className="text-[12px] text-muted-foreground space-y-0.5">
         {(booking.serviceLabel || booking.serviceDurationMinutes) && (
           <p className="truncate">
-            {booking.serviceLabel ??
-              `${booking.serviceDurationMinutes} min service`}
-            {booking.serviceDurationMinutes && booking.serviceLabel
-              ? ` · ${booking.serviceDurationMinutes} min`
-              : ""}
+            {booking.serviceLabel ?? `${booking.serviceDurationMinutes} min service`}
+            {booking.pricingType === "flat" ? " · Flat" : ""}
           </p>
         )}
-        <div className="flex items-center justify-between gap-2">
-          <span>{formatPlacedAt(booking.createdAt)}</span>
-          {booking.price != null && (
-            <span className="font-semibold text-foreground">
-              {inr.format(booking.price)}
-            </span>
-          )}
-        </div>
+        <p>{formatPlacedAt(booking.createdAt)}</p>
+        <OrderPaymentSummary
+          className="pt-1"
+          paid={booking.paid ? booking.totalAmount : 0}
+          base={booking.price}
+          coupon={booking.discountAmount}
+          gst={booking.gstAmount}
+        />
         {booking.assignedExpertName && (
           <p className="truncate text-foreground">
             <span className="text-muted-foreground">Expert: </span>
@@ -1084,12 +1082,14 @@ function CourierBoardCard({
         {order.drop_address && (
           <p className="truncate">Drop: {order.drop_address}</p>
         )}
-        <div className="flex items-center justify-between gap-2">
-          <span>{formatPlacedAt(order.created_at)}</span>
-          <span className="font-semibold text-foreground">
-            {inr.format(order.total_amount)}
-          </span>
-        </div>
+        <p>{formatPlacedAt(order.created_at)}</p>
+        <OrderPaymentSummary
+          className="pt-1"
+          paid={String(order.payment_status ?? "").toLowerCase() === "paid" ? order.total_amount : 0}
+          base={order.base_amount}
+          coupon={order.discount_amount}
+          gst={order.gst_amount}
+        />
         <p className="truncate text-foreground">
           <span className="text-muted-foreground">Rider: </span>
           {order.riderName ?? "Searching…"}

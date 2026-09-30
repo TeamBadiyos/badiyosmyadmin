@@ -13,6 +13,7 @@ import {
   type CommerceOrder,
   type CommerceStatus,
 } from "@/lib/commerce.functions";
+import { OrderPaymentSummary } from "@/components/order-payment-summary";
 
 const COLUMNS: Array<{ key: CommerceStatus; label: string }> = [
   { key: "pending", label: "Pending" },
@@ -438,10 +439,15 @@ export function CommerceKanban({ segmentId }: { segmentId: string | null }) {
                         <span className="truncate">{o.customerName}</span>
                       </div>
                       <div className="text-[12px] mb-1.5 min-w-0"><RiderLine o={o} /></div>
-                      <div className="text-[12px] text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="truncate">{STATUS_LABEL[o.status]} · {ago(o.createdAt, now)}</span>
-                        <span className="font-semibold text-foreground shrink-0">{inr.format(o.totalAmount)}</span>
-                      </div>
+                      <p className="truncate text-[12px] text-muted-foreground">
+                        {STATUS_LABEL[o.status]} · {ago(o.createdAt, now)}
+                      </p>
+                      <OrderPaymentSummary
+                        className="mt-1.5"
+                        paid={o.paidAmount}
+                        base={o.itemsTotal}
+                        delivery={o.deliveryFee}
+                      />
                       {red && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {o.alerts.map((a) => (

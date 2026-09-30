@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Generate seal-sticker PDFs entirely in the browser from the existing staff export RPC so no duplicate export backend exists.
+- Render operational order money through the shared payment-summary component so every board uses the same snapshot labels and zero-value rules.
