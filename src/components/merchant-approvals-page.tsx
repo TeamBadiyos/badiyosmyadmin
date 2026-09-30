@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   listMerchants,
   decideMerchant,
+  setMerchantCommission,
   type MerchantStatus,
   type MerchantRow,
 } from "@/lib/merchants.functions";
@@ -40,6 +41,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const [tab, setTab] = useState<MerchantStatus | "">("pending_review");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productsId, setProductsId] = useState<string | null>(null);
+  const [commissionFor, setCommissionFor] = useState<MerchantRow | null>(null);
 
   const fetchRows = useServerFn(listMerchants);
   const decide = useServerFn(decideMerchant);
@@ -282,6 +284,75 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
       {productsId && (
         <MerchantProductsModal merchantId={productsId} onClose={() => setProductsId(null)} />
       )}
+
+      {commissionFor && (
+        <CommissionModal merchant={commissionFor} onClose={() => setCommissionFor(null)} />
+      )}
+    </div>
+  );
+}
+
+function CommissionModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const save = useServerFn(setMerchantCommission);
+  const [pct, setPct] = useState(String(merchant.commissionPct));
+
+  const m = useMutation({
+    mutationFn: () => save({ data: { merchantId: merchant.id, pct: Number(pct) } }),
+    onSuccess: () => {
+      toast.success("Commission updated");
+      qc.invalidateQueries({ queryKey: ["merchants"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to update"),
+  });
+
+  const value = Number(pct);
+  const valid = Number.isFinite(value) && value >= 0 && value <= 50;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-[18px] bg-card border border-border p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h3 className="text-[16px] font-bold text-foreground">Commission</h3>
+          <p className="text-[13px] text-muted-foreground">{merchant.storeName || "Unnamed store"}</p>
+        </div>
+
+        <div>
+          <label className="text-[12px] font-semibold text-muted-foreground">Commission %</label>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            step="0.01"
+            value={pct}
+            onChange={(e) => setPct(e.target.value)}
+            className="mt-1 w-full h-10 rounded-[12px] border border-border bg-background px-3 text-[14px]"
+          />
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Between 0 and 50%. Applies to new orders only.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 h-10 rounded-[12px] border border-border text-[13px] font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!valid || m.isPending}
+            onClick={() => m.mutate()}
+            className="flex-1 h-10 rounded-[12px] bg-primary text-white text-[13px] font-bold disabled:opacity-50"
+          >
+            {m.isPending ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
