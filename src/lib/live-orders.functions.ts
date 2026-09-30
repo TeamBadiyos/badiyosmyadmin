@@ -457,10 +457,19 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       price: r.price != null ? Number(r.price) : null,
       scheduledDate: (r.scheduled_date as string | null) ?? null,
       scheduledTimeSlot: (r.scheduled_time_slot as string | null) ?? null,
+      slotType: ((r as Record<string, unknown>)["slot_type"] as string | null) ?? null,
       assignedExpertName: r.assigned_expert_id
         ? (expertMap.get(r.assigned_expert_id as string) as string | null) ??
           null
         : null,
+      assignedExpertId: (r.assigned_expert_id as string | null) ?? null,
+      expertAssignedAt:
+        ((r as Record<string, unknown>)["expert_assigned_at"] as string | null) ?? null,
+      onTheWayAt:
+        ((r as Record<string, unknown>)["on_the_way_at"] as string | null) ?? null,
+      arrivedAt: ((r as Record<string, unknown>)["arrived_at"] as string | null) ?? null,
+      onwayAlertSent: Boolean((r as Record<string, unknown>)["onway_alert_sent"]),
+      noExpertAlertSent: Boolean((r as Record<string, unknown>)["no_expert_alert_sent"]),
       createdAt: r.created_at as string,
       updatedAt: (r.updated_at as string | null) ?? (r.created_at as string),
       broadcastStartedAt:
@@ -471,6 +480,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         ((r as Record<string, unknown>)["dispatch_exhausted_at"] as
           | string
           | null) ?? null,
+
 
     }));
   });
