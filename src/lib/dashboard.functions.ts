@@ -301,6 +301,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("courier_orders")
         .select("*", countOnly)
+        .or("status.neq.REQUESTED,payment_status.neq.pending")
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
       db
@@ -320,7 +321,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("courier_orders")
         .select("*", countOnly)
-        .in("status", ["REQUESTED", "SEARCHING"]),
+        .in("status", ["REQUESTED", "SEARCHING"])
+        .or("status.neq.REQUESTED,payment_status.neq.pending"),
     ]);
 
 

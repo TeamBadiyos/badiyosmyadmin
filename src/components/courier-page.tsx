@@ -1172,7 +1172,9 @@ export function OrderDetail({
             <h4 className="text-[13px] font-bold text-foreground">
               {order.riderName ? "Reassign rider" : "Assign rider"}
             </h4>
-            {!["SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status) ? (
+            {!["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(
+              order.status,
+            ) ? (
               <p className="mt-1 text-[12px] text-muted-foreground">
                 Riders can only be assigned before pickup.
               </p>
