@@ -222,6 +222,12 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
         riderName: co?.assigned_expert_id ? expertMap.get(co.assigned_expert_id) ?? null : null,
         riderState,
         alerts,
+        itemsTotal: Number(r.items_total ?? 0),
+        commissionPct: Number(r.commission_pct ?? 0),
+        commissionAmount: Number(r.commission_amount ?? 0),
+        commissionGstAmount: Number(r.commission_gst_amount ?? 0),
+        merchantNet: Number(r.merchant_net ?? 0),
+        deliveryFee: Number(r.delivery_fee ?? 0),
       };
     });
 
