@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type DashboardStats = {
+  grossToday: number;
   todayRevenue: number;
   todayTransactions: number;
   activeNow: number;
@@ -110,7 +111,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             db
               .from("bookings")
               .select(
-                "price, total_amount, discount_amount, refund_amount, refund_status, status",
+                "price, total_amount, discount_amount, refund_amount, refund_status, status, razorpay_payment_id",
               )
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
@@ -246,23 +247,34 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : 0;
     };
 
+    /** Test/mock payments must never count as money. */
+    const isTestPayment = (id: unknown) =>
+      String(id ?? "").toUpperCase().startsWith("TESTPRICE");
+
     const bookingRows = (bookingRevenueRes.data ?? []) as Array<
       Record<string, unknown>
     >;
     let bookingRevenue = 0;
     let bookingDiscountToday = 0;
+    let bookingGross = 0;
     for (const r of bookingRows) {
+      const status = String(r.status ?? "").toLowerCase();
+      if (status === "cancelled" || status === "canceled") continue;
+      if (isTestPayment(r.razorpay_payment_id)) continue;
       const total = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
       const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
       bookingDiscountToday += discount;
+      bookingGross += charged + discount;
       bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
 
     const orderRows = (orderRevenueRes.data ?? []) as Array<Record<string, unknown>>;
     let orderRevenue = 0;
+    let orderGross = 0;
     for (const r of orderRows) {
       const charged = Number(r.total_amount ?? 0);
+      orderGross += charged;
       orderRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
 
@@ -332,9 +344,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     >;
     let courierRevenue = 0;
     let courierDiscountToday = 0;
+    let courierGross = 0;
     for (const r of courierRows) {
       const charged = Number(r.total_amount ?? 0);
-      courierDiscountToday += Number(r.discount_amount ?? 0);
+      const discount = Number(r.discount_amount ?? 0);
+      courierDiscountToday += discount;
+      courierGross += charged + discount;
       courierRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
     const courierToday = courierTodayRes.count ?? 0;
@@ -343,6 +358,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const discountToday = bookingDiscountToday + courierDiscountToday;
 
     return {
+      grossToday: bookingGross + orderGross + offlineRevenue + courierGross,
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
       todayTransactions: todayBookings + todayOrders + courierToday,
       activeNow:

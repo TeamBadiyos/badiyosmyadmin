@@ -74,7 +74,6 @@ import {
   IndianRupee,
   Activity,
   CheckCircle2,
-  Clock,
   Users,
   Sprout,
   Volume2,
@@ -711,17 +710,25 @@ function DashboardHome({
     onClick?: () => void;
   }> = [
     {
-      label: "Today's Revenue",
-      value: inr.format(data?.todayRevenue ?? 0),
-      hint: "After refunds · bookings + orders + POS",
-      icon: IndianRupee,
-      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
+      label: "Total Order Value (Gross)",
+      value: inr.format(data?.grossToday ?? 0),
+      hint: "Before discounts · bookings + orders + POS",
+      icon: Receipt,
+      onClick: () => onGoBookings({ from: today, to: today }),
     },
     {
       label: "Discount Given",
       value: inr.format(data?.discountToday ?? 0),
       hint: `Today · ${inr.format(data?.discountGiven ?? 0)} all time`,
       icon: BadgePercent,
+      onClick: () => onGoBookings({ from: today, to: today }),
+    },
+    {
+      label: "Actual Revenue",
+      value: inr.format(data?.todayRevenue ?? 0),
+      hint: "Net collected after discounts & refunds",
+      icon: IndianRupee,
+      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },
     {
       label: "Active Right Now",
@@ -736,13 +743,6 @@ function DashboardHome({
       hint: "Bookings + orders",
       icon: CheckCircle2,
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
-    },
-    {
-      label: "Pending Action",
-      value: String(data?.pendingAction ?? 0),
-      hint: "Needs expert + needs merchant",
-      icon: Clock,
-      onClick: () => onGoBookings({ status: "accepted" }),
     },
     {
       label: "Free Right Now",
