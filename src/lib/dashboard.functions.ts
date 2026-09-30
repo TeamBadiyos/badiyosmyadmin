@@ -246,23 +246,34 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : 0;
     };
 
+    /** Test/mock payments must never count as money. */
+    const isTestPayment = (id: unknown) =>
+      String(id ?? "").toUpperCase().startsWith("TESTPRICE");
+
     const bookingRows = (bookingRevenueRes.data ?? []) as Array<
       Record<string, unknown>
     >;
     let bookingRevenue = 0;
     let bookingDiscountToday = 0;
+    let bookingGross = 0;
     for (const r of bookingRows) {
+      const status = String(r.status ?? "").toLowerCase();
+      if (status === "cancelled" || status === "canceled") continue;
+      if (isTestPayment(r.razorpay_payment_id)) continue;
       const total = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
       const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
       bookingDiscountToday += discount;
+      bookingGross += charged + discount;
       bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
 
     const orderRows = (orderRevenueRes.data ?? []) as Array<Record<string, unknown>>;
     let orderRevenue = 0;
+    let orderGross = 0;
     for (const r of orderRows) {
       const charged = Number(r.total_amount ?? 0);
+      orderGross += charged;
       orderRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
 
