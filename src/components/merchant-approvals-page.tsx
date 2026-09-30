@@ -83,10 +83,6 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Action failed"),
   });
 
-  function onReject(m: MerchantRow) {
-    const notes = window.prompt("Reason for rejection (optional)") ?? undefined;
-    mutation.mutate({ merchantId: m.id, decision: "rejected", notes });
-  }
 
   const isDraftTab = tab === "draft";
 
