@@ -28,6 +28,7 @@ const TABS: { key: MerchantStatus | "" ; label: string }[] = [
   { key: "draft", label: "Draft / Incomplete" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
+  { key: "suspended", label: "Suspended" },
   { key: "", label: "All" },
 ];
 
