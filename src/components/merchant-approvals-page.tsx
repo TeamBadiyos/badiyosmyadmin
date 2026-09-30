@@ -1,17 +1,35 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Ban, FileText, RefreshCw, Pencil, Package } from "lucide-react";
+import { Check, Ban, FileText, RefreshCw, Pencil, Package, MessageSquareWarning } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMerchants,
   decideMerchant,
+  raiseMerchantQuery,
   setMerchantCommission,
   type MerchantStatus,
   type MerchantRow,
 } from "@/lib/merchants.functions";
 import { MerchantEditModal } from "@/components/merchant-edit-modal";
 import { MerchantProductsModal } from "@/components/merchant-products-modal";
+
+const QUERY_DOC_OPTIONS: { value: string; label: string }[] = [
+  { value: "cancelled_cheque", label: "Bank cheque / passbook" },
+  { value: "shop_license", label: "Shop licence" },
+  { value: "pan", label: "PAN card" },
+  { value: "aadhaar", label: "Aadhaar card" },
+  { value: "gst_certificate", label: "GST certificate" },
+  { value: "store_details", label: "Store details / address" },
+];
+
+const QUICK_REASONS = [
+  "Bank document is blurred — account number and IFSC are not readable.",
+  "Account holder name does not match the owner name.",
+  "Shop licence photo is cut off or expired. Upload a clear, valid copy.",
+  "Aadhaar / PAN card is not readable. Upload a clear photo of both sides.",
+  "Wrong document uploaded. Please upload the correct one.",
+];
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
