@@ -140,6 +140,7 @@ const NAV_ITEMS = [
   { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Orders", icon: Receipt },
+  { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
 
@@ -168,7 +169,7 @@ const NAV_GROUPS = [
     id: "store",
     label: "Store",
     icon: Store,
-    keys: ["store-orders", "merchants", "store-categories"],
+    keys: ["store-orders", "merchants", "store-categories", "store-settings"],
   },
   {
     id: "people",
