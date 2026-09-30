@@ -74,7 +74,6 @@ import {
   IndianRupee,
   Activity,
   CheckCircle2,
-  Clock,
   Users,
   Sprout,
   Volume2,
