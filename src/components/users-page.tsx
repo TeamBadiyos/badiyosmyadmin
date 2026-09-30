@@ -505,6 +505,9 @@ function CustomerProfileModal({
     queryKey: ["customers", "profile", userId],
     queryFn: () => fetchProfile({ data: { userId } }),
   });
+  const [addrEdit, setAddrEdit] = useState<{ row: AddressRow | null } | null>(null);
+  const removeAddress = useDeleteAddress(userId);
+
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto p-4">
