@@ -5,6 +5,7 @@ import {
   BellRing,
   ChevronLeft,
   ChevronRight,
+  MapPin,
   Pencil,
   RotateCcw,
   Trash2,
@@ -23,6 +24,11 @@ import {
   type CustomerRow,
   type TestPushResult,
 } from "@/lib/users.functions";
+import {
+  CustomerAddressModal,
+  useDeleteAddress,
+  type AddressRow,
+} from "@/components/customer-address-editor";
 
 const PAGE_SIZE = 25;
 
