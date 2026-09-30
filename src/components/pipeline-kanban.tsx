@@ -751,6 +751,13 @@ function BoardCard({
       {canAct && booking.status === "accepted" && (
         <AssignExpertInline bookingId={booking.id} />
       )}
+      {canAct && isAssigned && (
+        <ReassignExpertInline
+          bookingId={booking.id}
+          currentExpertId={booking.assignedExpertId}
+          highlight={onwayLate}
+        />
+      )}
     </div>
   );
 }
