@@ -110,7 +110,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
             db
               .from("bookings")
               .select(
-                "price, total_amount, discount_amount, refund_amount, refund_status, status",
+                "price, total_amount, discount_amount, refund_amount, refund_status, status, razorpay_payment_id",
               )
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
