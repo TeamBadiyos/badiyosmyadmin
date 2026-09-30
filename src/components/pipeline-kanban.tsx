@@ -466,6 +466,8 @@ export function PipelineKanban({
                     role={role}
                     broadcastTimeoutSeconds={broadcastTimeoutSeconds}
                     noExpertTimeoutMinutes={noExpertTimeoutMinutes}
+                    journeyConfig={journeyConfig}
+
 
                     onOpen={() => setOpenId(b.id)}
                   />
