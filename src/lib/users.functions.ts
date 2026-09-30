@@ -65,6 +65,9 @@ export type CustomerProfile = {
     full_address: string;
     area: string | null;
     city: string | null;
+    pincode: string | null;
+    latitude: number | null;
+    longitude: number | null;
     is_default: boolean | null;
   }>;
   bookings: Array<{
@@ -239,7 +242,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes] = await Promise.all([
       db
         .from("addresses")
-        .select("id, label, full_address, area, city, is_default")
+        .select("id, label, full_address, area, city, pincode, latitude, longitude, is_default")
         .eq("user_id", uid)
         .order("is_default", { ascending: false }),
       db
@@ -372,6 +375,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         full_address: a.full_address,
         area: a.area ?? null,
         city: a.city ?? null,
+        pincode: a.pincode ?? null,
+        latitude: a.latitude != null ? Number(a.latitude) : null,
+        longitude: a.longitude != null ? Number(a.longitude) : null,
         is_default: a.is_default ?? null,
       })),
       bookings: bookingRows.map((b) => ({
@@ -444,6 +450,66 @@ export const getStaffUserRole = createServerFn({ method: "GET" })
     const { data } = await context.supabase.rpc("is_super_admin_user");
     return { isSuperAdmin: Boolean(data) };
   });
+
+export type CustomerAddressInput = {
+  userId: string;
+  addressId?: string | null;
+  label: string | null;
+  fullAddress: string;
+  area: string | null;
+  city: string | null;
+  pincode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  isDefault: boolean;
+};
+
+/** Staff (super admin / ops manager) creates or updates a customer address + map pin. */
+export const saveCustomerAddress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: CustomerAddressInput) => {
+    if (!input?.userId) throw new Error("userId required");
+    if (!input.fullAddress?.trim()) throw new Error("Full address is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireStaff(context.supabase, context.userId);
+    // Optional columns are genuinely nullable in the database.
+    const args = {
+      _user_id: data.userId,
+      _address_id: data.addressId ?? null,
+      _label: data.label ?? null,
+      _full_address: data.fullAddress,
+      _area: data.area ?? null,
+      _city: data.city ?? null,
+      _pincode: data.pincode ?? null,
+      _latitude: data.latitude,
+      _longitude: data.longitude,
+      _is_default: data.isDefault,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    const { data: id, error } = await context.supabase.rpc("staff_upsert_customer_address", args);
+    if (error) throw new Error(error.message);
+    return { id: id as string };
+  });
+
+/** Staff removes a saved customer address (audited). */
+export const deleteCustomerAddress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { addressId: string }) => {
+    if (!input?.addressId) throw new Error("addressId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireStaff(context.supabase, context.userId);
+    const { error } = await context.supabase.rpc("staff_delete_customer_address", {
+      _address_id: data.addressId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 
 export const updateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
