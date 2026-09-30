@@ -188,6 +188,7 @@ export function ServicesPage() {
       </div>
 
       {tab === "capacity" ? <CapacityMessagesPage /> : null}
+      {tab === "timings" ? <BookingTimingsTab /> : null}
 
       {tab === "controls" ? (
         <>
