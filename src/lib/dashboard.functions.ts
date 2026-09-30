@@ -257,6 +257,10 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     let bookingRevenue = 0;
     let bookingDiscountToday = 0;
     let bookingGross = 0;
+    /** Coin / fully-free checkouts carry a "free_" id: no cash was collected. */
+    const isCoinPayment = (id: unknown) =>
+      String(id ?? "").toLowerCase().startsWith("free_");
+
     for (const r of bookingRows) {
       const status = String(r.status ?? "").toLowerCase();
       if (status === "cancelled" || status === "canceled") continue;
@@ -264,6 +268,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       const total = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
       const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+      if (isCoinPayment(r.razorpay_payment_id)) {
+        // Paid with coins: the whole value is a discount, cash revenue is zero.
+        bookingDiscountToday += charged + discount;
+        bookingGross += charged + discount;
+        continue;
+      }
       bookingDiscountToday += discount;
       bookingGross += charged + discount;
       bookingRevenue += Math.max(0, charged - refundedOf(r, charged));
@@ -319,7 +329,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .lt("created_at", endOfDay),
       db
         .from("courier_orders")
-        .select("total_amount, discount_amount, refund_amount, refund_status")
+        .select(
+          "total_amount, discount_amount, refund_amount, refund_status, razorpay_payment_id",
+        )
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
@@ -348,6 +360,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     for (const r of courierRows) {
       const charged = Number(r.total_amount ?? 0);
       const discount = Number(r.discount_amount ?? 0);
+      if (isCoinPayment(r.razorpay_payment_id)) {
+        courierDiscountToday += charged + discount;
+        courierGross += charged + discount;
+        continue;
+      }
       courierDiscountToday += discount;
       courierGross += charged + discount;
       courierRevenue += Math.max(0, charged - refundedOf(r, charged));
