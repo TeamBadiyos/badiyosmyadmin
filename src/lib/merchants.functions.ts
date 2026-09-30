@@ -61,7 +61,7 @@ export const listMerchants = createServerFn({ method: "GET" })
     let q = db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, created_at, updated_at",
+        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, rejection_reason, query_notes, query_doc_types, queried_at, awaiting_reupload, created_at, updated_at",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
