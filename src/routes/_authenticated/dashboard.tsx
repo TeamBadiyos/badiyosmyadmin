@@ -13,6 +13,7 @@ import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
+import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
@@ -140,6 +141,7 @@ const NAV_ITEMS = [
   { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Orders", icon: Receipt },
+  { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Services", icon: SlidersHorizontal },
 ] as const;
 
@@ -168,7 +170,7 @@ const NAV_GROUPS = [
     id: "store",
     label: "Store",
     icon: Store,
-    keys: ["store-orders", "merchants", "store-categories"],
+    keys: ["store-orders", "merchants", "store-categories", "store-settings"],
   },
   {
     id: "people",
@@ -569,6 +571,8 @@ function Shell() {
           <EmergencyAlertsPage role={role} />
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
+        ) : active === "store-settings" ? (
+          <StoreSettingsPage />
         ) : active === "store-categories" ? (
           <StoreCategoriesPage role={role} />
         ) : active === "task-types" ? (

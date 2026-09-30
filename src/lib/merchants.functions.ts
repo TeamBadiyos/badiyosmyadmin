@@ -26,6 +26,7 @@ export type MerchantRow = {
   city: string | null;
   pincode: string | null;
   onboardingStep: number;
+  commissionPct: number;
   createdAt: string;
   updatedAt: string;
   docs: MerchantDoc[];
@@ -55,7 +56,7 @@ export const listMerchants = createServerFn({ method: "GET" })
     let q = db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, created_at, updated_at",
+        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, created_at, updated_at",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -128,6 +129,7 @@ export const listMerchants = createServerFn({ method: "GET" })
       city: r.city,
       pincode: r.pincode,
       onboardingStep: r.onboarding_step ?? 0,
+      commissionPct: Number(r.commission_value ?? 0),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       docs: docsByMerchant.get(r.id) ?? [],
@@ -488,5 +490,108 @@ export const setProductAdminHidden = createServerFn({ method: "POST" })
       after_state: after,
     });
 
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Store commission controls (ops_settings + per-merchant RPC)
+// ---------------------------------------------------------------------------
+
+export type StoreCommissionSettings = {
+  defaultPct: number;
+  gstEnabled: boolean;
+  gstPct: number;
+  canEdit: boolean;
+};
+
+const COMMISSION_KEYS = [
+  "store_default_commission_pct",
+  "store_commission_gst_enabled",
+  "store_commission_gst_pct",
+] as const;
+
+export const getStoreCommissionSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<StoreCommissionSettings> => {
+    const db = context.supabase;
+    const role = await staffRole(db, context.userId);
+    const { data, error } = await db
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", COMMISSION_KEYS as unknown as string[]);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const m = new Map(((data ?? []) as any[]).map((r) => [r.key, String(r.value ?? "")]));
+    return {
+      defaultPct: Number(m.get("store_default_commission_pct") ?? 0),
+      gstEnabled: (m.get("store_commission_gst_enabled") ?? "0") === "1",
+      gstPct: Number(m.get("store_commission_gst_pct") ?? 18),
+      canEdit: role === "super_admin",
+    };
+  });
+
+export const saveStoreCommissionSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { defaultPct: number; gstEnabled: boolean; gstPct: number }) => {
+    if (!Number.isFinite(input.defaultPct) || input.defaultPct < 0 || input.defaultPct > 50) {
+      throw new Error("Default commission must be between 0 and 50%");
+    }
+    if (!Number.isFinite(input.gstPct) || input.gstPct < 0 || input.gstPct > 100) {
+      throw new Error("GST % must be between 0 and 100");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const db = context.supabase;
+    const role = await staffRole(db, context.userId);
+    if (role !== "super_admin") throw new Error("insufficient_role");
+
+    const { data: before } = await db
+      .from("ops_settings")
+      .select("key, value")
+      .in("key", COMMISSION_KEYS as unknown as string[]);
+
+    const updates: Array<[string, string]> = [
+      ["store_default_commission_pct", String(data.defaultPct)],
+      ["store_commission_gst_enabled", data.gstEnabled ? "1" : "0"],
+      ["store_commission_gst_pct", String(data.gstPct)],
+    ];
+    for (const [key, value] of updates) {
+      const { data: upd, error } = await db
+        .from("ops_settings")
+        .update({ value, updated_at: new Date().toISOString() })
+        .eq("key", key)
+        .select("key");
+      if (error) throw new Error(error.message);
+      if (!upd?.length) throw new Error(`Setting ${key} not found`);
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "update_store_commission_settings",
+      target_table: "ops_settings",
+      target_id: null,
+      before_state: before ?? null,
+      after_state: data,
+    });
+    return { ok: true };
+  });
+
+export const setMerchantCommission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string; pct: number }) => {
+    if (!input?.merchantId) throw new Error("merchantId required");
+    if (!Number.isFinite(input.pct) || input.pct < 0 || input.pct > 50) {
+      throw new Error("Commission must be between 0 and 50%");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await context.supabase.rpc("staff_set_merchant_commission", {
+      _merchant_id: data.merchantId,
+      _pct: data.pct,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
