@@ -375,6 +375,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         full_address: a.full_address,
         area: a.area ?? null,
         city: a.city ?? null,
+        pincode: a.pincode ?? null,
+        latitude: a.latitude != null ? Number(a.latitude) : null,
+        longitude: a.longitude != null ? Number(a.longitude) : null,
         is_default: a.is_default ?? null,
       })),
       bookings: bookingRows.map((b) => ({
