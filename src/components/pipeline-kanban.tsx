@@ -510,30 +510,59 @@ export function PipelineKanban({
 }
 
 
+/** Slot start as epoch ms, from "2026-10-01" + "10:00 AM - 11:00 AM" / "14:00". */
+function slotStartMs(booking: PipelineBooking): number | null {
+  if (!booking.scheduledDate || !booking.scheduledTimeSlot) return null;
+  const m = booking.scheduledTimeSlot.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const mins = Number(m[2] ?? "0");
+  const ampm = m[3]?.toLowerCase();
+  if (ampm === "pm" && hour < 12) hour += 12;
+  if (ampm === "am" && hour === 12) hour = 0;
+  // Slot times are stated in IST (UTC+5:30).
+  const base = Date.parse(`${booking.scheduledDate}T00:00:00+05:30`);
+  if (Number.isNaN(base)) return null;
+  return base + hour * 3_600_000 + mins * 60_000;
+}
+
+function clockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
 function BoardCard({
   booking,
   role,
   broadcastTimeoutSeconds,
   noExpertTimeoutMinutes,
+  journeyConfig,
   onOpen,
 }: {
   booking: PipelineBooking;
   role: StaffRole | null;
   broadcastTimeoutSeconds: number;
   noExpertTimeoutMinutes: number;
+  journeyConfig: BookingJourneyConfig;
   onOpen: () => void;
 }) {
 
   const canAct = role === "super_admin" || role === "ops_manager";
   const isBroadcasting = booking.status === "accepted";
+  const isAssigned = booking.status === "expert_assigned";
 
-  // Live-ticking elapsed seconds since the booking entered 'accepted'.
+  // Live-ticking clock for broadcast elapsed time and journey deadlines.
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const ticking = isBroadcasting || isAssigned;
   useEffect(() => {
-    if (!isBroadcasting) return;
+    if (!ticking) return;
     const t = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(t);
-  }, [isBroadcasting]);
+  }, [ticking]);
   const acceptedAtMs = isBroadcasting
     ? new Date(booking.updatedAt).getTime()
     : 0;
@@ -555,6 +584,33 @@ function BoardCard({
       )
     : null;
 
+  // ---- Journey steps: on the way / arrived, and the "running late" alert ----
+  const slotStart = slotStartMs(booking);
+  const isAsap =
+    (booking.slotType ?? "").toLowerCase() === "asap" || slotStart == null;
+  const onwayDeadlineMs = isAssigned
+    ? isAsap
+      ? (booking.expertAssignedAt
+          ? new Date(booking.expertAssignedAt).getTime()
+          : new Date(booking.updatedAt).getTime()) +
+        journeyConfig.asapOnwayDeadlineMinutes * 60_000
+      : (slotStart ?? 0) -
+        journeyConfig.scheduledOnwayDeadlineBeforeSlotMinutes * 60_000
+    : null;
+  const onwayLate =
+    isAssigned &&
+    !booking.onTheWayAt &&
+    (booking.onwayAlertSent ||
+      (onwayDeadlineMs != null && nowMs > onwayDeadlineMs));
+
+  // ---- No expert found ----
+  const noExpertFound =
+    isBroadcasting &&
+    (booking.noExpertAlertSent ||
+      (slotStart != null &&
+        nowMs > slotStart - journeyConfig.noExpertAlertBeforeSlotMinutes * 60_000));
+
+  const alerting = onwayLate || noExpertFound;
 
   // Eligible experts count for accepted (broadcasting) cards.
   const fetchCount = useServerFn(countEligibleExperts);
