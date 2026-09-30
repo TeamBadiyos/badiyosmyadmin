@@ -452,6 +452,7 @@ export function ServiceCataloguePage() {
                   .map((l) => l.task_type_id)
               : []
           }
+          canEditEstimatedTime={Boolean(data?.canEditEstimatedTime)}
           onClose={() => setOptionModal(null)}
         />
       )}
@@ -537,6 +538,11 @@ function ServiceRow({
                 {o.duration_minutes != null && (
                   <span className="text-[12px] text-muted-foreground">
                     {o.duration_minutes} min
+                  </span>
+                )}
+                {service.pricing_type === "flat" && o.estimated_minutes != null && (
+                  <span className="text-[12px] text-muted-foreground">
+                    {o.estimated_minutes} min estimate
                   </span>
                 )}
                 {o.unit_label && (
@@ -888,12 +894,14 @@ function PriceOptionModal({
   option,
   taskTypes,
   linkedTaskTypeIds,
+  canEditEstimatedTime,
   onClose,
 }: {
   service: CatalogueService;
   option: CataloguePriceOption | null;
   taskTypes: TaskType[];
   linkedTaskTypeIds: string[];
+  canEditEstimatedTime: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -904,6 +912,9 @@ function PriceOptionModal({
   const [label, setLabel] = useState(option?.label ?? "");
   const [minutes, setMinutes] = useState(
     option?.duration_minutes != null ? String(option.duration_minutes) : "",
+  );
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    option?.estimated_minutes != null ? String(option.estimated_minutes) : "",
   );
   const [unit, setUnit] = useState(option?.unit_label ?? "");
   const [price, setPrice] = useState(option ? String(option.customer_price) : "");
@@ -934,6 +945,10 @@ function PriceOptionModal({
           label,
           duration_minutes:
             service.pricing_type === "duration" ? optNum(minutes) : null,
+          estimated_minutes:
+            service.pricing_type === "flat"
+              ? optNum(estimatedMinutes)
+              : option?.estimated_minutes ?? null,
           unit_label: service.pricing_type === "quantity" ? unit : null,
           customer_price: Number(price) || 0,
           strikethrough_price: optNum(wasPrice),
@@ -997,7 +1012,7 @@ function PriceOptionModal({
         </Field>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Customer price">
           <input
             className={inputCls}
@@ -1006,6 +1021,22 @@ function PriceOptionModal({
             onChange={(e) => setPrice(e.target.value)}
           />
         </Field>
+        {service.pricing_type === "flat" && (
+          <Field label="Estimated time (min)">
+            <input
+              className={inputCls}
+              value={estimatedMinutes}
+              inputMode="numeric"
+              min={1}
+              step={1}
+              disabled={!canEditEstimatedTime}
+              onChange={(e) => setEstimatedMinutes(e.target.value)}
+            />
+            <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
+              Used for scheduling and Expert busy time. Not shown to customers.
+            </span>
+          </Field>
+        )}
         <Field label="Was price (optional)">
           <input
             className={inputCls}

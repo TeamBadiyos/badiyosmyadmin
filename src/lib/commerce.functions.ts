@@ -36,6 +36,8 @@ export type CommerceOrder = {
   commissionGstAmount: number;
   merchantNet: number;
   deliveryFee: number;
+  paidAmount: number;
+  discountAmount: number;
 };
 
 export type CommercePipeline = {
@@ -228,6 +230,16 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
         commissionGstAmount: Number(r.commission_gst_amount ?? 0),
         merchantNet: Number(r.merchant_net ?? 0),
         deliveryFee: Number(r.delivery_fee ?? 0),
+        paidAmount:
+          String(r.payment_status ?? "").toLowerCase() === "paid"
+            ? Number(r.total_amount ?? 0)
+            : 0,
+        discountAmount: Math.max(
+          0,
+          Number(r.items_total ?? 0) +
+            Number(r.delivery_fee ?? 0) -
+            Number(r.total_amount ?? 0),
+        ),
       };
     });
 

@@ -54,6 +54,7 @@ import {
 import { LiveTrackingMap } from "@/components/live-tracking-map";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
+import { OrderPaymentSummary } from "@/components/order-payment-summary";
 
 /* --------------------------------- shared -------------------------------- */
 
@@ -1720,7 +1721,13 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
               {o.returnPaymentPending ? <Pill tone="warn">Return payment pending</Pill> : null}
               {o.businessName ? <Pill tone="ok">{`Business · ${o.businessName}`}</Pill> : null}
             </div>
-            <span className="text-[13px] font-bold text-foreground">₹{o.total_amount}</span>
+            <OrderPaymentSummary
+              className="shrink-0 text-right"
+              paid={String(o.payment_status ?? "").toLowerCase() === "paid" ? o.total_amount : 0}
+              base={o.base_amount}
+              coupon={o.discount_amount}
+              gst={o.gst_amount}
+            />
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
             {o.customerName ?? "Customer"} · {o.riderName ?? "No rider"} ·{" "}
