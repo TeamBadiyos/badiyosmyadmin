@@ -626,7 +626,15 @@ export const listCourierOrders = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    const list = (rows ?? []) as Array<Record<string, unknown>>;
+    // Checkout that was never paid: the customer abandoned Razorpay, so the
+    // order never entered dispatch. Keep those out of the ops queue entirely.
+    const list = ((rows ?? []) as Array<Record<string, unknown>>).filter(
+      (r) =>
+        !(
+          String(r["status"] ?? "") === "REQUESTED" &&
+          String(r["payment_status"] ?? "").toLowerCase() === "pending"
+        ),
+    );
     if (list.length === 0) return [];
 
     const customerIds = Array.from(
