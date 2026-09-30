@@ -343,9 +343,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     >;
     let courierRevenue = 0;
     let courierDiscountToday = 0;
+    let courierGross = 0;
     for (const r of courierRows) {
       const charged = Number(r.total_amount ?? 0);
-      courierDiscountToday += Number(r.discount_amount ?? 0);
+      const discount = Number(r.discount_amount ?? 0);
+      courierDiscountToday += discount;
+      courierGross += charged + discount;
       courierRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
     const courierToday = courierTodayRes.count ?? 0;
@@ -354,6 +357,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const discountToday = bookingDiscountToday + courierDiscountToday;
 
     return {
+      grossToday: bookingGross + orderGross + offlineRevenue + courierGross,
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
       todayTransactions: todayBookings + todayOrders + courierToday,
       activeNow:
