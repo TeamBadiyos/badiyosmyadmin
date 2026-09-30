@@ -129,6 +129,7 @@ export const listMerchants = createServerFn({ method: "GET" })
       city: r.city,
       pincode: r.pincode,
       onboardingStep: r.onboarding_step ?? 0,
+      commissionPct: Number(r.commission_value ?? 0),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       docs: docsByMerchant.get(r.id) ?? [],
