@@ -670,6 +670,42 @@ function BoardCard({
         )}
       </div>
 
+      {(booking.onTheWayAt || booking.arrivedAt) && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {booking.onTheWayAt && (
+            <span className="rounded-full border border-primary/30 bg-primary-tint px-2 py-0.5 text-[10px] font-bold text-primary">
+              On the way · {clockTime(booking.onTheWayAt)}
+            </span>
+          )}
+          {booking.arrivedAt && (
+            <span className="rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">
+              Arrived · {clockTime(booking.arrivedAt)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {onwayLate && (
+        <div className="mt-2 rounded-[10px] border border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
+          <span className="block">Not on the way in time</span>
+          <span className="block font-normal">
+            {isAsap
+              ? `Expert has not started out within ${journeyConfig.asapOnwayDeadlineMinutes} min of being assigned.`
+              : `Expert should have been on the way ${journeyConfig.scheduledOnwayDeadlineBeforeSlotMinutes} min before the slot.`}
+          </span>
+        </div>
+      )}
+
+      {noExpertFound && (
+        <div className="mt-2 rounded-[10px] border border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
+          <span className="block">No Expert found</span>
+          <span className="block font-normal">
+            Slot is close and nobody has accepted — assign someone manually.
+          </span>
+        </div>
+      )}
+
+
       {isBroadcasting && (
         <div
           className={`mt-2 rounded-[10px] px-2 py-1.5 text-[11px] font-semibold flex items-center justify-between gap-2 border ${
