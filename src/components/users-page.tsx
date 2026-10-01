@@ -29,6 +29,11 @@ import {
   useDeleteAddress,
   type AddressRow,
 } from "@/components/customer-address-editor";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 const PAGE_SIZE = 25;
 
@@ -93,9 +98,49 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
     staleTime: 20_000,
   });
 
-  const rows = data?.rows ?? [];
+  const pageRows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const sf = useSortFilter(pageRows, [
+    { key: "name", label: "Name", value: (r: CustomerRow) => r.full_name ?? "—" },
+    { key: "phone", label: "Phone", value: (r: CustomerRow) => r.phone ?? "—", filterable: false },
+    { key: "email", label: "Email", value: (r: CustomerRow) => r.email ?? "—", filterable: false },
+    {
+      key: "location",
+      label: "Location",
+      value: (r: CustomerRow) => [r.area, r.city].filter(Boolean).join(", ") || "—",
+    },
+    {
+      key: "bookings",
+      label: "Bookings",
+      type: "number",
+      value: (r: CustomerRow) => r.bookings_count,
+      filterable: false,
+    },
+    {
+      key: "spend",
+      label: "Spend",
+      type: "number",
+      value: (r: CustomerRow) => r.total_spend,
+      filterable: false,
+    },
+    {
+      key: "referrals",
+      label: "Referrals",
+      type: "number",
+      value: (r: CustomerRow) => r.successful_referrals,
+      filterable: false,
+    },
+    {
+      key: "joined",
+      label: "Joined",
+      value: (r: CustomerRow) => r.created_at ?? "",
+      display: (r: CustomerRow) => fmtDate(r.created_at),
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
 
   return (
     <div className="space-y-6">
