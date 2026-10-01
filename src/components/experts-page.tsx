@@ -80,8 +80,30 @@ export function ExpertsPage({
     staleTime: 15_000,
   });
 
-  const experts =
+  const expertsFiltered =
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw;
+
+  const sf = useSortFilter(expertsFiltered, [
+    { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
+    { key: "phone", label: "Phone", value: (e: ExpertRow) => e.phone, filterable: false },
+    {
+      key: "zone",
+      label: "Zone",
+      value: (e: ExpertRow) => e.zoneNames?.join(", ") || "Unassigned",
+    },
+    { key: "level", label: "Level", value: (e: ExpertRow) => e.level },
+    { key: "kyc", label: "KYC", value: (e: ExpertRow) => e.kycStatus },
+    {
+      key: "wallet",
+      label: "Wallet",
+      type: "number",
+      align: "right",
+      value: (e: ExpertRow) => e.walletBalance,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (e: ExpertRow) => e.status },
+  ]);
+  const experts = sf.rows;
 
   return (
     <div className="space-y-6">
