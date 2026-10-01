@@ -199,7 +199,11 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
                   {c.title}
                   {c.audience === "referral_reward" ? " · referral reward only" : ""}
                 </p>
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                  {categoryLabel(c.applicable_category_ids, catMap)}
+                </p>
               </button>
+
               <span>{discountLabel(c.discount_type, c.discount_value, c.max_discount)}</span>
               <span>
                 {c.used_count} / {c.total_usage_limit ?? "∞"}
