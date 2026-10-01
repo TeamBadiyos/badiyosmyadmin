@@ -678,19 +678,23 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         </p>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Owner</span>
-          <span>Type</span>
-          <span className="text-right">Gross</span>
-          <span className="text-right">TDS</span>
-          <span className="text-right">Net</span>
-          <span>Paid</span>
+          <SortFilterHeader {...sf.headerProps("owner")} />
+          <SortFilterHeader {...sf.headerProps("type")} />
+          <SortFilterHeader {...sf.headerProps("gross")} />
+          <SortFilterHeader {...sf.headerProps("tds")} />
+          <SortFilterHeader {...sf.headerProps("net")} />
+          <SortFilterHeader {...sf.headerProps("paid")} />
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">
             No items in this batch.
           </p>
