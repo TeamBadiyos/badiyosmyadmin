@@ -36,7 +36,7 @@ import type { StaffRole } from "@/lib/staff.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
-  { key: "confirmed", label: "Awaiting Payment" },
+  { key: "confirmed", label: "Scheduled Orders" },
   { key: "accepted", label: "Needs Expert" },
   { key: "expert_assigned", label: "Expert Assigned" },
   { key: "in_progress", label: "In Progress" },
@@ -201,6 +201,7 @@ export function PipelineKanban({
     scheduledOnwayDeadlineBeforeSlotMinutes: 15,
     noExpertAlertBeforeSlotMinutes: 5,
     noExpertRefundAfterSlotMinutes: 30,
+    dispatchLeadMinutes: 60,
   };
 
 
