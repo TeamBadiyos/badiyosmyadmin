@@ -41,6 +41,7 @@ import {
 } from "@/lib/live-orders.functions";
 
 import { LiveTrackingMap } from "@/components/live-tracking-map";
+import { ShareLocation } from "@/components/share-location";
 import { ServiceTimerCard } from "@/components/service-timer";
 
 
@@ -494,6 +495,7 @@ export function BookingDetailsModal({
                 <h3 className="text-[13px] font-bold text-foreground mb-2">
                   Live tracking
                 </h3>
+                <ShareLocation kind="booking" id={bookingId} />
                 <LiveTrackingMap kind="booking" id={bookingId} />
               </section>
 

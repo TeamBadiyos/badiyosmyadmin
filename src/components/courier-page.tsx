@@ -52,6 +52,7 @@ import {
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
+import { ShareLocation } from "@/components/share-location";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
@@ -1164,6 +1165,7 @@ export function OrderDetail({
       <MultiStopSections order={order} fetchStops={fetchStops} onChanged={onChanged} />
 
       <div className="mt-4">
+        <ShareLocation kind="courier" id={order.id} />
         <LiveTrackingMap kind="courier" id={order.id} />
       </div>
 
