@@ -273,19 +273,22 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
             )}
           </div>
 
-          <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+          <div className="bg-card border border-border rounded-[18px] overflow-visible">
+            <div className="flex justify-end px-6 pt-4">
+              <SortFilterReset api={invoiceSf} />
+            </div>
             <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              <span>Merchant</span>
-              <span>Tier</span>
-              <span>Billing month</span>
-              <span>Amount</span>
-              <span>Status</span>
+              <SortFilterHeader {...invoiceSf.headerProps("merchant")} />
+              <SortFilterHeader {...invoiceSf.headerProps("tier")} />
+              <SortFilterHeader {...invoiceSf.headerProps("month")} />
+              <SortFilterHeader {...invoiceSf.headerProps("amount")} />
+              <SortFilterHeader {...invoiceSf.headerProps("status")} />
               <span>Action</span>
             </div>
             {invoicesQ.isLoading && (
               <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
             )}
-            {(invoicesQ.data ?? []).map((i) => (
+            {invoiceSf.rows.map((i) => (
               <div
                 key={i.id}
                 className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
