@@ -149,8 +149,19 @@ export const saveCoupon = createServerFn({ method: "POST" })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     if (error) throw new Error(error.message);
-    return { id: id as string };
+    const couponId = (id ?? data.id) as string;
+    if (couponId && data.applicable_category_ids !== undefined) {
+      const { error: catError } = await context.supabase.rpc("staff_set_coupon_categories", {
+        _id: couponId,
+        _category_ids: data.applicable_category_ids ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      if (catError) throw new Error(catError.message);
+    }
+    return { id: couponId };
   });
+
+
 
 export const setCouponActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
