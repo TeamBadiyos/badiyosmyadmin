@@ -905,8 +905,9 @@ function EditUserModal({
   });
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-[18px] w-full max-w-md">
+    <div className="fixed inset-0 z-[55] bg-black/40 flex items-start justify-center overflow-y-auto p-4">
+      <div className="bg-card border border-border rounded-[18px] w-full max-w-xl my-6">
+
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-[16px] font-bold text-foreground">Edit user</h2>
           <button
