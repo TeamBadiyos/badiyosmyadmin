@@ -22,6 +22,11 @@ import {
   type PayoutBatch,
 } from "@/lib/wallets.functions";
 import { CommissionTab } from "@/components/commission-tab";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -106,6 +111,24 @@ function BalancesTab({ role }: { role: Role }) {
     );
   }, [data, query]);
 
+  const sf = useSortFilter(filtered, [
+    { key: "owner", label: "Owner", value: (o: WalletOwner) => o.name },
+    {
+      key: "type",
+      label: "Type",
+      value: (o: WalletOwner) => (o.owner_type === "expert" ? "Expert" : "Partner"),
+    },
+    {
+      key: "balance",
+      label: "Balance",
+      type: "number",
+      align: "right",
+      value: (o: WalletOwner) => o.balance,
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
       <div className="space-y-4 min-w-0">
@@ -122,6 +145,7 @@ function BalancesTab({ role }: { role: Role }) {
               className="w-full h-11 pl-9 pr-3 rounded-[14px] border border-border bg-card text-[14px]"
             />
           </div>
+          <SortFilterReset api={sf} />
           {role === "super_admin" && (
             <button
               onClick={() => setAdjustFor(selected ?? data[0] ?? null)}
@@ -132,19 +156,19 @@ function BalancesTab({ role }: { role: Role }) {
           )}
         </div>
 
-        <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] overflow-visible">
           <div className="grid grid-cols-[minmax(0,1fr)_120px_140px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Owner</span>
-            <span>Type</span>
-            <span className="text-right">Balance</span>
+            <SortFilterHeader {...sf.headerProps("owner")} />
+            <SortFilterHeader {...sf.headerProps("type")} />
+            <SortFilterHeader {...sf.headerProps("balance")} />
           </div>
           {isLoading && (
             <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
           )}
-          {!isLoading && filtered.length === 0 && (
+          {!isLoading && rows.length === 0 && (
             <p className="text-[13px] text-muted-foreground text-center py-10">No matches.</p>
           )}
-          {filtered.map((o) => (
+          {rows.map((o) => (
             <button
               key={`${o.owner_type}:${o.id}`}
               onClick={() => setSelected(o)}
