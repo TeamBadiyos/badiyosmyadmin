@@ -436,29 +436,6 @@ export function PipelineKanban({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-3">
-        {(
-          [
-            ["all", `All (${toneCounts.all})`],
-            ["overtime", `🚨 Overtime / Expired (${toneCounts.overtime})`],
-            ["ending", `⚡ Ending soon ≤15m (${toneCounts.ending})`],
-            ["fresh", `🔵 Just started (${toneCounts.fresh})`],
-          ] as [ToneFilter, string][]
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setToneFilter(k)}
-            className={`h-8 px-3 rounded-full border text-[12px] font-semibold transition-colors ${
-              toneFilter === k
-                ? "border-primary bg-primary-tint text-primary"
-                : "border-border bg-background text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
       <div
@@ -759,14 +736,16 @@ function BoardCard({
   return (
     <div
       onClick={onOpen}
-      className={`bg-card border border-l-4 ${TONE_STRIPE[timeState.tone]} rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
+      className={`border border-l-4 ${TONE_STRIPE[timeState.tone]} rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
         alerting || timeState.tone === "overtime"
-          ? "border-destructive bg-destructive/5"
-          : timeState.tone === "ending"
-            ? "border-warning bg-warning-tint/30"
-          : timedOut
-            ? "border-warning bg-warning-tint/30"
-            : "border-border hover:border-primary/60"
+          ? "border-destructive/50 bg-destructive/15"
+          : timeState.tone === "ending" || timedOut
+            ? "border-warning/60 bg-warning/20"
+          : timeState.tone === "fresh"
+            ? "border-info/40 bg-info/10"
+          : booking.status === "in_progress"
+            ? "border-primary/40 bg-primary/10"
+            : "bg-card border-border hover:border-primary/60"
       }`}
     >
       {timeState.label && (
