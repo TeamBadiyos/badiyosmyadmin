@@ -68,7 +68,22 @@ export type CouponRow = {
   audience: string;
   is_active: boolean;
   created_at: string;
+  applicable_category_ids: string[] | null;
 };
+
+export type OfferCategory = { id: string; name: string };
+
+export const listOfferCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<OfferCategory[]> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("service_categories")
+      .select("id, name")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as OfferCategory[];
+  });
 
 export const listCoupons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -77,13 +92,14 @@ export const listCoupons = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("coupons")
       .select(
-        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at",
+        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids",
       )
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
     return (data ?? []) as CouponRow[];
   });
+
 
 export type CouponInput = {
   id?: string | null;
@@ -99,6 +115,8 @@ export type CouponInput = {
   total_usage_limit?: number | null;
   per_user_limit?: number | null;
   audience: "all" | "referral_reward";
+  applicable_category_ids?: string[] | null;
+
 };
 
 export const saveCoupon = createServerFn({ method: "POST" })
@@ -131,8 +149,19 @@ export const saveCoupon = createServerFn({ method: "POST" })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     if (error) throw new Error(error.message);
-    return { id: id as string };
+    const couponId = (id ?? data.id) as string;
+    if (couponId && data.applicable_category_ids !== undefined) {
+      const { error: catError } = await context.supabase.rpc("staff_set_coupon_categories", {
+        _id: couponId,
+        _category_ids: data.applicable_category_ids ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      if (catError) throw new Error(catError.message);
+    }
+    return { id: couponId };
   });
+
+
 
 export const setCouponActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
