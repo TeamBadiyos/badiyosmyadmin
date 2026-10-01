@@ -485,7 +485,11 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
 
     return rows.map((r) => ({
       id: r.id as string,
-      status: r.status as PipelineStatus,
+      // `on_the_way` / `arrived` are journey steps after assignment — they stay
+      // in the "Expert Assigned" column and surface as badges on the card.
+      status: (r.status === "on_the_way" || r.status === "arrived"
+        ? "expert_assigned"
+        : r.status) as PipelineStatus,
       customerName:
         (userMap.get(r.user_id as string) as string | null) ?? "Customer",
       serviceLabel: (r.service_label as string | null) ?? null,
