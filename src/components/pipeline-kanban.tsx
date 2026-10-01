@@ -837,7 +837,7 @@ function ConfirmedActions({
       {!rejectOpen ? (
         <div className="flex items-center gap-2">
           <span className="flex-1 text-[11px] font-semibold text-muted-foreground">
-            Auto-dispatches on payment
+            {note}
           </span>
           <button
             onClick={() => setRejectOpen(true)}
