@@ -44,6 +44,27 @@ export function AreaPartnersPage({ role = null }: { role?: StaffRole | null }) {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<AreaPartnerRow | null>(null);
 
+  const sf = useSortFilter(data, [
+    { key: "name", label: "Name", value: (p: AreaPartnerRow) => p.name },
+    { key: "phone", label: "Phone", value: (p: AreaPartnerRow) => p.phone, filterable: false },
+    {
+      key: "zone",
+      label: "Assigned Zone",
+      value: (p: AreaPartnerRow) => p.zoneNames.join(", ") || "Unassigned",
+    },
+    { key: "fee", label: "Setup Fee", value: (p: AreaPartnerRow) => p.setupFeeStatus },
+    {
+      key: "commission",
+      label: "Commission",
+      type: "number",
+      align: "right",
+      value: (p: AreaPartnerRow) => p.commissionRate,
+      filterable: false,
+    },
+    { key: "kyc", label: "KYC", value: (p: AreaPartnerRow) => p.kycStatus },
+    { key: "status", label: "Status", value: (p: AreaPartnerRow) => p.status },
+  ]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
