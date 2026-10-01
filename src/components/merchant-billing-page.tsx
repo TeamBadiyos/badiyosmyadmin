@@ -187,17 +187,20 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       </div>
 
       {tab === "merchants" && (
-        <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] overflow-visible">
+          <div className="flex justify-end px-6 pt-4">
+            <SortFilterReset api={merchantSf} />
+          </div>
           <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Store / Owner</span>
-            <span>Phone</span>
-            <span>City</span>
+            <SortFilterHeader {...merchantSf.headerProps("store")} />
+            <SortFilterHeader {...merchantSf.headerProps("phone")} />
+            <SortFilterHeader {...merchantSf.headerProps("city")} />
             <span>Plan</span>
           </div>
           {merchantsQ.isLoading && (
             <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
           )}
-          {(merchantsQ.data ?? []).map((m) => (
+          {merchantSf.rows.map((m) => (
             <div
               key={m.id}
               className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
