@@ -95,26 +95,30 @@ export function AreaPartnersPage({ role = null }: { role?: StaffRole | null }) {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className={`${GRID} px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <span></span>
-          <span>Name</span>
-          <span>Phone</span>
-          <span>Assigned Zone</span>
-          <span>Setup Fee</span>
-          <span className="text-right">Commission</span>
-          <span>KYC</span>
-          <span>Status</span>
+          <SortFilterHeader {...sf.headerProps("name")} />
+          <SortFilterHeader {...sf.headerProps("phone")} />
+          <SortFilterHeader {...sf.headerProps("zone")} />
+          <SortFilterHeader {...sf.headerProps("fee")} />
+          <SortFilterHeader {...sf.headerProps("commission")} />
+          <SortFilterHeader {...sf.headerProps("kyc")} />
+          <SortFilterHeader {...sf.headerProps("status")} />
           <span className="text-right">Actions</span>
         </div>
 
         {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
         {isError && <p className="text-[13px] text-destructive text-center py-10">Failed to load.</p>}
-        {!isLoading && !isError && data.length === 0 && (
+        {!isLoading && !isError && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">No area partners yet.</p>
         )}
 
-        {data.map((p) => (
+        {sf.rows.map((p) => (
           <div
             key={p.id}
             className={`${GRID} items-center px-6 py-4 border-b border-border last:border-b-0 text-[14px] hover:bg-muted/40 transition-colors ${p.deletedAt ? "opacity-60" : ""}`}
