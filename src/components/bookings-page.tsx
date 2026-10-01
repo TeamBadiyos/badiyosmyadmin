@@ -93,7 +93,9 @@ export function BookingsPage({
     const activePreset = status === "active";
     return {
       status: activePreset ? null : status || null,
-      statuses: activePreset ? ["expert_assigned", "in_progress"] : null,
+      statuses: activePreset
+        ? ["expert_assigned", "on_the_way", "arrived", "in_progress"]
+        : null,
       zoneId: zoneId || null,
       from: from || null,
       to: to || null,
