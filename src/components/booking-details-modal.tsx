@@ -303,7 +303,9 @@ export function BookingDetailsModal({
   const [endOtpInput, setEndOtpInput] = useState("");
 
   const showStartOtp =
-    !!data && data.status === "expert_assigned" && canEdit;
+    !!data &&
+    ["expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
+    canEdit;
   const showEndOtp =
     !!data && data.status === "in_progress" && canEdit;
 
