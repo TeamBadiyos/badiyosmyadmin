@@ -743,7 +743,10 @@ function BoardCard({
 
 
       {canAct && booking.status === "confirmed" && (
-        <ConfirmedActions bookingId={booking.id} />
+        <ConfirmedActions
+          bookingId={booking.id}
+          dispatchNote={dispatchNote(booking, journeyConfig.dispatchLeadMinutes)}
+        />
       )}
       {canAct && booking.status === "accepted" && (
         <AssignExpertInline bookingId={booking.id} />
