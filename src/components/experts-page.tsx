@@ -238,7 +238,20 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       className="w-full grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
     >
       <ExpertAvatar url={expert.photoUrl} />
-      <span className="font-semibold text-foreground truncate">{expert.name}</span>
+      <span className="min-w-0 flex items-center gap-2">
+        <span className="font-semibold text-foreground truncate">{expert.name}</span>
+        {expert.avgRating != null ? (
+          <span
+            className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[11px] font-bold"
+            title={`${expert.ratingCount} rating${expert.ratingCount === 1 ? "" : "s"}`}
+          >
+            ★ {expert.avgRating.toFixed(1)}
+            <span className="font-medium text-muted-foreground">({expert.ratingCount})</span>
+          </span>
+        ) : (
+          <span className="shrink-0 text-[11px] text-muted-foreground">No rating</span>
+        )}
+      </span>
       <span className="font-mono text-[13px] text-muted-foreground truncate">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
         {expert.zoneNames?.length ? (

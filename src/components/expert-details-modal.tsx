@@ -162,6 +162,13 @@ export function ExpertDetailsModal({
             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Expert</p>
             <h2 className="text-[18px] font-bold text-foreground">
               {data?.name ?? (isLoading ? "Loading…" : "—")}
+              {data && (
+                <span className="ml-2 align-middle inline-flex items-center px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[12px] font-bold">
+                  {data.avgRating != null
+                    ? `★ ${data.avgRating.toFixed(1)} (${data.ratingCount})`
+                    : "No rating yet"}
+                </span>
+              )}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -188,6 +195,26 @@ export function ExpertDetailsModal({
           )}
           {data && (
             <>
+              {data.reviews.length > 0 && (
+                <section>
+                  <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                    Customer ratings ({data.reviews.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {data.reviews.map((r) => (
+                      <div key={r.bookingId} className="rounded-[12px] border border-border p-3">
+                        <div className="flex items-center justify-between gap-2 text-[12px]">
+                          <span className="font-bold text-foreground">★ {r.rating}/5 · {r.serviceLabel ?? "Order"}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </span>
+                        </div>
+                        {r.reviewText && <p className="text-[13px] text-muted-foreground mt-1">“{r.reviewText}”</p>}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
               <section className="flex items-start gap-4">
                 <div className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden shrink-0">
                   {photoUrl ? (

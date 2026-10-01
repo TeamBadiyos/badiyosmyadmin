@@ -58,6 +58,8 @@ export type BookingRow = {
   startedAt: string | null;
   serviceEndAt: string | null;
   serviceDurationMinutes: number | null;
+  rating: number | null;
+  reviewText: string | null;
 };
 
 
@@ -104,7 +106,7 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes",
+          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes, rating, review_text",
         ),
         { count: "exact" },
       )
@@ -243,6 +245,8 @@ export const listBookings = createServerFn({ method: "POST" })
         startedAt: r.started_at ?? null,
         serviceEndAt: r.service_end_at ?? null,
         serviceDurationMinutes: r.service_duration_minutes ?? null,
+        rating: r.rating != null ? Number(r.rating) : null,
+        reviewText: r.review_text ?? null,
       };
     });
 

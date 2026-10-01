@@ -22,6 +22,16 @@ export type ExpertRow = {
   isOnline: boolean;
   isBusy: boolean;
   lastSeenAt: string | null;
+  avgRating: number | null;
+  ratingCount: number;
+};
+
+export type ExpertReview = {
+  bookingId: string;
+  rating: number;
+  reviewText: string | null;
+  serviceLabel: string | null;
+  date: string;
 };
 
 export type ExpertDetails = ExpertRow & {
@@ -37,7 +47,31 @@ export type ExpertDetails = ExpertRow & {
   referredByExpertId: string | null;
   referredByExpertName: string | null;
   createdAt: string;
+  reviews: ExpertReview[];
 };
+
+async function loadRatings(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  expertIds: string[],
+): Promise<Map<string, { sum: number; count: number }>> {
+  const out = new Map<string, { sum: number; count: number }>();
+  if (!expertIds.length) return out;
+  const { data } = await supabase
+    .from("bookings")
+    .select("assigned_expert_id, rating")
+    .in("assigned_expert_id", expertIds)
+    .not("rating", "is", null);
+  for (const r of (data ?? []) as { assigned_expert_id: string; rating: number }[]) {
+    const v = Number(r.rating);
+    if (!Number.isFinite(v)) continue;
+    const cur = out.get(r.assigned_expert_id) ?? { sum: 0, count: 0 };
+    cur.sum += v;
+    cur.count += 1;
+    out.set(r.assigned_expert_id, cur);
+  }
+  return out;
+}
 
 async function requireStaff(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,6 +170,7 @@ export const listExperts = createServerFn({ method: "POST" })
       context.supabase,
       raw.map((r) => r.id),
     );
+    const ratings = await loadRatings(context.supabase, raw.map((r) => r.id));
     const relPaths = raw
       .map((r) => r.photo_url as string | null)
       .filter((p): p is string => !!p && !/^https?:\/\//i.test(p));
@@ -168,6 +203,8 @@ export const listExperts = createServerFn({ method: "POST" })
         isOnline: !!r.is_online,
         isBusy: !!r.is_busy,
         lastSeenAt: r.location_updated_at ?? null,
+        avgRating: ratings.get(r.id) ? ratings.get(r.id)!.sum / ratings.get(r.id)!.count : null,
+        ratingCount: ratings.get(r.id)?.count ?? 0,
       };
     });
   });
@@ -214,7 +251,27 @@ export const getExpert = createServerFn({ method: "POST" })
         .maybeSingle();
       referredByExpertName = ref?.name ?? null;
     }
+    const { data: rv } = await context.supabase
+      .from("bookings")
+      .select("id, rating, review_text, service_label, created_at")
+      .eq("assigned_expert_id", data.id)
+      .not("rating", "is", null)
+      .order("created_at", { ascending: false });
+    const reviews: ExpertReview[] = ((rv ?? []) as Array<{
+      id: string; rating: number; review_text: string | null; service_label: string | null; created_at: string;
+    }>).map((b) => ({
+      bookingId: b.id,
+      rating: Number(b.rating),
+      reviewText: b.review_text ?? null,
+      serviceLabel: b.service_label ?? null,
+      date: b.created_at,
+    }));
+    const ratingCount = reviews.length;
+    const avgRating = ratingCount ? reviews.reduce((a, b) => a + b.rating, 0) / ratingCount : null;
     return {
+      reviews,
+      avgRating,
+      ratingCount,
       referredByExpertId: e.referred_by_expert_id ?? null,
       referredByExpertName,
       id: e.id,
