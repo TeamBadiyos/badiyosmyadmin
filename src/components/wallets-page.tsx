@@ -960,24 +960,28 @@ function TdsTab({ role }: { role: Role }) {
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Person</span>
-          <span>Type</span>
-          <span className="text-right">Gross</span>
-          <span className="text-right">TDS</span>
-          <span className="text-right">Deposited</span>
+          <SortFilterHeader {...sf.headerProps("person")} />
+          <SortFilterHeader {...sf.headerProps("type")} />
+          <SortFilterHeader {...sf.headerProps("gross")} />
+          <SortFilterHeader {...sf.headerProps("tds")} />
+          <SortFilterHeader {...sf.headerProps("deposited")} />
           <span></span>
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">
             No paid payouts in this financial year.
           </p>
         )}
-        {data.map((r) => (
+        {sf.rows.map((r) => (
           <div
             key={`${r.owner_type}:${r.owner_id}`}
             className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
