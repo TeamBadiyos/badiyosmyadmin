@@ -74,18 +74,10 @@ export function LiveTrackingMap({
   kind: "courier" | "booking";
   id: string;
 }) {
-  const fetchCourier = useServerFn(getCourierTracking);
-  const fetchBooking = useServerFn(getBookingTracking);
   const fetchRoute = useServerFn(getRoadRoute);
 
-  const { data, isLoading, isError, error } = useQuery<TrackingSnapshot>({
-    queryKey: ["tracking", kind, id],
-    queryFn: () =>
-      kind === "courier"
-        ? fetchCourier({ data: { orderId: id } })
-        : fetchBooking({ data: { bookingId: id } }),
-    refetchInterval: 5000,
-  });
+  const { data, isLoading, isError, error } = useLiveTracking(kind, id);
+
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
