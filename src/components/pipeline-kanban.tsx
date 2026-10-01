@@ -627,6 +627,7 @@ function BoardCard({
         journeyConfig.scheduledOnwayDeadlineBeforeSlotMinutes * 60_000
     : null;
   const onwayLate =
+    journeyConfig.journeyStepsEnabled &&
     isAssigned &&
     !booking.onTheWayAt &&
     (booking.onwayAlertSent ||
