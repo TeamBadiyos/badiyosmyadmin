@@ -353,6 +353,7 @@ export const getBookingJourneyConfig = createServerFn({ method: "GET" })
       ),
       noExpertAlertBeforeSlotMinutes: num("no_expert_alert_before_slot_minutes", 5),
       noExpertRefundAfterSlotMinutes: num("no_expert_refund_after_slot_minutes", 30),
+      dispatchLeadMinutes: num("booking_dispatch_lead_minutes", 60),
     };
   });
 
