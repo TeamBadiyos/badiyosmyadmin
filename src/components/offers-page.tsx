@@ -326,7 +326,9 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
           per_user_limit: Number(form.per_user_limit || 1),
           audience: form.audience,
+          applicable_category_ids: categoryIds,
         },
+
       }),
     onSuccess: () => {
       toast.success(coupon ? "Coupon updated" : "Coupon created");
