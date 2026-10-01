@@ -94,7 +94,7 @@ function EligibleCustomers({ couponId, code }: { couponId: string; code: string 
     available: "bg-primary/10 text-primary",
     used: "bg-muted text-muted-foreground",
     expired: "bg-muted text-muted-foreground",
-    pending: "bg-warning/20 text-warning-foreground",
+    pending: "bg-warning/20 text-warning",
   };
 
   return (
