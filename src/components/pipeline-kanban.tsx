@@ -799,7 +799,13 @@ function formatElapsed(sec: number): string {
 }
 
 
-function ConfirmedActions({ bookingId }: { bookingId: string }) {
+function ConfirmedActions({
+  bookingId,
+  dispatchNote: note,
+}: {
+  bookingId: string;
+  dispatchNote: string;
+}) {
   const queryClient = useQueryClient();
   const rejectFn = useServerFn(rejectPendingBooking);
   const [rejectOpen, setRejectOpen] = useState(false);
