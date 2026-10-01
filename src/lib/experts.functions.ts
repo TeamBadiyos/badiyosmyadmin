@@ -136,14 +136,27 @@ export const listExperts = createServerFn({ method: "POST" })
       context.supabase,
       raw.map((r) => r.id),
     );
+    const relPaths = raw
+      .map((r) => r.photo_url as string | null)
+      .filter((p): p is string => !!p && !/^https?:\/\//i.test(p));
+    const signedMap = new Map<string, string>();
+    if (relPaths.length) {
+      const { data: signed } = await context.supabase.storage
+        .from("expert-photos")
+        .createSignedUrls(relPaths, 3600);
+      for (const s of signed ?? []) {
+        if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
+      }
+    }
     return raw.map((r) => {
       const list = zonesByExpert.get(r.id) ?? [];
       const primary = list.find((z) => z.isPrimary) ?? list[0] ?? null;
+      const p = (r.photo_url as string | null) ?? null;
       return {
         id: r.id,
         name: r.name,
         phone: r.phone,
-        photoUrl: r.photo_url ?? null,
+        photoUrl: p ? (/^https?:\/\//i.test(p) ? p : (signedMap.get(p) ?? null)) : null,
         zoneId: primary?.id ?? r.zone_id ?? null,
         zoneName: primary?.name ?? null,
         zoneIds: list.map((z) => z.id),
