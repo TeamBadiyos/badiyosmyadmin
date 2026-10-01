@@ -584,7 +584,9 @@ async function processBookingRefund(
     message =
       lookup.status === 401
         ? "The payment gateway rejected our keys, so the refund could not be sent. Please check the Razorpay keys."
-        : `Could not look up the payment (${lookup.status}).`;
+        : lookup.status === 400 && lookupBody.includes("does not exist")
+          ? "Razorpay could not find this payment with the current keys (it was likely made in test mode or on a different Razorpay account). Please refund it manually from the right Razorpay dashboard."
+          : `Could not look up the payment (${lookup.status}).`;
     console.error("[refundBooking] payment lookup failed", {
       bookingId,
       status: lookup.status,
