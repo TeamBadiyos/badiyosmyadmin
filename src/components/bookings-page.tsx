@@ -23,7 +23,8 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-blue-50 text-blue-700",
   accepted: "bg-primary-tint text-primary",
   expert_assigned: "bg-amber-50 text-amber-700",
-
+  on_the_way: "bg-amber-50 text-amber-700",
+  arrived: "bg-amber-50 text-amber-700",
   in_progress: "bg-indigo-50 text-indigo-700",
   completed: "bg-emerald-50 text-emerald-700",
   cancelled: "bg-muted text-muted-foreground",

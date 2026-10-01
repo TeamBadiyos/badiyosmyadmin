@@ -7,6 +7,8 @@ export type BookingStatus =
   | "confirmed"
   | "accepted"
   | "expert_assigned"
+  | "on_the_way"
+  | "arrived"
   | "in_progress"
   | "completed"
   | "cancelled"
@@ -16,6 +18,8 @@ export const BOOKING_STATUSES: BookingStatus[] = [
   "confirmed",
   "accepted",
   "expert_assigned",
+  "on_the_way",
+  "arrived",
   "in_progress",
   "completed",
   "cancelled",

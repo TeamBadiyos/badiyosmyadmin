@@ -62,7 +62,14 @@ const OPEN_COURIER_STATUSES = [
   "FAILED_DELIVERY",
 ];
 
-const OPEN_BOOKING_STATUSES = ["confirmed", "accepted", "expert_assigned", "in_progress"];
+const OPEN_BOOKING_STATUSES = [
+  "confirmed",
+  "accepted",
+  "expert_assigned",
+  "on_the_way",
+  "arrived",
+  "in_progress",
+];
 
 export const listServiceFlags = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

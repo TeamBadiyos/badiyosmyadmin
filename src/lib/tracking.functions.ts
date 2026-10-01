@@ -160,7 +160,10 @@ function bookingPhase(status: string): {
     case "accepted":
       return { phase: "searching", phaseLabel: "Finding a nearby expert…" };
     case "expert_assigned":
+    case "on_the_way":
       return { phase: "to_drop", phaseLabel: "Expert on the way to the customer" };
+    case "arrived":
+      return { phase: "to_drop", phaseLabel: "Expert has arrived" };
     case "in_progress":
       return { phase: "to_drop", phaseLabel: "Expert is at the job" };
     case "completed":
