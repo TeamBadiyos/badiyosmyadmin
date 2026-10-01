@@ -36,7 +36,7 @@ import type { StaffRole } from "@/lib/staff.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
-  { key: "confirmed", label: "Awaiting Payment" },
+  { key: "confirmed", label: "Scheduled Orders" },
   { key: "accepted", label: "Needs Expert" },
   { key: "expert_assigned", label: "Expert Assigned" },
   { key: "in_progress", label: "In Progress" },
@@ -201,6 +201,7 @@ export function PipelineKanban({
     scheduledOnwayDeadlineBeforeSlotMinutes: 15,
     noExpertAlertBeforeSlotMinutes: 5,
     noExpertRefundAfterSlotMinutes: 30,
+    dispatchLeadMinutes: 60,
   };
 
 
@@ -534,6 +535,35 @@ function clockTime(iso: string): string {
   });
 }
 
+/**
+ * Footer line for a scheduled order: when the dispatch broadcast will fire,
+ * i.e. the slot start minus the "Dispatch lead" setting.
+ */
+export function dispatchNote(
+  booking: PipelineBooking,
+  dispatchLeadMinutes: number,
+): string {
+  if (!booking.paid) return "Auto-dispatches on payment";
+  const slot = slotStartMs(booking);
+  if (slot == null) return "Dispatches shortly";
+  const at = new Date(slot - dispatchLeadMinutes * 60_000);
+  const time = at.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+  const dayKey = (d: Date) =>
+    d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+  if (dayKey(at) === dayKey(new Date())) return `Dispatches at ${time}`;
+  const date = at.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  return `Dispatches on ${date}, ${time}`;
+}
+
 function BoardCard({
   booking,
   role,
@@ -742,7 +772,10 @@ function BoardCard({
 
 
       {canAct && booking.status === "confirmed" && (
-        <ConfirmedActions bookingId={booking.id} />
+        <ConfirmedActions
+          bookingId={booking.id}
+          dispatchNote={dispatchNote(booking, journeyConfig.dispatchLeadMinutes)}
+        />
       )}
       {canAct && booking.status === "accepted" && (
         <AssignExpertInline bookingId={booking.id} />
@@ -766,7 +799,13 @@ function formatElapsed(sec: number): string {
 }
 
 
-function ConfirmedActions({ bookingId }: { bookingId: string }) {
+function ConfirmedActions({
+  bookingId,
+  dispatchNote: note,
+}: {
+  bookingId: string;
+  dispatchNote: string;
+}) {
   const queryClient = useQueryClient();
   const rejectFn = useServerFn(rejectPendingBooking);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -798,7 +837,7 @@ function ConfirmedActions({ bookingId }: { bookingId: string }) {
       {!rejectOpen ? (
         <div className="flex items-center gap-2">
           <span className="flex-1 text-[11px] font-semibold text-muted-foreground">
-            Auto-dispatches on payment
+            {note}
           </span>
           <button
             onClick={() => setRejectOpen(true)}

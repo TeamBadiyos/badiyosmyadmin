@@ -317,6 +317,7 @@ export type BookingJourneyConfig = {
   scheduledOnwayDeadlineBeforeSlotMinutes: number;
   noExpertAlertBeforeSlotMinutes: number;
   noExpertRefundAfterSlotMinutes: number;
+  dispatchLeadMinutes: number;
 };
 
 export const getBookingJourneyConfig = createServerFn({ method: "GET" })
@@ -332,6 +333,7 @@ export const getBookingJourneyConfig = createServerFn({ method: "GET" })
         "scheduled_onway_deadline_before_slot_minutes",
         "no_expert_alert_before_slot_minutes",
         "no_expert_refund_after_slot_minutes",
+        "booking_dispatch_lead_minutes",
       ]);
     if (error) throw new Error(error.message);
     const m = new Map(
@@ -351,6 +353,7 @@ export const getBookingJourneyConfig = createServerFn({ method: "GET" })
       ),
       noExpertAlertBeforeSlotMinutes: num("no_expert_alert_before_slot_minutes", 5),
       noExpertRefundAfterSlotMinutes: num("no_expert_refund_after_slot_minutes", 30),
+      dispatchLeadMinutes: num("booking_dispatch_lead_minutes", 60),
     };
   });
 
