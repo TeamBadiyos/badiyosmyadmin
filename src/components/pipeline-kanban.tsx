@@ -539,7 +539,7 @@ function clockTime(iso: string): string {
  * Footer line for a scheduled order: when the dispatch broadcast will fire,
  * i.e. the slot start minus the "Dispatch lead" setting.
  */
-function dispatchNote(
+export function dispatchNote(
   booking: PipelineBooking,
   dispatchLeadMinutes: number,
 ): string {
