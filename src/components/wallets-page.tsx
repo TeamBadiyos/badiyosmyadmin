@@ -862,6 +862,40 @@ function TdsTab({ role }: { role: Role }) {
     queryFn: () => fetchReport({ data: { fy_start_year: fy } }),
   });
 
+  type TdsRow = (typeof data)[number];
+  const sf = useSortFilter(data, [
+    { key: "person", label: "Person", value: (r: TdsRow) => r.owner_name },
+    {
+      key: "type",
+      label: "Type",
+      value: (r: TdsRow) => (r.owner_type === "expert" ? "Expert" : "Partner"),
+    },
+    {
+      key: "gross",
+      label: "Gross",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.gross_total,
+      filterable: false,
+    },
+    {
+      key: "tds",
+      label: "TDS",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.tds_total,
+      filterable: false,
+    },
+    {
+      key: "deposited",
+      label: "Deposited",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.deposited_total,
+      filterable: false,
+    },
+  ]);
+
   const deposit = useMutation({
     mutationFn: (p: { owner_type: string; owner_id: string }) =>
       markDeposited({ data: { ...p, fy_start_year: fy } }),
