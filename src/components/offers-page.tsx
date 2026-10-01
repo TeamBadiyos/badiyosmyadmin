@@ -26,9 +26,136 @@ import {
   type MilestoneRow,
   type CampaignRow,
   type CampaignCustomer,
+  listCouponGrants,
+  grantCouponPhones,
+  revokeCouponGrant,
 } from "@/lib/offers.functions";
 
 type Tab = "coupons" | "milestones" | "campaigns";
+type Audience = "all" | "targeted" | "referral_reward";
+
+/** Coupons don't apply to delivery categories yet. */
+function isComingSoonCategory(name: string) {
+  return /courier|bulk/i.test(name);
+}
+
+function parsePhones(raw: string): string[] {
+  return raw
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function EligibleCustomers({ couponId, code }: { couponId: string; code: string }) {
+  const qc = useQueryClient();
+  const list = useServerFn(listCouponGrants);
+  const grant = useServerFn(grantCouponPhones);
+  const revoke = useServerFn(revokeCouponGrant);
+  const [raw, setRaw] = useState("");
+  const key = ["offers", "coupon-grants", couponId];
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: key,
+    queryFn: () => list({ data: { couponId } }),
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: key });
+    qc.invalidateQueries({ queryKey: ["offers", "coupons"] });
+  };
+  const addMut = useMutation({
+    mutationFn: () => grant({ data: { couponId, phones: parsePhones(raw) } }),
+    onSuccess: (r) => {
+      toast.success(
+        `${r.granted} added · ${r.pending} signup pending · ${r.invalid} invalid · ${r.duplicate} already added`,
+      );
+      setRaw("");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const delMut = useMutation({
+    mutationFn: (r: { id: string; kind: "customer" | "phone" }) =>
+      revoke({ data: { couponId, kind: r.kind, grantId: r.id } }),
+    onSuccess: () => {
+      toast.success("Removed");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const copyMsg = async () => {
+    const msg = `Aapke liye badiyos ka special coupon: ${code}. App me booking ke time apply karein.`;
+    try {
+      await navigator.clipboard.writeText(msg);
+      toast.success("WhatsApp message copied");
+    } catch {
+      toast.error("Copy nahi hua");
+    }
+  };
+  const statusCls: Record<string, string> = {
+    available: "bg-primary/10 text-primary",
+    used: "bg-muted text-muted-foreground",
+    expired: "bg-muted text-muted-foreground",
+    pending: "bg-warning/20 text-warning",
+  };
+
+  return (
+    <div className="mt-2 space-y-3">
+      <textarea
+        className="w-full min-h-[80px] px-3 py-2 rounded-[12px] border border-border bg-card text-[13px] outline-none focus:border-primary"
+        placeholder={"Ek mobile number, ya bahut saare paste karein\n9876543210\n9123456780, 9988776655"}
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+      />
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={primaryBtn}
+          disabled={addMut.isPending || !parsePhones(raw).length}
+          onClick={() => addMut.mutate()}
+        >
+          {addMut.isPending ? "Adding…" : `Add ${parsePhones(raw).length || ""} number(s)`}
+        </button>
+        <button type="button" className={ghostBtn} onClick={copyMsg}>
+          WhatsApp message copy karo
+        </button>
+      </div>
+      <div className="rounded-[12px] border border-border max-h-[260px] overflow-y-auto">
+        {isLoading ? (
+          <p className="p-3 text-[12px] text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="p-3 text-[12px] text-muted-foreground">Abhi koi customer add nahi hua.</p>
+        ) : (
+          rows.map((r) => (
+            <div
+              key={`${r.kind}-${r.id}`}
+              className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 text-[13px]"
+            >
+              <span className="flex-1 min-w-0 truncate font-semibold">
+                {r.name ?? (r.kind === "phone" ? "—" : "Customer")}
+              </span>
+              <span className="font-mono text-[12px] text-muted-foreground">{r.phone ?? "—"}</span>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusCls[r.status] ?? ""}`}
+              >
+                {r.status === "pending" ? "Signup pending" : r.status}
+              </span>
+              {r.status !== "used" && (
+                <button
+                  type="button"
+                  aria-label="Remove"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={delMut.isPending}
+                  onClick={() => delMut.mutate({ id: r.id, kind: r.kind })}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 const DISCOUNT_TYPES = [
   { value: "flat", label: "Flat ₹" },
@@ -221,6 +348,20 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
                   {c.title}
                   {c.audience === "referral_reward" ? " · referral reward only" : ""}
                 </p>
+                {(!c.show_in_list || c.audience === "targeted") && (
+                  <span className="flex flex-wrap gap-1 mt-1">
+                    {!c.show_in_list && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        Hidden
+                      </span>
+                    )}
+                    {c.audience === "targeted" && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-info/10 text-info">
+                        Targeted ({c.targeted_count} customers)
+                      </span>
+                    )}
+                  </span>
+                )}
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                   {categoryLabel(c.applicable_category_ids, catMap)}
                 </p>
@@ -291,10 +432,12 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
     valid_until: coupon?.valid_until ? coupon.valid_until.slice(0, 10) : "",
     total_usage_limit: coupon?.total_usage_limit != null ? String(coupon.total_usage_limit) : "",
     per_user_limit: String(coupon?.per_user_limit ?? 1),
-    audience: (coupon?.audience === "referral_reward" ? "referral_reward" : "all") as
-      | "all"
-      | "referral_reward",
+    audience: (coupon?.audience === "referral_reward" || coupon?.audience === "targeted"
+      ? coupon.audience
+      : "all") as Audience,
+    show_in_list: coupon?.show_in_list ?? true,
   });
+  const [savedId, setSavedId] = useState<string | null>(coupon?.id ?? null);
   const [categoryIds, setCategoryIds] = useState<string[]>(
     coupon?.applicable_category_ids ?? [],
   );
@@ -305,13 +448,11 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
 
-
-
   const mut = useMutation({
     mutationFn: () =>
       save({
         data: {
-          id: coupon?.id ?? null,
+          id: savedId,
           code: form.code,
           title: form.title,
           description: form.description || null,
@@ -326,13 +467,21 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
           per_user_limit: Number(form.per_user_limit || 1),
           audience: form.audience,
-          applicable_category_ids: categoryIds,
+          show_in_list: form.show_in_list,
+          applicable_category_ids: categoryIds.filter((id) => {
+            const c = categories.find((x) => x.id === id);
+            return !c || !isComingSoonCategory(c.name);
+          }),
         },
-
       }),
-    onSuccess: () => {
-      toast.success(coupon ? "Coupon updated" : "Coupon created");
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["offers", "coupons"] });
+      if (!savedId && form.audience === "targeted") {
+        setSavedId(res.id);
+        toast.success("Coupon created — ab eligible customers add karein");
+        return;
+      }
+      toast.success(savedId ? "Coupon updated" : "Coupon created");
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -431,12 +580,11 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           <select
             className={inputCls}
             value={form.audience}
-            onChange={(e) =>
-              setForm({ ...form, audience: e.target.value as "all" | "referral_reward" })
-            }
+            onChange={(e) => setForm({ ...form, audience: e.target.value as Audience })}
           >
             <option value="all">All customers</option>
-            <option value="referral_reward">Referral reward only</option>
+            <option value="targeted">Chosen customers (targeted)</option>
+            <option value="referral_reward">Referral reward</option>
           </select>
         </Field>
         <Field label="Description">
@@ -447,6 +595,23 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           />
         </Field>
       </div>
+
+      <label className="flex items-start gap-3 mt-4 p-3 rounded-[12px] border border-border cursor-pointer">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={form.show_in_list}
+          onChange={(e) => setForm({ ...form, show_in_list: e.target.checked })}
+        />
+        <span>
+          <span className="block text-[13px] font-semibold text-foreground">
+            Offers list me dikhayein
+          </span>
+          <span className="block text-[12px] text-muted-foreground">
+            OFF = hidden, works only when the customer types the code
+          </span>
+        </span>
+      </label>
 
       <div className="pt-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -470,19 +635,27 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {categories.map((c) => {
-            const on = categoryIds.includes(c.id);
+            const soon = isComingSoonCategory(c.name);
+            const on = !soon && categoryIds.includes(c.id);
             return (
               <button
                 key={c.id}
                 type="button"
+                disabled={soon}
                 onClick={() => toggleCategory(c.id)}
-                className={`h-9 px-3 rounded-[12px] border text-[13px] font-semibold transition-colors ${
-                  on
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-muted-foreground hover:text-foreground"
+                title={soon ? "Coupons abhi is category par apply nahi hote" : undefined}
+                className={`h-9 px-3 rounded-[12px] border text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+                  soon
+                    ? "bg-muted border-border text-muted-foreground opacity-60 cursor-not-allowed"
+                    : on
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {c.name}
+                {soon && (
+                  <span className="text-[10px] uppercase tracking-wide">Coming soon</span>
+                )}
               </button>
             );
           })}
@@ -492,10 +665,24 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
         </div>
         <p className="text-[12px] text-muted-foreground mt-2">
           {categoryIds.length === 0
-            ? "Koi category select nahi — coupon sabhi categories par chalega."
+            ? "Koi category select nahi — coupon sabhi service categories par chalega (Courier/Bulk delivery abhi nahi)."
             : `Coupon sirf ${categoryIds.length} selected categor${categoryIds.length === 1 ? "y" : "ies"} par chalega.`}
         </p>
       </div>
+
+      {form.audience === "targeted" && (
+        <div className="pt-5">
+          <span className={labelCls}>Eligible customers</span>
+          {savedId ? (
+            <EligibleCustomers couponId={savedId} code={form.code} />
+          ) : (
+            <p className="text-[12px] text-muted-foreground mt-2">
+              Pehle coupon save karein — phir yahan mobile numbers add kar sakte hain.
+            </p>
+          )}
+        </div>
+      )}
+
 
 
       <div className="flex justify-end gap-2 pt-5">

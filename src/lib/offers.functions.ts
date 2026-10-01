@@ -69,6 +69,8 @@ export type CouponRow = {
   is_active: boolean;
   created_at: string;
   applicable_category_ids: string[] | null;
+  show_in_list: boolean;
+  targeted_count: number;
 };
 
 export type OfferCategory = { id: string; name: string };
@@ -89,15 +91,140 @@ export const listCoupons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CouponRow[]> => {
     await requireOffersStaff(context.supabase, context.userId);
-    const { data, error } = await context.supabase
+    const db = context.supabase;
+    const { data, error } = await db
       .from("coupons")
       .select(
-        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids",
+        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids, show_in_list",
       )
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
-    return (data ?? []) as CouponRow[];
+    const rows = (data ?? []) as Omit<CouponRow, "targeted_count">[];
+    const ids = rows.filter((r) => r.audience === "targeted").map((r) => r.id);
+    const counts = new Map<string, number>();
+    if (ids.length) {
+      const [{ data: cc }, { data: pg }] = await Promise.all([
+        db.from("customer_coupons").select("coupon_id").in("coupon_id", ids).limit(20000),
+        db
+          .from("coupon_phone_grants")
+          .select("coupon_id")
+          .in("coupon_id", ids)
+          .is("converted_at", null)
+          .limit(20000),
+      ]);
+      for (const r of [...(cc ?? []), ...(pg ?? [])] as { coupon_id: string }[])
+        counts.set(r.coupon_id, (counts.get(r.coupon_id) ?? 0) + 1);
+    }
+    return rows.map((r) => ({
+      ...r,
+      show_in_list: r.show_in_list ?? true,
+      targeted_count: counts.get(r.id) ?? 0,
+    }));
+  });
+
+export type CouponGrantRow = {
+  id: string;
+  kind: "customer" | "phone";
+  name: string | null;
+  phone: string | null;
+  status: "available" | "used" | "expired" | "pending";
+};
+
+export const listCouponGrants = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { couponId: string }) => {
+    if (!input?.couponId) throw new Error("couponId required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<CouponGrantRow[]> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const db = context.supabase;
+    const [{ data: cc, error: e1 }, { data: pg, error: e2 }] = await Promise.all([
+      db
+        .from("customer_coupons")
+        .select("id, user_id, status, created_at")
+        .eq("coupon_id", data.couponId)
+        .order("created_at", { ascending: false })
+        .limit(2000),
+      db
+        .from("coupon_phone_grants")
+        .select("id, phone10, created_at")
+        .eq("coupon_id", data.couponId)
+        .is("converted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(2000),
+    ]);
+    if (e1) throw new Error(e1.message);
+    if (e2) throw new Error(e2.message);
+    const uids = Array.from(new Set((cc ?? []).map((r) => r.user_id)));
+    const uMap = new Map<string, { full_name: string | null; phone: string | null }>();
+    if (uids.length) {
+      const { data: users } = await db.from("users").select("id, full_name, phone").in("id", uids);
+      for (const u of users ?? []) uMap.set(u.id, u);
+    }
+    return [
+      ...(pg ?? []).map((r) => ({
+        id: r.id,
+        kind: "phone" as const,
+        name: null,
+        phone: r.phone10,
+        status: "pending" as const,
+      })),
+      ...(cc ?? []).map((r) => ({
+        id: r.id,
+        kind: "customer" as const,
+        name: uMap.get(r.user_id)?.full_name ?? null,
+        phone: uMap.get(r.user_id)?.phone ?? null,
+        status: (r.status as CouponGrantRow["status"]) ?? "available",
+      })),
+    ];
+  });
+
+export type GrantResult = { granted: number; pending: number; invalid: number; duplicate: number };
+
+export const grantCouponPhones = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { couponId: string; phones: string[] }) => {
+    if (!input?.couponId) throw new Error("couponId required");
+    const phones = (input.phones ?? []).map((p) => String(p).trim()).filter(Boolean).slice(0, 2000);
+    if (!phones.length) throw new Error("Add at least one mobile number");
+    return { couponId: input.couponId, phones };
+  })
+  .handler(async ({ data, context }): Promise<GrantResult> => {
+    await requireOffersWriter(context.supabase, context.userId);
+    const { data: res, error } = await context.supabase.rpc("staff_coupon_grant_phones", {
+      _id: data.couponId,
+      _phones: data.phones,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    if (error) throw new Error(error.message);
+    const r = (res ?? {}) as Partial<GrantResult>;
+    return {
+      granted: Number(r.granted ?? 0),
+      pending: Number(r.pending ?? 0),
+      invalid: Number(r.invalid ?? 0),
+      duplicate: Number(r.duplicate ?? 0),
+    };
+  });
+
+export const revokeCouponGrant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { couponId: string; kind: "customer" | "phone"; grantId: string }) => {
+    if (!input?.couponId || !input.grantId) throw new Error("id required");
+    if (input.kind !== "customer" && input.kind !== "phone") throw new Error("Invalid kind");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireOffersWriter(context.supabase, context.userId);
+    const { error } = await context.supabase.rpc("staff_coupon_revoke_grant", {
+      _coupon_id: data.couponId,
+      _kind: data.kind,
+      _grant_id: data.grantId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 
@@ -114,8 +241,9 @@ export type CouponInput = {
   valid_until?: string | null;
   total_usage_limit?: number | null;
   per_user_limit?: number | null;
-  audience: "all" | "referral_reward";
+  audience: "all" | "targeted" | "referral_reward";
   applicable_category_ids?: string[] | null;
+  show_in_list?: boolean;
 
 };
 
@@ -146,6 +274,7 @@ export const saveCoupon = createServerFn({ method: "POST" })
         data.total_usage_limit == null ? null : Number(data.total_usage_limit),
       _per_user_limit: Number(data.per_user_limit ?? 1),
       _audience: data.audience,
+      _show_in_list: data.show_in_list ?? true,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     if (error) throw new Error(error.message);
