@@ -119,6 +119,21 @@ export function OffersPage() {
 
 /* ----------------------------------------------------------------- coupons */
 
+function categoryLabel(ids: string[] | null | undefined, map: Map<string, string>) {
+  if (!ids || ids.length === 0) return "All categories";
+  const names = ids.map((id) => map.get(id) ?? "Unknown");
+  return names.join(", ");
+}
+
+function useOfferCategories() {
+  const fetchCats = useServerFn(listOfferCategories);
+  return useQuery({
+    queryKey: ["offers", "categories"],
+    queryFn: () => fetchCats(),
+    staleTime: 300_000,
+  });
+}
+
 function CouponsTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CouponRow | "new" | null>(null);
@@ -132,6 +147,13 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
     queryKey: ["offers", "coupons"],
     queryFn: () => fetchList(),
   });
+
+  const { data: categories = [] } = useOfferCategories();
+  const catMap = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
+
 
   const toggleMut = useMutation({
     mutationFn: (v: { id: string; active: boolean }) => toggle({ data: v }),
