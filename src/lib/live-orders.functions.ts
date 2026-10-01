@@ -390,7 +390,14 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     let openQ = db
       .from("bookings")
       .select(cols)
-      .in("status", ["confirmed", "accepted", "expert_assigned", "in_progress"])
+      .in("status", [
+        "confirmed",
+        "accepted",
+        "expert_assigned",
+        "on_the_way",
+        "arrived",
+        "in_progress",
+      ])
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(200);
