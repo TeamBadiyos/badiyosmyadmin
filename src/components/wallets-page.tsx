@@ -699,7 +699,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
             No items in this batch.
           </p>
         )}
-        {data.map((i) => (
+        {sf.rows.map((i) => (
           <div
             key={i.id}
             className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
