@@ -345,7 +345,9 @@ export function BookingDetailsModal({
 
   const showAssign = !!data && data.status === "accepted" && canEdit;
   const canReassign =
-    !!data && data.status === "expert_assigned" && canEdit;
+    !!data &&
+    ["expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
+    canEdit;
 
   const expertsQuery = useQuery({
     queryKey: ["bookings", "assignable-experts", bookingId],
