@@ -330,18 +330,22 @@ export function BookingsPage({
       </div>
 
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-3">Customer</th>
-                <th className="text-left px-4 py-3">Service / Slot</th>
-                <th className="text-left px-4 py-3">Zone</th>
-                <th className="text-left px-4 py-3">Expert</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Payment</th>
-                <th className="text-left px-4 py-3">Placed</th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("customer")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("service")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("zone")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("expert")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("status")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("payment")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("placed")} /></th>
               </tr>
             </thead>
             <tbody>
