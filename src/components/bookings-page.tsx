@@ -142,9 +142,33 @@ export function BookingsPage({
     };
   }, [queryClient]);
 
-  const rows = orderType === "courier" ? [] : (data?.rows ?? []);
+  const pageRows = orderType === "courier" ? [] : (data?.rows ?? []);
   const total = orderType === "courier" ? 0 : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const sf = useSortFilter(pageRows, [
+    { key: "customer", label: "Customer", value: (r: BookingRow) => r.customerName },
+    {
+      key: "service",
+      label: "Service / Slot",
+      value: (r: BookingRow) => r.serviceLabel ?? "—",
+    },
+    { key: "zone", label: "Zone", value: (r: BookingRow) => r.zoneName ?? "—" },
+    {
+      key: "expert",
+      label: "Expert",
+      value: (r: BookingRow) => r.assignedExpertName ?? "Unassigned",
+    },
+    { key: "status", label: "Status", value: (r: BookingRow) => r.status },
+    { key: "payment", label: "Payment", value: (r: BookingRow) => r.paymentStatus },
+    {
+      key: "placed",
+      label: "Placed",
+      value: (r: BookingRow) => r.createdAt ?? "",
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
 
   // Parcel orders are listed alongside services (first page only, date-filtered).
   const courierRows = useMemo(() => {
