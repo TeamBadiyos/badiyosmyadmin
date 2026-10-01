@@ -598,6 +598,42 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const unpaid = data.filter((i) => !i.paid).length;
   const tdsTotal = data.reduce((sum, i) => sum + (i.tds_amount ?? 0), 0);
 
+  type Item = (typeof data)[number];
+  const sf = useSortFilter(data, [
+    { key: "owner", label: "Owner", value: (i: Item) => i.owner_name },
+    {
+      key: "type",
+      label: "Type",
+      value: (i: Item) =>
+        i.owner_type === "expert" ? "Expert" : i.owner_type === "merchant" ? "Merchant" : "Partner",
+    },
+    {
+      key: "gross",
+      label: "Gross",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.gross_amount,
+      filterable: false,
+    },
+    {
+      key: "tds",
+      label: "TDS",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.tds_amount ?? 0,
+      filterable: false,
+    },
+    {
+      key: "net",
+      label: "Net",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.net_amount,
+      filterable: false,
+    },
+    { key: "paid", label: "Paid", value: (i: Item) => (i.paid ? "Paid" : "Unpaid") },
+  ]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
