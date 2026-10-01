@@ -23,7 +23,8 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-blue-50 text-blue-700",
   accepted: "bg-primary-tint text-primary",
   expert_assigned: "bg-amber-50 text-amber-700",
-
+  on_the_way: "bg-amber-50 text-amber-700",
+  arrived: "bg-amber-50 text-amber-700",
   in_progress: "bg-indigo-50 text-indigo-700",
   completed: "bg-emerald-50 text-emerald-700",
   cancelled: "bg-muted text-muted-foreground",
@@ -92,7 +93,9 @@ export function BookingsPage({
     const activePreset = status === "active";
     return {
       status: activePreset ? null : status || null,
-      statuses: activePreset ? ["expert_assigned", "in_progress"] : null,
+      statuses: activePreset
+        ? ["expert_assigned", "on_the_way", "arrived", "in_progress"]
+        : null,
       zoneId: zoneId || null,
       from: from || null,
       to: to || null,

@@ -126,7 +126,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
               .from("bookings")
               .select("*", countOnly)
               .is("deleted_at", null)
-              .eq("status", "in_progress"),
+              .in("status", ["on_the_way", "arrived", "in_progress"]),
           ),
       noBookings
         ? emptyCount

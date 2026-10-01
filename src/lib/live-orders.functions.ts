@@ -390,7 +390,14 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     let openQ = db
       .from("bookings")
       .select(cols)
-      .in("status", ["confirmed", "accepted", "expert_assigned", "in_progress"])
+      .in("status", [
+        "confirmed",
+        "accepted",
+        "expert_assigned",
+        "on_the_way",
+        "arrived",
+        "in_progress",
+      ])
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -478,7 +485,11 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
 
     return rows.map((r) => ({
       id: r.id as string,
-      status: r.status as PipelineStatus,
+      // `on_the_way` / `arrived` are journey steps after assignment — they stay
+      // in the "Expert Assigned" column and surface as badges on the card.
+      status: (r.status === "on_the_way" || r.status === "arrived"
+        ? "expert_assigned"
+        : r.status) as PipelineStatus,
       customerName:
         (userMap.get(r.user_id as string) as string | null) ?? "Customer",
       serviceLabel: (r.service_label as string | null) ?? null,

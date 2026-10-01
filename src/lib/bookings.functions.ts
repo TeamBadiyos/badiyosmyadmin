@@ -7,6 +7,8 @@ export type BookingStatus =
   | "confirmed"
   | "accepted"
   | "expert_assigned"
+  | "on_the_way"
+  | "arrived"
   | "in_progress"
   | "completed"
   | "cancelled"
@@ -16,6 +18,8 @@ export const BOOKING_STATUSES: BookingStatus[] = [
   "confirmed",
   "accepted",
   "expert_assigned",
+  "on_the_way",
+  "arrived",
   "in_progress",
   "completed",
   "cancelled",
@@ -738,6 +742,8 @@ export const STAFF_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = 
   confirmed: ["accepted", "rejected", "cancelled"],
   accepted: ["cancelled", "rejected"],
   expert_assigned: ["in_progress", "cancelled"],
+  on_the_way: ["in_progress", "cancelled"],
+  arrived: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
