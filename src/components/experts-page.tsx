@@ -237,14 +237,7 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       onClick={onOpen}
       className="w-full grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
     >
-      <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden">
-        {expert.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={expert.photoUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <UserRound size={18} />
-        )}
-      </div>
+      <ExpertAvatar url={expert.photoUrl} />
       <span className="font-semibold text-foreground truncate">{expert.name}</span>
       <span className="font-mono text-[13px] text-muted-foreground truncate">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
@@ -295,5 +288,18 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         )}
       </span>
     </button>
+  );
+}
+
+function ExpertAvatar({ url }: { url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden">
+      {url && !failed ? (
+        <img src={url} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} />
+      ) : (
+        <UserRound size={18} />
+      )}
+    </div>
   );
 }

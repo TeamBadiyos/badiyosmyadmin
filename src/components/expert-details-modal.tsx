@@ -116,6 +116,7 @@ export function ExpertDetailsModal({
   useEffect(() => {
     let cancelled = false;
     if (!data?.photoUrl) { setPhotoUrl(null); return; }
+    if (/^https?:\/\//i.test(data.photoUrl)) { setPhotoUrl(data.photoUrl); return; }
     (async () => {
       try {
         const res = await sign({ data: { bucket: "expert-photos", path: data.photoUrl! } });
