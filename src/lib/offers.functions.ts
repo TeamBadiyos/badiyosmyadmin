@@ -115,6 +115,8 @@ export type CouponInput = {
   total_usage_limit?: number | null;
   per_user_limit?: number | null;
   audience: "all" | "referral_reward";
+  applicable_category_ids?: string[] | null;
+
 };
 
 export const saveCoupon = createServerFn({ method: "POST" })
