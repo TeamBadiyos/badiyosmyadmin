@@ -515,6 +515,14 @@ function BookingRowItem({
       <td className="px-4 py-3 text-muted-foreground">
         <div className="text-foreground flex items-center gap-2 flex-wrap">
           <span>{row.serviceLabel ?? "—"}</span>
+          {row.rating != null && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-warning/20 text-foreground"
+              title={row.reviewText ?? "Customer rating"}
+            >
+              ★ {row.rating}
+            </span>
+          )}
           {row.extensionMinutes > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-indigo-50 text-indigo-700">
               Extended +{fmtDuration(row.extensionMinutes)}

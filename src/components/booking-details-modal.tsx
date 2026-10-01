@@ -552,6 +552,22 @@ export function BookingDetailsModal({
                     value={data.slotType ?? "—"}
                   />
                 </Card>
+                <Card title="Customer rating">
+                  {data.rating != null ? (
+                    <>
+                      <p className="text-[18px] font-bold text-foreground">
+                        <span className="text-warning">{"★".repeat(Math.round(data.rating))}</span>
+                        <span className="text-muted-foreground">{"★".repeat(Math.max(0, 5 - Math.round(data.rating)))}</span>
+                        <span className="ml-2 text-[14px]">{data.rating}/5</span>
+                      </p>
+                      <p className="text-[13px] text-muted-foreground mt-1">
+                        {data.reviewText ? `“${data.reviewText}”` : "No written review"}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">Not rated yet</p>
+                  )}
+                </Card>
                 <Card title="Payment">
                   <Field
                     label="Price"
