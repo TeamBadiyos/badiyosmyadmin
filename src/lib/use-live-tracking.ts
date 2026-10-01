@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
@@ -29,6 +29,10 @@ export function useLiveTracking(kind: "booking" | "courier", id: string) {
   const fetchCourier = useServerFn(getCourierTracking);
   const fetchBooking = useServerFn(getBookingTracking);
 
+  // Unique per hook instance: map + share box both subscribe, and Supabase
+  // throws if callbacks are added to an already-subscribed same-topic channel.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+
   const queryKey = useMemo(() => ["tracking", kind, id] as const, [kind, id]);
 
   const query = useQuery<TrackingSnapshot>({
@@ -49,7 +53,7 @@ export function useLiveTracking(kind: "booking" | "courier", id: string) {
   useEffect(() => {
     if (!agentId) return;
     const channel = supabase
-      .channel(`track-expert-${agentId}`)
+      .channel(`track-expert-${agentId}-${uid}`)
       .on(
         "postgres_changes",
         {
@@ -89,13 +93,13 @@ export function useLiveTracking(kind: "booking" | "courier", id: string) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [agentId, qc, queryKey]);
+  }, [agentId, qc, queryKey, uid]);
 
   // Status / assignment changes on the order itself — refetch the full snapshot.
   useEffect(() => {
     const table = kind === "courier" ? "courier_orders" : "bookings";
     const channel = supabase
-      .channel(`track-${kind}-${id}`)
+      .channel(`track-${kind}-${id}-${uid}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table, filter: `id=eq.${id}` },
@@ -107,7 +111,7 @@ export function useLiveTracking(kind: "booking" | "courier", id: string) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [kind, id, qc, queryKey]);
+  }, [kind, id, qc, queryKey, uid]);
 
   return query;
 }
