@@ -207,19 +207,23 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-3">Name</th>
-                <th className="text-left px-4 py-3">Phone</th>
-                <th className="text-left px-4 py-3">Email</th>
-                <th className="text-left px-4 py-3">Location</th>
-                <th className="text-left px-4 py-3">Bookings</th>
-                <th className="text-left px-4 py-3">Spend</th>
-                <th className="text-left px-4 py-3">Referrals</th>
-                <th className="text-left px-4 py-3">Joined</th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("name")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("phone")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("email")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("location")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("bookings")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("spend")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("referrals")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("joined")} /></th>
                 {isSuperAdmin && <th className="text-right px-4 py-3">Actions</th>}
               </tr>
             </thead>
