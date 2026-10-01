@@ -250,6 +250,25 @@ export function PipelineKanban({
     return map;
   }, [courierData]);
 
+  const [toneFilter, setToneFilter] = useState<ToneFilter>("all");
+  const [boardNow, setBoardNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setBoardNow(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const toneOf = useMemo(() => {
+    const m = new Map<string, CardTone>();
+    for (const b of data ?? []) m.set(b.id, cardTimeState(b, boardNow, journeyConfig).tone);
+    return m;
+  }, [data, boardNow, journeyConfig]);
+  const toneCounts = useMemo(() => {
+    const c = { all: (data ?? []).length, overtime: 0, ending: 0, fresh: 0 };
+    toneOf.forEach((t) => {
+      if (t === "overtime" || t === "ending" || t === "fresh") c[t] += 1;
+    });
+    return c;
+  }, [toneOf, data]);
+
   // Audio alerts for new "Needs Expert" cards (services + parcel orders).
   const needsExpertIds = useMemo(
     () => [
@@ -417,6 +436,30 @@ export function PipelineKanban({
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-3">
+        {(
+          [
+            ["all", `All (${toneCounts.all})`],
+            ["overtime", `🚨 Overtime / Expired (${toneCounts.overtime})`],
+            ["ending", `⚡ Ending soon ≤15m (${toneCounts.ending})`],
+            ["fresh", `🔵 Just started (${toneCounts.fresh})`],
+          ] as [ToneFilter, string][]
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setToneFilter(k)}
+            className={`h-8 px-3 rounded-full border text-[12px] font-semibold transition-colors ${
+              toneFilter === k
+                ? "border-primary bg-primary-tint text-primary"
+                : "border-border bg-background text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
       <div
         ref={topBarRef}
@@ -432,8 +475,10 @@ export function PipelineKanban({
         className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
       >
         {COLUMNS.map((col) => {
-          const items = grouped.get(col.key) ?? [];
-          const courierItems = courierGrouped.get(col.key) ?? [];
+          const items = (grouped.get(col.key) ?? []).filter(
+            (b) => toneFilter === "all" || toneOf.get(b.id) === toneFilter,
+          );
+          const courierItems = toneFilter === "all" ? courierGrouped.get(col.key) ?? [] : [];
           const totalItems = items.length + courierItems.length;
           return (
             <div
@@ -564,6 +609,62 @@ export function dispatchNote(
   return `Dispatches on ${date}, ${time}`;
 }
 
+type CardTone = "overtime" | "ending" | "fresh" | "normal" | "urgent" | "scheduled";
+const ENDING_SOON_MIN = 15;
+
+/** Time-based colour state used by the board stripes, pills and quick filters. */
+function cardTimeState(
+  b: PipelineBooking,
+  nowMs: number,
+  cfg: BookingJourneyConfig,
+): { tone: CardTone; label: string | null } {
+  if (b.status === "in_progress" && b.startedAt) {
+    const start = Date.parse(b.startedAt);
+    const end = b.serviceEndAt
+      ? Date.parse(b.serviceEndAt)
+      : b.serviceDurationMinutes
+        ? start + b.serviceDurationMinutes * 60_000
+        : NaN;
+    if (!Number.isFinite(start)) return { tone: "normal", label: null };
+    const elapsedMin = Math.max(0, Math.floor((nowMs - start) / 60_000));
+    if (!Number.isFinite(end)) return { tone: "normal", label: `Running ${elapsedMin}m` };
+    const leftMin = Math.ceil((end - nowMs) / 60_000);
+    if (leftMin <= 0) return { tone: "overtime", label: `Overtime · +${Math.max(1, -leftMin)}m over` };
+    if (leftMin <= ENDING_SOON_MIN) return { tone: "ending", label: `Ending soon · ${leftMin}m left` };
+    if (elapsedMin < 15) return { tone: "fresh", label: `Just started · ${elapsedMin}m ago` };
+    return { tone: "normal", label: `${leftMin}m remaining` };
+  }
+  if (b.status === "accepted") {
+    const slot = slotStartMs(b);
+    if (b.dispatchExhaustedAt || (slot != null && nowMs > slot))
+      return { tone: "overtime", label: "Slot missed · no expert" };
+    if (b.noExpertAlertSent || (slot != null && slot - nowMs <= 20 * 60_000))
+      return { tone: "ending", label: "Urgent · slot close, no expert" };
+    return { tone: "fresh", label: "Searching expert" };
+  }
+  if (b.status === "confirmed") return { tone: "scheduled", label: null };
+  void cfg;
+  return { tone: "normal", label: null };
+}
+
+const TONE_STRIPE: Record<CardTone, string> = {
+  overtime: "border-l-destructive",
+  ending: "border-l-warning",
+  fresh: "border-l-primary",
+  urgent: "border-l-warning",
+  normal: "border-l-border",
+  scheduled: "border-l-muted-foreground/40",
+};
+const TONE_PILL: Record<CardTone, string> = {
+  overtime: "border-destructive/40 bg-destructive/10 text-destructive",
+  ending: "border-warning/50 bg-warning-tint text-warning",
+  fresh: "border-primary/30 bg-primary-tint text-primary",
+  urgent: "border-warning/50 bg-warning-tint text-warning",
+  normal: "border-border bg-muted text-muted-foreground",
+  scheduled: "border-border bg-muted text-muted-foreground",
+};
+type ToneFilter = "all" | "overtime" | "ending" | "fresh";
+
 function BoardCard({
   booking,
   role,
@@ -586,7 +687,7 @@ function BoardCard({
 
   // Live-ticking clock for broadcast elapsed time and journey deadlines.
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const ticking = isBroadcasting || isAssigned;
+  const ticking = isBroadcasting || isAssigned || booking.status === "in_progress";
   useEffect(() => {
     if (!ticking) return;
     const t = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -641,6 +742,7 @@ function BoardCard({
         nowMs > slotStart - journeyConfig.noExpertAlertBeforeSlotMinutes * 60_000));
 
   const alerting = onwayLate || noExpertFound;
+  const timeState = cardTimeState(booking, nowMs, journeyConfig);
 
   // Eligible experts count for accepted (broadcasting) cards.
   const fetchCount = useServerFn(countEligibleExperts);
@@ -657,14 +759,23 @@ function BoardCard({
   return (
     <div
       onClick={onOpen}
-      className={`bg-card border rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
-        alerting
+      className={`bg-card border border-l-4 ${TONE_STRIPE[timeState.tone]} rounded-[12px] p-3 shadow-sm cursor-pointer transition-colors ${
+        alerting || timeState.tone === "overtime"
           ? "border-destructive bg-destructive/5"
+          : timeState.tone === "ending"
+            ? "border-warning bg-warning-tint/30"
           : timedOut
             ? "border-warning bg-warning-tint/30"
             : "border-border hover:border-primary/60"
       }`}
     >
+      {timeState.label && (
+        <span
+          className={`inline-block mb-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold ${TONE_PILL[timeState.tone]}`}
+        >
+          {timeState.label}
+        </span>
+      )}
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <p className="text-[13px] font-bold text-foreground truncate">
           {booking.customerName}

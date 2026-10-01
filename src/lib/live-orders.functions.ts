@@ -308,6 +308,8 @@ export type PipelineBooking = {
   updatedAt: string;
   broadcastStartedAt: string | null;
   dispatchExhaustedAt: string | null;
+  startedAt?: string | null;
+  serviceEndAt?: string | null;
 };
 
 /** Timing rules Live Ops needs to decide when a card is late. */
@@ -389,7 +391,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at";
     let openQ = db
       .from("bookings")
       .select(cols)
@@ -531,8 +533,8 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         ((r as Record<string, unknown>)["dispatch_exhausted_at"] as
           | string
           | null) ?? null,
-
-
+      startedAt: ((r as Record<string, unknown>)["started_at"] as string | null) ?? null,
+      serviceEndAt: ((r as Record<string, unknown>)["service_end_at"] as string | null) ?? null,
     }));
   });
 
