@@ -873,9 +873,19 @@ function EditUserModal({
   onSaved: () => void;
 }) {
   const callUpdate = useServerFn(updateUser);
+  const fetchProfile = useServerFn(getCustomerProfile);
   const [fullName, setFullName] = useState(row.full_name ?? "");
   const [email, setEmail] = useState(row.email ?? "");
   const [lang, setLang] = useState(row.preferred_language ?? "en");
+  const [addrEdit, setAddrEdit] = useState<{ row: AddressRow | null } | null>(null);
+  const removeAddress = useDeleteAddress(row.id);
+
+  const { data: profile } = useQuery({
+    queryKey: ["customers", "profile", row.id],
+    queryFn: () => fetchProfile({ data: { userId: row.id } }),
+  });
+  const addresses = profile?.addresses ?? [];
+
 
   const mutation = useMutation({
     mutationFn: () =>
