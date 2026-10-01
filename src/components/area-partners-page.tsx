@@ -10,6 +10,11 @@ import {
 } from "@/lib/area-partners.functions";
 import { AreaPartnerFormModal } from "@/components/area-partner-form-modal";
 import { AreaPartnerDetailsModal } from "@/components/area-partner-details-modal";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
