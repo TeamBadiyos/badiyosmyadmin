@@ -295,6 +295,17 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
       | "all"
       | "referral_reward",
   });
+  const [categoryIds, setCategoryIds] = useState<string[]>(
+    coupon?.applicable_category_ids ?? [],
+  );
+  const { data: categories = [] } = useOfferCategories();
+
+  const toggleCategory = (id: string) =>
+    setCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+
+
 
   const mut = useMutation({
     mutationFn: () =>
