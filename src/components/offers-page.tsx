@@ -448,6 +448,56 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
         </Field>
       </div>
 
+      <div className="pt-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className={labelCls}>Applicable categories</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="text-[12px] font-semibold text-primary"
+              onClick={() => setCategoryIds(categories.map((c) => c.id))}
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              className="text-[12px] font-semibold text-muted-foreground"
+              onClick={() => setCategoryIds([])}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {categories.map((c) => {
+            const on = categoryIds.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleCategory(c.id)}
+                className={`h-9 px-3 rounded-[12px] border text-[13px] font-semibold transition-colors ${
+                  on
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+          {categories.length === 0 && (
+            <span className="text-[12px] text-muted-foreground">No categories found.</span>
+          )}
+        </div>
+        <p className="text-[12px] text-muted-foreground mt-2">
+          {categoryIds.length === 0
+            ? "Koi category select nahi — coupon sabhi categories par chalega."
+            : `Coupon sirf ${categoryIds.length} selected categor${categoryIds.length === 1 ? "y" : "ies"} par chalega.`}
+        </p>
+      </div>
+
+
       <div className="flex justify-end gap-2 pt-5">
         <button className={ghostBtn} onClick={onClose}>
           Cancel
