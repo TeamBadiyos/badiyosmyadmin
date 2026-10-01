@@ -317,6 +317,7 @@ export type BookingJourneyConfig = {
   scheduledOnwayDeadlineBeforeSlotMinutes: number;
   noExpertAlertBeforeSlotMinutes: number;
   noExpertRefundAfterSlotMinutes: number;
+  dispatchLeadMinutes: number;
 };
 
 export const getBookingJourneyConfig = createServerFn({ method: "GET" })
