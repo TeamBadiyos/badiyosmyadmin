@@ -964,6 +964,77 @@ function EditUserModal({
           <p className="text-[12px] text-muted-foreground">
             Phone number ({row.phone ?? "—"}) cannot be changed — it is the user's login identity.
           </p>
+
+          <div className="pt-2 border-t border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Addresses
+              </span>
+              <button
+                type="button"
+                onClick={() => setAddrEdit({ row: null })}
+                className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold hover:bg-muted inline-flex items-center gap-1.5"
+              >
+                <MapPin size={13} /> Add address
+              </button>
+            </div>
+            <div className="border border-border rounded-[14px] overflow-hidden">
+              {addresses.length === 0 ? (
+                <p className="px-4 py-5 text-center text-[13px] text-muted-foreground">
+                  No saved addresses.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {addresses.map((a) => (
+                    <li key={a.id} className="px-4 py-3 text-[13px] flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-foreground">
+                          {a.label ?? "Address"}
+                          {a.is_default && (
+                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-primary">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground">{a.full_address}</div>
+                        <div className="text-[12px] text-muted-foreground">
+                          {[a.area, a.city, a.pincode].filter(Boolean).join(", ")}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {a.latitude != null && a.longitude != null
+                            ? `Pin ${Number(a.latitude).toFixed(6)}, ${Number(a.longitude).toFixed(6)}`
+                            : "No map pin set"}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setAddrEdit({ row: a })}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted"
+                          aria-label="Edit address"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void removeAddress(a.id)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border text-destructive hover:bg-muted"
+                          aria-label="Delete address"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-[12px] text-muted-foreground">
+              Address add/edit karte waqt map par pin drag karke exact location choose kar sakte
+              hain.
+            </p>
+          </div>
+
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
