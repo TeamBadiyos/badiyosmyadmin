@@ -26,6 +26,7 @@ import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { UnassignedTripsPage } from "@/components/unassigned-trips-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { InterestLeadsPage } from "@/components/interest-leads-page";
+import { InsurancePage } from "@/components/insurance-page";
 import { WaitlistPage } from "@/components/waitlist-page";
 import { UsersPage } from "@/components/users-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
@@ -114,6 +115,7 @@ const NAV_ITEMS = [
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
+  { key: "insurance", label: "Insurance", icon: ShieldCheck },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "unassigned-trips", label: "Unassigned Trips", icon: Truck },
@@ -181,7 +183,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads"],
+    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads", "insurance"],
   },
   {
     id: "finance",
@@ -564,6 +566,8 @@ function Shell() {
           <UsersPage onSelectBooking={setSelectedBookingId} />
         ) : active === "waitlist" ? (
           <WaitlistPage role={role} />
+        ) : active === "insurance" ? (
+          <InsurancePage role={role} />
         ) : active === "interest-leads" ? (
           <InterestLeadsPage role={role} />
 
