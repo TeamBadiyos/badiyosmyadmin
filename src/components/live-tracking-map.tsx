@@ -4,12 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { Crosshair, Maximize2, MapPin, Navigation, Phone } from "lucide-react";
 
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
-import {
-  getBookingTracking,
-  getCourierTracking,
-  getRoadRoute,
-  type TrackingSnapshot,
-} from "@/lib/tracking.functions";
+import { useLiveTracking } from "@/lib/use-live-tracking";
+import { getRoadRoute } from "@/lib/tracking.functions";
+
 
 function agoLabel(iso: string | null): string {
   if (!iso) return "no location yet";
@@ -74,18 +71,10 @@ export function LiveTrackingMap({
   kind: "courier" | "booking";
   id: string;
 }) {
-  const fetchCourier = useServerFn(getCourierTracking);
-  const fetchBooking = useServerFn(getBookingTracking);
   const fetchRoute = useServerFn(getRoadRoute);
 
-  const { data, isLoading, isError, error } = useQuery<TrackingSnapshot>({
-    queryKey: ["tracking", kind, id],
-    queryFn: () =>
-      kind === "courier"
-        ? fetchCourier({ data: { orderId: id } })
-        : fetchBooking({ data: { bookingId: id } }),
-    refetchInterval: 5000,
-  });
+  const { data, isLoading, isError, error } = useLiveTracking(kind, id);
+
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
