@@ -535,6 +535,35 @@ function clockTime(iso: string): string {
   });
 }
 
+/**
+ * Footer line for a scheduled order: when the dispatch broadcast will fire,
+ * i.e. the slot start minus the "Dispatch lead" setting.
+ */
+function dispatchNote(
+  booking: PipelineBooking,
+  dispatchLeadMinutes: number,
+): string {
+  if (!booking.paid) return "Auto-dispatches on payment";
+  const slot = slotStartMs(booking);
+  if (slot == null) return "Dispatches shortly";
+  const at = new Date(slot - dispatchLeadMinutes * 60_000);
+  const time = at.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+  const dayKey = (d: Date) =>
+    d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+  if (dayKey(at) === dayKey(new Date())) return `Dispatches at ${time}`;
+  const date = at.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  return `Dispatches on ${date}, ${time}`;
+}
+
 function BoardCard({
   booking,
   role,
