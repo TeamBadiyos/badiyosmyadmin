@@ -290,3 +290,16 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
     </button>
   );
 }
+
+function ExpertAvatar({ url }: { url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="w-10 h-10 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden">
+      {url && !failed ? (
+        <img src={url} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} />
+      ) : (
+        <UserRound size={18} />
+      )}
+    </div>
+  );
+}
