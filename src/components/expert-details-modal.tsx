@@ -196,7 +196,7 @@ export function ExpertDetailsModal({
           {data && (
             <>
               {data.reviews.length > 0 && (
-                <section className="order-last">
+                <section>
                   <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
                     Customer ratings ({data.reviews.length})
                   </h3>
