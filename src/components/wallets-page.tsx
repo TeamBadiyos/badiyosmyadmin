@@ -451,6 +451,24 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
 
+  const sf = useSortFilter(data, [
+    {
+      key: "week",
+      label: "Week",
+      value: (b: PayoutBatch) => b.week_start,
+      display: (b: PayoutBatch) => `${formatDate(b.week_start)} – ${formatDate(b.week_end)}`,
+    },
+    {
+      key: "total",
+      label: "Total",
+      type: "number",
+      align: "right",
+      value: (b: PayoutBatch) => b.total_amount,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (b: PayoutBatch) => b.status },
+  ]);
+
   if (openBatch) {
     return <BatchDetail batch={openBatch} onBack={() => setOpenBatch(null)} />;
   }
@@ -463,35 +481,38 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
             ? "Weekly merchant payout batches from completed order earnings."
             : "Weekly payout batches to experts and area partners."}
         </p>
-        <button
-          disabled={generate.isPending}
-          onClick={() => {
-            setError(null);
-            generate.mutate();
-          }}
-          className="h-11 px-4 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
-        >
-          <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
-        </button>
+        <div className="flex items-center gap-3">
+          <SortFilterReset api={sf} />
+          <button
+            disabled={generate.isPending}
+            onClick={() => {
+              setError(null);
+              generate.mutate();
+            }}
+            className="h-11 px-4 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
+          </button>
+        </div>
       </div>
 
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Week</span>
-          <span className="text-right">Total</span>
-          <span>Status</span>
+          <SortFilterHeader {...sf.headerProps("week")} />
+          <SortFilterHeader {...sf.headerProps("total")} />
+          <SortFilterHeader {...sf.headerProps("status")} />
           <span></span>
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">No batches yet.</p>
         )}
-        {data.map((b) => (
+        {sf.rows.map((b) => (
           <div
             key={b.id}
             className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
