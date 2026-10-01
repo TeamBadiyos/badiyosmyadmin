@@ -13,6 +13,11 @@ import {
   markInvoicePaid,
   type FeeTier,
 } from "@/lib/merchant-billing.functions";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 type Tab = "merchants" | "tiers" | "invoices";
@@ -60,6 +65,37 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       }),
     enabled: tab === "invoices",
   });
+
+  type MerchantRow = NonNullable<typeof merchantsQ.data>[number];
+  const merchantSf = useSortFilter(merchantsQ.data ?? [], [
+    {
+      key: "store",
+      label: "Store / Owner",
+      value: (m: MerchantRow) => m.storeName || "Unnamed store",
+    },
+    { key: "phone", label: "Phone", value: (m: MerchantRow) => m.phone, filterable: false },
+    { key: "city", label: "City", value: (m: MerchantRow) => m.city || "—" },
+  ]);
+
+  type InvoiceRow = NonNullable<typeof invoicesQ.data>[number];
+  const invoiceSf = useSortFilter(invoicesQ.data ?? [], [
+    { key: "merchant", label: "Merchant", value: (i: InvoiceRow) => i.merchantName || "—" },
+    { key: "tier", label: "Tier", value: (i: InvoiceRow) => i.feeTierName || "—" },
+    {
+      key: "month",
+      label: "Billing month",
+      value: (i: InvoiceRow) => i.billingMonth,
+      display: (i: InvoiceRow) => monthLabel(i.billingMonth),
+    },
+    {
+      key: "amount",
+      label: "Amount",
+      type: "number",
+      value: (i: InvoiceRow) => i.amount,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (i: InvoiceRow) => i.status },
+  ]);
 
   const assignM = useMutation({
     mutationFn: (p: { merchantId: string; feeTierId: string | null }) => assignTier({ data: p }),
