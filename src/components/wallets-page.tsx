@@ -22,6 +22,11 @@ import {
   type PayoutBatch,
 } from "@/lib/wallets.functions";
 import { CommissionTab } from "@/components/commission-tab";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -106,6 +111,24 @@ function BalancesTab({ role }: { role: Role }) {
     );
   }, [data, query]);
 
+  const sf = useSortFilter(filtered, [
+    { key: "owner", label: "Owner", value: (o: WalletOwner) => o.name },
+    {
+      key: "type",
+      label: "Type",
+      value: (o: WalletOwner) => (o.owner_type === "expert" ? "Expert" : "Partner"),
+    },
+    {
+      key: "balance",
+      label: "Balance",
+      type: "number",
+      align: "right",
+      value: (o: WalletOwner) => o.balance,
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
       <div className="space-y-4 min-w-0">
@@ -122,6 +145,7 @@ function BalancesTab({ role }: { role: Role }) {
               className="w-full h-11 pl-9 pr-3 rounded-[14px] border border-border bg-card text-[14px]"
             />
           </div>
+          <SortFilterReset api={sf} />
           {role === "super_admin" && (
             <button
               onClick={() => setAdjustFor(selected ?? data[0] ?? null)}
@@ -132,19 +156,19 @@ function BalancesTab({ role }: { role: Role }) {
           )}
         </div>
 
-        <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] overflow-visible">
           <div className="grid grid-cols-[minmax(0,1fr)_120px_140px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Owner</span>
-            <span>Type</span>
-            <span className="text-right">Balance</span>
+            <SortFilterHeader {...sf.headerProps("owner")} />
+            <SortFilterHeader {...sf.headerProps("type")} />
+            <SortFilterHeader {...sf.headerProps("balance")} />
           </div>
           {isLoading && (
             <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
           )}
-          {!isLoading && filtered.length === 0 && (
+          {!isLoading && rows.length === 0 && (
             <p className="text-[13px] text-muted-foreground text-center py-10">No matches.</p>
           )}
-          {filtered.map((o) => (
+          {rows.map((o) => (
             <button
               key={`${o.owner_type}:${o.id}`}
               onClick={() => setSelected(o)}
@@ -427,6 +451,24 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
 
+  const sf = useSortFilter(data, [
+    {
+      key: "week",
+      label: "Week",
+      value: (b: PayoutBatch) => b.week_start,
+      display: (b: PayoutBatch) => `${formatDate(b.week_start)} – ${formatDate(b.week_end)}`,
+    },
+    {
+      key: "total",
+      label: "Total",
+      type: "number",
+      align: "right",
+      value: (b: PayoutBatch) => b.total_amount,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (b: PayoutBatch) => b.status },
+  ]);
+
   if (openBatch) {
     return <BatchDetail batch={openBatch} onBack={() => setOpenBatch(null)} />;
   }
@@ -439,35 +481,38 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
             ? "Weekly merchant payout batches from completed order earnings."
             : "Weekly payout batches to experts and area partners."}
         </p>
-        <button
-          disabled={generate.isPending}
-          onClick={() => {
-            setError(null);
-            generate.mutate();
-          }}
-          className="h-11 px-4 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
-        >
-          <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
-        </button>
+        <div className="flex items-center gap-3">
+          <SortFilterReset api={sf} />
+          <button
+            disabled={generate.isPending}
+            onClick={() => {
+              setError(null);
+              generate.mutate();
+            }}
+            className="h-11 px-4 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
+          </button>
+        </div>
       </div>
 
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Week</span>
-          <span className="text-right">Total</span>
-          <span>Status</span>
+          <SortFilterHeader {...sf.headerProps("week")} />
+          <SortFilterHeader {...sf.headerProps("total")} />
+          <SortFilterHeader {...sf.headerProps("status")} />
           <span></span>
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">No batches yet.</p>
         )}
-        {data.map((b) => (
+        {sf.rows.map((b) => (
           <div
             key={b.id}
             className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
@@ -553,6 +598,42 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const unpaid = data.filter((i) => !i.paid).length;
   const tdsTotal = data.reduce((sum, i) => sum + (i.tds_amount ?? 0), 0);
 
+  type Item = (typeof data)[number];
+  const sf = useSortFilter(data, [
+    { key: "owner", label: "Owner", value: (i: Item) => i.owner_name },
+    {
+      key: "type",
+      label: "Type",
+      value: (i: Item) =>
+        i.owner_type === "expert" ? "Expert" : i.owner_type === "merchant" ? "Merchant" : "Partner",
+    },
+    {
+      key: "gross",
+      label: "Gross",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.gross_amount,
+      filterable: false,
+    },
+    {
+      key: "tds",
+      label: "TDS",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.tds_amount ?? 0,
+      filterable: false,
+    },
+    {
+      key: "net",
+      label: "Net",
+      type: "number",
+      align: "right",
+      value: (i: Item) => i.net_amount,
+      filterable: false,
+    },
+    { key: "paid", label: "Paid", value: (i: Item) => (i.paid ? "Paid" : "Unpaid") },
+  ]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -633,24 +714,28 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         </p>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Owner</span>
-          <span>Type</span>
-          <span className="text-right">Gross</span>
-          <span className="text-right">TDS</span>
-          <span className="text-right">Net</span>
-          <span>Paid</span>
+          <SortFilterHeader {...sf.headerProps("owner")} />
+          <SortFilterHeader {...sf.headerProps("type")} />
+          <SortFilterHeader {...sf.headerProps("gross")} />
+          <SortFilterHeader {...sf.headerProps("tds")} />
+          <SortFilterHeader {...sf.headerProps("net")} />
+          <SortFilterHeader {...sf.headerProps("paid")} />
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">
             No items in this batch.
           </p>
         )}
-        {data.map((i) => (
+        {sf.rows.map((i) => (
           <div
             key={i.id}
             className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
@@ -777,6 +862,40 @@ function TdsTab({ role }: { role: Role }) {
     queryFn: () => fetchReport({ data: { fy_start_year: fy } }),
   });
 
+  type TdsRow = (typeof data)[number];
+  const sf = useSortFilter(data, [
+    { key: "person", label: "Person", value: (r: TdsRow) => r.owner_name },
+    {
+      key: "type",
+      label: "Type",
+      value: (r: TdsRow) => (r.owner_type === "expert" ? "Expert" : "Partner"),
+    },
+    {
+      key: "gross",
+      label: "Gross",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.gross_total,
+      filterable: false,
+    },
+    {
+      key: "tds",
+      label: "TDS",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.tds_total,
+      filterable: false,
+    },
+    {
+      key: "deposited",
+      label: "Deposited",
+      type: "number",
+      align: "right",
+      value: (r: TdsRow) => r.deposited_total,
+      filterable: false,
+    },
+  ]);
+
   const deposit = useMutation({
     mutationFn: (p: { owner_type: string; owner_id: string }) =>
       markDeposited({ data: { ...p, fy_start_year: fy } }),
@@ -841,24 +960,28 @@ function TdsTab({ role }: { role: Role }) {
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Person</span>
-          <span>Type</span>
-          <span className="text-right">Gross</span>
-          <span className="text-right">TDS</span>
-          <span className="text-right">Deposited</span>
+          <SortFilterHeader {...sf.headerProps("person")} />
+          <SortFilterHeader {...sf.headerProps("type")} />
+          <SortFilterHeader {...sf.headerProps("gross")} />
+          <SortFilterHeader {...sf.headerProps("tds")} />
+          <SortFilterHeader {...sf.headerProps("deposited")} />
           <span></span>
         </div>
         {isLoading && (
           <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
         )}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && sf.rows.length === 0 && (
           <p className="text-[13px] text-muted-foreground text-center py-10">
             No paid payouts in this financial year.
           </p>
         )}
-        {data.map((r) => (
+        {sf.rows.map((r) => (
           <div
             key={`${r.owner_type}:${r.owner_id}`}
             className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"

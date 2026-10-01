@@ -29,6 +29,11 @@ import {
   useDeleteAddress,
   type AddressRow,
 } from "@/components/customer-address-editor";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 const PAGE_SIZE = 25;
 
@@ -93,9 +98,49 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
     staleTime: 20_000,
   });
 
-  const rows = data?.rows ?? [];
+  const pageRows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const sf = useSortFilter(pageRows, [
+    { key: "name", label: "Name", value: (r: CustomerRow) => r.full_name ?? "—" },
+    { key: "phone", label: "Phone", value: (r: CustomerRow) => r.phone ?? "—", filterable: false },
+    { key: "email", label: "Email", value: (r: CustomerRow) => r.email ?? "—", filterable: false },
+    {
+      key: "location",
+      label: "Location",
+      value: (r: CustomerRow) => [r.area, r.city].filter(Boolean).join(", ") || "—",
+    },
+    {
+      key: "bookings",
+      label: "Bookings",
+      type: "number",
+      value: (r: CustomerRow) => r.bookings_count,
+      filterable: false,
+    },
+    {
+      key: "spend",
+      label: "Spend",
+      type: "number",
+      value: (r: CustomerRow) => r.total_spend,
+      filterable: false,
+    },
+    {
+      key: "referrals",
+      label: "Referrals",
+      type: "number",
+      value: (r: CustomerRow) => r.successful_referrals,
+      filterable: false,
+    },
+    {
+      key: "joined",
+      label: "Joined",
+      value: (r: CustomerRow) => r.created_at ?? "",
+      display: (r: CustomerRow) => fmtDate(r.created_at),
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
 
   return (
     <div className="space-y-6">
@@ -162,19 +207,23 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-3">Name</th>
-                <th className="text-left px-4 py-3">Phone</th>
-                <th className="text-left px-4 py-3">Email</th>
-                <th className="text-left px-4 py-3">Location</th>
-                <th className="text-left px-4 py-3">Bookings</th>
-                <th className="text-left px-4 py-3">Spend</th>
-                <th className="text-left px-4 py-3">Referrals</th>
-                <th className="text-left px-4 py-3">Joined</th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("name")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("phone")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("email")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("location")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("bookings")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("spend")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("referrals")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("joined")} /></th>
                 {isSuperAdmin && <th className="text-right px-4 py-3">Actions</th>}
               </tr>
             </thead>

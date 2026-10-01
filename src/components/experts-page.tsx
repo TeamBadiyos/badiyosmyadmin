@@ -6,6 +6,11 @@ import { listExperts, type ExpertLevel, type KycStatus, type ExpertRow } from "@
 import { listZoneOptions } from "@/lib/bookings.functions";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -80,8 +85,30 @@ export function ExpertsPage({
     staleTime: 15_000,
   });
 
-  const experts =
+  const expertsFiltered =
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw;
+
+  const sf = useSortFilter(expertsFiltered, [
+    { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
+    { key: "phone", label: "Phone", value: (e: ExpertRow) => e.phone, filterable: false },
+    {
+      key: "zone",
+      label: "Zone",
+      value: (e: ExpertRow) => e.zoneNames?.join(", ") || "Unassigned",
+    },
+    { key: "level", label: "Level", value: (e: ExpertRow) => e.level },
+    { key: "kyc", label: "KYC", value: (e: ExpertRow) => e.kycStatus },
+    {
+      key: "wallet",
+      label: "Wallet",
+      type: "number",
+      align: "right",
+      value: (e: ExpertRow) => e.walletBalance,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (e: ExpertRow) => e.status },
+  ]);
+  const experts = sf.rows;
 
   return (
     <div className="space-y-6">
@@ -124,16 +151,20 @@ export function ExpertsPage({
         </Filter>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
         <div className="grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Photo</span>
-          <span>Name</span>
-          <span>Phone</span>
-          <span>Zone</span>
-          <span>Level</span>
-          <span>KYC</span>
-          <span className="text-right">Wallet</span>
-          <span>Status</span>
+          <SortFilterHeader {...sf.headerProps("name")} />
+          <SortFilterHeader {...sf.headerProps("phone")} />
+          <SortFilterHeader {...sf.headerProps("zone")} />
+          <SortFilterHeader {...sf.headerProps("level")} />
+          <SortFilterHeader {...sf.headerProps("kyc")} />
+          <SortFilterHeader {...sf.headerProps("wallet")} />
+          <SortFilterHeader {...sf.headerProps("status")} />
         </div>
 
         {isLoading && (

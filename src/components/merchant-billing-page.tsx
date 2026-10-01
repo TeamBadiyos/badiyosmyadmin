@@ -13,6 +13,11 @@ import {
   markInvoicePaid,
   type FeeTier,
 } from "@/lib/merchant-billing.functions";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 type Tab = "merchants" | "tiers" | "invoices";
@@ -60,6 +65,37 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       }),
     enabled: tab === "invoices",
   });
+
+  type MerchantRow = NonNullable<typeof merchantsQ.data>[number];
+  const merchantSf = useSortFilter(merchantsQ.data ?? [], [
+    {
+      key: "store",
+      label: "Store / Owner",
+      value: (m: MerchantRow) => m.storeName || "Unnamed store",
+    },
+    { key: "phone", label: "Phone", value: (m: MerchantRow) => m.phone, filterable: false },
+    { key: "city", label: "City", value: (m: MerchantRow) => m.city || "—" },
+  ]);
+
+  type InvoiceRow = NonNullable<typeof invoicesQ.data>[number];
+  const invoiceSf = useSortFilter(invoicesQ.data ?? [], [
+    { key: "merchant", label: "Merchant", value: (i: InvoiceRow) => i.merchantName || "—" },
+    { key: "tier", label: "Tier", value: (i: InvoiceRow) => i.feeTierName || "—" },
+    {
+      key: "month",
+      label: "Billing month",
+      value: (i: InvoiceRow) => i.billingMonth,
+      display: (i: InvoiceRow) => monthLabel(i.billingMonth),
+    },
+    {
+      key: "amount",
+      label: "Amount",
+      type: "number",
+      value: (i: InvoiceRow) => i.amount,
+      filterable: false,
+    },
+    { key: "status", label: "Status", value: (i: InvoiceRow) => i.status },
+  ]);
 
   const assignM = useMutation({
     mutationFn: (p: { merchantId: string; feeTierId: string | null }) => assignTier({ data: p }),
@@ -151,17 +187,20 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       </div>
 
       {tab === "merchants" && (
-        <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] overflow-visible">
+          <div className="flex justify-end px-6 pt-4">
+            <SortFilterReset api={merchantSf} />
+          </div>
           <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Store / Owner</span>
-            <span>Phone</span>
-            <span>City</span>
+            <SortFilterHeader {...merchantSf.headerProps("store")} />
+            <SortFilterHeader {...merchantSf.headerProps("phone")} />
+            <SortFilterHeader {...merchantSf.headerProps("city")} />
             <span>Plan</span>
           </div>
           {merchantsQ.isLoading && (
             <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
           )}
-          {(merchantsQ.data ?? []).map((m) => (
+          {merchantSf.rows.map((m) => (
             <div
               key={m.id}
               className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
@@ -234,19 +273,22 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
             )}
           </div>
 
-          <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+          <div className="bg-card border border-border rounded-[18px] overflow-visible">
+            <div className="flex justify-end px-6 pt-4">
+              <SortFilterReset api={invoiceSf} />
+            </div>
             <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              <span>Merchant</span>
-              <span>Tier</span>
-              <span>Billing month</span>
-              <span>Amount</span>
-              <span>Status</span>
+              <SortFilterHeader {...invoiceSf.headerProps("merchant")} />
+              <SortFilterHeader {...invoiceSf.headerProps("tier")} />
+              <SortFilterHeader {...invoiceSf.headerProps("month")} />
+              <SortFilterHeader {...invoiceSf.headerProps("amount")} />
+              <SortFilterHeader {...invoiceSf.headerProps("status")} />
               <span>Action</span>
             </div>
             {invoicesQ.isLoading && (
               <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
             )}
-            {(invoicesQ.data ?? []).map((i) => (
+            {invoiceSf.rows.map((i) => (
               <div
                 key={i.id}
                 className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"

@@ -13,6 +13,11 @@ import {
 import { listCourierOrders, type CourierOrderRow } from "@/lib/courier.functions";
 import { OrderDetail } from "@/components/courier-page";
 import { ServiceTimerPill } from "@/components/service-timer";
+import {
+  useSortFilter,
+  SortFilterHeader,
+  SortFilterReset,
+} from "@/components/table-sort-filter";
 
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
@@ -142,9 +147,33 @@ export function BookingsPage({
     };
   }, [queryClient]);
 
-  const rows = orderType === "courier" ? [] : (data?.rows ?? []);
+  const pageRows = orderType === "courier" ? [] : (data?.rows ?? []);
   const total = orderType === "courier" ? 0 : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const sf = useSortFilter(pageRows, [
+    { key: "customer", label: "Customer", value: (r: BookingRow) => r.customerName },
+    {
+      key: "service",
+      label: "Service / Slot",
+      value: (r: BookingRow) => r.serviceLabel ?? "—",
+    },
+    { key: "zone", label: "Zone", value: (r: BookingRow) => r.zoneName ?? "—" },
+    {
+      key: "expert",
+      label: "Expert",
+      value: (r: BookingRow) => r.assignedExpertName ?? "Unassigned",
+    },
+    { key: "status", label: "Status", value: (r: BookingRow) => r.status },
+    { key: "payment", label: "Payment", value: (r: BookingRow) => r.paymentStatus },
+    {
+      key: "placed",
+      label: "Placed",
+      value: (r: BookingRow) => r.createdAt ?? "",
+      filterable: false,
+    },
+  ]);
+  const rows = sf.rows;
 
   // Parcel orders are listed alongside services (first page only, date-filtered).
   const courierRows = useMemo(() => {
@@ -301,18 +330,22 @@ export function BookingsPage({
       </div>
 
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="flex justify-end">
+        <SortFilterReset api={sf} />
+      </div>
+
+      <div className="bg-card border border-border rounded-[18px] overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-3">Customer</th>
-                <th className="text-left px-4 py-3">Service / Slot</th>
-                <th className="text-left px-4 py-3">Zone</th>
-                <th className="text-left px-4 py-3">Expert</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Payment</th>
-                <th className="text-left px-4 py-3">Placed</th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("customer")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("service")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("zone")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("expert")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("status")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("payment")} /></th>
+                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("placed")} /></th>
               </tr>
             </thead>
             <tbody>
