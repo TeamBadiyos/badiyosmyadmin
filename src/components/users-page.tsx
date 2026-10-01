@@ -1053,7 +1053,15 @@ function EditUserModal({
           </div>
         </form>
       </div>
+      {addrEdit && (
+        <CustomerAddressModal
+          userId={row.id}
+          address={addrEdit.row}
+          onClose={() => setAddrEdit(null)}
+        />
+      )}
     </div>
+
   );
 }
 
