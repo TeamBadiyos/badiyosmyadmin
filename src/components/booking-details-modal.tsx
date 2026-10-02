@@ -43,6 +43,7 @@ import {
 import { LiveTrackingMap } from "@/components/live-tracking-map";
 import { ShareLocation } from "@/components/share-location";
 import { ServiceTimerCard } from "@/components/service-timer";
+import { JobLocationDialog } from "@/components/job-location-dialog";
 
 
 
@@ -215,6 +216,7 @@ export function BookingDetailsModal({
   const fetchAddresses = useServerFn(listBookingCustomerAddresses);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [locOpen, setLocOpen] = useState(false);
   const [editDuration, setEditDuration] = useState<number | "">("");
   const [editPrice, setEditPrice] = useState<string>("");
   const [editAddressId, setEditAddressId] = useState<string>("");
@@ -507,6 +509,22 @@ export function BookingDetailsModal({
                   <Field label="Phone" value={data.customer.phone ?? "—"} mono />
                 </Card>
                 <Card title="Address">
+                  {canEditFields && (
+                    <button
+                      type="button"
+                      onClick={() => setLocOpen(true)}
+                      className="mb-2 inline-flex items-center gap-1 h-8 px-3 rounded-[8px] border border-primary text-primary text-[12px] font-semibold"
+                    >
+                      <Pencil size={12} /> Change job location
+                    </button>
+                  )}
+                  {locOpen && (
+                    <JobLocationDialog
+                      bookingId={bookingId}
+                      initial={data.address}
+                      onClose={() => setLocOpen(false)}
+                    />
+                  )}
                   {data.address ? (
                     <>
                       <Field label="Label" value={data.address.label ?? "—"} />
