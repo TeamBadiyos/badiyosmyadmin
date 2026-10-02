@@ -544,7 +544,7 @@ function BookingRowItem({
       </td>
       <td className="px-4 py-3">
         {row.assignedExpertName ? (
-          <span className="text-foreground">{row.assignedExpertName}</span>
+          <span className="text-foreground inline-flex items-center gap-1.5">{row.assignedExpertName}<ExpertRatingPill expertId={row.assignedExpertId} /></span>
         ) : (
           <span className="text-muted-foreground italic">Unassigned</span>
         )}

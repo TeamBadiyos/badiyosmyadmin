@@ -782,7 +782,8 @@ function BoardCard({
         {booking.assignedExpertName && (
           <p className="truncate text-foreground">
             <span className="text-muted-foreground">Expert: </span>
-            {booking.assignedExpertName}
+            {booking.assignedExpertName}{" "}
+            <ExpertRatingPill expertId={booking.assignedExpertId} />
           </p>
         )}
       </div>

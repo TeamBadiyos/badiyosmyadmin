@@ -195,6 +195,46 @@ export function ExpertDetailsModal({
           )}
           {data && (
             <>
+              <section>
+                <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                  Joining, jacket & training
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <div className="rounded-[14px] border border-border p-3">
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Joining date</p>
+                    <p className="text-[14px] font-semibold">{data.joiningDate ? new Date(data.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
+                  </div>
+                  <div className={`rounded-[14px] border p-3 ${data.jacketIssued ? "border-primary/40 bg-primary/5" : "border-warning/50 bg-warning/10"}`}>
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Jacket</p>
+                    <p className="text-[14px] font-semibold">
+                      {data.jacketIssued ? `Given ✅${data.jacketIssuedAt ? ` · ${new Date(data.jacketIssuedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}` : "Not given yet"}
+                    </p>
+                  </div>
+                  <div className={`rounded-[14px] border p-3 ${data.trainingDone === TRAINING_DAYS.length ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Training</p>
+                    <p className="text-[14px] font-semibold">{data.trainingDone}/{TRAINING_DAYS.length} days {data.trainingDone === TRAINING_DAYS.length ? "✅" : ""}</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {TRAINING_DAYS.map((d) => {
+                    const e = data.training[d.key];
+                    return (
+                      <div key={d.key} className="flex items-start gap-3 rounded-[12px] border border-border px-3 py-2 text-[13px]">
+                        <span className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${e?.done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          {e?.done ? "✓" : d.key.slice(-1)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p><span className="font-bold">{d.title}</span> — <span className="text-muted-foreground">{d.description}</span></p>
+                          {e?.notes && <p className="text-muted-foreground italic">{e.notes}</p>}
+                        </div>
+                        <span className="shrink-0 text-[12px] text-muted-foreground">
+                          {e?.done ? (e.date ? new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "Done") : "Pending"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
               {data.reviews.length > 0 && (
                 <section>
                   <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
