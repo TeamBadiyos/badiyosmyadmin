@@ -9,6 +9,7 @@ import {
   signStorageUrl,
   forceExpertOffline,
   type KycStatus,
+  TRAINING_DAYS,
 } from "@/lib/experts.functions";
 import {
   listExpertSkills,
