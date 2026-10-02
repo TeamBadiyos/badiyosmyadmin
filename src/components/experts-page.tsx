@@ -238,19 +238,34 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       className="w-full grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
     >
       <ExpertAvatar url={expert.photoUrl} />
-      <span className="min-w-0 flex items-center gap-2">
-        <span className="font-semibold text-foreground truncate">{expert.name}</span>
-        {expert.avgRating != null ? (
-          <span
-            className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[11px] font-bold"
-            title={`${expert.ratingCount} rating${expert.ratingCount === 1 ? "" : "s"}`}
-          >
-            ★ {expert.avgRating.toFixed(1)}
-            <span className="font-medium text-muted-foreground">({expert.ratingCount})</span>
+      <span className="min-w-0 flex flex-col gap-1">
+        <span className="min-w-0 flex items-center gap-2">
+          <span className="font-semibold text-foreground truncate">{expert.name}</span>
+          {expert.avgRating != null ? (
+            <span
+              className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[11px] font-bold"
+              title={`${expert.ratingCount} rating${expert.ratingCount === 1 ? "" : "s"}`}
+            >
+              ★ {expert.avgRating.toFixed(1)}
+              <span className="font-medium text-muted-foreground">({expert.ratingCount})</span>
+            </span>
+          ) : (
+            <span className="shrink-0 text-[11px] text-muted-foreground">No rating</span>
+          )}
+        </span>
+        <span className="flex flex-wrap gap-1 text-[10px] font-semibold">
+          <span className={`px-1.5 py-0.5 rounded-full ${expert.jacketIssued ? "bg-primary/10 text-primary" : "bg-warning/20 text-foreground"}`}>
+            {expert.jacketIssued ? "Jacket ✓" : "No jacket"}
           </span>
-        ) : (
-          <span className="shrink-0 text-[11px] text-muted-foreground">No rating</span>
-        )}
+          <span className={`px-1.5 py-0.5 rounded-full ${expert.trainingDone === 5 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+            Training {expert.trainingDone}/5
+          </span>
+          {expert.joiningDate && (
+            <span className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+              Joined {new Date(expert.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+            </span>
+          )}
+        </span>
       </span>
       <span className="font-mono text-[13px] text-muted-foreground truncate">{expert.phone}</span>
       <span className="text-muted-foreground truncate">

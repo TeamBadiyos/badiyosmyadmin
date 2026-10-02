@@ -8,7 +8,11 @@ import {
   listExperts,
   upsertExpert,
   setExpertZones,
+  setExpertOnboarding,
   signStorageUrl,
+  TRAINING_DAYS,
+  type TrainingProgress,
+  type TrainingDayEntry,
   type ExpertLevel,
   type ActiveStatus,
 } from "@/lib/experts.functions";
@@ -49,6 +53,7 @@ export function ExpertFormModal({
   const fetchZones = useServerFn(listZoneOptions);
   const save = useServerFn(upsertExpert);
   const saveZones = useServerFn(setExpertZones);
+  const saveOnboarding = useServerFn(setExpertOnboarding);
 
   const sign = useServerFn(signStorageUrl);
 
@@ -85,6 +90,10 @@ export function ExpertFormModal({
   const [ifscLoading, setIfscLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [referredBy, setReferredBy] = useState("");
+  const [jacketIssued, setJacketIssued] = useState(false);
+  const [jacketIssuedAt, setJacketIssuedAt] = useState("");
+  const [joiningDate, setJoiningDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [training, setTraining] = useState<TrainingProgress>({});
   const seededRef = useRef(false);
 
   const { data: allExperts = [] } = useQuery({
@@ -117,6 +126,10 @@ export function ExpertFormModal({
       setBankIfsc(existing.bankIfsc ?? "");
       setBankHolder(existing.bankAccountHolderName ?? "");
       setReferredBy(existing.referredByExpertId ?? "");
+      setJacketIssued(existing.jacketIssued);
+      setJacketIssuedAt(existing.jacketIssuedAt ?? "");
+      setJoiningDate(existing.joiningDate ?? "");
+      setTraining(existing.training ?? {});
     }
   }, [existing]);
 
@@ -172,6 +185,15 @@ export function ExpertFormModal({
       });
       await saveZones({
         data: { expertId: res.id, zoneIds, primaryZoneId: zoneIds[0] ?? null },
+      });
+      await saveOnboarding({
+        data: {
+          expertId: res.id,
+          jacketIssued,
+          jacketIssuedAt: jacketIssuedAt || null,
+          joiningDate: joiningDate || null,
+          training,
+        },
       });
       return res;
     },
@@ -338,6 +360,65 @@ export function ExpertFormModal({
                 )}
               </div>
               <Field label="Account holder name" value={bankHolder} onChange={setBankHolder} className="md:col-span-2" />
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3">
+              Joining, jacket & training
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Joining date</label>
+                <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)}
+                  className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Jacket given?</label>
+                <div className="flex gap-2">
+                  {[true, false].map((v) => (
+                    <button key={String(v)} type="button" onClick={() => setJacketIssued(v)}
+                      className={`flex-1 h-11 rounded-[14px] border text-[13px] font-semibold ${jacketIssued === v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"}`}>
+                      {v ? "Yes, given" : "Not yet"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {jacketIssued && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Jacket given on</label>
+                  <input type="date" value={jacketIssuedAt} onChange={(e) => setJacketIssuedAt(e.target.value)}
+                    className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]" />
+                </div>
+              )}
+            </div>
+            <div className="mt-4 space-y-2">
+              <p className="text-[13px] font-semibold text-foreground">
+                Training — {TRAINING_DAYS.filter((d) => training[d.key]?.done).length}/{TRAINING_DAYS.length} days completed
+              </p>
+              {TRAINING_DAYS.map((d) => {
+                const e = training[d.key] ?? { done: false, date: null, notes: null };
+                const set = (patch: Partial<TrainingDayEntry>) =>
+                  setTraining((prev) => ({ ...prev, [d.key]: { ...e, ...patch } }));
+                return (
+                  <div key={d.key} className={`rounded-[14px] border p-3 ${e.done ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={e.done}
+                          onChange={(ev) => set({ done: ev.target.checked, date: ev.target.checked ? (e.date ?? new Date().toISOString().slice(0, 10)) : e.date })}
+                          className="h-4 w-4 accent-primary" />
+                        <span className="text-[14px] font-bold">{d.title}</span>
+                      </label>
+                      <span className="text-[13px] text-muted-foreground flex-1 min-w-[180px]">{d.description}</span>
+                      <input type="date" value={e.date ?? ""} onChange={(ev) => set({ date: ev.target.value || null })}
+                        className="h-9 px-2 rounded-[10px] border border-border bg-card text-[13px]" />
+                    </div>
+                    <input value={e.notes ?? ""} onChange={(ev) => set({ notes: ev.target.value || null })}
+                      placeholder="Notes / description (optional)"
+                      className="mt-2 w-full h-9 px-3 rounded-[10px] border border-border bg-card text-[13px]" />
+                  </div>
+                );
+              })}
             </div>
           </section>
 
