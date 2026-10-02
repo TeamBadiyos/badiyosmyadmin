@@ -24,7 +24,90 @@ export type ExpertRow = {
   lastSeenAt: string | null;
   avgRating: number | null;
   ratingCount: number;
+  jacketIssued: boolean;
+  jacketIssuedAt: string | null;
+  joiningDate: string | null;
+  training: TrainingProgress;
+  trainingDone: number;
 };
+
+export type TrainingDayEntry = { done: boolean; date: string | null; notes: string | null };
+export type TrainingProgress = Record<string, TrainingDayEntry>;
+
+export const TRAINING_DAYS: Array<{ key: string; title: string; description: string }> = [
+  { key: "day1", title: "Day 1", description: "Introduction, company policies & service ethics" },
+  { key: "day2", title: "Day 2", description: "Service standards, tools, uniform & hygiene SOPs" },
+  { key: "day3", title: "Day 3", description: "Badiyos Partner App training — accept, OTP start/end, payments" },
+  { key: "day4", title: "Day 4", description: "Practical mock drill & skill quality check" },
+  { key: "day5", title: "Day 5", description: "Customer handling, soft skills & live shadowing" },
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapOnboarding(r: any) {
+  const raw = (r?.training_progress && typeof r.training_progress === "object" ? r.training_progress : {}) as Record<string, Partial<TrainingDayEntry>>;
+  const training: TrainingProgress = {};
+  for (const d of TRAINING_DAYS) {
+    const e = raw[d.key] ?? {};
+    training[d.key] = { done: !!e.done, date: e.date ?? null, notes: e.notes ?? null };
+  }
+  return {
+    jacketIssued: !!r?.jacket_issued,
+    jacketIssuedAt: (r?.jacket_issued_at as string | null) ?? null,
+    joiningDate: (r?.joining_date as string | null) ?? (r?.created_at ? String(r.created_at).slice(0, 10) : null),
+    training,
+    trainingDone: TRAINING_DAYS.filter((d) => training[d.key].done).length,
+  };
+}
+
+export const setExpertOnboarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    expertId: string;
+    jacketIssued: boolean;
+    jacketIssuedAt: string | null;
+    joiningDate: string | null;
+    training: TrainingProgress;
+  }) => {
+    if (!input?.expertId) throw new Error("expertId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_set_expert_onboarding", {
+      _expert_id: data.expertId,
+      _payload: {
+        jacket_issued: data.jacketIssued,
+        jacket_issued_at: data.jacketIssued ? data.jacketIssuedAt : null,
+        joining_date: data.joiningDate,
+        training_progress: data.training,
+      },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Average customer rating per expert (all experts) — used to show ★ next to names. */
+export const listExpertRatingMap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<Record<string, { avg: number; count: number }>> => {
+    const { data, error } = await context.supabase
+      .from("bookings")
+      .select("assigned_expert_id, rating")
+      .not("rating", "is", null)
+      .not("assigned_expert_id", "is", null)
+      .limit(10000);
+    if (error) throw new Error(error.message);
+    const acc: Record<string, { sum: number; count: number }> = {};
+    for (const r of (data ?? []) as { assigned_expert_id: string; rating: number }[]) {
+      const v = Number(r.rating);
+      if (!Number.isFinite(v)) continue;
+      const c = (acc[r.assigned_expert_id] ??= { sum: 0, count: 0 });
+      c.sum += v; c.count += 1;
+    }
+    const out: Record<string, { avg: number; count: number }> = {};
+    for (const [k, v] of Object.entries(acc)) out[k] = { avg: v.sum / v.count, count: v.count };
+    return out;
+  });
 
 export type ExpertReview = {
   bookingId: string;
@@ -129,7 +212,7 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at",
+        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress",
       );
     if (data.onlineOnly) {
       q = q.eq("is_online", true).order("is_busy", { ascending: true });
@@ -205,6 +288,7 @@ export const listExperts = createServerFn({ method: "POST" })
         lastSeenAt: r.location_updated_at ?? null,
         avgRating: ratings.get(r.id) ? ratings.get(r.id)!.sum / ratings.get(r.id)!.count : null,
         ratingCount: ratings.get(r.id)?.count ?? 0,
+        ...mapOnboarding(r),
       };
     });
   });
@@ -300,6 +384,7 @@ export const getExpert = createServerFn({ method: "POST" })
       kycRejectionReason: e.kyc_rejection_reason ?? null,
       securityDepositStatus: e.security_deposit_status as ExpertDetails["securityDepositStatus"],
       createdAt: e.created_at,
+      ...mapOnboarding(e),
     };
   });
 
