@@ -314,6 +314,9 @@ export type BookingDetails = {
     fullAddress: string | null;
     area: string | null;
     city: string | null;
+    pincode: string | null;
+    lat: number | null;
+    lng: number | null;
   } | null;
   zone: { id: string | null; name: string | null };
   expert: { id: string | null; name: string | null; phone: string | null };
@@ -351,7 +354,7 @@ async function loadBookingDetails(
     b.address_id
       ? supabase
           .from("addresses")
-          .select("label, full_address, area, city")
+          .select("label, full_address, area, city, pincode, latitude, longitude")
           .eq("id", b.address_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -431,6 +434,12 @@ async function loadBookingDetails(
           fullAddress: addrRes.data.full_address ?? null,
           area: addrRes.data.area ?? null,
           city: addrRes.data.city ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          pincode: (addrRes.data as any).pincode ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lat: (addrRes.data as any).latitude != null ? Number((addrRes.data as any).latitude) : null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          lng: (addrRes.data as any).longitude != null ? Number((addrRes.data as any).longitude) : null,
         }
       : null,
     zone: { id: zoneRes.data?.id ?? null, name: zoneRes.data?.name ?? null },
