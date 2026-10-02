@@ -19,7 +19,7 @@ const inputCls =
 const labelCls = "text-[11px] font-bold uppercase tracking-wide text-muted-foreground";
 
 /** Draggable map pin; reports the picked point up. */
-function PinMap({
+export function PinMap({
   lat,
   lng,
   onPick,

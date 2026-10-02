@@ -896,3 +896,39 @@ export const softDeleteBooking = createServerFn({ method: "POST" })
 
 
 
+
+export type BookingLocationInput = {
+  bookingId: string;
+  fullAddress: string;
+  area?: string | null;
+  city?: string | null;
+  pincode?: string | null;
+  lat: number;
+  lng: number;
+};
+
+/** Staff corrects the job location (pin + address); updates booking + saved address, audited. */
+export const setBookingLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: BookingLocationInput) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input.fullAddress?.trim()) throw new Error("Full address is required");
+    if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+      throw new Error("Please place the pin on the map");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_set_booking_location", {
+      _booking_id: data.bookingId,
+      _full_address: data.fullAddress.trim(),
+      _area: data.area ?? null,
+      _city: data.city ?? null,
+      _pincode: data.pincode ?? null,
+      _lat: data.lat,
+      _lng: data.lng,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
