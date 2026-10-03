@@ -9,56 +9,70 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SupportRouteImport } from './routes/support'
-import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
-import { Route as ShippingDeliveryPolicyRouteImport } from './routes/shipping-delivery-policy'
-import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
-import { Route as RefundCancellationPolicyRouteImport } from './routes/refund-cancellation-policy'
-import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
-import { Route as MyadminRouteImport } from './routes/myadmin'
-import { Route as JoinMerchantRouteImport } from './routes/join-merchant'
-import { Route as JoinExpertRouteImport } from './routes/join-expert'
-import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
-import { Route as DeleteAccountRouteImport } from './routes/delete-account'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DeleteAccountRouteImport } from './routes/delete-account'
+import { Route as JoinAreaPartnerRouteImport } from './routes/join-area-partner'
+import { Route as JoinExpertRouteImport } from './routes/join-expert'
+import { Route as JoinMerchantRouteImport } from './routes/join-merchant'
+import { Route as MyadminRouteImport } from './routes/myadmin'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as RefundCancellationPolicyRouteImport } from './routes/refund-cancellation-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as ShippingDeliveryPolicyRouteImport } from './routes/shipping-delivery-policy'
+import { Route as ShippingPolicyRouteImport } from './routes/shipping-policy'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
-import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
+import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
 
-const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
-  id: '/terms-and-conditions',
-  path: '/terms-and-conditions',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SupportRoute = SupportRouteImport.update({
-  id: '/support',
-  path: '/support',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
-  id: '/shipping-policy',
-  path: '/shipping-policy',
+const DeleteAccountRoute = DeleteAccountRouteImport.update({
+  id: '/delete-account',
+  path: '/delete-account',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShippingDeliveryPolicyRoute = ShippingDeliveryPolicyRouteImport.update({
-  id: '/shipping-delivery-policy',
-  path: '/shipping-delivery-policy',
+const JoinAreaPartnerRoute = JoinAreaPartnerRouteImport.update({
+  id: '/join-area-partner',
+  path: '/join-area-partner',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RefundPolicyRoute = RefundPolicyRouteImport.update({
-  id: '/refund-policy',
-  path: '/refund-policy',
+const JoinExpertRoute = JoinExpertRouteImport.update({
+  id: '/join-expert',
+  path: '/join-expert',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinMerchantRoute = JoinMerchantRouteImport.update({
+  id: '/join-merchant',
+  path: '/join-merchant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyadminRoute = MyadminRouteImport.update({
+  id: '/myadmin',
+  path: '/myadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RefundCancellationPolicyRoute =
@@ -67,75 +81,61 @@ const RefundCancellationPolicyRoute =
     path: '/refund-cancellation-policy',
     getParentRoute: () => rootRouteImport,
   } as any)
-const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
-  id: '/privacy-policy',
-  path: '/privacy-policy',
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MyadminRoute = MyadminRouteImport.update({
-  id: '/myadmin',
-  path: '/myadmin',
+const ShippingDeliveryPolicyRoute = ShippingDeliveryPolicyRouteImport.update({
+  id: '/shipping-delivery-policy',
+  path: '/shipping-delivery-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinMerchantRoute = JoinMerchantRouteImport.update({
-  id: '/join-merchant',
-  path: '/join-merchant',
+const ShippingPolicyRoute = ShippingPolicyRouteImport.update({
+  id: '/shipping-policy',
+  path: '/shipping-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinExpertRoute = JoinExpertRouteImport.update({
-  id: '/join-expert',
-  path: '/join-expert',
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinAreaPartnerRoute = JoinAreaPartnerRouteImport.update({
-  id: '/join-area-partner',
-  path: '/join-area-partner',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DeleteAccountRoute = DeleteAccountRouteImport.update({
-  id: '/delete-account',
-  path: '/delete-account',
+const TermsAndConditionsRoute = TermsAndConditionsRouteImport.update({
+  id: '/terms-and-conditions',
+  path: '/terms-and-conditions',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyadminLoginRoute = MyadminLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => MyadminRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const MyadminLoginRoute = MyadminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => MyadminRoute,
+} as any)
 const ApiPublicServiceImageRoute = ApiPublicServiceImageRouteImport.update({
   id: '/api/public/service-image',
   path: '/api/public/service-image',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksExpireStaleBookingsRoute =
-  ApiPublicHooksExpireStaleBookingsRouteImport.update({
-    id: '/api/public/hooks/expire-stale-bookings',
-    path: '/api/public/hooks/expire-stale-bookings',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksDispatchAlertsRoute =
   ApiPublicHooksDispatchAlertsRouteImport.update({
     id: '/api/public/hooks/dispatch-alerts',
     path: '/api/public/hooks/dispatch-alerts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksExpireStaleBookingsRoute =
+  ApiPublicHooksExpireStaleBookingsRouteImport.update({
+    id: '/api/public/hooks/expire-stale-bookings',
+    path: '/api/public/hooks/expire-stale-bookings',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -301,102 +301,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms-and-conditions': {
-      id: '/terms-and-conditions'
-      path: '/terms-and-conditions'
-      fullPath: '/terms-and-conditions'
-      preLoaderRoute: typeof TermsAndConditionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shipping-policy': {
-      id: '/shipping-policy'
-      path: '/shipping-policy'
-      fullPath: '/shipping-policy'
-      preLoaderRoute: typeof ShippingPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shipping-delivery-policy': {
-      id: '/shipping-delivery-policy'
-      path: '/shipping-delivery-policy'
-      fullPath: '/shipping-delivery-policy'
-      preLoaderRoute: typeof ShippingDeliveryPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-policy': {
-      id: '/refund-policy'
-      path: '/refund-policy'
-      fullPath: '/refund-policy'
-      preLoaderRoute: typeof RefundPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-cancellation-policy': {
-      id: '/refund-cancellation-policy'
-      path: '/refund-cancellation-policy'
-      fullPath: '/refund-cancellation-policy'
-      preLoaderRoute: typeof RefundCancellationPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy-policy': {
-      id: '/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/privacy-policy'
-      preLoaderRoute: typeof PrivacyPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/myadmin': {
-      id: '/myadmin'
-      path: '/myadmin'
-      fullPath: '/myadmin'
-      preLoaderRoute: typeof MyadminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join-merchant': {
-      id: '/join-merchant'
-      path: '/join-merchant'
-      fullPath: '/join-merchant'
-      preLoaderRoute: typeof JoinMerchantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join-expert': {
-      id: '/join-expert'
-      path: '/join-expert'
-      fullPath: '/join-expert'
-      preLoaderRoute: typeof JoinExpertRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join-area-partner': {
-      id: '/join-area-partner'
-      path: '/join-area-partner'
-      fullPath: '/join-area-partner'
-      preLoaderRoute: typeof JoinAreaPartnerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/delete-account': {
-      id: '/delete-account'
-      path: '/delete-account'
-      fullPath: '/delete-account'
-      preLoaderRoute: typeof DeleteAccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -406,19 +315,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/myadmin/login': {
-      id: '/myadmin/login'
-      path: '/login'
-      fullPath: '/myadmin/login'
-      preLoaderRoute: typeof MyadminLoginRouteImport
-      parentRoute: typeof MyadminRoute
+    '/delete-account': {
+      id: '/delete-account'
+      path: '/delete-account'
+      fullPath: '/delete-account'
+      preLoaderRoute: typeof DeleteAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-area-partner': {
+      id: '/join-area-partner'
+      path: '/join-area-partner'
+      fullPath: '/join-area-partner'
+      preLoaderRoute: typeof JoinAreaPartnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-expert': {
+      id: '/join-expert'
+      path: '/join-expert'
+      fullPath: '/join-expert'
+      preLoaderRoute: typeof JoinExpertRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join-merchant': {
+      id: '/join-merchant'
+      path: '/join-merchant'
+      fullPath: '/join-merchant'
+      preLoaderRoute: typeof JoinMerchantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/myadmin': {
+      id: '/myadmin'
+      path: '/myadmin'
+      fullPath: '/myadmin'
+      preLoaderRoute: typeof MyadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-cancellation-policy': {
+      id: '/refund-cancellation-policy'
+      path: '/refund-cancellation-policy'
+      fullPath: '/refund-cancellation-policy'
+      preLoaderRoute: typeof RefundCancellationPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-delivery-policy': {
+      id: '/shipping-delivery-policy'
+      path: '/shipping-delivery-policy'
+      fullPath: '/shipping-delivery-policy'
+      preLoaderRoute: typeof ShippingDeliveryPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping-policy': {
+      id: '/shipping-policy'
+      path: '/shipping-policy'
+      fullPath: '/shipping-policy'
+      preLoaderRoute: typeof ShippingPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms-and-conditions': {
+      id: '/terms-and-conditions'
+      path: '/terms-and-conditions'
+      fullPath: '/terms-and-conditions'
+      preLoaderRoute: typeof TermsAndConditionsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -427,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/myadmin/login': {
+      id: '/myadmin/login'
+      path: '/login'
+      fullPath: '/myadmin/login'
+      preLoaderRoute: typeof MyadminLoginRouteImport
+      parentRoute: typeof MyadminRoute
+    }
     '/api/public/service-image': {
       id: '/api/public/service-image'
       path: '/api/public/service-image'
@@ -434,18 +434,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicServiceImageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/expire-stale-bookings': {
-      id: '/api/public/hooks/expire-stale-bookings'
-      path: '/api/public/hooks/expire-stale-bookings'
-      fullPath: '/api/public/hooks/expire-stale-bookings'
-      preLoaderRoute: typeof ApiPublicHooksExpireStaleBookingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/dispatch-alerts': {
       id: '/api/public/hooks/dispatch-alerts'
       path: '/api/public/hooks/dispatch-alerts'
       fullPath: '/api/public/hooks/dispatch-alerts'
       preLoaderRoute: typeof ApiPublicHooksDispatchAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/expire-stale-bookings': {
+      id: '/api/public/hooks/expire-stale-bookings'
+      path: '/api/public/hooks/expire-stale-bookings'
+      fullPath: '/api/public/hooks/expire-stale-bookings'
+      preLoaderRoute: typeof ApiPublicHooksExpireStaleBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
