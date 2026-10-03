@@ -29,6 +29,9 @@ export type ExpertRow = {
   joiningDate: string | null;
   training: TrainingProgress;
   trainingDone: number;
+  mode: "TRAINING" | "LIVE";
+  trainingOrdersCompleted: number;
+  trainingCompletedAt: string | null;
 };
 
 export type TrainingDayEntry = { done: boolean; date: string | null; notes: string | null };
@@ -56,6 +59,9 @@ function mapOnboarding(r: any) {
     joiningDate: (r?.joining_date as string | null) ?? (r?.created_at ? String(r.created_at).slice(0, 10) : null),
     training,
     trainingDone: TRAINING_DAYS.filter((d) => training[d.key].done).length,
+    mode: (String(r?.mode ?? "LIVE").toUpperCase() === "TRAINING" ? "TRAINING" : "LIVE") as "TRAINING" | "LIVE",
+    trainingOrdersCompleted: Number(r?.training_orders_completed ?? 0) || 0,
+    trainingCompletedAt: (r?.training_completed_at as string | null) ?? null,
   };
 }
 
@@ -92,7 +98,7 @@ export const listExpertRatingMap = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<Record<string, { avg: number; count: number }>> => {
     const { data, error } = await context.supabase
       .from("bookings")
-      .select("assigned_expert_id, rating")
+      .select("assigned_expert_id, rating").eq("is_training", false)
       .not("rating", "is", null)
       .not("assigned_expert_id", "is", null)
       .limit(10000);
@@ -142,7 +148,7 @@ async function loadRatings(
   if (!expertIds.length) return out;
   const { data } = await supabase
     .from("bookings")
-    .select("assigned_expert_id, rating")
+    .select("assigned_expert_id, rating").eq("is_training", false)
     .in("assigned_expert_id", expertIds)
     .not("rating", "is", null);
   for (const r of (data ?? []) as { assigned_expert_id: string; rating: number }[]) {
@@ -212,7 +218,7 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress",
+        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at",
       );
     if (data.onlineOnly) {
       q = q.eq("is_online", true).order("is_busy", { ascending: true });
@@ -337,7 +343,7 @@ export const getExpert = createServerFn({ method: "POST" })
     }
     const { data: rv } = await context.supabase
       .from("bookings")
-      .select("id, rating, review_text, service_label, created_at")
+      .select("id, rating, review_text, service_label, created_at").eq("is_training", false)
       .eq("assigned_expert_id", data.id)
       .not("rating", "is", null)
       .order("created_at", { ascending: false });

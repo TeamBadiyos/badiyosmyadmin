@@ -168,7 +168,7 @@ export const listCustomers = createServerFn({ method: "GET" })
 
     const [bookingsRes, addressRes] = await Promise.all([
       ids.length
-        ? db.from("bookings").select("user_id, price, status").in("user_id", ids)
+        ? db.from("bookings").select("user_id, price, status").eq("is_training", false).in("user_id", ids)
         : Promise.resolve({ data: [], error: null }),
       ids.length
         ? db
@@ -249,7 +249,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .from("bookings")
         .select(
           "id, created_at, scheduled_date, scheduled_time_slot, service_label, price, status, rating, razorpay_payment_id, assigned_expert_id",
-        )
+        ).eq("is_training", false)
         .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(200),

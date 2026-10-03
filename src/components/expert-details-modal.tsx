@@ -11,6 +11,7 @@ import {
   type KycStatus,
   TRAINING_DAYS,
 } from "@/lib/experts.functions";
+import { ExpertTrainingModeCard } from "@/components/expert-training-mode-card";
 import {
   listExpertSkills,
   listActiveServiceCategories,
@@ -196,6 +197,14 @@ export function ExpertDetailsModal({
           )}
           {data && (
             <>
+              <ExpertTrainingModeCard
+                expertId={data.id}
+                name={data.name}
+                mode={data.mode}
+                ordersCompleted={data.trainingOrdersCompleted}
+                completedAt={data.trainingCompletedAt}
+                canChange={role === "super_admin"}
+              />
               <section>
                 <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
                   Joining, jacket & training

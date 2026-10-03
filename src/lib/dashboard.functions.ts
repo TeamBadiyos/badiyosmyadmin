@@ -101,7 +101,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
@@ -113,7 +113,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
               .from("bookings")
               .select(
                 "price, total_amount, discount_amount, gst_amount, refund_amount, refund_status, status, razorpay_payment_id",
-              )
+              ).eq("is_training", false)
               .is("deleted_at", null)
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay)
@@ -124,7 +124,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .is("deleted_at", null)
               .in("status", ["on_the_way", "arrived", "in_progress"]),
           ),
@@ -133,7 +133,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .is("deleted_at", null)
               .eq("status", "completed")
               .gte("created_at", startOfDay)
@@ -144,7 +144,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeBookings(
             db
               .from("bookings")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .is("deleted_at", null)
               .in("status", ["confirmed", "accepted"]),
           ),
