@@ -237,6 +237,16 @@ export function PipelineKanban({
       const bucket = map.get(b.status);
       if (bucket) bucket.push(b);
     }
+    // Scheduled Orders: soonest slot on top, far-future dates at the bottom.
+    const sched = map.get("confirmed");
+    if (sched) {
+      sched.sort((a, b) => {
+        const sa = slotStartMs(a) ?? Number.MAX_SAFE_INTEGER;
+        const sb = slotStartMs(b) ?? Number.MAX_SAFE_INTEGER;
+        if (sa !== sb) return sa - sb;
+        return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+      });
+    }
     return map;
   }, [data]);
 
