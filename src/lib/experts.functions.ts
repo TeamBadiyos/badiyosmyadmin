@@ -29,6 +29,9 @@ export type ExpertRow = {
   joiningDate: string | null;
   training: TrainingProgress;
   trainingDone: number;
+  mode: "TRAINING" | "LIVE";
+  trainingOrdersCompleted: number;
+  trainingCompletedAt: string | null;
 };
 
 export type TrainingDayEntry = { done: boolean; date: string | null; notes: string | null };
@@ -56,6 +59,9 @@ function mapOnboarding(r: any) {
     joiningDate: (r?.joining_date as string | null) ?? (r?.created_at ? String(r.created_at).slice(0, 10) : null),
     training,
     trainingDone: TRAINING_DAYS.filter((d) => training[d.key].done).length,
+    mode: (String(r?.mode ?? "LIVE").toUpperCase() === "TRAINING" ? "TRAINING" : "LIVE") as "TRAINING" | "LIVE",
+    trainingOrdersCompleted: Number(r?.training_orders_completed ?? 0) || 0,
+    trainingCompletedAt: (r?.training_completed_at as string | null) ?? null,
   };
 }
 
@@ -212,7 +218,7 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress",
+        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at",
       );
     if (data.onlineOnly) {
       q = q.eq("is_online", true).order("is_busy", { ascending: true });
