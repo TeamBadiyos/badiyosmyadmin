@@ -42,7 +42,7 @@ export const listPendingBookings = createServerFn({ method: "GET" })
       .from("bookings")
       .select(
         "id, user_id, address_id, service_label, scheduled_date, scheduled_time_slot, created_at",
-      )
+      ).eq("is_training", false)
       .eq("status", "confirmed")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -394,7 +394,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at";
     let openQ = db
       .from("bookings")
-      .select(cols)
+      .select(cols).eq("is_training", false)
       .in("status", [
         "confirmed",
         "accepted",
@@ -408,7 +408,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       .limit(200);
     let completedQ = db
       .from("bookings")
-      .select(cols)
+      .select(cols).eq("is_training", false)
       .eq("status", "completed")
       .is("deleted_at", null)
       .gte("created_at", startOfDay)

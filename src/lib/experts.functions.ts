@@ -92,7 +92,7 @@ export const listExpertRatingMap = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<Record<string, { avg: number; count: number }>> => {
     const { data, error } = await context.supabase
       .from("bookings")
-      .select("assigned_expert_id, rating")
+      .select("assigned_expert_id, rating").eq("is_training", false)
       .not("rating", "is", null)
       .not("assigned_expert_id", "is", null)
       .limit(10000);
@@ -142,7 +142,7 @@ async function loadRatings(
   if (!expertIds.length) return out;
   const { data } = await supabase
     .from("bookings")
-    .select("assigned_expert_id, rating")
+    .select("assigned_expert_id, rating").eq("is_training", false)
     .in("assigned_expert_id", expertIds)
     .not("rating", "is", null);
   for (const r of (data ?? []) as { assigned_expert_id: string; rating: number }[]) {
@@ -337,7 +337,7 @@ export const getExpert = createServerFn({ method: "POST" })
     }
     const { data: rv } = await context.supabase
       .from("bookings")
-      .select("id, rating, review_text, service_label, created_at")
+      .select("id, rating, review_text, service_label, created_at").eq("is_training", false)
       .eq("assigned_expert_id", data.id)
       .not("rating", "is", null)
       .order("created_at", { ascending: false });

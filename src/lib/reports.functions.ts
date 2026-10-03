@@ -84,7 +84,7 @@ export const getRevenueReport = createServerFn({ method: "POST" })
 
     let q = context.supabase
       .from("bookings")
-      .select("price, created_at, razorpay_payment_id, zone_id, service_category_id")
+      .select("price, created_at, razorpay_payment_id, zone_id, service_category_id").eq("is_training", false)
       .is("deleted_at", null)
       .not("razorpay_payment_id", "is", null)
       .gte("created_at", rangeFrom(data.from))
@@ -180,7 +180,7 @@ export const getBookingsReport = createServerFn({ method: "POST" })
 
     let q = context.supabase
       .from("bookings")
-      .select("id, status, zone_id, cancellation_reason, created_at")
+      .select("id, status, zone_id, cancellation_reason, created_at").eq("is_training", false)
       .is("deleted_at", null)
       .gte("created_at", rangeFrom(data.from))
       .lte("created_at", rangeTo(data.to));
@@ -252,7 +252,7 @@ export const getExpertPerformance = createServerFn({ method: "POST" })
 
     let q = context.supabase
       .from("bookings")
-      .select("assigned_expert_id, zone_id, updated_at, status")
+      .select("assigned_expert_id, zone_id, updated_at, status").eq("is_training", false)
       .is("deleted_at", null)
       .eq("status", "completed")
       .not("assigned_expert_id", "is", null)
@@ -376,7 +376,7 @@ export const getPartnerPerformance = createServerFn({ method: "POST" })
 
     const { data: bks } = await context.supabase
       .from("bookings")
-      .select("zone_id, service_duration_minutes, status, updated_at")
+      .select("zone_id, service_duration_minutes, status, updated_at").eq("is_training", false)
       .is("deleted_at", null)
       .eq("status", "completed")
       .in("zone_id", zoneIds)
@@ -550,7 +550,7 @@ export const getCustomerReport = createServerFn({ method: "POST" })
 
     let bq = context.supabase
       .from("bookings")
-      .select("user_id, zone_id, status, created_at")
+      .select("user_id, zone_id, status, created_at").eq("is_training", false)
       .is("deleted_at", null)
       .not("user_id", "is", null)
       .gte("created_at", rangeFrom(data.from))
@@ -570,7 +570,7 @@ export const getCustomerReport = createServerFn({ method: "POST" })
     // for repeat calc: count completed bookings all-time (scoped by zone if applicable) per user
     let cq = context.supabase
       .from("bookings")
-      .select("user_id, zone_id, status")
+      .select("user_id, zone_id, status").eq("is_training", false)
       .is("deleted_at", null)
       .eq("status", "completed")
       .in("user_id", customersInRange.length ? customersInRange : ["00000000-0000-0000-0000-000000000000"]);

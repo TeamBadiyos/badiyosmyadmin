@@ -109,7 +109,7 @@ export const listBookings = createServerFn({ method: "POST" })
           "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes, rating, review_text",
         ),
         { count: "exact" },
-      )
+      ).eq("is_training", false)
       .order("created_at", { ascending: false })
       .range(fromIdx, toIdx);
 

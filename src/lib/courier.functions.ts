@@ -100,7 +100,7 @@ export const listServiceFlags = createServerFn({ method: "GET" })
 
     const { count: openBookings, error: bErr } = await db
       .from("bookings")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "exact", head: true }).eq("is_training", false)
       .in("status", OPEN_BOOKING_STATUSES)
       .is("deleted_at", null);
     if (bErr) throw new Error(bErr.message);

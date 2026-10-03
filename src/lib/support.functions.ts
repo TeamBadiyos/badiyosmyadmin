@@ -282,7 +282,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
           .limit(1),
         db
           .from("bookings")
-          .select("id, created_at, service_label, price, status")
+          .select("id, created_at, service_label, price, status").eq("is_training", false)
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(25),
@@ -342,7 +342,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
       };
       const { data: jobs } = await db
         .from("bookings")
-        .select("id, created_at, service_label, price, status")
+        .select("id, created_at, service_label, price, status").eq("is_training", false)
         .eq("assigned_expert_id", e.id)
         .order("created_at", { ascending: false })
         .limit(25);
