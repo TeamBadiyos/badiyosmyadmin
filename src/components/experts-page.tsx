@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, UserRound } from "lucide-react";
 import { listExperts, type ExpertLevel, type KycStatus, type ExpertRow } from "@/lib/experts.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
+import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
 import {
@@ -52,6 +53,7 @@ export function ExpertsPage({
   const [availability, setAvailability] = useState<string>(
     initialOnlineOnly ? "online_free" : "",
   );
+  const [mode, setMode] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
@@ -85,8 +87,9 @@ export function ExpertsPage({
     staleTime: 15_000,
   });
 
-  const expertsFiltered =
-    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw;
+  const expertsFiltered = (
+    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw
+  ).filter((e) => !mode || e.mode === mode);
 
   const sf = useSortFilter(expertsFiltered, [
     { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
@@ -148,6 +151,11 @@ export function ExpertsPage({
           <option value="">All experts</option>
           <option value="online">Online only</option>
           <option value="online_free">Online & free</option>
+        </Filter>
+        <Filter label="Mode" value={mode} onChange={setMode}>
+          <option value="">All</option>
+          <option value="TRAINING">Training</option>
+          <option value="LIVE">Live</option>
         </Filter>
       </div>
 
@@ -241,6 +249,7 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       <span className="min-w-0 flex flex-col gap-1">
         <span className="min-w-0 flex items-center gap-2">
           <span className="font-semibold text-foreground truncate">{expert.name}</span>
+          <ExpertModeBadge mode={expert.mode} />
           {expert.avgRating != null ? (
             <span
               className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[11px] font-bold"
