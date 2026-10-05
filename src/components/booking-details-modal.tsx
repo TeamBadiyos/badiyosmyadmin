@@ -25,6 +25,7 @@ import {
   reassignExpert,
   editBooking,
   softDeleteBooking,
+  setBookingStaffNote,
   listServiceDurations,
   listBookingCustomerAddresses,
   verifyStartOtp,
@@ -570,6 +571,7 @@ export function BookingDetailsModal({
                     value={data.slotType ?? "—"}
                   />
                 </Card>
+                <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
                 <Card title="Customer rating">
                   {data.rating != null ? (
                     <>
@@ -1210,6 +1212,82 @@ export function BookingDetailsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function StaffNoteCard({ bookingId, initial }: { bookingId: string; initial: string | null }) {
+  const qc = useQueryClient();
+  const save = useServerFn(setBookingStaffNote);
+  const [text, setText] = useState(initial ?? "");
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(initial ?? "");
+  }, [initial, editing]);
+  const m = useMutation({
+    mutationFn: (note: string) => save({ data: { bookingId, note } }),
+    onSuccess: (_d, note) => {
+      toast.success(note.trim() ? "Note saved" : "Note removed");
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["pipeline", "board"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Could not save note"),
+  });
+  return (
+    <Card title="Staff note (internal only)">
+      {editing || !initial ? (
+        <div className="space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setEditing(true);
+            }}
+            maxLength={500}
+            rows={3}
+            placeholder="E.g. Customer called — gate bell kharab hai, aane se pehle call karein"
+            className="w-full rounded-[10px] border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-muted-foreground">{text.length}/500 · Customer/expert ko nahi dikhega</span>
+            <div className="flex gap-2">
+              {initial && (
+                <button type="button" onClick={() => { setEditing(false); setText(initial); }} className="rounded-[8px] border border-border px-3 py-1.5 text-[12px] font-semibold">
+                  Cancel
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={m.isPending || !text.trim() || text.trim() === (initial ?? "")}
+                onClick={() => m.mutate(text)}
+                className="rounded-[8px] bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {m.isPending ? "Saving…" : "Save note"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="whitespace-pre-wrap rounded-[10px] border border-warning/50 bg-warning/15 px-3 py-2 text-[13px] text-foreground">
+            {initial}
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-1 rounded-[8px] border border-border px-3 py-1.5 text-[12px] font-semibold">
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </button>
+            <button
+              type="button"
+              disabled={m.isPending}
+              onClick={() => { if (confirm("Remove this note?")) m.mutate(""); }}
+              className="inline-flex items-center gap-1 rounded-[8px] border border-destructive/50 px-3 py-1.5 text-[12px] font-semibold text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Remove
+            </button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
