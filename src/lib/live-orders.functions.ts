@@ -411,7 +411,10 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       .select(cols).eq("is_training", false)
       .eq("status", "completed")
       .is("deleted_at", null)
-      .gte("created_at", startOfDay)
+      // "Completed Today" = finished today (regardless of booking date).
+      .or(
+        `service_end_at.gte.${startOfDay},updated_at.gte.${startOfDay}`,
+      )
       .order("created_at", { ascending: false })
       .limit(200);
     if (categoryIds) {
