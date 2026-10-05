@@ -799,6 +799,15 @@ function BoardCard({
         )}
       </div>
 
+      {booking.staffNote && (
+        <p
+          title={booking.staffNote}
+          className="mt-2 line-clamp-2 rounded-[8px] border border-warning/50 bg-warning/15 px-2 py-1 text-[11px] font-medium text-foreground"
+        >
+          📝 {booking.staffNote}
+        </p>
+      )}
+
       {(booking.onTheWayAt || booking.arrivedAt) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {booking.onTheWayAt && (
