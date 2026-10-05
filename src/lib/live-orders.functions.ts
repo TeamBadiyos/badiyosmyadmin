@@ -301,6 +301,7 @@ export type PipelineBooking = {
   assignedExpertId: string | null;
   expertAssignedAt: string | null;
   onTheWayAt: string | null;
+  staffNote: string | null;
   arrivedAt: string | null;
   onwayAlertSent: boolean;
   noExpertAlertSent: boolean;
@@ -391,7 +392,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at, staff_note";
     let openQ = db
       .from("bookings")
       .select(cols).eq("is_training", false)
@@ -524,6 +525,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       onTheWayAt:
         ((r as Record<string, unknown>)["on_the_way_at"] as string | null) ?? null,
       arrivedAt: ((r as Record<string, unknown>)["arrived_at"] as string | null) ?? null,
+      staffNote: ((r as Record<string, unknown>)["staff_note"] as string | null) ?? null,
       onwayAlertSent: Boolean((r as Record<string, unknown>)["onway_alert_sent"]),
       noExpertAlertSent: Boolean((r as Record<string, unknown>)["no_expert_alert_sent"]),
       createdAt: r.created_at as string,

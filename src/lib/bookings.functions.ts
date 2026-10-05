@@ -307,6 +307,7 @@ export type BookingDetails = {
   createdAt: string;
   updatedAt: string | null;
   rating: number | null;
+  staffNote: string | null;
   reviewText: string | null;
   customer: { id: string | null; name: string | null; phone: string | null };
   address: {
@@ -337,7 +338,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
+      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -423,6 +424,7 @@ async function loadBookingDetails(
     updatedAt: b.updated_at ?? null,
     rating: b.rating ?? null,
     reviewText: b.review_text ?? null,
+    staffNote: (b as { staff_note?: string | null }).staff_note ?? null,
     customer: {
       id: userRes.data?.id ?? null,
       name: userRes.data?.full_name ?? null,
@@ -937,6 +939,23 @@ export const setBookingLocation = createServerFn({ method: "POST" })
       _pincode: data.pincode ?? null,
       _lat: data.lat,
       _lng: data.lng,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const setBookingStaffNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; note: string | null }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    const note = (input.note ?? "").trim();
+    if (note.length > 500) throw new Error("Note must be 500 characters or less");
+    return { bookingId: input.bookingId, note };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_set_booking_note", {
+      _booking_id: data.bookingId,
+      _note: data.note,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
