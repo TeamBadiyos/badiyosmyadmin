@@ -50,7 +50,8 @@ export function ReferralsPage() {
         </select>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+<div className="min-w-[820px]">
         <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_150px_130px_130px_100px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Referrer</span>
           <span>Referred</span>
@@ -106,6 +107,7 @@ export function ReferralsPage() {
             </div>
           </div>
         ))}
+</div>
       </div>
 
 

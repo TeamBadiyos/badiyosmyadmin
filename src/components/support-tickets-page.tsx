@@ -148,9 +148,9 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_300px] gap-4 h-[calc(100vh-190px)] min-h-[560px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_300px] gap-4 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
         {/* LEFT — ticket list */}
-        <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden max-h-[420px] lg:max-h-none">
           <div className="p-3 space-y-2 border-b border-border">
             <div className="relative">
               <Search

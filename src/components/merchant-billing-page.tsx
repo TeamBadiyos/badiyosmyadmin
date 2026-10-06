@@ -151,7 +151,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       ) : tab === "merchants" ? (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
           <div className="px-4 pt-3"><SortFilterReset api={merchantSf} /></div>
-          <table className="w-full text-[13px]">
+          <table className="w-full min-w-[820px] text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["store", "city", "pct", "orders", "gross", "comm", "net"].map((k) => (
@@ -164,7 +164,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
               {merchantSf.rows.map((m) => (
                 <tr key={m.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5">
-                    <p className="font-semibold">{m.storeName || "Unnamed store"}</p>
+                    <p className="font-semibold min-w-[180px]">{m.storeName || "Unnamed store"}</p>
                     <p className="text-[11px] text-muted-foreground">{m.ownerName || "—"} · {m.phone}</p>
                   </td>
                   <td className="px-4 py-2.5">{m.city || "—"}</td>
@@ -193,7 +193,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       ) : (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
           <div className="px-4 pt-3"><SortFilterReset api={dedSf} /></div>
-          <table className="w-full text-[13px]">
+          <table className="w-full min-w-[820px] text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["date", "order", "merchant", "items", "pct", "comm", "gst", "net"].map((k) => (
