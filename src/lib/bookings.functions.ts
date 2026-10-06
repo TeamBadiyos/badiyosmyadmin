@@ -888,6 +888,26 @@ export const editBooking = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const rescheduleBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; date: string; slot: string; reason?: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? "")) throw new Error("Pick a date");
+    if (!input.slot?.trim()) throw new Error("Pick a time slot");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_reschedule_booking", {
+      _booking_id: data.bookingId,
+      _date: data.date,
+      _slot: data.slot.trim(),
+      _reason: data.reason?.trim() || null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const softDeleteBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { bookingId: string; reason: string }) => {
