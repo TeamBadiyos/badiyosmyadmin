@@ -602,7 +602,7 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
         {sf.rows.map((b) => (
           <div
             key={b.id}
-            className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
+            className="grid grid-cols-[minmax(0,1fr)_140px_120px_120px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
           >
             <div className="min-w-0">
               <p className="font-semibold text-foreground">
@@ -624,13 +624,26 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
                 {b.status}
               </span>
             </span>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-1">
               <button
                 onClick={() => setOpenBatch(b)}
                 className="h-9 px-3 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted"
               >
                 Open
               </button>
+              {b.status === "pending" && (
+                <button
+                  disabled={del.isPending}
+                  title="Delete batch"
+                  onClick={() => {
+                    const reason = window.prompt("Delete this batch? Enter a reason (needed). Nothing paid is affected.");
+                    if (reason && reason.trim()) del.mutate({ id: b.id, reason: reason.trim() });
+                  }}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border text-destructive hover:bg-muted"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
         ))}
