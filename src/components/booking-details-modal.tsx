@@ -28,8 +28,7 @@ import {
   setBookingStaffNote,
   listServiceDurations,
   listBookingCustomerAddresses,
-  verifyStartOtp,
-  verifyEndOtp,
+  rescheduleBooking,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
@@ -300,41 +299,25 @@ export function BookingDetailsModal({
   }, [editOpen, durationsQuery.data, editDuration, editPrice]);
 
 
-  // Interim OTP verification (staff-relayed until Expert App ships)
-  const verifyStartFn = useServerFn(verifyStartOtp);
-  const verifyEndFn = useServerFn(verifyEndOtp);
-  const [startOtpInput, setStartOtpInput] = useState("");
-  const [endOtpInput, setEndOtpInput] = useState("");
-
-  const showStartOtp =
+  // Reschedule: moves order back to Scheduled Orders with a new date/slot.
+  const rescheduleFn = useServerFn(rescheduleBooking);
+  const canReschedule =
     !!data &&
-    ["expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
-    canEdit;
-  const showEndOtp =
-    !!data && data.status === "in_progress" && canEdit;
-
-  const invalidateAfterOtp = () => {
-    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
-    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
-    queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-  };
-
-  const startOtpMutation = useMutation({
-    mutationFn: (otp: string) => verifyStartFn({ data: { bookingId, otp } }),
+    canEditFields &&
+    (role === "super_admin" || role === "ops_manager") &&
+    ["confirmed", "accepted", "expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
+    !data.startedAt;
+  const rescheduleMutation = useMutation({
+    mutationFn: (v: { date: string; slot: string; reason: string }) =>
+      rescheduleFn({ data: { bookingId, ...v } }),
     onSuccess: () => {
-      toast.success("Service started");
-      setStartOtpInput("");
-      invalidateAfterOtp();
+      toast.success("Booking rescheduled", { description: "Moved to Scheduled Orders." });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
     },
-  });
-  const endOtpMutation = useMutation({
-    mutationFn: (otp: string) => verifyEndFn({ data: { bookingId, otp } }),
-    onSuccess: () => {
-      toast.success("Service marked completed");
-      setEndOtpInput("");
-      invalidateAfterOtp();
-    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Reschedule failed"),
   });
 
 
@@ -714,53 +697,14 @@ export function BookingDetailsModal({
                 />
               )}
 
-              {/* Interim: staff-relayed OTP verification */}
-              {(showStartOtp || showEndOtp) && (
-                <section className="bg-amber-50 border border-amber-200 rounded-[18px] p-4">
-                  <div className="flex items-start gap-2 mb-3">
-                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-amber-900">
-                        {showStartOtp ? "Verify Start OTP" : "Verify End OTP"}
-                      </h3>
-                      <p className="text-[12px] text-amber-800 mt-0.5">
-                        Temporary: verify OTP relayed by Expert via phone. Will be replaced once the Expert App is live.
-                      </p>
-                    </div>
-                  </div>
-                  {showStartOtp && (
-                    <OtpVerifyRow
-                      label="Start OTP"
-                      value={startOtpInput}
-                      onChange={setStartOtpInput}
-                      pending={startOtpMutation.isPending}
-                      onConfirm={() =>
-                        startOtpInput.trim() && startOtpMutation.mutate(startOtpInput.trim())
-                      }
-                      error={
-                        startOtpMutation.isError
-                          ? (startOtpMutation.error as Error)?.message ?? "Verification failed"
-                          : null
-                      }
-                    />
-                  )}
-                  {showEndOtp && (
-                    <OtpVerifyRow
-                      label="End OTP"
-                      value={endOtpInput}
-                      onChange={setEndOtpInput}
-                      pending={endOtpMutation.isPending}
-                      onConfirm={() =>
-                        endOtpInput.trim() && endOtpMutation.mutate(endOtpInput.trim())
-                      }
-                      error={
-                        endOtpMutation.isError
-                          ? (endOtpMutation.error as Error)?.message ?? "Verification failed"
-                          : null
-                      }
-                    />
-                  )}
-                </section>
+              {canReschedule && (
+                <RescheduleSection
+                  currentDate={data.scheduledDate}
+                  currentSlot={data.scheduledTimeSlot}
+                  hasExpert={!!data.expert.id}
+                  pending={rescheduleMutation.isPending}
+                  onSubmit={(v) => rescheduleMutation.mutate(v)}
+                />
               )}
 
               {/* Update status */}
@@ -1480,50 +1424,182 @@ function ExpertAssignSection({
 }
 
 
-function OtpVerifyRow({
-  label,
-  value,
-  onChange,
-  onConfirm,
+const RESCHEDULE_SLOTS = Array.from({ length: 14 }, (_, i) => {
+  const h = 7 + i; // 7 AM … 8 PM
+  const fmt = (x: number) => `${x % 12 === 0 ? 12 : x % 12} ${x < 12 ? "AM" : "PM"}`;
+  return `${fmt(h)} (${fmt(h)} – ${fmt(h + 1)})`;
+});
+
+function ymdLocal(d: Date) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function slotStartHour(slot: string): number | null {
+  const m = slot.match(/^(\d{1,2})\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (m[2].toUpperCase() === "PM") h += 12;
+  return h;
+}
+
+function RescheduleSection({
+  currentDate,
+  currentSlot,
+  hasExpert,
   pending,
-  error,
+  onSubmit,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onConfirm: () => void;
+  currentDate: string | null;
+  currentSlot: string | null;
+  hasExpert: boolean;
   pending: boolean;
-  error: string | null;
+  onSubmit: (v: { date: string; slot: string; reason: string }) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const [slot, setSlot] = useState("");
+  const [reason, setReason] = useState("");
+
+  const today = new Date();
+  const quick = [0, 1, 2].map((n) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + n);
+    return {
+      value: ymdLocal(d),
+      label: n === 0 ? "Today" : n === 1 ? "Tomorrow" : d.toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" }),
+    };
+  });
+  const isToday = date === ymdLocal(today);
+  const nowHour = today.getHours();
+
+  const close = () => {
+    setOpen(false);
+    setDate("");
+    setSlot("");
+    setReason("");
+  };
+
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-[12px] font-semibold text-amber-900 w-20 shrink-0">
-          {label}
-        </label>
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && value.trim() && !pending) onConfirm();
-          }}
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="Enter code"
-          className="h-11 px-3 rounded-[14px] border border-amber-300 bg-white text-[14px] font-mono tracking-widest w-40"
-        />
-        <button
-          disabled={!value.trim() || pending}
-          onClick={onConfirm}
-          className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
-        >
-          <Check size={16} />
-          {pending ? "Verifying…" : "Confirm"}
-        </button>
+    <section className="bg-background border border-border rounded-[18px] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+            Reschedule
+          </h3>
+          <p className="text-[12px] text-muted-foreground mt-1">
+            Now: {currentDate ?? "ASAP"}
+            {currentSlot ? ` · ${currentSlot}` : ""}. Order moves to Scheduled Orders.
+          </p>
+        </div>
+        {!open && (
+          <button
+            onClick={() => setOpen(true)}
+            className="h-11 px-4 rounded-[14px] border border-border text-foreground font-bold text-[14px] inline-flex items-center gap-2 hover:bg-muted"
+          >
+            <RefreshCw size={16} />
+            Reschedule
+          </button>
+        )}
       </div>
-      {error && (
-        <p className="text-[12px] text-destructive pl-[92px]">{error}</p>
+
+      {open && (
+        <div className="mt-3 rounded-[14px] border border-border bg-card p-4 space-y-4">
+          <div>
+            <p className="text-[12px] font-semibold text-muted-foreground mb-2">Date</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {quick.map((q) => (
+                <button
+                  key={q.value}
+                  type="button"
+                  onClick={() => {
+                    setDate(q.value);
+                    setSlot("");
+                  }}
+                  className={`h-10 px-4 rounded-full border text-[13px] font-bold ${
+                    date === q.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  {q.label}
+                </button>
+              ))}
+              <input
+                type="date"
+                min={ymdLocal(today)}
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setSlot("");
+                }}
+                className="h-10 px-3 rounded-full border border-border bg-card text-[13px]"
+              />
+            </div>
+          </div>
+
+          {date && (
+            <div>
+              <p className="text-[12px] font-semibold text-muted-foreground mb-2">Time slot</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {RESCHEDULE_SLOTS.map((s) => {
+                  const h = slotStartHour(s) ?? 0;
+                  const past = isToday && h <= nowHour;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={past}
+                      onClick={() => setSlot(s)}
+                      className={`h-10 px-2 rounded-[12px] border text-[12px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed ${
+                        slot === s
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      {s.split(" (")[0]} – {s.split("– ")[1]?.replace(")", "")}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <label className="block text-[12px] font-semibold text-muted-foreground">
+            Reason (optional)
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Customer called, wants tomorrow"
+              className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
+            />
+          </label>
+
+          {hasExpert && (
+            <p className="text-[12px] text-warning-foreground bg-warning/20 border border-warning/40 rounded-[12px] px-3 py-2 inline-flex items-center gap-2">
+              <AlertTriangle size={14} />
+              Assigned expert will be removed and notified. Order will dispatch again at the new time.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              disabled={!date || !slot || pending}
+              onClick={() => onSubmit({ date, slot, reason })}
+              className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              <Check size={16} />
+              {pending ? "Saving…" : "Confirm reschedule"}
+            </button>
+            <button
+              onClick={close}
+              className="h-11 px-4 rounded-[14px] border border-border font-bold text-[14px] hover:bg-muted"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

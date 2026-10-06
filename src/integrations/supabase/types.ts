@@ -9374,6 +9374,15 @@ export type Database = {
         Returns: undefined
       }
       staff_require_super_admin: { Args: never; Returns: undefined }
+      staff_reschedule_booking: {
+        Args: {
+          _booking_id: string
+          _date: string
+          _reason?: string
+          _slot: string
+        }
+        Returns: undefined
+      }
       staff_reset_receiver_location: {
         Args: { _reason: string; _receiver_id: string }
         Returns: Json
