@@ -450,7 +450,7 @@ function Shell() {
       )}
 
       {/* Top bar */}
-      <header className="sticky top-0 z-20 h-16 bg-card border-b border-border grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 sm:px-8">
+      <header className="sticky top-0 z-20 h-16 bg-card border-b border-border grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-3 sm:px-8">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
@@ -459,7 +459,7 @@ function Shell() {
           >
             <Menu size={22} />
           </button>
-          <h1 className="truncate text-[18px] font-bold text-foreground">
+          <h1 className="truncate text-[15px] sm:text-[18px] font-bold text-foreground">
             {activeGroup ? (
               <>
                 <span className="text-muted-foreground font-semibold">{activeGroup.label}</span>
@@ -510,7 +510,7 @@ function Shell() {
 
       {/* Hub sub-tabs */}
       {activeGroup && activeGroup.items.length > 1 && (
-        <div className="sticky top-16 z-10 bg-card border-b border-border px-4 sm:px-8">
+        <div className="sticky top-16 z-10 bg-card border-b border-border px-2 sm:px-8">
           <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {activeGroup.items.map((item) => {
               const Icon = item.icon;
@@ -538,7 +538,7 @@ function Shell() {
       )}
 
       {/* Content */}
-      <main className="min-h-[calc(100vh-4rem)] w-full p-6 sm:p-8">
+      <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
           <DashboardHome
             role={role}
@@ -798,7 +798,7 @@ function DashboardHome({
         </label>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 xl:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5 sm:gap-4 xl:gap-5">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -807,7 +807,7 @@ function DashboardHome({
               type="button"
               onClick={card.onClick}
               title={card.hint}
-              className="text-left bg-card border border-border rounded-[18px] p-4 flex flex-col cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="text-left bg-card border border-border rounded-[18px] p-3 sm:p-4 flex flex-col min-w-0 cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <div className="flex items-start justify-between gap-2 min-h-[32px]">
                 <p className="text-[11px] font-semibold uppercase tracking-wide leading-[1.3] text-muted-foreground line-clamp-2">
@@ -817,7 +817,7 @@ function DashboardHome({
                   <Icon size={16} />
                 </div>
               </div>
-              <p className="mt-3 text-[24px] leading-none font-bold text-foreground truncate">
+              <p className="mt-3 text-[19px] sm:text-[24px] leading-none font-bold text-foreground truncate">
                 {isLoading && !data ? "—" : card.value}
               </p>
               <p className="mt-2 text-[11px] leading-[1.35] text-muted-foreground line-clamp-2 min-h-[30px]">
