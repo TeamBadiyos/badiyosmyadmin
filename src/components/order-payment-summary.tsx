@@ -29,11 +29,11 @@ export function OrderPaymentSummary({
   ].filter((part): part is string => Boolean(part));
 
   return (
-    <div className={className}>
-      <p className="text-[14px] font-bold text-foreground">Paid {inr.format(Math.max(0, paid))}</p>
+    <p className={`flex flex-wrap items-baseline gap-x-1.5 ${className}`}>
+      <span className="text-[13px] font-bold text-foreground whitespace-nowrap">Paid {inr.format(Math.max(0, paid))}</span>
       {parts.length > 0 ? (
-        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{parts.join(" · ")}</p>
+        <span className="text-[11px] leading-4 text-muted-foreground">· {parts.join(" · ")}</span>
       ) : null}
-    </div>
+    </p>
   );
 }
