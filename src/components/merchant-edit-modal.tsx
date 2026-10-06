@@ -38,6 +38,10 @@ type FormState = {
   isGstRegistered: boolean;
   gstin: string;
   gstLegalName: string;
+  bankHolder: string;
+  bankAccount: string;
+  bankIfsc: string;
+  pan: string;
 };
 
 const EMPTY: FormState = {
@@ -56,6 +60,10 @@ const EMPTY: FormState = {
   isGstRegistered: false,
   gstin: "",
   gstLegalName: "",
+  bankHolder: "",
+  bankAccount: "",
+  bankIfsc: "",
+  pan: "",
 };
 
 export function MerchantEditModal({
@@ -101,6 +109,10 @@ export function MerchantEditModal({
       isGstRegistered: !!detail.isGstRegistered,
       gstin: detail.gstin ?? "",
       gstLegalName: detail.gstLegalName ?? "",
+      bankHolder: detail.bankHolder ?? "",
+      bankAccount: detail.bankAccount ?? "",
+      bankIfsc: detail.bankIfsc ?? "",
+      pan: detail.pan ?? "",
     });
   }, [detail]);
 
@@ -126,6 +138,10 @@ export function MerchantEditModal({
           isGstRegistered: form.isGstRegistered,
           gstin: form.gstin || null,
           gstLegalName: form.gstLegalName || null,
+          bankHolder: form.bankHolder || null,
+          bankAccount: form.bankAccount || null,
+          bankIfsc: form.bankIfsc || null,
+          pan: form.pan || null,
         },
       }),
     onSuccess: () => {
@@ -262,6 +278,16 @@ export function MerchantEditModal({
                 </>
               )}
             </Section>
+
+            <Section title="Bank & payout details">
+              <Text label="Account holder name" value={form.bankHolder} onChange={(v) => set("bankHolder", v)} />
+              <Text label="Account number" value={form.bankAccount} onChange={(v) => set("bankAccount", v.replace(/\D/g, ""))} />
+              <Text label="IFSC" value={form.bankIfsc} onChange={(v) => set("bankIfsc", v.toUpperCase())} />
+              <Text label="PAN" value={form.pan} onChange={(v) => set("pan", v.toUpperCase())} />
+            </Section>
+            <p className="-mt-3 text-[12px] text-muted-foreground">
+              Commission: <b>{detail?.commissionPct ?? 0}%</b> per order — change it from Merchant Commission & Billing.
+            </p>
           </div>
         )}
 

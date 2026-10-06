@@ -161,3 +161,119 @@ export const markInvoicePaid = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------- Commission-based billing ----------
+
+export type CommissionMerchant = {
+  id: string;
+  storeName: string | null;
+  ownerName: string | null;
+  phone: string;
+  city: string | null;
+  commissionPct: number;
+  bankReady: boolean;
+  orders: number;
+  gross: number;
+  commission: number;
+  commissionGst: number;
+  merchantNet: number;
+};
+
+export type CommissionDeduction = {
+  id: string;
+  orderNumber: string;
+  merchantId: string;
+  merchantName: string | null;
+  createdAt: string;
+  itemsTotal: number;
+  commissionPct: number;
+  commission: number;
+  commissionGst: number;
+  merchantNet: number;
+};
+
+export type CommissionBilling = {
+  merchants: CommissionMerchant[];
+  deductions: CommissionDeduction[];
+};
+
+export const listMerchantCommissionBilling = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { month?: string | null } | undefined) => input ?? {})
+  .handler(async ({ data, context }): Promise<CommissionBilling> => {
+    const db = context.supabase;
+    const { data: ms, error } = await db
+      .from("merchants")
+      .select(
+        "id, store_name, owner_name, phone, city, commission_value, bank_account_number, bank_ifsc, deleted_at",
+      )
+      .eq("status", "approved")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+
+    let q = db
+      .from("merchant_orders")
+      .select(
+        "id, order_number, merchant_id, created_at, items_total, commission_pct, commission_amount, commission_gst_amount, merchant_net",
+      )
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (data.month) {
+      const start = new Date(`${data.month}-01T00:00:00+05:30`);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 1);
+      q = q.gte("created_at", start.toISOString()).lt("created_at", end.toISOString());
+    }
+    const { data: orders, error: oErr } = await q;
+    if (oErr) throw new Error(oErr.message);
+
+    const nameMap = new Map<string, string | null>();
+    const agg = new Map<string, { orders: number; gross: number; c: number; g: number; net: number }>();
+    for (const m of ms ?? []) nameMap.set(m.id, m.store_name || m.phone);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deductions: CommissionDeduction[] = ((orders ?? []) as any[]).map((o) => {
+      const a = agg.get(o.merchant_id) ?? { orders: 0, gross: 0, c: 0, g: 0, net: 0 };
+      a.orders += 1;
+      a.gross += Number(o.items_total ?? 0);
+      a.c += Number(o.commission_amount ?? 0);
+      a.g += Number(o.commission_gst_amount ?? 0);
+      a.net += Number(o.merchant_net ?? 0);
+      agg.set(o.merchant_id, a);
+      return {
+        id: o.id,
+        orderNumber: o.order_number ?? "",
+        merchantId: o.merchant_id,
+        merchantName: nameMap.get(o.merchant_id) ?? null,
+        createdAt: o.created_at,
+        itemsTotal: Number(o.items_total ?? 0),
+        commissionPct: Number(o.commission_pct ?? 0),
+        commission: Number(o.commission_amount ?? 0),
+        commissionGst: Number(o.commission_gst_amount ?? 0),
+        merchantNet: Number(o.merchant_net ?? 0),
+      };
+    });
+
+    return {
+      merchants: (ms ?? []).map((m) => {
+        const a = agg.get(m.id) ?? { orders: 0, gross: 0, c: 0, g: 0, net: 0 };
+        return {
+          id: m.id,
+          storeName: m.store_name,
+          ownerName: m.owner_name,
+          phone: m.phone,
+          city: m.city,
+          commissionPct: Number(m.commission_value ?? 0),
+          bankReady: !!(m.bank_account_number && m.bank_ifsc),
+          orders: a.orders,
+          gross: a.gross,
+          commission: a.c,
+          commissionGst: a.g,
+          merchantNet: a.net,
+        };
+      }),
+      deductions,
+    };
+  });

@@ -1,504 +1,259 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { RefreshCw, Plus, Check, Undo2, Receipt } from "lucide-react";
+import { RefreshCw, Download, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import {
-  listFeeTiers,
-  upsertFeeTier,
-  listBillableMerchants,
-  setMerchantFeeTier,
-  generateSubscriptionInvoices,
-  listSubscriptionInvoices,
-  markInvoicePaid,
-  type FeeTier,
+  listMerchantCommissionBilling,
+  type CommissionMerchant,
+  type CommissionDeduction,
 } from "@/lib/merchant-billing.functions";
-import {
-  useSortFilter,
-  SortFilterHeader,
-  SortFilterReset,
-} from "@/components/table-sort-filter";
+import { setMerchantCommission } from "@/lib/merchants.functions";
+import { useSortFilter, SortFilterHeader, SortFilterReset } from "@/components/table-sort-filter";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
-type Tab = "merchants" | "tiers" | "invoices";
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: "merchants", label: "Merchant plans" },
-  { key: "tiers", label: "Fee Tiers" },
-  { key: "invoices", label: "Subscription Invoices" },
-];
+type Tab = "merchants" | "deductions";
 
 const inr = (n: number) =>
   `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
-const monthLabel = (d: string) =>
-  new Date(`${d}T00:00:00`).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+function downloadCsv(name: string, rows: (string | number)[][]) {
+  const csv = rows
+    .map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
-  const isSuper = role === "super_admin";
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("merchants");
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const fetchBilling = useServerFn(listMerchantCommissionBilling);
+  const saveCommission = useServerFn(setMerchantCommission);
 
-  const fetchTiers = useServerFn(listFeeTiers);
-  const fetchMerchants = useServerFn(listBillableMerchants);
-  const fetchInvoices = useServerFn(listSubscriptionInvoices);
-  const saveTier = useServerFn(upsertFeeTier);
-  const assignTier = useServerFn(setMerchantFeeTier);
-  const genInvoices = useServerFn(generateSubscriptionInvoices);
-  const markPaid = useServerFn(markInvoicePaid);
-
-  const [statusFilter, setStatusFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
-
-  const tiersQ = useQuery({ queryKey: ["billing", "tiers"], queryFn: () => fetchTiers({}) });
-  const merchantsQ = useQuery({
-    queryKey: ["billing", "merchants"],
-    queryFn: () => fetchMerchants({}),
-    enabled: tab === "merchants",
-  });
-  const invoicesQ = useQuery({
-    queryKey: ["billing", "invoices", statusFilter, monthFilter],
-    queryFn: () =>
-      fetchInvoices({
-        data: { status: statusFilter || null, month: monthFilter ? `${monthFilter}-01` : null },
-      }),
-    enabled: tab === "invoices",
+  const q = useQuery({
+    queryKey: ["billing", "commission", month],
+    queryFn: () => fetchBilling({ data: { month: month || null } }),
   });
 
-  type MerchantRow = NonNullable<typeof merchantsQ.data>[number];
-  const merchantSf = useSortFilter(merchantsQ.data ?? [], [
-    {
-      key: "store",
-      label: "Store / Owner",
-      value: (m: MerchantRow) => m.storeName || "Unnamed store",
-    },
-    { key: "phone", label: "Phone", value: (m: MerchantRow) => m.phone, filterable: false },
-    { key: "city", label: "City", value: (m: MerchantRow) => m.city || "—" },
+  const merchantSf = useSortFilter(q.data?.merchants ?? [], [
+    { key: "store", label: "Store", value: (m: CommissionMerchant) => m.storeName || "Unnamed store" },
+    { key: "city", label: "City", value: (m: CommissionMerchant) => m.city || "—" },
+    { key: "pct", label: "Commission %", type: "number", value: (m: CommissionMerchant) => m.commissionPct },
+    { key: "orders", label: "Orders", type: "number", value: (m: CommissionMerchant) => m.orders, filterable: false },
+    { key: "gross", label: "Gross sales", type: "number", value: (m: CommissionMerchant) => m.gross, filterable: false },
+    { key: "comm", label: "Commission + GST", type: "number", value: (m: CommissionMerchant) => m.commission + m.commissionGst, filterable: false },
+    { key: "net", label: "Merchant payout", type: "number", value: (m: CommissionMerchant) => m.merchantNet, filterable: false },
+  ]);
+  const dedSf = useSortFilter(q.data?.deductions ?? [], [
+    { key: "date", label: "Date", value: (d: CommissionDeduction) => d.createdAt, display: (d: CommissionDeduction) => new Date(d.createdAt).toLocaleDateString("en-IN"), filterable: false },
+    { key: "order", label: "Order", value: (d: CommissionDeduction) => d.orderNumber, filterable: false },
+    { key: "merchant", label: "Merchant", value: (d: CommissionDeduction) => d.merchantName || "—" },
+    { key: "items", label: "Items total", type: "number", value: (d: CommissionDeduction) => d.itemsTotal, filterable: false },
+    { key: "pct", label: "%", type: "number", value: (d: CommissionDeduction) => d.commissionPct },
+    { key: "comm", label: "Commission", type: "number", value: (d: CommissionDeduction) => d.commission, filterable: false },
+    { key: "gst", label: "GST", type: "number", value: (d: CommissionDeduction) => d.commissionGst, filterable: false },
+    { key: "net", label: "Merchant net", type: "number", value: (d: CommissionDeduction) => d.merchantNet, filterable: false },
   ]);
 
-  type InvoiceRow = NonNullable<typeof invoicesQ.data>[number];
-  const invoiceSf = useSortFilter(invoicesQ.data ?? [], [
-    { key: "merchant", label: "Merchant", value: (i: InvoiceRow) => i.merchantName || "—" },
-    { key: "tier", label: "Tier", value: (i: InvoiceRow) => i.feeTierName || "—" },
-    {
-      key: "month",
-      label: "Billing month",
-      value: (i: InvoiceRow) => i.billingMonth,
-      display: (i: InvoiceRow) => monthLabel(i.billingMonth),
-    },
-    {
-      key: "amount",
-      label: "Amount",
-      type: "number",
-      value: (i: InvoiceRow) => i.amount,
-      filterable: false,
-    },
-    { key: "status", label: "Status", value: (i: InvoiceRow) => i.status },
-  ]);
-
-  const assignM = useMutation({
-    mutationFn: (p: { merchantId: string; feeTierId: string | null }) => assignTier({ data: p }),
+  const commM = useMutation({
+    mutationFn: (p: { merchantId: string; pct: number }) => saveCommission({ data: p }),
     onSuccess: () => {
-      toast.success("Plan updated");
-      qc.invalidateQueries({ queryKey: ["billing", "merchants"] });
+      toast.success("Commission updated");
+      qc.invalidateQueries({ queryKey: ["billing"] });
+      qc.invalidateQueries({ queryKey: ["merchants"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
   });
 
-  const tierM = useMutation({
-    mutationFn: (p: { id?: string; name?: string; monthlyFee?: number; isActive?: boolean }) =>
-      saveTier({ data: p }),
-    onSuccess: () => {
-      toast.success("Fee tier saved");
-      qc.invalidateQueries({ queryKey: ["billing", "tiers"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
-  });
-
-  const genM = useMutation({
-    mutationFn: () => genInvoices({}),
-    onSuccess: (r) => {
-      toast.success(
-        r.created > 0
-          ? `${r.created} invoice(s) created for ${monthLabel(r.billingMonth)}`
-          : `No new invoices — ${monthLabel(r.billingMonth)} already generated`,
-      );
-      qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Generation failed"),
-  });
-
-  const paidM = useMutation({
-    mutationFn: (p: { invoiceId: string; paid: boolean }) => markPaid({ data: p }),
-    onSuccess: () => {
-      toast.success("Invoice updated");
-      qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
-  });
-
-  const tiers = tiersQ.data ?? [];
-  const activeTiers = tiers.filter((t) => t.isActive);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground">
-          Assign subscription plans, manage fee tiers and run monthly merchant billing.
-        </p>
-        <div className="flex gap-2">
-          {tab === "invoices" && canManage && (
-            <button
-              onClick={() => genM.mutate()}
-              disabled={genM.isPending}
-              className="h-10 px-4 rounded-[12px] bg-primary text-white text-[13px] font-bold inline-flex items-center gap-2 disabled:opacity-50"
-            >
-              <Receipt size={14} /> Generate this month
-            </button>
-          )}
-          <button
-            onClick={() => {
-              tiersQ.refetch();
-              merchantsQ.refetch();
-              invoicesQ.refetch();
-            }}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] font-semibold inline-flex items-center gap-2"
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`h-9 px-4 rounded-full text-[13px] font-semibold border transition-colors ${
-              tab === t.key
-                ? "bg-primary text-white border-primary"
-                : "bg-card text-muted-foreground border-border hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "merchants" && (
-        <div className="bg-card border border-border rounded-[18px] overflow-visible">
-          <div className="flex justify-end px-6 pt-4">
-            <SortFilterReset api={merchantSf} />
-          </div>
-          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <SortFilterHeader {...merchantSf.headerProps("store")} />
-            <SortFilterHeader {...merchantSf.headerProps("phone")} />
-            <SortFilterHeader {...merchantSf.headerProps("city")} />
-            <span>Plan</span>
-          </div>
-          {merchantsQ.isLoading && (
-            <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
-          )}
-          {merchantSf.rows.map((m) => (
-            <div
-              key={m.id}
-              className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_220px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
-            >
-              <span className="truncate">
-                <span className="font-semibold text-foreground">{m.storeName || "Unnamed store"}</span>
-                <span className="text-muted-foreground"> · {m.ownerName || "—"}</span>
-              </span>
-              <span className="font-mono text-[13px] text-muted-foreground">{m.phone}</span>
-              <span className="text-[13px] text-muted-foreground">{m.city || "—"}</span>
-              <select
-                disabled={!canManage || assignM.isPending}
-                value={m.feeTierId ?? ""}
-                onChange={(e) =>
-                  assignM.mutate({ merchantId: m.id, feeTierId: e.target.value || null })
-                }
-                className="h-9 px-3 rounded-[10px] border border-border bg-background text-[13px] disabled:opacity-60"
-              >
-                <option value="">No plan</option>
-                {activeTiers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} · {inr(t.monthlyFee)}/mo
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-          {!merchantsQ.isLoading && (merchantsQ.data ?? []).length === 0 && (
-            <p className="text-[13px] text-muted-foreground py-10 text-center">
-              No approved merchants yet.
-            </p>
-          )}
-        </div>
-      )}
-
-      {tab === "tiers" && (
-        <FeeTiersSection
-          tiers={tiers}
-          canEdit={isSuper}
-          saving={tierM.isPending}
-          onSave={(p) => tierM.mutate(p)}
-        />
-      )}
-
-      {tab === "invoices" && (
-        <div className="space-y-4">
-          <div className="flex gap-3 flex-wrap">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
-            >
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-            </select>
-            <input
-              type="month"
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
-            />
-            {monthFilter && (
-              <button
-                onClick={() => setMonthFilter("")}
-                className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] font-semibold"
-              >
-                Clear month
-              </button>
-            )}
-          </div>
-
-          <div className="bg-card border border-border rounded-[18px] overflow-visible">
-            <div className="flex justify-end px-6 pt-4">
-              <SortFilterReset api={invoiceSf} />
-            </div>
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              <SortFilterHeader {...invoiceSf.headerProps("merchant")} />
-              <SortFilterHeader {...invoiceSf.headerProps("tier")} />
-              <SortFilterHeader {...invoiceSf.headerProps("month")} />
-              <SortFilterHeader {...invoiceSf.headerProps("amount")} />
-              <SortFilterHeader {...invoiceSf.headerProps("status")} />
-              <span>Action</span>
-            </div>
-            {invoicesQ.isLoading && (
-              <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
-            )}
-            {invoiceSf.rows.map((i) => (
-              <div
-                key={i.id}
-                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_110px_130px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
-              >
-                <span className="truncate font-semibold text-foreground">
-                  {i.merchantName || "—"}
-                </span>
-                <span className="text-[13px] text-muted-foreground">{i.feeTierName || "—"}</span>
-                <span className="text-[13px] text-muted-foreground">{monthLabel(i.billingMonth)}</span>
-                <span className="font-semibold">{inr(i.amount)}</span>
-                <span
-                  className={`text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full w-fit ${
-                    i.status === "paid"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  {i.status}
-                </span>
-                {canManage ? (
-                  i.status === "paid" ? (
-                    <button
-                      disabled={paidM.isPending}
-                      onClick={() => paidM.mutate({ invoiceId: i.id, paid: false })}
-                      className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <Undo2 size={14} /> Undo
-                    </button>
-                  ) : (
-                    <button
-                      disabled={paidM.isPending}
-                      onClick={() => paidM.mutate({ invoiceId: i.id, paid: true })}
-                      className="h-9 px-3 rounded-[12px] bg-primary text-white text-[13px] font-bold inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <Check size={14} /> Mark paid
-                    </button>
-                  )
-                ) : (
-                  <span className="text-[13px] text-muted-foreground">—</span>
-                )}
-              </div>
-            ))}
-            {!invoicesQ.isLoading && (invoicesQ.data ?? []).length === 0 && (
-              <p className="text-[13px] text-muted-foreground py-10 text-center">No invoices.</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+  const ms = q.data?.merchants ?? [];
+  const totals = ms.reduce(
+    (t, m) => ({
+      gross: t.gross + m.gross,
+      comm: t.comm + m.commission,
+      gst: t.gst + m.commissionGst,
+      net: t.net + m.merchantNet,
+    }),
+    { gross: 0, comm: 0, gst: 0, net: 0 },
   );
-}
 
-function FeeTiersSection({
-  tiers,
-  canEdit,
-  saving,
-  onSave,
-}: {
-  tiers: FeeTier[];
-  canEdit: boolean;
-  saving: boolean;
-  onSave: (p: { id?: string; name?: string; monthlyFee?: number; isActive?: boolean }) => void;
-}) {
-  const [name, setName] = useState("");
-  const [fee, setFee] = useState("");
+  function exportCsv() {
+    if (tab === "merchants") {
+      downloadCsv(`merchant-commission-${month || "all"}.csv`, [
+        ["Store", "Owner", "Phone", "City", "Commission %", "Orders", "Gross sales", "Commission", "Commission GST", "Merchant payout", "Bank details"],
+        ...ms.map((m) => [m.storeName ?? "", m.ownerName ?? "", m.phone, m.city ?? "", m.commissionPct, m.orders, m.gross, m.commission, m.commissionGst, m.merchantNet, m.bankReady ? "Added" : "Pending"]),
+      ]);
+    } else {
+      downloadCsv(`commission-deductions-${month || "all"}.csv`, [
+        ["Date", "Order", "Merchant", "Items total", "Commission %", "Commission", "GST", "Merchant net"],
+        ...(q.data?.deductions ?? []).map((d) => [new Date(d.createdAt).toLocaleString("en-IN"), d.orderNumber, d.merchantName ?? "", d.itemsTotal, d.commissionPct, d.commission, d.commissionGst, d.merchantNet]),
+      ]);
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      {canEdit && (
-        <div className="bg-card border border-border rounded-[18px] p-6 flex gap-3 flex-wrap items-end">
-          <div className="space-y-1">
-            <label className="text-[12px] font-semibold text-muted-foreground">Tier name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Premium"
-              className="h-10 px-3 rounded-[12px] border border-border bg-background text-[14px] block"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[12px] font-semibold text-muted-foreground">Monthly fee (₹)</label>
-            <input
-              value={fee}
-              onChange={(e) => setFee(e.target.value)}
-              inputMode="decimal"
-              placeholder="1499"
-              className="h-10 px-3 rounded-[12px] border border-border bg-background text-[14px] block"
-            />
-          </div>
-          <button
-            disabled={saving || !name.trim() || !fee.trim()}
-            onClick={() => {
-              onSave({ name: name.trim(), monthlyFee: Number(fee), isActive: true });
-              setName("");
-              setFee("");
-            }}
-            className="h-10 px-4 rounded-[12px] bg-primary text-white text-[13px] font-bold inline-flex items-center gap-2 disabled:opacity-50"
-          >
-            <Plus size={14} /> Add tier
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-bold">Merchant Commission & Billing</h1>
+          <p className="text-[13px] text-muted-foreground">
+            Har completed store order se merchant ka Commission % kata jata hai. Yahi % yahan se edit karo.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="h-10 rounded-[12px] border border-border bg-background px-3 text-[13px]"
+          />
+          <button onClick={() => setMonth("")} className="h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold">
+            All time
+          </button>
+          <button onClick={() => q.refetch()} className="h-10 w-10 rounded-[12px] border border-border inline-flex items-center justify-center" aria-label="Refresh">
+            <RefreshCw size={15} />
+          </button>
+          <button onClick={exportCsv} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2">
+            <Download size={14} /> Download CSV
           </button>
         </div>
-      )}
-
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1fr)_160px_120px_200px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span>Name</span>
-          <span>Monthly fee</span>
-          <span>Status</span>
-          <span>Actions</span>
-        </div>
-        {tiers.map((t) => (
-          <TierRow key={t.id} tier={t} canEdit={canEdit} saving={saving} onSave={onSave} />
-        ))}
-        {tiers.length === 0 && (
-          <p className="text-[13px] text-muted-foreground py-10 text-center">No fee tiers yet.</p>
-        )}
       </div>
-    </div>
-  );
-}
 
-function TierRow({
-  tier,
-  canEdit,
-  saving,
-  onSave,
-}: {
-  tier: FeeTier;
-  canEdit: boolean;
-  saving: boolean;
-  onSave: (p: { id?: string; name?: string; monthlyFee?: number; isActive?: boolean }) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(tier.name);
-  const [fee, setFee] = useState(String(tier.monthlyFee));
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Stat label="Gross sales" value={inr(totals.gross)} />
+        <Stat label="Commission earned" value={inr(totals.comm)} />
+        <Stat label="GST on commission" value={inr(totals.gst)} />
+        <Stat label="Merchant payout" value={inr(totals.net)} />
+      </div>
 
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_160px_120px_200px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]">
-      {editing ? (
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-9 px-3 rounded-[10px] border border-border bg-background text-[14px]"
-        />
-      ) : (
-        <span className="font-semibold text-foreground truncate">{tier.name}</span>
-      )}
-      {editing ? (
-        <input
-          value={fee}
-          onChange={(e) => setFee(e.target.value)}
-          inputMode="decimal"
-          className="h-9 px-3 rounded-[10px] border border-border bg-background text-[14px]"
-        />
-      ) : (
-        <span>{inr(tier.monthlyFee)}</span>
-      )}
-      <span
-        className={`text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full w-fit ${
-          tier.isActive ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {tier.isActive ? "active" : "inactive"}
-      </span>
       <div className="flex gap-2">
-        {canEdit ? (
-          editing ? (
-            <>
-              <button
-                disabled={saving}
-                onClick={() => {
-                  onSave({ id: tier.id, name: name.trim(), monthlyFee: Number(fee) });
-                  setEditing(false);
-                }}
-                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[13px] font-bold disabled:opacity-50"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  setEditing(false);
-                  setName(tier.name);
-                  setFee(String(tier.monthlyFee));
-                }}
-                className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setEditing(true)}
-                className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold"
-              >
-                Edit
-              </button>
-              <button
-                disabled={saving}
-                onClick={() => onSave({ id: tier.id, isActive: !tier.isActive })}
-                className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold disabled:opacity-50"
-              >
-                {tier.isActive ? "Deactivate" : "Activate"}
-              </button>
-            </>
-          )
-        ) : (
-          <span className="text-[13px] text-muted-foreground">—</span>
-        )}
+        {(["merchants", "deductions"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`h-9 px-4 rounded-full text-[13px] font-semibold border ${tab === t ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}
+          >
+            {t === "merchants" ? "Merchant commission" : "Commission deductions"}
+          </button>
+        ))}
       </div>
+
+      {q.isLoading ? (
+        <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
+      ) : q.error ? (
+        <p className="text-[13px] text-destructive py-10 text-center">{(q.error as Error).message}</p>
+      ) : tab === "merchants" ? (
+        <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
+          <div className="px-4 pt-3"><SortFilterReset api={merchantSf} /></div>
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                {["store", "city", "pct", "orders", "gross", "comm", "net"].map((k) => (
+                  <th key={k} className="px-4 py-2"><SortFilterHeader {...merchantSf.headerProps(k)} /></th>
+                ))}
+                <th className="px-4 py-2">Bank</th>
+              </tr>
+            </thead>
+            <tbody>
+              {merchantSf.rows.map((m) => (
+                <tr key={m.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2.5">
+                    <p className="font-semibold">{m.storeName || "Unnamed store"}</p>
+                    <p className="text-[11px] text-muted-foreground">{m.ownerName || "—"} · {m.phone}</p>
+                  </td>
+                  <td className="px-4 py-2.5">{m.city || "—"}</td>
+                  <td className="px-4 py-2.5">
+                    <PctCell m={m} canEdit={canManage} saving={commM.isPending} onSave={(pct) => commM.mutate({ merchantId: m.id, pct })} />
+                  </td>
+                  <td className="px-4 py-2.5">{m.orders}</td>
+                  <td className="px-4 py-2.5">{inr(m.gross)}</td>
+                  <td className="px-4 py-2.5">{inr(m.commission)}{m.commissionGst ? <span className="text-muted-foreground"> + {inr(m.commissionGst)} GST</span> : null}</td>
+                  <td className="px-4 py-2.5 font-semibold">{inr(m.merchantNet)}</td>
+                  <td className="px-4 py-2.5">
+                    {m.bankReady ? (
+                      <span className="text-[11px] font-semibold text-primary">Added</span>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-destructive">Pending</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!merchantSf.rows.length && (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No approved merchants.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
+          <div className="px-4 pt-3"><SortFilterReset api={dedSf} /></div>
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                {["date", "order", "merchant", "items", "pct", "comm", "gst", "net"].map((k) => (
+                  <th key={k} className="px-4 py-2"><SortFilterHeader {...dedSf.headerProps(k)} /></th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dedSf.rows.map((d) => (
+                <tr key={d.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2.5">{new Date(d.createdAt).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2.5 font-mono text-[12px]">{d.orderNumber || d.id.slice(0, 8)}</td>
+                  <td className="px-4 py-2.5">{d.merchantName || "—"}</td>
+                  <td className="px-4 py-2.5">{inr(d.itemsTotal)}</td>
+                  <td className="px-4 py-2.5">{d.commissionPct}%</td>
+                  <td className="px-4 py-2.5">{inr(d.commission)}</td>
+                  <td className="px-4 py-2.5">{inr(d.commissionGst)}</td>
+                  <td className="px-4 py-2.5 font-semibold">{inr(d.merchantNet)}</td>
+                </tr>
+              ))}
+              {!dedSf.rows.length && (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No completed store orders in this period.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[16px] border border-border bg-card p-4">
+      <p className="text-[12px] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[20px] font-bold">{value}</p>
+    </div>
+  );
+}
+
+function PctCell({ m, canEdit, saving, onSave }: { m: CommissionMerchant; canEdit: boolean; saving: boolean; onSave: (pct: number) => void }) {
+  const [edit, setEdit] = useState(false);
+  const [val, setVal] = useState(String(m.commissionPct));
+  if (!edit) {
+    return (
+      <span className="inline-flex items-center gap-2 font-semibold">
+        {m.commissionPct}%
+        {canEdit && (
+          <button onClick={() => { setVal(String(m.commissionPct)); setEdit(true); }} className="text-muted-foreground" aria-label="Edit commission">
+            <Pencil size={12} />
+          </button>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input type="number" min={0} max={50} step={0.5} value={val} onChange={(e) => setVal(e.target.value)} className="h-8 w-16 rounded-[8px] border border-border bg-background px-2 text-[13px]" />
+      <button disabled={saving} onClick={() => { onSave(Number(val)); setEdit(false); }} className="h-8 w-8 inline-flex items-center justify-center rounded-[8px] bg-primary text-primary-foreground" aria-label="Save"><Check size={13} /></button>
+      <button onClick={() => setEdit(false)} className="h-8 w-8 inline-flex items-center justify-center rounded-[8px] border border-border" aria-label="Cancel"><X size={13} /></button>
+    </span>
   );
 }
