@@ -27,6 +27,10 @@ export type MerchantRow = {
   pincode: string | null;
   onboardingStep: number;
   commissionPct: number;
+  bankHolder: string | null;
+  bankAccount: string | null;
+  bankIfsc: string | null;
+  pan: string | null;
   rejectionReason: string | null;
   queryNotes: string | null;
   queryDocTypes: string[] | null;
@@ -62,7 +66,7 @@ export const listMerchants = createServerFn({ method: "GET" })
     let q = db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, rejection_reason, query_notes, query_doc_types, queried_at, awaiting_reupload, reuploaded_at, created_at, updated_at",
+        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, bank_account_holder_name, bank_account_number, bank_ifsc, pan, rejection_reason, query_notes, query_doc_types, queried_at, awaiting_reupload, reuploaded_at, created_at, updated_at",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -136,6 +140,10 @@ export const listMerchants = createServerFn({ method: "GET" })
       pincode: r.pincode,
       onboardingStep: r.onboarding_step ?? 0,
       commissionPct: Number(r.commission_value ?? 0),
+      bankHolder: r.bank_account_holder_name ?? null,
+      bankAccount: r.bank_account_number ?? null,
+      bankIfsc: r.bank_ifsc ?? null,
+      pan: r.pan ?? null,
       rejectionReason: r.rejection_reason ?? null,
       queryNotes: r.query_notes ?? null,
       queryDocTypes: r.query_doc_types ?? null,
@@ -264,7 +272,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, deleted_at, delete_reason",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -287,6 +295,11 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       isGstRegistered: m.is_gst_registered,
       gstin: m.gstin,
       gstLegalName: m.gst_legal_name,
+      bankHolder: m.bank_account_holder_name ?? null,
+      bankAccount: m.bank_account_number ?? null,
+      bankIfsc: m.bank_ifsc ?? null,
+      pan: m.pan ?? null,
+      commissionPct: Number(m.commission_value ?? 0),
       deletedAt: m.deleted_at ?? null,
       deleteReason: m.delete_reason ?? null,
     };
@@ -325,6 +338,10 @@ export type UpdateMerchantInput = {
   isGstRegistered: boolean;
   gstin: string | null;
   gstLegalName: string | null;
+  bankHolder?: string | null;
+  bankAccount?: string | null;
+  bankIfsc?: string | null;
+  pan?: string | null;
 };
 
 export const updateMerchantDetails = createServerFn({ method: "POST" })
@@ -338,6 +355,12 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       throw new Error("Pincode must be 6 digits");
     if (input.isGstRegistered && !input.gstin?.trim())
       throw new Error("GSTIN is required when GST registered is on");
+    if (input.bankIfsc?.trim() && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(input.bankIfsc.trim()))
+      throw new Error("IFSC must look like ABCD0123456");
+    if (input.pan?.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(input.pan.trim()))
+      throw new Error("PAN must look like ABCDE1234F");
+    if (input.bankAccount?.trim() && !/^\d{6,18}$/.test(input.bankAccount.trim()))
+      throw new Error("Account number must be 6-18 digits");
     return input;
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
@@ -373,6 +396,10 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       is_gst_registered: data.isGstRegistered,
       gstin: data.isGstRegistered ? trimmed(data.gstin) : null,
       gst_legal_name: data.isGstRegistered ? trimmed(data.gstLegalName) : null,
+      bank_account_holder_name: trimmed(data.bankHolder),
+      bank_account_number: trimmed(data.bankAccount),
+      bank_ifsc: trimmed(data.bankIfsc)?.toUpperCase() ?? null,
+      pan: trimmed(data.pan)?.toUpperCase() ?? null,
     };
 
     const { data: after, error } = await db
