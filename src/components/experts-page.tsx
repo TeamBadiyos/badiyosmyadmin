@@ -245,9 +245,15 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
     >
       <ExpertAvatar url={expert.photoUrl} />
       <span className="min-w-0 flex flex-col gap-1">
+        <span className="font-semibold text-foreground break-words">{expert.name}</span>
         <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-semibold text-foreground break-words">{expert.name}</span>
           <ExpertModeBadge mode={expert.mode} />
+          {expert.isBusy && (
+            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Busy
+            </span>
+          )}
           {expert.avgRating != null ? (
             <span
               className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-warning/20 text-foreground text-[11px] font-bold"
