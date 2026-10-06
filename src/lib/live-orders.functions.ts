@@ -452,7 +452,8 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       ),
     );
 
-    const [usersRes, expertsRes, priceOptionsRes] = await Promise.all([
+    const bookingIds = rows.map((r) => r.id as string);
+    const [usersRes, expertsRes, priceOptionsRes, extRes] = await Promise.all([
       userIds.length
         ? db.from("users").select("id, full_name").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as const),
