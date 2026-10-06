@@ -9,10 +9,7 @@ import {
   listPayoutBatches,
   listPayoutItems,
   generatePayoutBatch,
-  generateMerchantPayoutBatch,
-
   markPayoutItemPaid,
-  markPayoutBatchPaid,
   discardPayoutBatch,
   getTdsReport,
   markTdsDeposited,
@@ -20,7 +17,9 @@ import {
   saveTdsSettings,
   type WalletOwner,
   type PayoutBatch,
+  type PayoutItem,
 } from "@/lib/wallets.functions";
+import { downloadPayoutPdf, downloadPayoutCsv } from "@/lib/payout-pdf";
 import { CommissionTab } from "@/components/commission-tab";
 import {
   useSortFilter,
@@ -656,31 +655,29 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const queryClient = useQueryClient();
   const fetchItems = useServerFn(listPayoutItems);
   const markItem = useServerFn(markPayoutItemPaid);
-  const markBatch = useServerFn(markPayoutBatchPaid);
   const discardBatch = useServerFn(discardPayoutBatch);
   const [discardReason, setDiscardReason] = useState("");
   const [showDiscard, setShowDiscard] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [payFor, setPayFor] = useState<PayoutItem | null>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["wallets", "batch-items", batch.id],
     queryFn: () => fetchItems({ data: { batch_id: batch.id } }),
   });
 
-  const itemMutation = useMutation({
-    mutationFn: (p: { item_id: string; paid: boolean }) => markItem({ data: p }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batch-items", batch.id] });
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] });
-    },
-  });
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["wallets"] });
+  };
 
-  const batchMutation = useMutation({
-    mutationFn: () => markBatch({ data: { batch_id: batch.id } }),
+  const itemMutation = useMutation({
+    mutationFn: (p: { item_id: string; paid: boolean; paid_on?: string; utr?: string; mode?: string; notes?: string }) =>
+      markItem({ data: p }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batch-items", batch.id] });
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] });
+      setPayFor(null);
+      refresh();
     },
+    onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
   });
 
   const discardMutation = useMutation({
@@ -688,15 +685,18 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
     onSuccess: () => {
       setShowDiscard(false);
       setDiscardReason("");
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batch-items", batch.id] });
-      queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] });
+      refresh();
       onBack();
     },
     onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
   });
 
   const unpaid = data.filter((i) => !i.paid).length;
-  const tdsTotal = data.reduce((sum, i) => sum + (i.tds_amount ?? 0), 0);
+  const tdsTotal = data.reduce((s, i) => s + (i.tds_amount ?? 0), 0);
+  const bonusTotal = data.reduce((s, i) => s + (i.bonus_amount ?? 0), 0);
+  const netTotal = data.reduce((s, i) => s + i.net_amount, 0);
+  const paidNet = data.filter((i) => i.paid).reduce((s, i) => s + i.net_amount, 0);
+  const anyPaid = data.some((i) => i.paid);
 
   type Item = (typeof data)[number];
   const sf = useSortFilter(data, [
@@ -707,35 +707,25 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
       value: (i: Item) =>
         i.owner_type === "expert" ? "Expert" : i.owner_type === "merchant" ? "Merchant" : "Partner",
     },
-    {
-      key: "gross",
-      label: "Gross",
-      type: "number",
-      align: "right",
-      value: (i: Item) => i.gross_amount,
-      filterable: false,
-    },
-    {
-      key: "tds",
-      label: "TDS",
-      type: "number",
-      align: "right",
-      value: (i: Item) => i.tds_amount ?? 0,
-      filterable: false,
-    },
-    {
-      key: "net",
-      label: "Net",
-      type: "number",
-      align: "right",
-      value: (i: Item) => i.net_amount,
-      filterable: false,
-    },
-    { key: "paid", label: "Paid", value: (i: Item) => (i.paid ? "Paid" : "Unpaid") },
+    { key: "gross", label: "Gross", type: "number", align: "right", value: (i: Item) => i.gross_amount, filterable: false },
+    { key: "bonus", label: "Bonus", type: "number", align: "right", value: (i: Item) => i.bonus_amount, filterable: false },
+    { key: "tds", label: "TDS", type: "number", align: "right", value: (i: Item) => i.tds_amount ?? 0, filterable: false },
+    { key: "net", label: "Net", type: "number", align: "right", value: (i: Item) => i.net_amount, filterable: false },
+    { key: "paid", label: "Payment", value: (i: Item) => (i.paid ? "Paid" : "Unpaid") },
   ]);
+
+  const grid = "grid grid-cols-[minmax(0,1fr)_90px_100px_90px_100px_100px_minmax(0,200px)] gap-3";
 
   return (
     <div className="space-y-4">
+      {payFor && (
+        <RecordPaymentDialog
+          item={payFor}
+          pending={itemMutation.isPending}
+          onClose={() => setPayFor(null)}
+          onSave={(v) => itemMutation.mutate({ item_id: payFor.id, paid: true, ...v })}
+        />
+      )}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <button
           onClick={onBack}
@@ -743,22 +733,31 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         >
           <ArrowLeft size={14} /> Back to batches
         </button>
-        <div className="flex items-center gap-2">
-          {batch.status !== "paid" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            disabled={!data.length}
+            onClick={() => downloadPayoutCsv(batch, data)}
+            className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted disabled:opacity-50"
+          >
+            Download CSV
+          </button>
+          <button
+            disabled={!data.length}
+            onClick={() => downloadPayoutPdf(batch, data).catch((e) => setDetailError(String(e)))}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
+          >
+            Download PDF
+          </button>
+          {batch.status === "pending" && (
             <button
+              disabled={anyPaid}
+              title={anyPaid ? "Un-mark paid people first" : undefined}
               onClick={() => setShowDiscard(true)}
-              className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted"
+              className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] text-destructive hover:bg-muted disabled:opacity-50"
             >
-              Discard batch
+              Delete batch
             </button>
           )}
-          <button
-            disabled={batchMutation.isPending || unpaid === 0}
-            onClick={() => batchMutation.mutate()}
-            className="h-10 px-4 rounded-[12px] bg-primary text-white font-bold text-[13px] disabled:opacity-50"
-          >
-            {batchMutation.isPending ? "Confirming…" : "Confirm & mark batch paid"}
-          </button>
         </div>
       </div>
 
@@ -766,10 +765,9 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
 
       {showDiscard && (
         <div className="bg-card border border-border rounded-[18px] p-5 space-y-3">
-          <p className="text-[14px] font-semibold text-foreground">Discard this batch?</p>
+          <p className="text-[14px] font-semibold text-foreground">Delete this batch?</p>
           <p className="text-[13px] text-muted-foreground">
-            All jobs in it become available for the next batch. Nothing is deleted — any money
-            already moved is returned with a reversal entry.
+            The batch is moved out (kept in history). Balances stay unpaid and you can create a new batch with corrected dates.
           </p>
           <input
             value={discardReason}
@@ -781,9 +779,9 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
             <button
               disabled={discardMutation.isPending || !discardReason.trim()}
               onClick={() => discardMutation.mutate()}
-              className="h-10 px-4 rounded-[12px] bg-destructive text-white font-bold text-[13px] disabled:opacity-50"
+              className="h-10 px-4 rounded-[12px] bg-destructive text-destructive-foreground font-bold text-[13px] disabled:opacity-50"
             >
-              {discardMutation.isPending ? "Discarding…" : "Discard"}
+              {discardMutation.isPending ? "Deleting…" : "Delete"}
             </button>
             <button
               onClick={() => setShowDiscard(false)}
@@ -796,22 +794,19 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
       )}
 
       <div className="bg-card border border-border rounded-[18px] p-5">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-          Batch
-        </p>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Batch</p>
         <h2 className="text-[20px] font-bold text-foreground">
           {formatDate(batch.week_start)} – {formatDate(batch.week_end)}
         </h2>
         <p className="text-[13px] text-muted-foreground">
-          Total <span className="font-semibold text-foreground">{inr.format(batch.total_amount)}</span>
-          {" · "}
-          {unpaid} unpaid item(s)
-          {tdsTotal > 0 && (
-            <>
-              {" · "}TDS <span className="font-semibold text-foreground">{inr.format(tdsTotal)}</span>
-            </>
-          )}
+          Gross <span className="font-semibold text-foreground">{inr.format(batch.total_amount)}</span>
+          {bonusTotal > 0 && <> · Bonus incl. <span className="font-semibold text-foreground">{inr.format(bonusTotal)}</span></>}
+          {tdsTotal > 0 && <> · TDS <span className="font-semibold text-foreground">{inr.format(tdsTotal)}</span></>}
+          {" · "}Net <span className="font-semibold text-foreground">{inr.format(netTotal)}</span>
+          {" · "}Paid <span className="font-semibold text-foreground">{inr.format(paidNet)}</span>
+          {" · "}{unpaid} unpaid
         </p>
+        {batch.notes && <p className="text-[12px] text-muted-foreground mt-1">Notes: {batch.notes}</p>}
       </div>
 
       <div className="flex justify-end">
@@ -819,60 +814,124 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-visible">
-        <div className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className={`${grid} px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <SortFilterHeader {...sf.headerProps("owner")} />
           <SortFilterHeader {...sf.headerProps("type")} />
           <SortFilterHeader {...sf.headerProps("gross")} />
+          <SortFilterHeader {...sf.headerProps("bonus")} />
           <SortFilterHeader {...sf.headerProps("tds")} />
           <SortFilterHeader {...sf.headerProps("net")} />
           <SortFilterHeader {...sf.headerProps("paid")} />
         </div>
-        {isLoading && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
-        )}
+        {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
         {!isLoading && sf.rows.length === 0 && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">
-            No items in this batch.
-          </p>
+          <p className="text-[13px] text-muted-foreground text-center py-10">No items in this batch.</p>
         )}
         {sf.rows.map((i) => (
-          <div
-            key={i.id}
-            className="grid grid-cols-[minmax(0,1fr)_110px_120px_120px_120px_110px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
-          >
+          <div key={i.id} className={`${grid} items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]`}>
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
-              {i.pan_last4 && (
-                <p className="text-[11px] text-muted-foreground">PAN ••••{i.pan_last4}</p>
-              )}
+              <p className="text-[11px] text-muted-foreground">
+                {i.owner_phone ?? ""}{i.pan_last4 ? ` · PAN ••••${i.pan_last4}` : ""}
+              </p>
             </div>
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {i.owner_type === "expert"
-                ? "Expert"
-                : i.owner_type === "merchant"
-                  ? "Merchant"
-                  : "Partner"}
-
+              {i.owner_type === "expert" ? "Expert" : i.owner_type === "merchant" ? "Merchant" : "Partner"}
             </span>
             <span className="text-right font-semibold">{inr.format(i.gross_amount)}</span>
+            <span className="text-right text-muted-foreground">{i.bonus_amount > 0 ? inr.format(i.bonus_amount) : "—"}</span>
             <span className="text-right text-muted-foreground">
               {i.tds_amount > 0 ? `${inr.format(i.tds_amount)} (${i.tds_rate}%)` : "—"}
             </span>
             <span className="text-right font-semibold">{inr.format(i.net_amount)}</span>
-            <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={i.paid}
-                disabled={itemMutation.isPending}
-                onChange={(e) =>
-                  itemMutation.mutate({ item_id: i.id, paid: e.target.checked })
-                }
-                className="w-4 h-4 accent-primary"
-              />
-              {i.paid ? "Paid" : "Unpaid"}
-            </label>
+            <div className="min-w-0">
+              {i.paid ? (
+                <div className="text-[12px]">
+                  <p className="font-bold text-primary">Paid {i.paid_on ? formatDate(i.paid_on) : ""}</p>
+                  <p className="text-muted-foreground truncate">
+                    {[i.payment_mode, i.utr].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                  <button
+                    disabled={itemMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm("Un-mark this payment? The amount will be returned to their wallet."))
+                        itemMutation.mutate({ item_id: i.id, paid: false });
+                    }}
+                    className="text-[11px] font-semibold text-destructive underline"
+                  >
+                    Un-mark
+                  </button>
+                </div>
+              ) : (
+                <button
+                  disabled={batch.status === "discarded"}
+                  onClick={() => { setDetailError(null); setPayFor(i); }}
+                  className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground font-bold text-[12px] disabled:opacity-50"
+                >
+                  Record payment
+                </button>
+              )}
+            </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function RecordPaymentDialog({
+  item,
+  pending,
+  onClose,
+  onSave,
+}: {
+  item: PayoutItem;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (v: { paid_on: string; utr: string; mode: string; notes: string }) => void;
+}) {
+  const today = ymd(new Date());
+  const [paidOn, setPaidOn] = useState(today);
+  const [utr, setUtr] = useState("");
+  const [mode, setMode] = useState("UPI");
+  const [notes, setNotes] = useState("");
+  const inp = "w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]";
+  return (
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-[18px] border border-border w-full max-w-md p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[17px] font-bold text-foreground">Record payment</h3>
+          <button onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <p className="text-[13px] text-muted-foreground">
+          {item.owner_name} · Net payable <span className="font-bold text-foreground">{inr.format(item.net_amount)}</span>
+        </p>
+        <label className="block text-[12px] font-semibold text-muted-foreground space-y-1">
+          <span>Payment date</span>
+          <input type="date" className={inp} value={paidOn} max={today} onChange={(e) => setPaidOn(e.target.value)} />
+        </label>
+        <label className="block text-[12px] font-semibold text-muted-foreground space-y-1">
+          <span>Mode</span>
+          <select className={inp} value={mode} onChange={(e) => setMode(e.target.value)}>
+            {["UPI", "IMPS", "NEFT", "RTGS", "Bank transfer", "Cash"].map((m) => <option key={m}>{m}</option>)}
+          </select>
+        </label>
+        <label className="block text-[12px] font-semibold text-muted-foreground space-y-1">
+          <span>UTR / Reference no.</span>
+          <input className={inp} value={utr} onChange={(e) => setUtr(e.target.value)} placeholder="e.g. 427812345678" />
+        </label>
+        <input className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" />
+        <p className="text-[12px] text-muted-foreground">Saving reduces their wallet balance by this payout.</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px]">Cancel</button>
+          <button
+            disabled={pending || !paidOn || paidOn > today || (mode !== "Cash" && !utr.trim())}
+            onClick={() => onSave({ paid_on: paidOn, utr, mode, notes })}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Mark paid"}
+          </button>
+        </div>
       </div>
     </div>
   );
