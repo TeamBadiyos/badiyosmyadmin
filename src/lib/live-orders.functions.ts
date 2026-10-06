@@ -561,6 +561,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
           | null) ?? null,
       startedAt: ((r as Record<string, unknown>)["started_at"] as string | null) ?? null,
       serviceEndAt: ((r as Record<string, unknown>)["service_end_at"] as string | null) ?? null,
+      extMinutes: extMap.get(r.id as string) ?? 0,
     }));
   });
 
