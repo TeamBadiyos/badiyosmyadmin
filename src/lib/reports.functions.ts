@@ -614,3 +614,166 @@ export const getCustomerReport = createServerFn({ method: "POST" })
 
     return { newCustomers, repeatCustomers, topZones };
   });
+
+// ============ Profit & Loss ============
+export type PnlLine = {
+  orders: number;
+  gross: number;
+  discount: number;
+  coinDiscount: number;
+  collected: number;
+  refunds: number;
+  gst: number;
+  netRevenue: number;
+  partnerPayout: number;
+  platformEarning: number;
+};
+export type PnlReport = {
+  services: PnlLine & { expertPayout: number };
+  courier: PnlLine & { riderPayout: number };
+  store: { orders: number; gross: number; refunds: number; commission: number; commissionGst: number; merchantPayout: number };
+  bonuses: number;
+  paidOut: { paid: number; pending: number; tds: number };
+  totals: {
+    gross: number; discount: number; collected: number; refunds: number; gst: number;
+    netRevenue: number; partnerPayouts: number; bonuses: number; platformProfit: number; marginPct: number;
+  };
+  daily: Array<{ date: string; collected: number; payouts: number; profit: number }>;
+};
+
+const emptyLine = (): PnlLine => ({
+  orders: 0, gross: 0, discount: 0, coinDiscount: 0, collected: 0, refunds: 0, gst: 0,
+  netRevenue: 0, partnerPayout: 0, platformEarning: 0,
+});
+
+function refundOf(r: Record<string, unknown>, charged: number) {
+  const status = String(r.refund_status ?? "").toLowerCase();
+  if (!status || status === "failed") return 0;
+  const amt = Number(r.refund_amount ?? 0);
+  if (amt > 0) return Math.min(amt, charged);
+  return ["refunded", "processed", "completed", "success"].includes(status) ? charged : 0;
+}
+
+export const getPnlReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: ReportRange | undefined) => validateRange(i))
+  .handler(async ({ data, context }): Promise<PnlReport> => {
+    const scope = await getScope(context.supabase, context.userId);
+    const zone = scopeZone(scope, data.zoneId);
+    const db = context.supabase;
+    const f = rangeFrom(data.from), t = rangeTo(data.to);
+    const days = new Map<string, { collected: number; payouts: number; profit: number }>();
+    for (let d = new Date(data.from + "T00:00:00Z").getTime(); d <= new Date(data.to + "T00:00:00Z").getTime(); d += 86400000)
+      days.set(new Date(d).toISOString().slice(0, 10), { collected: 0, payouts: 0, profit: 0 });
+    const day = (iso: string) => days.get(iso.slice(0, 10));
+
+    const services = { ...emptyLine(), expertPayout: 0 };
+    const courier = { ...emptyLine(), riderPayout: 0 };
+    const store = { orders: 0, gross: 0, refunds: 0, commission: 0, commissionGst: 0, merchantPayout: 0 };
+    let bonuses = 0;
+    const paidOut = { paid: 0, pending: 0, tds: 0 };
+
+    if (zone !== "empty") {
+      let bq = db.from("bookings")
+        .select("price,total_amount,discount_amount,gst_amount,refund_amount,refund_status,status,razorpay_payment_id,snapshot_expert_payout,snapshot_partner_payout,created_at")
+        .eq("is_training", false).is("deleted_at", null).not("razorpay_payment_id", "is", null)
+        .gte("created_at", f).lte("created_at", t);
+      bq = applyZone(bq, zone);
+      const { data: rows, error } = await bq.limit(20000);
+      if (error) throw new Error(error.message);
+      for (const r of (rows ?? []) as Array<Record<string, unknown>>) {
+        const pid = String(r.razorpay_payment_id ?? "");
+        if (pid.toUpperCase().startsWith("TESTPRICE")) continue;
+        const status = String(r.status ?? "").toLowerCase();
+        const total = Number(r.total_amount ?? 0);
+        const discount = Number(r.discount_amount ?? 0);
+        const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+        const coin = pid.toLowerCase().startsWith("free_");
+        services.orders += 1;
+        services.gross += charged + discount;
+        if (coin) { services.coinDiscount += charged; services.discount += discount; continue; }
+        services.discount += discount;
+        const refund = status === "cancelled" || status === "canceled" ? Math.max(refundOf(r, charged), 0) : refundOf(r, charged);
+        const kept = Math.max(0, charged - refund);
+        const gst = charged > 0 ? Number(r.gst_amount ?? 0) * (kept / charged) : 0;
+        const done = status === "completed";
+        const expert = done ? Number(r.snapshot_expert_payout ?? 0) : 0;
+        const partner = done ? Number(r.snapshot_partner_payout ?? 0) : 0;
+        services.collected += charged; services.refunds += refund; services.gst += gst;
+        services.netRevenue += kept - gst; services.expertPayout += expert; services.partnerPayout += partner;
+        const b = day(String(r.created_at));
+        if (b) { b.collected += kept; b.payouts += expert + partner; b.profit += kept - gst - expert - partner; }
+      }
+      services.platformEarning = services.netRevenue - services.expertPayout - services.partnerPayout;
+    }
+
+    if (scope.role !== "area_partner") {
+      const [co, mo, wl, pb] = await Promise.all([
+        db.from("courier_orders")
+          .select("total_amount,discount_amount,gst_amount,refund_amount,refund_status,razorpay_payment_id,commission_pct,status,created_at")
+          .in("payment_status", ["paid", "PAID"]).gte("created_at", f).lte("created_at", t).limit(20000),
+        db.from("merchant_orders")
+          .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at")
+          .eq("status", "completed").gte("created_at", f).lte("created_at", t).limit(20000),
+        db.from("wallet_ledger").select("amount,reason,type")
+          .eq("wallet_type", "earnings").eq("type", "credit").gte("created_at", f).lte("created_at", t).limit(20000),
+        db.from("payout_batch_items").select("net_amount,amount,tds_amount,paid,batch_id,payout_batches!inner(week_start,week_end,status)")
+          .neq("payout_batches.status", "discarded").gte("payout_batches.week_end", data.from).lte("payout_batches.week_start", data.to).limit(20000),
+      ]);
+      for (const res of [co, mo, wl]) if (res.error) throw new Error(res.error.message);
+      for (const r of (co.data ?? []) as Array<Record<string, unknown>>) {
+        const charged = Number(r.total_amount ?? 0);
+        const discount = Number(r.discount_amount ?? 0);
+        courier.orders += 1; courier.gross += charged + discount;
+        if (String(r.razorpay_payment_id ?? "").toLowerCase().startsWith("free_")) { courier.coinDiscount += charged; courier.discount += discount; continue; }
+        courier.discount += discount;
+        const refund = refundOf(r, charged);
+        const kept = Math.max(0, charged - refund);
+        const gst = charged > 0 ? Number(r.gst_amount ?? 0) * (kept / charged) : 0;
+        const delivered = ["DELIVERED", "COMPLETED"].includes(String(r.status ?? "").toUpperCase());
+        const pct = Number(r.commission_pct ?? 0);
+        const rider = delivered ? (kept - gst) * (1 - pct / 100) : 0;
+        courier.collected += charged; courier.refunds += refund; courier.gst += gst;
+        courier.netRevenue += kept - gst; courier.riderPayout += rider;
+        const b = day(String(r.created_at));
+        if (b) { b.collected += kept; b.payouts += rider; b.profit += kept - gst - rider; }
+      }
+      courier.platformEarning = courier.netRevenue - courier.riderPayout;
+      for (const r of (mo.data ?? []) as Array<Record<string, unknown>>) {
+        const total = Number(r.total_amount ?? 0);
+        const refund = refundOf(r, total);
+        const comm = Number(r.commission_amount ?? 0);
+        const cgst = Number(r.commission_gst_amount ?? 0);
+        store.orders += 1; store.gross += total; store.refunds += refund;
+        store.commission += comm; store.commissionGst += cgst;
+        store.merchantPayout += Math.max(0, total - refund - comm - cgst);
+        const b = day(String(r.created_at));
+        if (b) { b.collected += total - refund; b.payouts += Math.max(0, total - refund - comm - cgst); b.profit += comm; }
+      }
+      for (const r of (wl.data ?? []) as Array<{ amount: number; reason: string | null }>) {
+        if (/bonus|incentive|reward|milestone/i.test(r.reason ?? "")) bonuses += Number(r.amount ?? 0);
+      }
+      if (!pb.error) for (const r of (pb.data ?? []) as Array<Record<string, unknown>>) {
+        const net = Number(r.net_amount ?? r.amount ?? 0);
+        paidOut.tds += Number(r.tds_amount ?? 0);
+        if (r.paid) paidOut.paid += net; else paidOut.pending += net;
+      }
+    }
+
+    const netRevenue = services.netRevenue + courier.netRevenue + store.commission;
+    const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout;
+    const platformProfit = netRevenue - partnerPayouts - bonuses;
+    return {
+      services, courier, store, bonuses, paidOut,
+      totals: {
+        gross: services.gross + courier.gross + store.gross,
+        discount: services.discount + services.coinDiscount + courier.discount + courier.coinDiscount,
+        collected: services.collected + courier.collected + store.gross,
+        refunds: services.refunds + courier.refunds + store.refunds,
+        gst: services.gst + courier.gst + store.commissionGst,
+        netRevenue, partnerPayouts, bonuses, platformProfit,
+        marginPct: netRevenue > 0 ? (platformProfit / netRevenue) * 100 : 0,
+      },
+      daily: Array.from(days.entries()).map(([date, v]) => ({ date, ...v })),
+    };
+  });
