@@ -5382,6 +5382,8 @@ export type Database = {
           pan_last4: string | null
           payment_mode: string | null
           payment_notes: string | null
+          removed: boolean
+          removed_reason: string | null
           tds_amount: number
           tds_deposited_at: string | null
           tds_rate: number
@@ -5407,6 +5409,8 @@ export type Database = {
           pan_last4?: string | null
           payment_mode?: string | null
           payment_notes?: string | null
+          removed?: boolean
+          removed_reason?: string | null
           tds_amount?: number
           tds_deposited_at?: string | null
           tds_rate?: number
@@ -5432,6 +5436,8 @@ export type Database = {
           pan_last4?: string | null
           payment_mode?: string | null
           payment_notes?: string | null
+          removed?: boolean
+          removed_reason?: string | null
           tds_amount?: number
           tds_deposited_at?: string | null
           tds_rate?: number
@@ -8884,6 +8890,10 @@ export type Database = {
         Args: { _decision: string; _extension_id: string }
         Returns: Json
       }
+      payout_batch_recalc_total: {
+        Args: { _batch_id: string }
+        Returns: undefined
+      }
       point_in_polygon: {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
@@ -9291,6 +9301,15 @@ export type Database = {
         Args: { _booking_id: string; _payload: Json }
         Returns: undefined
       }
+      staff_edit_payout_item: {
+        Args: {
+          _bonus: number
+          _gross: number
+          _item_id: string
+          _reason: string
+        }
+        Returns: undefined
+      }
       staff_expert_kyc_decision: {
         Args: { _decision: string; _expert_id: string; _reason: string }
         Returns: undefined
@@ -9665,6 +9684,10 @@ export type Database = {
       }
       staff_set_partner_zones: {
         Args: { _partner_id: string; _zone_ids: string[] }
+        Returns: undefined
+      }
+      staff_set_payout_item_removed: {
+        Args: { _item_id: string; _reason?: string; _removed: boolean }
         Returns: undefined
       }
       staff_set_plan_active: {

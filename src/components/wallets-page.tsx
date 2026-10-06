@@ -11,6 +11,8 @@ import {
   generatePayoutBatch,
   markPayoutItemPaid,
   discardPayoutBatch,
+  setPayoutItemRemoved,
+  editPayoutItem,
   getTdsReport,
   markTdsDeposited,
   getTdsSettings,
@@ -660,6 +662,9 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const [showDiscard, setShowDiscard] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [payFor, setPayFor] = useState<PayoutItem | null>(null);
+  const [editFor, setEditFor] = useState<PayoutItem | null>(null);
+  const removeItem = useServerFn(setPayoutItemRemoved);
+  const editItem = useServerFn(editPayoutItem);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["wallets", "batch-items", batch.id],
@@ -680,6 +685,21 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
     onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
   });
 
+  const removeMutation = useMutation({
+    mutationFn: (p: { item_id: string; removed: boolean; reason?: string }) => removeItem({ data: p }),
+    onSuccess: refresh,
+    onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: (p: { item_id: string; gross: number; bonus: number; reason: string }) => editItem({ data: p }),
+    onSuccess: () => {
+      setEditFor(null);
+      refresh();
+    },
+    onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
+  });
+
   const discardMutation = useMutation({
     mutationFn: () => discardBatch({ data: { batch_id: batch.id, reason: discardReason } }),
     onSuccess: () => {
@@ -691,15 +711,17 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
     onError: (e) => setDetailError(e instanceof Error ? e.message : "Failed"),
   });
 
-  const unpaid = data.filter((i) => !i.paid).length;
-  const tdsTotal = data.reduce((s, i) => s + (i.tds_amount ?? 0), 0);
-  const bonusTotal = data.reduce((s, i) => s + (i.bonus_amount ?? 0), 0);
-  const netTotal = data.reduce((s, i) => s + i.net_amount, 0);
-  const paidNet = data.filter((i) => i.paid).reduce((s, i) => s + i.net_amount, 0);
+  const all = data;
+  const active = all.filter((i) => !i.removed);
+  const unpaid = active.filter((i) => !i.paid).length;
+  const tdsTotal = active.reduce((s, i) => s + (i.tds_amount ?? 0), 0);
+  const bonusTotal = active.reduce((s, i) => s + (i.bonus_amount ?? 0), 0);
+  const netTotal = active.reduce((s, i) => s + i.net_amount, 0);
+  const paidNet = active.filter((i) => i.paid).reduce((s, i) => s + i.net_amount, 0);
   const anyPaid = data.some((i) => i.paid);
 
   type Item = (typeof data)[number];
-  const sf = useSortFilter(data, [
+  const sf = useSortFilter(all, [
     { key: "owner", label: "Owner", value: (i: Item) => i.owner_name },
     {
       key: "type",
@@ -711,7 +733,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
     { key: "bonus", label: "Bonus", type: "number", align: "right", value: (i: Item) => i.bonus_amount, filterable: false },
     { key: "tds", label: "TDS", type: "number", align: "right", value: (i: Item) => i.tds_amount ?? 0, filterable: false },
     { key: "net", label: "Net", type: "number", align: "right", value: (i: Item) => i.net_amount, filterable: false },
-    { key: "paid", label: "Payment", value: (i: Item) => (i.paid ? "Paid" : "Unpaid") },
+    { key: "paid", label: "Payment", value: (i: Item) => (i.removed ? "Removed" : i.paid ? "Paid" : "Unpaid") },
   ]);
 
   const grid = "grid grid-cols-[minmax(0,1fr)_90px_100px_90px_100px_100px_minmax(0,200px)] gap-3";
@@ -726,6 +748,14 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
           onSave={(v) => itemMutation.mutate({ item_id: payFor.id, paid: true, ...v })}
         />
       )}
+      {editFor && (
+        <EditItemDialog
+          item={editFor}
+          pending={editMutation.isPending}
+          onClose={() => setEditFor(null)}
+          onSave={(v) => editMutation.mutate({ item_id: editFor.id, ...v })}
+        />
+      )}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <button
           onClick={onBack}
@@ -736,14 +766,14 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         <div className="flex items-center gap-2 flex-wrap">
           <button
             disabled={!data.length}
-            onClick={() => downloadPayoutCsv(batch, data)}
+            onClick={() => downloadPayoutCsv(batch, active)}
             className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted disabled:opacity-50"
           >
             Download CSV
           </button>
           <button
             disabled={!data.length}
-            onClick={() => downloadPayoutPdf(batch, data).catch((e) => setDetailError(String(e)))}
+            onClick={() => downloadPayoutPdf(batch, active).catch((e) => setDetailError(String(e)))}
             className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
           >
             Download PDF
@@ -828,7 +858,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
           <p className="text-[13px] text-muted-foreground text-center py-10">No items in this batch.</p>
         )}
         {sf.rows.map((i) => (
-          <div key={i.id} className={`${grid} items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]`}>
+          <div key={i.id} className={`${grid} items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] ${i.removed ? "opacity-50" : ""}`}>
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
               <p className="text-[11px] text-muted-foreground">
@@ -862,18 +892,104 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
                     Un-mark
                   </button>
                 </div>
+              ) : i.removed ? (
+                <div className="text-[12px]">
+                  <p className="font-bold text-destructive">Removed</p>
+                  <p className="text-muted-foreground truncate" title={i.removed_reason ?? ""}>{i.removed_reason ?? "—"}</p>
+                  {batch.status !== "discarded" && (
+                    <button
+                      disabled={removeMutation.isPending}
+                      onClick={() => { setDetailError(null); removeMutation.mutate({ item_id: i.id, removed: false }); }}
+                      className="text-[11px] font-semibold text-primary underline"
+                    >
+                      Add back
+                    </button>
+                  )}
+                </div>
               ) : (
-                <button
-                  disabled={batch.status === "discarded"}
-                  onClick={() => { setDetailError(null); setPayFor(i); }}
-                  className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground font-bold text-[12px] disabled:opacity-50"
-                >
-                  Record payment
-                </button>
+                <div className="flex flex-col items-start gap-1">
+                  <button
+                    disabled={batch.status === "discarded"}
+                    onClick={() => { setDetailError(null); setPayFor(i); }}
+                    className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground font-bold text-[12px] disabled:opacity-50"
+                  >
+                    Record payment
+                  </button>
+                  {batch.status !== "discarded" && (
+                    <div className="flex gap-3 text-[11px] font-semibold">
+                      <button onClick={() => { setDetailError(null); setEditFor(i); }} className="text-foreground underline">
+                        Edit
+                      </button>
+                      <button
+                        disabled={removeMutation.isPending}
+                        onClick={() => {
+                          const reason = window.prompt(`Remove ${i.owner_name} from this batch? Reason:`);
+                          if (reason && reason.trim()) {
+                            setDetailError(null);
+                            removeMutation.mutate({ item_id: i.id, removed: true, reason });
+                          }
+                        }}
+                        className="text-destructive underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function EditItemDialog({
+  item,
+  pending,
+  onClose,
+  onSave,
+}: {
+  item: PayoutItem;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (v: { gross: number; bonus: number; reason: string }) => void;
+}) {
+  const [gross, setGross] = useState(String(item.gross_amount));
+  const [bonus, setBonus] = useState(String(item.bonus_amount));
+  const [reason, setReason] = useState("");
+  const g = Number(gross);
+  const b = Number(bonus);
+  const valid = g > 0 && b >= 0 && b <= g && reason.trim().length > 0;
+  const inp = "w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]";
+  return (
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-[18px] border border-border p-5 w-full max-w-md space-y-3" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[16px] font-bold text-foreground">Edit payout – {item.owner_name}</p>
+        <p className="text-[12px] text-muted-foreground">TDS aur Net naye amount se apne aap dobara calculate honge.</p>
+        <label className="block text-[12px] font-semibold text-muted-foreground">
+          Gross amount (₹, bonus included)
+          <input type="number" min={0} value={gross} onChange={(e) => setGross(e.target.value)} className={inp} />
+        </label>
+        <label className="block text-[12px] font-semibold text-muted-foreground">
+          Bonus (₹)
+          <input type="number" min={0} value={bonus} onChange={(e) => setBonus(e.target.value)} className={inp} />
+        </label>
+        <label className="block text-[12px] font-semibold text-muted-foreground">
+          Reason
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Kyun badal rahe ho" className={inp} />
+        </label>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px]">Cancel</button>
+          <button
+            disabled={!valid || pending}
+            onClick={() => onSave({ gross: g, bonus: b, reason })}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
     </div>
   );

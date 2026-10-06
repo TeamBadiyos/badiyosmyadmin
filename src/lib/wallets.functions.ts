@@ -69,6 +69,8 @@ export type PayoutItem = {
   payment_mode: string | null;
   payment_notes: string | null;
   bonus_amount: number;
+  removed: boolean;
+  removed_reason: string | null;
 };
 
 export type TdsReportRow = {
@@ -236,7 +238,7 @@ export const listPayoutItems = createServerFn({ method: "GET" })
     const { data: items, error } = await db
       .from("payout_batch_items")
       .select(
-        "id, batch_id, owner_type, owner_id, amount, paid, paid_at, gross_amount, tds_rate, tds_amount, net_amount, tds_status, pan_last4, paid_on, utr, payment_mode, payment_notes, bonus_amount",
+        "id, batch_id, owner_type, owner_id, amount, paid, paid_at, gross_amount, tds_rate, tds_amount, net_amount, tds_status, pan_last4, paid_on, utr, payment_mode, payment_notes, bonus_amount, removed, removed_reason",
       )
       .eq("batch_id", data.batch_id)
       .order("owner_type", { ascending: true });
@@ -293,6 +295,8 @@ export const listPayoutItems = createServerFn({ method: "GET" })
         payment_mode: r.payment_mode ?? null,
         payment_notes: r.payment_notes ?? null,
         bonus_amount: Number(r.bonus_amount ?? 0),
+        removed: !!r.removed,
+        removed_reason: r.removed_reason ?? null,
       };
     });
   });
@@ -347,6 +351,45 @@ export const markPayoutItemPaid = createServerFn({ method: "POST" })
       _utr: data.utr ?? null,
       _mode: data.mode ?? null,
       _notes: data.notes ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setPayoutItemRemoved = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { item_id: string; removed: boolean; reason?: string }) => {
+    if (!input?.item_id) throw new Error("item_id required");
+    if (input.removed && !input.reason?.trim()) throw new Error("Reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_set_payout_item_removed", {
+      _item_id: data.item_id,
+      _removed: data.removed,
+      _reason: data.reason?.trim() ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const editPayoutItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { item_id: string; gross: number; bonus: number; reason: string }) => {
+    if (!input?.item_id) throw new Error("item_id required");
+    if (!(input.gross > 0)) throw new Error("Amount must be more than 0");
+    if (!(input.bonus >= 0) || input.bonus > input.gross) throw new Error("Bonus must be between 0 and the amount");
+    if (!input.reason?.trim()) throw new Error("Reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_edit_payout_item", {
+      _item_id: data.item_id,
+      _gross: data.gross,
+      _bonus: data.bonus,
+      _reason: data.reason.trim(),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
