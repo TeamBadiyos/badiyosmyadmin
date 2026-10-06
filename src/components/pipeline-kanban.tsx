@@ -367,6 +367,8 @@ export function PipelineKanban({
   ) => {
     if (syncingRef.current) return;
     if (!from.current || !to.current) return;
+    // Only write when actually different — avoids feedback-loop jitter.
+    if (to.current.scrollLeft === from.current.scrollLeft) return;
     syncingRef.current = true;
     to.current.scrollLeft = from.current.scrollLeft;
     requestAnimationFrame(() => {

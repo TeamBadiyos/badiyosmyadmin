@@ -185,6 +185,14 @@
 /* ---------- Mobile friendliness (Command Center) ---------- */
 html, body { overflow-x: hidden; }
 .snap-x > * { scroll-snap-align: start; }
+/* Kanban boards: natural, fluid horizontal swipe (no snap jitter) */
+.board-swipe {
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
+}
+.board-swipe::-webkit-scrollbar { display: none; }
 @media (max-width: 767px) {
   /* Table-like grid rows keep readable widths and scroll sideways together */
   :where([class^="grid-cols-["], [class*=" grid-cols-["]):not([class*="_auto]"]):not([class*="repeat("]):not(dl) {
