@@ -42,12 +42,12 @@ const STATUS_STYLES: Record<MerchantStatus, string> = {
 };
 
 const TABS: { key: MerchantStatus | "" ; label: string }[] = [
+  { key: "", label: "All" },
   { key: "pending_review", label: "Pending review" },
   { key: "draft", label: "Draft / Incomplete" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
   { key: "suspended", label: "Suspended" },
-  { key: "", label: "All" },
 ];
 
 function fmt(ts: string) {
@@ -57,7 +57,7 @@ function fmt(ts: string) {
 export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<MerchantStatus | "">("pending_review");
+  const [tab, setTab] = useState<MerchantStatus | "">("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productsId, setProductsId] = useState<string | null>(null);
   const [commissionFor, setCommissionFor] = useState<MerchantRow | null>(null);
