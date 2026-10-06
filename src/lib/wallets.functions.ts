@@ -40,10 +40,12 @@ export type PayoutBatch = {
   id: string;
   week_start: string;
   week_end: string;
-  status: "pending" | "paid";
+  status: "pending" | "paid" | "discarded";
   total_amount: number;
   created_at: string;
   batch_type: "expert" | "merchant";
+  notes?: string | null;
+  paid_at?: string | null;
 };
 
 export type PayoutItem = {
@@ -52,6 +54,7 @@ export type PayoutItem = {
   owner_type: "expert" | "area_partner" | "merchant";
   owner_id: string;
   owner_name: string;
+  owner_phone: string | null;
   amount: number;
   paid: boolean;
   paid_at: string | null;
@@ -61,6 +64,11 @@ export type PayoutItem = {
   net_amount: number;
   tds_status: string;
   pan_last4: string | null;
+  paid_on: string | null;
+  utr: string | null;
+  payment_mode: string | null;
+  payment_notes: string | null;
+  bonus_amount: number;
 };
 
 export type TdsReportRow = {
@@ -185,14 +193,19 @@ export const walletAdjust = createServerFn({ method: "POST" })
 
 export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { batch_type?: "expert" | "merchant" } | undefined) => input ?? {})
+  .inputValidator(
+    (input: { batch_type?: "expert" | "merchant"; include_discarded?: boolean } | undefined) =>
+      input ?? {},
+  )
   .handler(async ({ data: input, context }): Promise<PayoutBatch[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    let q = context.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = (context.supabase as any)
       .from("payout_batches")
-      .select("id, week_start, week_end, status, total_amount, created_at, batch_type")
+      .select("id, week_start, week_end, status, total_amount, created_at, batch_type, notes, paid_at")
       .order("week_start", { ascending: false });
     if (input.batch_type) q = q.eq("batch_type", input.batch_type);
+    if (!input.include_discarded) q = q.neq("status", "discarded");
     const { data, error } = await q;
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,10 +213,12 @@ export const listPayoutBatches = createServerFn({ method: "GET" })
       id: r.id,
       week_start: r.week_start,
       week_end: r.week_end,
-      status: r.status as "pending" | "paid",
+      status: r.status as PayoutBatch["status"],
       total_amount: Number(r.total_amount ?? 0),
       created_at: r.created_at,
       batch_type: (r.batch_type ?? "expert") as "expert" | "merchant",
+      notes: r.notes ?? null,
+      paid_at: r.paid_at ?? null,
     }));
   });
 
@@ -216,88 +231,122 @@ export const listPayoutItems = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<PayoutItem[]> => {
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
-    const db = context.supabase;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = context.supabase as any;
     const { data: items, error } = await db
       .from("payout_batch_items")
-      .select("id, batch_id, owner_type, owner_id, amount, paid, paid_at, gross_amount, tds_rate, tds_amount, net_amount, tds_status, pan_last4")
+      .select(
+        "id, batch_id, owner_type, owner_id, amount, paid, paid_at, gross_amount, tds_rate, tds_amount, net_amount, tds_status, pan_last4, paid_on, utr, payment_mode, payment_notes, bonus_amount",
+      )
       .eq("batch_id", data.batch_id)
       .order("owner_type", { ascending: true });
     if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (items ?? []) as any[];
 
-    const expertIds = items?.filter((i) => i.owner_type === "expert").map((i) => i.owner_id) ?? [];
-    const partnerIds =
-      items?.filter((i) => i.owner_type === "area_partner").map((i) => i.owner_id) ?? [];
-    const merchantIds =
-      items?.filter((i) => i.owner_type === "merchant").map((i) => i.owner_id) ?? [];
+    const ids = (t: string) => list.filter((i) => i.owner_type === t).map((i) => i.owner_id);
+    const expertIds = ids("expert");
+    const partnerIds = ids("area_partner");
+    const merchantIds = ids("merchant");
+    const none = Promise.resolve({ data: [], error: null });
 
     const [expertsRes, partnersRes, merchantsRes] = await Promise.all([
-      expertIds.length
-        ? db.from("experts").select("id, name").in("id", expertIds)
-        : Promise.resolve({ data: [], error: null }),
-      partnerIds.length
-        ? db.from("area_partners").select("id, name").in("id", partnerIds)
-        : Promise.resolve({ data: [], error: null }),
+      expertIds.length ? db.from("experts").select("id, name, phone").in("id", expertIds) : none,
+      partnerIds.length ? db.from("area_partners").select("id, name, phone").in("id", partnerIds) : none,
       merchantIds.length
         ? db.from("merchants").select("id, store_name, owner_name, phone").in("id", merchantIds)
-        : Promise.resolve({ data: [], error: null }),
+        : none,
     ]);
     if (expertsRes.error) throw new Error(expertsRes.error.message);
     if (partnersRes.error) throw new Error(partnersRes.error.message);
     if (merchantsRes.error) throw new Error(merchantsRes.error.message);
 
-    const nameMap = new Map<string, string>();
-    for (const e of expertsRes.data ?? []) nameMap.set(`expert:${e.id}`, e.name);
-    for (const p of partnersRes.data ?? []) nameMap.set(`area_partner:${p.id}`, p.name);
+    const nameMap = new Map<string, { name: string; phone: string | null }>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const m of (merchantsRes.data ?? []) as any[])
-      nameMap.set(`merchant:${m.id}`, m.store_name || m.owner_name || m.phone);
+    for (const e of expertsRes.data as any[]) nameMap.set(`expert:${e.id}`, { name: e.name, phone: e.phone ?? null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of partnersRes.data as any[]) nameMap.set(`area_partner:${p.id}`, { name: p.name, phone: p.phone ?? null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const m of merchantsRes.data as any[])
+      nameMap.set(`merchant:${m.id}`, { name: m.store_name || m.owner_name || m.phone, phone: m.phone ?? null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((items ?? []) as any[]).map((r) => ({
-      id: r.id,
-      batch_id: r.batch_id,
-      owner_type: r.owner_type as "expert" | "area_partner" | "merchant",
-      owner_id: r.owner_id,
-      owner_name: nameMap.get(`${r.owner_type}:${r.owner_id}`) ?? "Unknown",
-      amount: Number(r.amount ?? 0),
-      paid: r.paid,
-      paid_at: r.paid_at,
-      gross_amount: Number(r.gross_amount ?? r.amount ?? 0),
-      tds_rate: Number(r.tds_rate ?? 0),
-      tds_amount: Number(r.tds_amount ?? 0),
-      net_amount: Number(r.net_amount ?? r.amount ?? 0),
-      tds_status: (r.tds_status ?? "none") as string,
-      pan_last4: r.pan_last4 ?? null,
-    }));
+    return list.map((r) => {
+      const who = nameMap.get(`${r.owner_type}:${r.owner_id}`);
+      return {
+        id: r.id,
+        batch_id: r.batch_id,
+        owner_type: r.owner_type as "expert" | "area_partner" | "merchant",
+        owner_id: r.owner_id,
+        owner_name: who?.name ?? "Unknown",
+        owner_phone: who?.phone ?? null,
+        amount: Number(r.amount ?? 0),
+        paid: r.paid,
+        paid_at: r.paid_at,
+        gross_amount: Number(r.gross_amount ?? r.amount ?? 0),
+        tds_rate: Number(r.tds_rate ?? 0),
+        tds_amount: Number(r.tds_amount ?? 0),
+        net_amount: Number(r.net_amount ?? r.amount ?? 0),
+        tds_status: (r.tds_status ?? "none") as string,
+        pan_last4: r.pan_last4 ?? null,
+        paid_on: r.paid_on ?? null,
+        utr: r.utr ?? null,
+        payment_mode: r.payment_mode ?? null,
+        payment_notes: r.payment_notes ?? null,
+        bonus_amount: Number(r.bonus_amount ?? 0),
+      };
+    });
   });
 
 export const generatePayoutBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("staff_generate_payout_batch");
+  .inputValidator(
+    (input: { batch_type: "expert" | "merchant"; from: string; to: string; notes?: string }) => {
+      const re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!input || !re.test(input.from) || !re.test(input.to)) throw new Error("Choose valid dates");
+      if (input.batch_type !== "expert" && input.batch_type !== "merchant") throw new Error("Invalid type");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: id, error } = await (context.supabase as any).rpc("staff_generate_payout_batch_range", {
+      _batch_type: data.batch_type,
+      _from: data.from,
+      _to: data.to,
+      _notes: data.notes ?? null,
+    });
     if (error) throw new Error(error.message);
-    return { batchId: data as string };
+    return { batchId: id as string };
   });
 
-export const generateMerchantPayoutBatch = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("staff_generate_merchant_payout_batch");
-    if (error) throw new Error(error.message);
-    return { batchId: data as string };
-  });
-
+/** @deprecated kept for compatibility; use generatePayoutBatch with batch_type. */
+export const generateMerchantPayoutBatch = generatePayoutBatch;
 
 export const markPayoutItemPaid = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { item_id: string; paid: boolean }) => {
-    if (!input?.item_id) throw new Error("item_id required");
-    return input;
-  })
+  .inputValidator(
+    (input: {
+      item_id: string;
+      paid: boolean;
+      paid_on?: string | null;
+      utr?: string | null;
+      mode?: string | null;
+      notes?: string | null;
+    }) => {
+      if (!input?.item_id) throw new Error("item_id required");
+      if (input.paid && !input.paid_on) throw new Error("Payment date is required");
+      return input;
+    },
+  )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("staff_mark_payout_item_paid", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_record_payout_payment", {
       _item_id: data.item_id,
       _paid: data.paid,
+      _paid_on: data.paid_on ?? null,
+      _utr: data.utr ?? null,
+      _mode: data.mode ?? null,
+      _notes: data.notes ?? null,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
