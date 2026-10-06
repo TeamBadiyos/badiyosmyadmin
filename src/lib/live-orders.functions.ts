@@ -311,6 +311,8 @@ export type PipelineBooking = {
   dispatchExhaustedAt: string | null;
   startedAt?: string | null;
   serviceEndAt?: string | null;
+  /** Total accepted extension minutes (e.g. 60 for a +1 hr extension). */
+  extMinutes: number;
 };
 
 /** Timing rules Live Ops needs to decide when a card is late. */
