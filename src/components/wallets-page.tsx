@@ -433,20 +433,99 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ============ Payouts tab ============
 
+function ymd(d: Date) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function lastWeekRange() {
+  const t = new Date();
+  const dow = (t.getDay() + 6) % 7; // Mon=0
+  const thisMon = new Date(t.getFullYear(), t.getMonth(), t.getDate() - dow);
+  const lastMon = new Date(thisMon.getFullYear(), thisMon.getMonth(), thisMon.getDate() - 7);
+  const lastSun = new Date(thisMon.getFullYear(), thisMon.getMonth(), thisMon.getDate() - 1);
+  return { from: ymd(lastMon), to: ymd(lastSun), thisMon: ymd(thisMon), today: ymd(t) };
+}
+
+function GenerateBatchDialog({
+  mode,
+  onClose,
+  onDone,
+}: {
+  mode: "expert" | "merchant";
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const gen = useServerFn(generatePayoutBatch);
+  const r = lastWeekRange();
+  const [from, setFrom] = useState(r.from);
+  const [to, setTo] = useState(r.to);
+  const [notes, setNotes] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const m = useMutation({
+    mutationFn: () => gen({ data: { batch_type: mode, from, to, notes } }),
+    onSuccess: onDone,
+    onError: (e) => setErr(e instanceof Error ? e.message : "Failed"),
+  });
+  const preset = (f: string, t: string) => {
+    setFrom(f);
+    setTo(t);
+  };
+  const inp = "w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]";
+  return (
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-[18px] border border-border w-full max-w-md p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[17px] font-bold text-foreground">Generate payout batch</h3>
+          <button onClick={onClose} aria-label="Close"><X size={18} /></button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => preset(r.from, r.to)} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted">Last week (Mon–Sun)</button>
+          <button onClick={() => preset(r.thisMon, r.today)} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted">This week so far</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
+            <span>From</span>
+            <input type="date" className={inp} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
+            <span>To</span>
+            <input type="date" className={inp} value={to} min={from} max={r.today} onChange={(e) => setTo(e.target.value)} />
+          </label>
+        </div>
+        <input className={inp} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <p className="text-[12px] text-muted-foreground">
+          Includes all unpaid wallet earnings up to the end date — order payouts and bonuses. Bonuses are shown separately.
+        </p>
+        {err && <p className="text-[13px] text-destructive">{err}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px]">Cancel</button>
+          <button
+            disabled={m.isPending || !from || !to || from > to || to > r.today}
+            onClick={() => { setErr(null); m.mutate(); }}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
+          >
+            {m.isPending ? "Generating…" : "Generate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
   const queryClient = useQueryClient();
   const fetchBatches = useServerFn(listPayoutBatches);
-  const genExpert = useServerFn(generatePayoutBatch);
-  const genMerchant = useServerFn(generateMerchantPayoutBatch);
+  const discard = useServerFn(discardPayoutBatch);
   const { data = [], isLoading } = useQuery({
     queryKey: ["wallets", "batches", mode],
     queryFn: () => fetchBatches({ data: { batch_type: mode } }),
   });
   const [openBatch, setOpenBatch] = useState<PayoutBatch | null>(null);
+  const [showGen, setShowGen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = useMutation({
-    mutationFn: () => (mode === "merchant" ? genMerchant() : genExpert()),
+  const del = useMutation({
+    mutationFn: (p: { id: string; reason: string }) => discard({ data: { batch_id: p.id, reason: p.reason } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] }),
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
@@ -454,7 +533,7 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
   const sf = useSortFilter(data, [
     {
       key: "week",
-      label: "Week",
+      label: "Period",
       value: (b: PayoutBatch) => b.week_start,
       display: (b: PayoutBatch) => `${formatDate(b.week_start)} – ${formatDate(b.week_end)}`,
     },
@@ -475,27 +554,35 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
 
   return (
     <div className="space-y-4">
+      {showGen && (
+        <GenerateBatchDialog
+          mode={mode}
+          onClose={() => setShowGen(false)}
+          onDone={() => {
+            setShowGen(false);
+            queryClient.invalidateQueries({ queryKey: ["wallets", "batches"] });
+          }}
+        />
+      )}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[14px] text-muted-foreground">
           {mode === "merchant"
-            ? "Weekly merchant payout batches from completed order earnings."
-            : "Weekly payout batches to experts and area partners."}
+            ? "Merchant payout batches for a chosen period."
+            : "Payout batches to experts and area partners for a chosen period (bonuses included)."}
         </p>
         <div className="flex items-center gap-3">
           <SortFilterReset api={sf} />
           <button
-            disabled={generate.isPending}
             onClick={() => {
               setError(null);
-              generate.mutate();
+              setShowGen(true);
             }}
-            className="h-11 px-4 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
+            className="h-11 px-4 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] inline-flex items-center gap-2"
           >
-            <Plus size={16} /> {generate.isPending ? "Generating…" : "Generate this week's batch"}
+            <Plus size={16} /> Generate batch
           </button>
         </div>
       </div>
-
 
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
