@@ -425,7 +425,7 @@ export function ExpertFormModal({
           {formError && <p className="text-[13px] text-destructive">{formError}</p>}
         </div>
 
-        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
+        <footer className="px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:py-4 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"

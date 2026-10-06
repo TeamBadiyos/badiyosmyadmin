@@ -723,7 +723,7 @@ function ModalShell({
           </button>
         </header>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-6 pb-16 sm:pb-6 space-y-4">{children}</div>
-        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
+        <footer className="px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:py-4 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
           {footer}
         </footer>
       </div>
