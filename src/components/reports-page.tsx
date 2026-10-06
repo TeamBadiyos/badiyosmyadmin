@@ -24,6 +24,7 @@ import {
   getReferralReport,
   getPayoutReport,
   getCustomerReport,
+  getPnlReport,
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
@@ -33,6 +34,7 @@ import type { PayoutBatch } from "@/lib/wallets.functions";
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
 const TABS = [
+  { key: "pnl", label: "Profit & Loss" },
   { key: "revenue", label: "Revenue" },
   { key: "bookings", label: "Bookings" },
   { key: "experts", label: "Experts" },
@@ -74,7 +76,7 @@ function fmtShortDate(d: string) {
 }
 
 export function ReportsPage({ role }: { role: StaffRole | null }) {
-  const [tab, setTab] = useState<TabKey>("revenue");
+  const [tab, setTab] = useState<TabKey>("pnl");
   const init = useMemo(defaultRange, []);
   const [from, setFrom] = useState<string>(init.from);
   const [to, setTo] = useState<string>(init.to);
@@ -163,6 +165,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
         ))}
       </div>
 
+      {tab === "pnl" && <PnlTab range={range} />}
       {tab === "revenue" && <RevenueTab range={range} />}
       {tab === "bookings" && <BookingsTab range={range} />}
       {tab === "experts" && <ExpertsTab range={range} />}
@@ -632,6 +635,129 @@ function SimpleTable({
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ============ Profit & Loss ============
+function Row({ label, value, sub, bold, neg }: { label: string; value: number; sub?: string; bold?: boolean; neg?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between py-2 text-[14px] ${bold ? "border-t border-border font-bold" : ""}`}>
+      <span className={bold ? "text-foreground" : "text-muted-foreground"}>
+        {label}
+        {sub && <span className="block text-[11px] text-muted-foreground font-normal">{sub}</span>}
+      </span>
+      <span className={neg ? "text-destructive" : "text-foreground"}>
+        {neg && value > 0 ? "− " : ""}
+        {inr.format(Math.abs(value))}
+      </span>
+    </div>
+  );
+}
+
+function PnlTab({ range }: { range: ReportRange }) {
+  const fetchFn = useServerFn(getPnlReport);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "pnl", range],
+    queryFn: () => fetchFn({ data: range }),
+  });
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMsg msg={(error as Error).message} />;
+  if (!data) return null;
+  const T = data.totals;
+  const s = data.services, c = data.courier, m = data.store;
+
+  const exportCsv = () => {
+    const lines: Array<[string, number]> = [
+      ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
+      ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
+      ["Expert payouts", s.expertPayout], ["Area partner payouts", s.partnerPayout], ["Rider payouts", c.riderPayout],
+      ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Platform profit", T.platformProfit],
+      ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
+    ];
+    const csv = ["Item,Amount", ...lines.map(([k, v]) => `"${k}",${v.toFixed(2)}`), "", "Date,Collected,Payouts,Profit",
+      ...data.daily.map((d) => `${d.date},${d.collected.toFixed(2)},${d.payouts.toFixed(2)},${d.profit.toFixed(2)}`)].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `pnl-${range.from}-to-${range.to}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <button onClick={exportCsv} className="h-9 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted">
+          Download CSV
+        </button>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat label="Gross Order Value" value={inr.format(T.gross)} />
+        <Stat label="Discount Given" value={inr.format(T.discount)} />
+        <Stat label="Net Revenue (excl GST)" value={inr.format(T.netRevenue)} />
+        <Stat label="Paid to Experts / Riders / Partners" value={inr.format(T.partnerPayouts)} />
+        <Stat label="Bonuses" value={inr.format(T.bonuses)} />
+        <Stat label="GST Collected" value={inr.format(T.gst)} />
+        <Stat label="Refunds" value={inr.format(T.refunds)} />
+        <Stat label={`Platform Profit (${T.marginPct.toFixed(1)}%)`} value={inr.format(T.platformProfit)} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <h3 className="text-[15px] font-bold text-foreground mb-2">Overall P&amp;L</h3>
+          <Row label="Gross order value" sub="Full price before any discount" value={T.gross} />
+          <Row label="Discounts" sub="Coupons + coin / free orders" value={T.discount} neg />
+          <Row label="Collected from customers" value={T.collected} bold />
+          <Row label="Refunds" value={T.refunds} neg />
+          <Row label="GST (goes to government)" value={T.gst} neg />
+          <Row label="Net revenue" value={T.netRevenue} bold />
+          <Row label="Expert payouts" value={s.expertPayout} neg />
+          <Row label="Area partner payouts" value={s.partnerPayout} neg />
+          <Row label="Rider payouts" value={c.riderPayout} neg />
+          <Row label="Bonuses / incentives" value={T.bonuses} neg />
+          <Row label="Platform profit" value={T.platformProfit} bold />
+        </Card>
+        <Card>
+          <h3 className="text-[15px] font-bold text-foreground mb-2">Payout status (batches in range)</h3>
+          <Row label="Paid out (after TDS)" value={data.paidOut.paid} />
+          <Row label="Pending to pay" value={data.paidOut.pending} />
+          <Row label="TDS deducted" value={data.paidOut.tds} />
+          <p className="text-[12px] text-muted-foreground mt-3">
+            Expert/partner amounts count only completed orders; rider amounts only delivered parcels. Training and test orders are excluded.
+          </p>
+        </Card>
+      </div>
+
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-4">By business line</h3>
+        <SimpleTable
+          columns={["Line", "Orders", "Gross", "Discount", "Net revenue", "Paid to partners", "Platform earning"]}
+          rightAlign={[1, 2, 3, 4, 5, 6]}
+          emptyText="No orders in range."
+          rows={[
+            ["Services", String(s.orders), inr.format(s.gross), inr.format(s.discount + s.coinDiscount), inr.format(s.netRevenue), inr.format(s.expertPayout + s.partnerPayout), inr.format(s.platformEarning)],
+            ["Courier", String(c.orders), inr.format(c.gross), inr.format(c.discount + c.coinDiscount), inr.format(c.netRevenue), inr.format(c.riderPayout), inr.format(c.platformEarning)],
+            ["Store", String(m.orders), inr.format(m.gross), inr.format(0), inr.format(m.commission), inr.format(m.merchantPayout), inr.format(m.commission)],
+          ]}
+        />
+      </Card>
+
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-4">Collected vs payouts vs profit</h3>
+        <div className="h-[320px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data.daily}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="date" tickFormatter={fmtShortDate} fontSize={12} />
+              <YAxis fontSize={12} />
+              <Tooltip formatter={(v: number) => inr.format(v)} labelFormatter={fmtShortDate} />
+              <Legend />
+              <Line type="monotone" dataKey="collected" name="Collected" stroke="#2563EB" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="payouts" name="Payouts" stroke="#F59E0B" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="profit" name="Profit" stroke="#00B97A" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
     </div>
   );
 }
