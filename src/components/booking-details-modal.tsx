@@ -28,8 +28,7 @@ import {
   setBookingStaffNote,
   listServiceDurations,
   listBookingCustomerAddresses,
-  verifyStartOtp,
-  verifyEndOtp,
+  rescheduleBooking,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
@@ -300,41 +299,25 @@ export function BookingDetailsModal({
   }, [editOpen, durationsQuery.data, editDuration, editPrice]);
 
 
-  // Interim OTP verification (staff-relayed until Expert App ships)
-  const verifyStartFn = useServerFn(verifyStartOtp);
-  const verifyEndFn = useServerFn(verifyEndOtp);
-  const [startOtpInput, setStartOtpInput] = useState("");
-  const [endOtpInput, setEndOtpInput] = useState("");
-
-  const showStartOtp =
+  // Reschedule: moves order back to Scheduled Orders with a new date/slot.
+  const rescheduleFn = useServerFn(rescheduleBooking);
+  const canReschedule =
     !!data &&
-    ["expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
-    canEdit;
-  const showEndOtp =
-    !!data && data.status === "in_progress" && canEdit;
-
-  const invalidateAfterOtp = () => {
-    queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
-    queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
-    queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-  };
-
-  const startOtpMutation = useMutation({
-    mutationFn: (otp: string) => verifyStartFn({ data: { bookingId, otp } }),
+    canEditFields &&
+    (role === "super_admin" || role === "ops_manager") &&
+    ["confirmed", "accepted", "expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
+    !data.startedAt;
+  const rescheduleMutation = useMutation({
+    mutationFn: (v: { date: string; slot: string; reason: string }) =>
+      rescheduleFn({ data: { bookingId, ...v } }),
     onSuccess: () => {
-      toast.success("Service started");
-      setStartOtpInput("");
-      invalidateAfterOtp();
+      toast.success("Booking rescheduled", { description: "Moved to Scheduled Orders." });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
     },
-  });
-  const endOtpMutation = useMutation({
-    mutationFn: (otp: string) => verifyEndFn({ data: { bookingId, otp } }),
-    onSuccess: () => {
-      toast.success("Service marked completed");
-      setEndOtpInput("");
-      invalidateAfterOtp();
-    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Reschedule failed"),
   });
 
 
@@ -714,53 +697,14 @@ export function BookingDetailsModal({
                 />
               )}
 
-              {/* Interim: staff-relayed OTP verification */}
-              {(showStartOtp || showEndOtp) && (
-                <section className="bg-amber-50 border border-amber-200 rounded-[18px] p-4">
-                  <div className="flex items-start gap-2 mb-3">
-                    <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-amber-900">
-                        {showStartOtp ? "Verify Start OTP" : "Verify End OTP"}
-                      </h3>
-                      <p className="text-[12px] text-amber-800 mt-0.5">
-                        Temporary: verify OTP relayed by Expert via phone. Will be replaced once the Expert App is live.
-                      </p>
-                    </div>
-                  </div>
-                  {showStartOtp && (
-                    <OtpVerifyRow
-                      label="Start OTP"
-                      value={startOtpInput}
-                      onChange={setStartOtpInput}
-                      pending={startOtpMutation.isPending}
-                      onConfirm={() =>
-                        startOtpInput.trim() && startOtpMutation.mutate(startOtpInput.trim())
-                      }
-                      error={
-                        startOtpMutation.isError
-                          ? (startOtpMutation.error as Error)?.message ?? "Verification failed"
-                          : null
-                      }
-                    />
-                  )}
-                  {showEndOtp && (
-                    <OtpVerifyRow
-                      label="End OTP"
-                      value={endOtpInput}
-                      onChange={setEndOtpInput}
-                      pending={endOtpMutation.isPending}
-                      onConfirm={() =>
-                        endOtpInput.trim() && endOtpMutation.mutate(endOtpInput.trim())
-                      }
-                      error={
-                        endOtpMutation.isError
-                          ? (endOtpMutation.error as Error)?.message ?? "Verification failed"
-                          : null
-                      }
-                    />
-                  )}
-                </section>
+              {canReschedule && (
+                <RescheduleSection
+                  currentDate={data.scheduledDate}
+                  currentSlot={data.scheduledTimeSlot}
+                  hasExpert={!!data.expert.id}
+                  pending={rescheduleMutation.isPending}
+                  onSubmit={(v) => rescheduleMutation.mutate(v)}
+                />
               )}
 
               {/* Update status */}
