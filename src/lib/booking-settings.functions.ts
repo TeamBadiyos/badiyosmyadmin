@@ -31,6 +31,7 @@ export const BOOKING_TIMING_KEYS = [
   "no_expert_alert_before_slot_minutes",
   "no_expert_refund_after_slot_minutes",
   "expert_journey_steps_enabled",
+  "service_extensions_enabled",
 ] as const;
 
 export type BookingTimingKey = (typeof BOOKING_TIMING_KEYS)[number];
@@ -52,6 +53,7 @@ const DEFAULTS: Record<BookingTimingKey, string> = {
   no_expert_alert_before_slot_minutes: "5",
   no_expert_refund_after_slot_minutes: "30",
   expert_journey_steps_enabled: "0",
+  service_extensions_enabled: "1",
 };
 
 export const getBookingTimingSettings = createServerFn({ method: "GET" })
@@ -97,7 +99,7 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
       if (!(BOOKING_TIMING_KEYS as readonly string[]).includes(key)) {
         throw new Error(`Unknown setting: ${key}`);
       }
-      if (key === "expert_journey_steps_enabled") {
+      if (key === "expert_journey_steps_enabled" || key === "service_extensions_enabled") {
         if (raw !== "0" && raw !== "1") throw new Error("Journey steps switch must be on or off");
         continue;
       }
