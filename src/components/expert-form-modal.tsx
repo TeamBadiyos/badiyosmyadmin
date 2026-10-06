@@ -222,7 +222,7 @@ export function ExpertFormModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[820px] max-h-[100vh] sm:max-h-[92vh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
+        className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
         <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-[18px] font-bold text-foreground">
@@ -233,7 +233,7 @@ export function ExpertFormModal({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-6 pb-16 sm:pb-6 space-y-6">
           <section className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden shrink-0">
               {photoPreview ? (
@@ -425,7 +425,7 @@ export function ExpertFormModal({
           {formError && <p className="text-[13px] text-destructive">{formError}</p>}
         </div>
 
-        <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
+        <footer className="px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:py-4 border-t border-border bg-card flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
