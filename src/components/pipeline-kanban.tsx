@@ -799,6 +799,14 @@ function BoardCard({
         )}
       </div>
 
+      {booking.extMinutes > 0 && (
+        <p className="mt-2 inline-flex rounded-full border border-info/40 bg-info/10 px-2 py-0.5 text-[10px] font-bold text-info">
+          ⏱ Extended +{booking.extMinutes >= 60
+            ? `${Math.floor(booking.extMinutes / 60)} hr${booking.extMinutes % 60 ? ` ${booking.extMinutes % 60} min` : ""}`
+            : `${booking.extMinutes} min`}
+        </p>
+      )}
+
       {booking.staffNote && (
         <p
           title={booking.staffNote}

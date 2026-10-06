@@ -311,6 +311,8 @@ export type PipelineBooking = {
   dispatchExhaustedAt: string | null;
   startedAt?: string | null;
   serviceEndAt?: string | null;
+  /** Total accepted extension minutes (e.g. 60 for a +1 hr extension). */
+  extMinutes: number;
 };
 
 /** Timing rules Live Ops needs to decide when a card is late. */
@@ -450,7 +452,8 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       ),
     );
 
-    const [usersRes, expertsRes, priceOptionsRes] = await Promise.all([
+    const bookingIds = rows.map((r) => r.id as string);
+    const [usersRes, expertsRes, priceOptionsRes, extRes] = await Promise.all([
       userIds.length
         ? db.from("users").select("id, full_name").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as const),
@@ -463,7 +466,25 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
             .select("id, services(pricing_type)")
             .in("id", priceOptionIds)
         : Promise.resolve({ data: [], error: null } as const),
+      db
+        .from("booking_extensions")
+        .select("booking_id, extra_minutes, approval_status")
+        .in("booking_id", bookingIds)
+        .in("approval_status", ["accepted", "approved"]),
     ]);
+    if ("error" in extRes && extRes.error) {
+      throw new Error(extRes.error.message);
+    }
+    const extMap = new Map<string, number>();
+    for (const e of (extRes.data ?? []) as Array<{
+      booking_id: string;
+      extra_minutes: number | null;
+    }>) {
+      extMap.set(
+        e.booking_id,
+        (extMap.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0),
+      );
+    }
     if ("error" in usersRes && usersRes.error) {
       throw new Error(usersRes.error.message);
     }
@@ -540,6 +561,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
           | null) ?? null,
       startedAt: ((r as Record<string, unknown>)["started_at"] as string | null) ?? null,
       serviceEndAt: ((r as Record<string, unknown>)["service_end_at"] as string | null) ?? null,
+      extMinutes: extMap.get(r.id as string) ?? 0,
     }));
   });
 
