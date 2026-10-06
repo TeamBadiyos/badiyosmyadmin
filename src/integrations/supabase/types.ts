@@ -5367,6 +5367,7 @@ export type Database = {
         Row: {
           amount: number
           batch_id: string
+          bonus_amount: number
           booking_ids: string[]
           created_at: string
           gross_amount: number | null
@@ -5377,15 +5378,21 @@ export type Database = {
           owner_type: string
           paid: boolean
           paid_at: string | null
+          paid_on: string | null
           pan_last4: string | null
+          payment_mode: string | null
+          payment_notes: string | null
           tds_amount: number
           tds_deposited_at: string | null
           tds_rate: number
           tds_status: string
+          utr: string | null
+          wallet_debited: boolean
         }
         Insert: {
           amount?: number
           batch_id: string
+          bonus_amount?: number
           booking_ids?: string[]
           created_at?: string
           gross_amount?: number | null
@@ -5396,15 +5403,21 @@ export type Database = {
           owner_type: string
           paid?: boolean
           paid_at?: string | null
+          paid_on?: string | null
           pan_last4?: string | null
+          payment_mode?: string | null
+          payment_notes?: string | null
           tds_amount?: number
           tds_deposited_at?: string | null
           tds_rate?: number
           tds_status?: string
+          utr?: string | null
+          wallet_debited?: boolean
         }
         Update: {
           amount?: number
           batch_id?: string
+          bonus_amount?: number
           booking_ids?: string[]
           created_at?: string
           gross_amount?: number | null
@@ -5415,11 +5428,16 @@ export type Database = {
           owner_type?: string
           paid?: boolean
           paid_at?: string | null
+          paid_on?: string | null
           pan_last4?: string | null
+          payment_mode?: string | null
+          payment_notes?: string | null
           tds_amount?: number
           tds_deposited_at?: string | null
           tds_rate?: number
           tds_status?: string
+          utr?: string | null
+          wallet_debited?: boolean
         }
         Relationships: [
           {
@@ -5436,6 +5454,7 @@ export type Database = {
           batch_type: string
           created_at: string
           id: string
+          notes: string | null
           paid_at: string | null
           status: string
           total_amount: number
@@ -5446,6 +5465,7 @@ export type Database = {
           batch_type?: string
           created_at?: string
           id?: string
+          notes?: string | null
           paid_at?: string | null
           status?: string
           total_amount?: number
@@ -5456,6 +5476,7 @@ export type Database = {
           batch_type?: string
           created_at?: string
           id?: string
+          notes?: string | null
           paid_at?: string | null
           status?: string
           total_amount?: number
@@ -9291,6 +9312,15 @@ export type Database = {
       }
       staff_generate_merchant_payout_batch: { Args: never; Returns: string }
       staff_generate_payout_batch: { Args: never; Returns: string }
+      staff_generate_payout_batch_range: {
+        Args: {
+          _batch_type: string
+          _from: string
+          _notes?: string
+          _to: string
+        }
+        Returns: string
+      }
       staff_generate_subscription_invoices: { Args: never; Returns: Json }
       staff_get_referral_config: { Args: never; Returns: Json }
       staff_insurance_stats: { Args: never; Returns: Json }
@@ -9352,6 +9382,17 @@ export type Database = {
       staff_reassign_store_rider: {
         Args: { _expert_id: string; _order_id: string }
         Returns: Json
+      }
+      staff_record_payout_payment: {
+        Args: {
+          _item_id: string
+          _mode?: string
+          _notes?: string
+          _paid: boolean
+          _paid_on?: string
+          _utr?: string
+        }
+        Returns: undefined
       }
       staff_redraw_zone_boundary: {
         Args: { _boundary: Json; _zone_id: string }
