@@ -150,12 +150,12 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
         <p className="text-[13px] text-destructive py-10 text-center">{(q.error as Error).message}</p>
       ) : tab === "merchants" ? (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
-          <div className="px-4 pt-3"><SortFilterReset sf={merchantSf} /></div>
+          <div className="px-4 pt-3"><SortFilterReset api={merchantSf} /></div>
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["store", "city", "pct", "orders", "gross", "comm", "net"].map((k) => (
-                  <th key={k} className="px-4 py-2"><SortFilterHeader sf={merchantSf} colKey={k} /></th>
+                  <th key={k} className="px-4 py-2"><SortFilterHeader {...merchantSf.headerProps(k)} /></th>
                 ))}
                 <th className="px-4 py-2">Bank</th>
               </tr>
@@ -192,12 +192,12 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
         </div>
       ) : (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
-          <div className="px-4 pt-3"><SortFilterReset sf={dedSf} /></div>
+          <div className="px-4 pt-3"><SortFilterReset api={dedSf} /></div>
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["date", "order", "merchant", "items", "pct", "comm", "gst", "net"].map((k) => (
-                  <th key={k} className="px-4 py-2"><SortFilterHeader sf={dedSf} colKey={k} /></th>
+                  <th key={k} className="px-4 py-2"><SortFilterHeader {...dedSf.headerProps(k)} /></th>
                 ))}
               </tr>
             </thead>
