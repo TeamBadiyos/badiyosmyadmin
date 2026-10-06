@@ -587,7 +587,7 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
       {error && <p className="text-[13px] text-destructive">{error}</p>}
 
       <div className="bg-card border border-border rounded-[18px] overflow-visible">
-        <div className="grid grid-cols-[minmax(0,1fr)_140px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1fr)_140px_120px_120px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <SortFilterHeader {...sf.headerProps("week")} />
           <SortFilterHeader {...sf.headerProps("total")} />
           <SortFilterHeader {...sf.headerProps("status")} />
