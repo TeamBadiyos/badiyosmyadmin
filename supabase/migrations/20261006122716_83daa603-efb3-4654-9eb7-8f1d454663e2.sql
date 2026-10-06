@@ -1,0 +1,2 @@
+ALTER TABLE public.payout_batches DROP CONSTRAINT payout_batches_status_check;
+ALTER TABLE public.payout_batches ADD CONSTRAINT payout_batches_status_check CHECK (status IN ('pending', 'paid', 'discarded'));
