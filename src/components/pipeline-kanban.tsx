@@ -367,6 +367,8 @@ export function PipelineKanban({
   ) => {
     if (syncingRef.current) return;
     if (!from.current || !to.current) return;
+    // Only write when actually different — avoids feedback-loop jitter.
+    if (to.current.scrollLeft === from.current.scrollLeft) return;
     syncingRef.current = true;
     to.current.scrollLeft = from.current.scrollLeft;
     requestAnimationFrame(() => {
@@ -449,10 +451,11 @@ export function PipelineKanban({
 
 
       {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
+      {/* Scrollbar on top of the board, so nobody has to scroll to the bottom. */}
       <div
         ref={topBarRef}
         onScroll={() => syncScroll(topBarRef, boardRef)}
-        className="overflow-x-auto overflow-y-hidden mb-2"
+        className="hidden sm:block overflow-x-auto overflow-y-hidden mb-2"
       >
         <div ref={topBarInnerRef} className="h-[1px]" />
       </div>
@@ -460,7 +463,7 @@ export function PipelineKanban({
       <div
         ref={boardRef}
         onScroll={() => syncScroll(boardRef, topBarRef)}
-        className="grid gap-4 grid-cols-[repeat(5,minmax(78vw,1fr))] sm:grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto snap-x snap-mandatory sm:snap-none overscroll-x-contain -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
+        className="grid gap-4 grid-cols-[repeat(5,minmax(78vw,1fr))] sm:grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto overscroll-x-contain board-swipe -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
       >
         {COLUMNS.map((col) => {
           const items = (grouped.get(col.key) ?? []).filter(
