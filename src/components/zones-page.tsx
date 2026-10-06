@@ -99,15 +99,15 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] text-muted-foreground">
           {canManage
             ? "Manage service zones and area partner assignments."
             : "Your assigned zone."}
         </p>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           {canDelete && (
-            <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-[13px] text-muted-foreground cursor-pointer whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={showDeleted}
@@ -120,7 +120,7 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
           {canManage && (
             <button
               onClick={() => setDrawOpen(true)}
-              className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+              className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0 hover:opacity-95"
             >
               <Plus size={18} />
               Draw New Zone
@@ -129,7 +129,8 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+<div className="min-w-[960px]">
         <div className={`grid ${cols} gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground`}>
           <span></span>
           <span>Name</span>
@@ -163,6 +164,7 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
             cols={cols}
           />
         ))}
+</div>
       </div>
 
 

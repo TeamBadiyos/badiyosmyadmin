@@ -42,21 +42,22 @@ export function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
           <ShieldCheck size={16} className="text-primary" />
           Manage staff accounts and their roles.
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+          className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0 hover:opacity-95"
         >
           <Plus size={18} />
           Add Staff User
         </button>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+<div className="min-w-[820px]">
         <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_130px_minmax(0,1fr)_100px_140px_90px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Name</span>
           <span>Email</span>
@@ -126,6 +127,7 @@ export function RolesPage() {
             </button>
           </div>
         ))}
+</div>
       </div>
 
       {createOpen && <CreateModal onClose={() => setCreateOpen(false)} />}

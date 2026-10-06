@@ -106,20 +106,20 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
             Har completed store order se merchant ka Commission % kata jata hai. Yahi % yahan se edit karo.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="h-10 rounded-[12px] border border-border bg-background px-3 text-[13px]"
+            className="h-10 min-w-0 flex-1 sm:flex-none rounded-[12px] border border-border bg-background px-3 text-[13px]"
           />
-          <button onClick={() => setMonth("")} className="h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold">
+          <button onClick={() => setMonth("")} className="h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold whitespace-nowrap">
             All time
           </button>
           <button onClick={() => q.refetch()} className="h-10 w-10 rounded-[12px] border border-border inline-flex items-center justify-center" aria-label="Refresh">
             <RefreshCw size={15} />
           </button>
-          <button onClick={exportCsv} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2">
+          <button onClick={exportCsv} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2 whitespace-nowrap">
             <Download size={14} /> Download CSV
           </button>
         </div>
@@ -151,7 +151,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       ) : tab === "merchants" ? (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
           <div className="px-4 pt-3"><SortFilterReset api={merchantSf} /></div>
-          <table className="w-full text-[13px]">
+          <table className="w-full min-w-[820px] text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["store", "city", "pct", "orders", "gross", "comm", "net"].map((k) => (
@@ -164,7 +164,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
               {merchantSf.rows.map((m) => (
                 <tr key={m.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5">
-                    <p className="font-semibold">{m.storeName || "Unnamed store"}</p>
+                    <p className="font-semibold min-w-[180px]">{m.storeName || "Unnamed store"}</p>
                     <p className="text-[11px] text-muted-foreground">{m.ownerName || "—"} · {m.phone}</p>
                   </td>
                   <td className="px-4 py-2.5">{m.city || "—"}</td>
@@ -193,7 +193,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
       ) : (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
           <div className="px-4 pt-3"><SortFilterReset api={dedSf} /></div>
-          <table className="w-full text-[13px]">
+          <table className="w-full min-w-[820px] text-[13px]">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
                 {["date", "order", "merchant", "items", "pct", "comm", "gst", "net"].map((k) => (

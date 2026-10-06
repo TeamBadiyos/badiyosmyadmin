@@ -64,7 +64,8 @@ export function SkillApprovalsPage({ role }: { role: StaffRole | null }) {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+<div className="min-w-[780px]">
         <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)_160px_110px_180px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Expert</span>
           <span>Phone</span>
@@ -130,6 +131,7 @@ export function SkillApprovalsPage({ role }: { role: StaffRole | null }) {
             </div>
           </div>
         ))}
+</div>
       </div>
     </div>
   );

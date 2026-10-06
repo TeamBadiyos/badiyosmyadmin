@@ -129,7 +129,8 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
       )}
 
       {isDraftTab ? (
-        <div className="bg-card border border-border rounded-[18px] overflow-hidden">
+        <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+<div className="min-w-[760px]">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_190px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>Store / Owner</span>
             <span>Phone</span>
@@ -167,11 +168,12 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
               </span>
             </div>
           ))}
+</div>
         </div>
       ) : (
         <div className="grid gap-4">
           {rows.map((m) => (
-            <div key={m.id} className="bg-card border border-border rounded-[18px] p-6 space-y-4">
+            <div key={m.id} className="bg-card border border-border rounded-[18px] p-4 sm:p-6 space-y-4 min-w-0 overflow-hidden">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -189,7 +191,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     {fmt(m.createdAt)}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setProductsId(m.id)}
                     className="h-9 px-3 rounded-[12px] border border-border font-bold text-[13px] inline-flex items-center gap-1"
@@ -294,7 +296,9 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                   {[m.segmentName, m.categoryName].filter(Boolean).join(" · ") || "—"}
                 </Field>
                 <Field label="Address">
+                  <span className="break-words">
                   {[m.address, m.city, m.pincode].filter(Boolean).join(", ") || "—"}
+                  </span>
                 </Field>
               </div>
 

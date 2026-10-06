@@ -98,8 +98,8 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
       ) : (data?.groups.length ?? 0) === 0 ? (
         <p className="text-[14px] text-muted-foreground">No waitlist requests yet.</p>
       ) : (
-        <div className="rounded-[16px] border border-border bg-card overflow-hidden">
-          <table className="w-full text-[13px]">
+        <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
+          <table className="w-full min-w-[760px] text-[13px]">
             <thead className="bg-muted">
               <tr className="text-left text-muted-foreground">
                 <th className="px-5 py-3 font-semibold">City / Area</th>
@@ -116,9 +116,9 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                   <td className="px-5 py-3">
                     <div className="flex items-start gap-2">
                       <MapPin size={15} className="mt-0.5 text-primary shrink-0" />
-                      <div>
+                      <div className="min-w-[200px] max-w-[280px]">
                         <p className="font-semibold text-foreground">{g.city}</p>
-                        <p className="text-muted-foreground">{g.area}</p>
+                        <p className="text-muted-foreground line-clamp-2">{g.area}</p>
                       </div>
                     </div>
                   </td>
@@ -127,7 +127,7 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                       {g.segments.map((s) => (
                         <span
                           key={s.id}
-                          className="px-2 py-0.5 rounded-full bg-primary-tint text-[11px] font-semibold"
+                          className="px-2 py-0.5 rounded-full bg-primary-tint text-[11px] font-semibold whitespace-nowrap"
                         >
                           {s.name} · {s.count}
                         </span>
