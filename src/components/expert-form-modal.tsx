@@ -222,7 +222,7 @@ export function ExpertFormModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[820px] max-h-[100vh] sm:max-h-[92vh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
+        className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
         <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-[18px] font-bold text-foreground">
@@ -233,7 +233,7 @@ export function ExpertFormModal({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-6 pb-16 sm:pb-6 space-y-6">
           <section className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden shrink-0">
               {photoPreview ? (
