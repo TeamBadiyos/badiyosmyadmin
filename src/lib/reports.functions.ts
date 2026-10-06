@@ -514,6 +514,7 @@ export const getPayoutReport = createServerFn({ method: "POST" })
       .select("id, week_start, week_end, status, total_amount")
       .gte("week_start", data.from)
       .lte("week_end", data.to)
+      .neq("status", "discarded")
       .order("week_start", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
