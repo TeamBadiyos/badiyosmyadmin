@@ -163,14 +163,12 @@ export function ExpertsPage({
         <SortFilterReset api={sf} />
       </div>
 
-      <div className="bg-card border border-border rounded-[18px] overflow-visible">
-        <div className="grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+        <div className="grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_90px_100px] min-w-[720px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Photo</span>
           <SortFilterHeader {...sf.headerProps("name")} />
           <SortFilterHeader {...sf.headerProps("phone")} />
           <SortFilterHeader {...sf.headerProps("zone")} />
-          <SortFilterHeader {...sf.headerProps("level")} />
-          <SortFilterHeader {...sf.headerProps("kyc")} />
           <SortFilterHeader {...sf.headerProps("wallet")} />
           <SortFilterHeader {...sf.headerProps("status")} />
         </div>
@@ -243,12 +241,12 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
   return (
     <button
       onClick={onOpen}
-      className="w-full grid grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_100px_110px_120px_100px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
+      className="w-full grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_90px_100px] min-w-[720px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
     >
       <ExpertAvatar url={expert.photoUrl} />
       <span className="min-w-0 flex flex-col gap-1">
-        <span className="min-w-0 flex items-center gap-2">
-          <span className="font-semibold text-foreground truncate">{expert.name}</span>
+        <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold text-foreground break-words">{expert.name}</span>
           <ExpertModeBadge mode={expert.mode} />
           {expert.avgRating != null ? (
             <span
@@ -262,21 +260,8 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
             <span className="shrink-0 text-[11px] text-muted-foreground">No rating</span>
           )}
         </span>
-        <span className="flex flex-wrap gap-1 text-[10px] font-semibold">
-          <span className={`px-1.5 py-0.5 rounded-full ${expert.jacketIssued ? "bg-primary/10 text-primary" : "bg-warning/20 text-foreground"}`}>
-            {expert.jacketIssued ? "Jacket ✓" : "No jacket"}
-          </span>
-          <span className={`px-1.5 py-0.5 rounded-full ${expert.trainingDone === 5 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-            Training {expert.trainingDone}/5
-          </span>
-          {expert.joiningDate && (
-            <span className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-              Joined {new Date(expert.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
-            </span>
-          )}
-        </span>
       </span>
-      <span className="font-mono text-[13px] text-muted-foreground truncate">{expert.phone}</span>
+      <span className="font-mono text-[12px] text-muted-foreground">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
         {expert.zoneNames?.length ? (
           <span className="inline-flex flex-wrap gap-1">
@@ -299,16 +284,6 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         )}
       </span>
 
-      <span>
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${LEVEL_STYLES[expert.level]}`}>
-          {expert.level}
-        </span>
-      </span>
-      <span>
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${KYC_STYLES[expert.kycStatus]}`}>
-          {expert.kycStatus}
-        </span>
-      </span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
       <span className="flex items-center gap-1.5 flex-wrap">
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
