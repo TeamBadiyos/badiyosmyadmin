@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.booking_extensions_guard_enabled() FROM PUBLIC, anon, authenticated;

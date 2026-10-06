@@ -160,6 +160,7 @@ export function BookingTimingsTab() {
   }
 
   const journeyOn = (draft["expert_journey_steps_enabled"] ?? "0") === "1";
+  const extOn = (draft["service_extensions_enabled"] ?? "1") === "1";
 
   return (
     <div className="space-y-4">
@@ -248,6 +249,37 @@ export function BookingTimingsTab() {
         </div>
       </section>
 
+      <section className="rounded-[16px] border border-border bg-card">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
+          <div className="min-w-0 max-w-xl">
+            <h3 className="text-[15px] font-bold text-foreground">Service extension (extra time)</h3>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              ON: customers can add extra time during a running service. OFF: extension is
+              blocked for everyone.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={extOn}
+            aria-label="Allow service extension"
+            disabled={!canEdit}
+            onClick={() =>
+              setDraft((d) => ({ ...d, service_extensions_enabled: extOn ? "0" : "1" }))
+            }
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+              extOn ? "bg-primary" : "bg-border"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${
+                extOn ? "left-[22px]" : "left-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      </section>
+
       {canEdit ? (
         <div className="flex items-center gap-2">
           <button
@@ -256,6 +288,7 @@ export function BookingTimingsTab() {
             onClick={() => {
               const values: Record<string, string> = {
                 expert_journey_steps_enabled: draft["expert_journey_steps_enabled"] ?? "0",
+                service_extensions_enabled: draft["service_extensions_enabled"] ?? "1",
               };
               for (const f of ALL_FIELDS) values[f.key] = draft[f.key] ?? "";
               saveMut.mutate(values);
