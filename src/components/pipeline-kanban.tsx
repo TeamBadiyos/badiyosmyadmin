@@ -779,13 +779,16 @@ function BoardCard({
       </div>
 
       <div className="text-[12px] text-muted-foreground space-y-0.5">
-        {(booking.serviceLabel || booking.serviceDurationMinutes) && (
-          <p className="truncate">
-            {booking.serviceLabel ?? `${booking.serviceDurationMinutes} min service`}
-            {booking.pricingType === "flat" ? " · Flat" : ""}
-          </p>
-        )}
-        <p>{formatPlacedAt(booking.createdAt)}</p>
+        <p className="truncate">
+          {(booking.serviceLabel || booking.serviceDurationMinutes) && (
+            <>
+              {booking.serviceLabel ?? `${booking.serviceDurationMinutes} min service`}
+              {booking.pricingType === "flat" ? " · Flat" : ""}
+              {" · "}
+            </>
+          )}
+          {formatPlacedAt(booking.createdAt)}
+        </p>
         <OrderPaymentSummary
           className="pt-1"
           paid={booking.paid ? booking.totalAmount : 0}
