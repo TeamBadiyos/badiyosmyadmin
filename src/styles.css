@@ -181,3 +181,34 @@
     animation: none !important;
   }
 }
+
+/* ---------- Mobile friendliness (Command Center) ---------- */
+html, body { overflow-x: hidden; }
+.snap-x > * { scroll-snap-align: start; }
+@media (max-width: 767px) {
+  /* Table-like grid rows keep readable widths and scroll sideways together */
+  :where([class^="grid-cols-["], [class*=" grid-cols-["]):not([class*="_auto]"]):not([class*="repeat("]):not(dl) {
+    min-width: 680px;
+  }
+  :where(div, section):has(> :where([class^="grid-cols-["], [class*=" grid-cols-["]):not([class*="_auto]"]):not([class*="repeat("]):not(dl)) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .overflow-x-auto > table { min-width: 640px; }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  /* Filter bars: controls share the row instead of overflowing */
+  select, input[type="date"], input[type="text"], input[type="search"] { max-width: 100%; }
+  .flex-wrap > .flex.flex-col:has(> select),
+  .flex-wrap > .flex.flex-col:has(> input),
+  .flex-wrap > div:has(> select),
+  .flex-wrap > div:has(> input[type="date"]) { flex: 1 1 140px; min-width: 0; }
+  .flex-wrap > .flex.flex-col > select,
+  .flex-wrap > div > select,
+  .flex-wrap > div > input[type="date"] { width: 100%; min-width: 0; }
+  /* Popups: use the full phone width */
+  .fixed.inset-0.z-50 { padding: 0.5rem !important; }
+  .fixed.inset-0.z-50 > div { max-width: 100% !important; }
+  .modal-pop { padding: 1rem !important; }
+  /* Comfortable tap targets */
+  button, [role="button"] { touch-action: manipulation; }
+}

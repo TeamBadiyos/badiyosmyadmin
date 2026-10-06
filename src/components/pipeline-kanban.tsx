@@ -460,7 +460,7 @@ export function PipelineKanban({
       <div
         ref={boardRef}
         onScroll={() => syncScroll(boardRef, topBarRef)}
-        className="grid gap-4 grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
+        className="grid gap-4 grid-cols-[repeat(5,minmax(78vw,1fr))] sm:grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto snap-x snap-mandatory sm:snap-none overscroll-x-contain -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2"
       >
         {COLUMNS.map((col) => {
           const items = (grouped.get(col.key) ?? []).filter(
