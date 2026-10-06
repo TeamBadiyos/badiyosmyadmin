@@ -721,7 +721,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const anyPaid = data.some((i) => i.paid);
 
   type Item = (typeof data)[number];
-  const sf = useSortFilter(data, [
+  const sf = useSortFilter(all, [
     { key: "owner", label: "Owner", value: (i: Item) => i.owner_name },
     {
       key: "type",
