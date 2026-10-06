@@ -466,7 +466,25 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
             .select("id, services(pricing_type)")
             .in("id", priceOptionIds)
         : Promise.resolve({ data: [], error: null } as const),
+      db
+        .from("booking_extensions")
+        .select("booking_id, extra_minutes, approval_status")
+        .in("booking_id", bookingIds)
+        .in("approval_status", ["accepted", "approved"]),
     ]);
+    if ("error" in extRes && extRes.error) {
+      throw new Error(extRes.error.message);
+    }
+    const extMap = new Map<string, number>();
+    for (const e of (extRes.data ?? []) as Array<{
+      booking_id: string;
+      extra_minutes: number | null;
+    }>) {
+      extMap.set(
+        e.booking_id,
+        (extMap.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0),
+      );
+    }
     if ("error" in usersRes && usersRes.error) {
       throw new Error(usersRes.error.message);
     }
