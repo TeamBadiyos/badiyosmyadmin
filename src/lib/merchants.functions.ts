@@ -256,6 +256,11 @@ export type MerchantDetail = {
   isGstRegistered: boolean | null;
   gstin: string | null;
   gstLegalName: string | null;
+  bankHolder: string | null;
+  bankAccount: string | null;
+  bankIfsc: string | null;
+  pan: string | null;
+  commissionPct: number;
   deletedAt: string | null;
   deleteReason: string | null;
 };

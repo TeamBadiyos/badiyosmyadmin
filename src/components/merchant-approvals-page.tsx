@@ -285,6 +285,11 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     : "Not registered"}
                 </Field>
                 <Field label="GST legal name">{m.gstLegalName || "—"}</Field>
+                <Field label="Commission">{m.commissionPct}% per order</Field>
+                <Field label="Bank account">
+                  {m.bankAccount ? `${m.bankHolder || "—"} · ${m.bankAccount} · ${m.bankIfsc || "IFSC missing"}` : <span className="text-destructive font-semibold">Bank details pending</span>}
+                </Field>
+                <Field label="PAN">{m.pan || "—"}</Field>
                 <Field label="Category">
                   {[m.segmentName, m.categoryName].filter(Boolean).join(" · ") || "—"}
                 </Field>
