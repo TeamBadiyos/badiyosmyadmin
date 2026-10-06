@@ -531,7 +531,7 @@ function PayoutsTab({ mode }: { mode: "expert" | "merchant" }) {
     onError: (e) => setError(e instanceof Error ? e.message : "Failed"),
   });
 
-  const sf = useSortFilter(all, [
+  const sf = useSortFilter(data, [
     {
       key: "week",
       label: "Period",
