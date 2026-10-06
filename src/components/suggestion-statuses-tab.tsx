@@ -120,10 +120,10 @@ export function SuggestionStatusesTab() {
             </div>
             {canEdit && (
               <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
+                <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
                   <ArrowUp className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="Move down" disabled={i === order.length - 1} onClick={() => move(i, 1)}>
+                <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Move down" disabled={i === order.length - 1} onClick={() => move(i, 1)}>
                   <ArrowDown className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => setEditing(s)}>

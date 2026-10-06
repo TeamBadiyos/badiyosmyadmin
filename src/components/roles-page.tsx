@@ -42,7 +42,7 @@ export function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
           <ShieldCheck size={16} className="text-primary" />
           Manage staff accounts and their roles.
