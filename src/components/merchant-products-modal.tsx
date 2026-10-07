@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   listMerchantProducts,
   setProductAdminHidden,
+  setProductApproval,
 } from "@/lib/merchants.functions";
 
 function inr(n: number) {
@@ -23,6 +24,7 @@ export function MerchantProductsModal({
   const queryClient = useQueryClient();
   const fetchProducts = useServerFn(listMerchantProducts);
   const toggleFn = useServerFn(setProductAdminHidden);
+  const approveFn = useServerFn(setProductApproval);
   const [q, setQ] = useState("");
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -32,6 +34,7 @@ export function MerchantProductsModal({
   });
 
   const canManage = data?.role === "super_admin";
+  const canApprove = data?.role === "super_admin" || data?.role === "ops_manager";
   const products = data?.products ?? [];
 
   const filtered = useMemo(() => {
@@ -49,6 +52,23 @@ export function MerchantProductsModal({
   ).length;
   const merchantHidden = products.filter((p) => !p.isActive).length;
   const adminHidden = products.filter((p) => p.adminHidden).length;
+  const pendingIds = products.filter((p) => p.approvalStatus === "pending").map((p) => p.id);
+
+  const approval = useMutation({
+    mutationFn: (p: { productIds: string[]; decision: "approved" | "rejected"; reason?: string | null }) =>
+      approveFn({ data: p }),
+    onSuccess: (r, p) => {
+      toast.success(`${r.count} item${r.count === 1 ? "" : "s"} ${p.decision}`);
+      queryClient.invalidateQueries({ queryKey: ["merchant", "products", merchantId] });
+      queryClient.invalidateQueries({ queryKey: ["merchants"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not update item"),
+  });
+  const reject = (ids: string[]) => {
+    const reason = window.prompt("Reason for rejecting (merchant will see this)");
+    if (!reason || !reason.trim()) return;
+    approval.mutate({ productIds: ids, decision: "rejected", reason });
+  };
 
   const toggle = useMutation({
     mutationFn: (p: { productId: string; hidden: boolean; reason?: string | null }) =>
@@ -86,6 +106,7 @@ export function MerchantProductsModal({
               {lowStock > 0 ? ` · ${lowStock} low stock` : ""}
               {merchantHidden > 0 ? ` · ${merchantHidden} hidden by merchant` : ""}
               {adminHidden > 0 ? ` · ${adminHidden} hidden by admin` : ""}
+              {pendingIds.length > 0 ? ` · ${pendingIds.length} pending approval` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -105,6 +126,32 @@ export function MerchantProductsModal({
             </button>
           </div>
         </div>
+
+        {pendingIds.length > 0 && (
+          <div className="px-5 py-3 border-b border-border bg-accent/40 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-semibold">
+              {pendingIds.length} item{pendingIds.length === 1 ? "" : "s"} pending for approval
+            </p>
+            {canApprove && (
+              <div className="flex gap-2">
+                <button
+                  disabled={approval.isPending}
+                  onClick={() => approval.mutate({ productIds: pendingIds, decision: "approved" })}
+                  className="h-8 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold disabled:opacity-50"
+                >
+                  Approve all
+                </button>
+                <button
+                  disabled={approval.isPending}
+                  onClick={() => reject(pendingIds)}
+                  className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-bold disabled:opacity-50"
+                >
+                  Reject all
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="px-5 py-3 border-b border-border">
           <div className="relative">
@@ -165,8 +212,39 @@ export function MerchantProductsModal({
                     {p.categoryLabel ?? "Uncategorised"}
                     {p.unit ? ` · ${p.unit}` : ""}
                   </p>
-                  {(!p.isActive || p.adminHidden) && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                  {(!p.isActive || p.adminHidden || p.approvalStatus !== "approved") && (
+                    <div className="flex flex-wrap gap-1.5 mt-1 items-center">
+                      {p.approvalStatus === "pending" && (
+                        <span className="inline-flex h-6 px-2 items-center rounded-full bg-accent text-accent-foreground border border-border text-[11px] font-semibold">
+                          Pending approval
+                        </span>
+                      )}
+                      {p.approvalStatus === "rejected" && (
+                        <span
+                          title={p.approvalReason ?? undefined}
+                          className="inline-flex h-6 px-2 items-center rounded-full bg-destructive/10 text-destructive text-[11px] font-semibold"
+                        >
+                          Rejected{p.approvalReason ? `: ${p.approvalReason}` : ""}
+                        </span>
+                      )}
+                      {canApprove && p.approvalStatus !== "approved" && (
+                        <button
+                          disabled={approval.isPending}
+                          onClick={() => approval.mutate({ productIds: [p.id], decision: "approved" })}
+                          className="h-6 px-2 rounded-full bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                      )}
+                      {canApprove && p.approvalStatus === "pending" && (
+                        <button
+                          disabled={approval.isPending}
+                          onClick={() => reject([p.id])}
+                          className="h-6 px-2 rounded-full border border-border text-[11px] font-bold disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      )}
                       {!p.isActive && (
                         <span className="inline-flex h-6 px-2 items-center rounded-full bg-muted text-muted-foreground text-[11px] font-semibold">
                           Hidden by merchant
