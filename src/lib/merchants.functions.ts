@@ -450,12 +450,15 @@ export type MerchantProduct = {
   unit: string | null;
   stockQuantity: number;
   lowStockThreshold: number;
+  hsnSacCode: string | null;
+  gstRate: number;
   isActive: boolean;
   adminHidden: boolean;
   adminHiddenReason: string | null;
-  approvalStatus: "pending" | "approved" | "rejected";
+  approvalStatus: "pending" | "approved" | "rejected" | "query_raised";
   approvalReason: string | null;
   imageUrl: string | null;
+  imageUrl2: string | null;
   createdAt: string;
 };
 
@@ -499,7 +502,7 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
       db
         .from("products")
         .select(
-          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, created_at",
+          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, hsn_sac_code, gst_rate, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, image_url_2, created_at",
         )
         .eq("merchant_id", data.merchantId)
         .order("created_at", { ascending: false })
@@ -511,17 +514,20 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     // the admin modal can render them (public buckets are blocked).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const paths = ((rows ?? []) as any[])
-      .map((r) => r.image_url as string | null)
+      .flatMap((r) => [r.image_url as string | null, r.image_url_2 as string | null])
       .filter((p): p is string => !!p && !p.startsWith("http"));
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
-      const { data: signed } = await db.storage
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: signed } = await supabaseAdmin.storage
         .from("product-images")
         .createSignedUrls(paths, 3600);
       for (const s of signed ?? []) {
         if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
       }
     }
+    const resolve = (u: string | null | undefined) =>
+      u ? (u.startsWith("http") ? u : (signedMap.get(u) ?? null)) : null;
 
     return {
       role,
@@ -538,16 +544,15 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         unit: r.unit ?? null,
         stockQuantity: Number(r.stock_quantity ?? 0),
         lowStockThreshold: Number(r.low_stock_threshold ?? 0),
+        hsnSacCode: r.hsn_sac_code ?? null,
+        gstRate: Number(r.gst_rate ?? 0),
         isActive: !!r.is_active,
         adminHidden: !!r.admin_hidden,
         adminHiddenReason: r.admin_hidden_reason ?? null,
-        approvalStatus: (r.approval_status ?? "approved") as "pending" | "approved" | "rejected",
+        approvalStatus: (r.approval_status ?? "approved") as MerchantProduct["approvalStatus"],
         approvalReason: r.approval_reason ?? null,
-        imageUrl: r.image_url
-          ? r.image_url.startsWith("http")
-            ? r.image_url
-            : (signedMap.get(r.image_url) ?? null)
-          : null,
+        imageUrl: resolve(r.image_url),
+        imageUrl2: resolve(r.image_url_2),
         createdAt: r.created_at,
       })),
     };
@@ -595,6 +600,126 @@ export const setProductAdminHidden = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+export type UpdateProductInput = {
+  productId: string;
+  name: string;
+  description: string | null;
+  categoryLabel: string | null;
+  price: number;
+  unit: string | null;
+  stockQuantity: number;
+  lowStockThreshold: number;
+  hsnSacCode: string | null;
+  gstRate: number;
+  isActive: boolean;
+  // undefined = keep, null = remove, {base64,contentType} = replace
+  photo1?: { base64: string; contentType: string } | null;
+  photo2?: { base64: string; contentType: string } | null;
+};
+
+export const updateMerchantProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpdateProductInput) => {
+    if (!input?.productId) throw new Error("Product is required");
+    if (!input.name?.trim()) throw new Error("Name is required");
+    if (!(Number(input.price) >= 0)) throw new Error("Price must be 0 or more");
+    if (!(Number(input.stockQuantity) >= 0)) throw new Error("Stock must be 0 or more");
+    for (const p of [input.photo1, input.photo2]) {
+      if (p && p.base64.length > 7_000_000) throw new Error("Photo too large (max ~5 MB)");
+      if (p && !p.contentType.startsWith("image/")) throw new Error("Only image files allowed");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await staffRole(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
+    const { data: before, error: bErr } = await admin
+      .from("products").select("*").eq("id", data.productId).maybeSingle();
+    if (bErr) throw new Error(bErr.message);
+    if (!before) throw new Error("Product not found");
+
+    const upload = async (p: { base64: string; contentType: string }, slot: number) => {
+      const ext = (p.contentType.split("/")[1] ?? "jpg").replace("jpeg", "jpg").slice(0, 5);
+      const path = `${before.merchant_id}/product-${Date.now()}-${slot}.${ext}`;
+      const bytes = Buffer.from(p.base64, "base64");
+      const { error } = await admin.storage
+        .from("product-images")
+        .upload(path, bytes, { contentType: p.contentType, upsert: false });
+      if (error) throw new Error(`Photo upload failed: ${error.message}`);
+      return path;
+    };
+
+    const t = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const patch: Record<string, any> = {
+      name: data.name.trim(),
+      description: t(data.description),
+      category_label: t(data.categoryLabel),
+      price: Number(data.price),
+      unit: t(data.unit),
+      stock_quantity: Math.floor(Number(data.stockQuantity)),
+      low_stock_threshold: Math.floor(Number(data.lowStockThreshold) || 0),
+      hsn_sac_code: t(data.hsnSacCode),
+      gst_rate: Number(data.gstRate) || 0,
+      is_active: !!data.isActive,
+    };
+    if (data.photo1 !== undefined) patch.image_url = data.photo1 ? await upload(data.photo1, 1) : null;
+    if (data.photo2 !== undefined) patch.image_url_2 = data.photo2 ? await upload(data.photo2, 2) : null;
+
+    const { data: after, error } = await admin
+      .from("products").update(patch).eq("id", data.productId).select("*").single();
+    if (error) throw new Error(error.message);
+    await admin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: "update_product_details",
+      target_table: "products",
+      target_id: data.productId,
+      before_state: before,
+      after_state: after,
+    });
+    return { ok: true };
+  });
+
+export const raiseProductQuery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { productIds: string[]; reason: string }) => {
+    if (!input?.productIds?.length) throw new Error("Select at least one item");
+    if (!input.reason?.trim()) throw new Error("Query reason is required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true; count: number }> => {
+    await staffRole(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
+    const { data: before, error: bErr } = await admin
+      .from("products").select("id, name, merchant_id, approval_status, approval_reason")
+      .in("id", data.productIds);
+    if (bErr) throw new Error(bErr.message);
+    const reason = data.reason.trim();
+    const { error } = await admin.from("products").update({
+      approval_status: "query_raised",
+      approval_reason: reason,
+      approval_reviewed_at: new Date().toISOString(),
+      approval_reviewed_by: context.userId,
+    }).in("id", data.productIds);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const b of (before ?? []) as any[]) {
+      await admin.from("audit_logs").insert({
+        actor_id: context.userId,
+        action: "product_query_raised",
+        target_table: "products",
+        target_id: b.id,
+        before_state: b,
+        after_state: { approval_status: "query_raised", approval_reason: reason },
+      });
+    }
+    return { ok: true, count: (before ?? []).length };
   });
 
 export const setProductApproval = createServerFn({ method: "POST" })
