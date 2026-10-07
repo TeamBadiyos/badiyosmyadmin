@@ -445,6 +445,53 @@ export type Database = {
           },
         ]
       }
+      booking_expert_handovers: {
+        Row: {
+          booking_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          minutes_worked: number
+          new_expert_id: string
+          previous_expert_id: string
+          previous_expert_payout: number
+          reason: string
+          total_payout: number
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          minutes_worked?: number
+          new_expert_id: string
+          previous_expert_id: string
+          previous_expert_payout?: number
+          reason: string
+          total_payout?: number
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          minutes_worked?: number
+          new_expert_id?: string
+          previous_expert_id?: string
+          previous_expert_payout?: number
+          reason?: string
+          total_payout?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_expert_handovers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_extensions: {
         Row: {
           approval_status: string
@@ -7680,6 +7727,10 @@ export type Database = {
         Returns: Json
       }
       booking_journey_sweeper: { Args: never; Returns: number }
+      booking_total_expert_payout: {
+        Args: { _booking_id: string }
+        Returns: number
+      }
       booking_verify_job_secret: { Args: { _secret: string }; Returns: boolean }
       broadcast_booking_to_experts: {
         Args: { _booking_id: string; _radius?: number }
@@ -9355,6 +9406,15 @@ export type Database = {
       }
       staff_generate_subscription_invoices: { Args: never; Returns: Json }
       staff_get_referral_config: { Args: never; Returns: Json }
+      staff_handover_booking_expert: {
+        Args: {
+          _booking_id: string
+          _new_expert_id: string
+          _previous_payout: number
+          _reason: string
+        }
+        Returns: Json
+      }
       staff_insurance_stats: { Args: never; Returns: Json }
       staff_list_bulk_plans: { Args: never; Returns: Json }
       staff_list_notifications: {
