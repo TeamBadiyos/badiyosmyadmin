@@ -155,7 +155,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                   onClick={() => setProductsId(m.id)}
                   className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1"
                 >
-                  <Package size={13} /> Items
+                  <Package size={13} /> Items{m.pendingItems > 0 ? ` (${m.pendingItems} pending)` : ""}
                 </button>
                 {canManage && (
                   <button
@@ -185,6 +185,14 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     >
                       {m.status.replace("_", " ")}
                     </span>
+                    {m.pendingItems > 0 && (
+                      <button
+                        onClick={() => setProductsId(m.id)}
+                        className="text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-accent text-accent-foreground border border-border"
+                      >
+                        {m.pendingItems} item{m.pendingItems === 1 ? "" : "s"} pending approval
+                      </button>
+                    )}
                   </div>
                   <p className="text-[13px] text-muted-foreground mt-1">
                     {m.ownerName || "—"} · <span className="font-mono">{m.phone}</span> · applied{" "}
@@ -196,7 +204,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     onClick={() => setProductsId(m.id)}
                     className="h-9 px-3 rounded-[12px] border border-border font-bold text-[13px] inline-flex items-center gap-1"
                   >
-                    <Package size={14} /> Items
+                    <Package size={14} /> Items{m.pendingItems > 0 ? ` (${m.pendingItems} pending)` : ""}
                   </button>
                   {canManage && (
                     <button

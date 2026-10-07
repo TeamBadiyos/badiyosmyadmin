@@ -40,6 +40,7 @@ export type MerchantRow = {
   createdAt: string;
   updatedAt: string;
   docs: MerchantDoc[];
+  pendingItems: number;
 };
 
 async function assertStaff(
@@ -83,7 +84,7 @@ export const listMerchants = createServerFn({ method: "GET" })
     const catIds = Array.from(new Set(raw.map((r) => r.store_category_id).filter(Boolean)));
     const segIds = Array.from(new Set(raw.map((r) => r.segment_id).filter(Boolean)));
 
-    const [{ data: cats }, { data: segs }, { data: docs }] = await Promise.all([
+    const [{ data: cats }, { data: segs }, { data: docs }, { data: pendingRows }] = await Promise.all([
       catIds.length
         ? db.from("store_categories").select("id, name").in("id", catIds)
         : Promise.resolve({ data: [] as { id: string; name: string }[] }),
@@ -94,7 +95,18 @@ export const listMerchants = createServerFn({ method: "GET" })
         .from("merchant_documents")
         .select("id, merchant_id, doc_type, file_url, uploaded_at")
         .in("merchant_id", merchantIds),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (db as any)
+        .from("products")
+        .select("merchant_id")
+        .eq("approval_status", "pending")
+        .in("merchant_id", merchantIds)
+        .limit(5000),
     ]);
+    const pendingByMerchant = new Map<string, number>();
+    for (const r of (pendingRows ?? []) as { merchant_id: string }[]) {
+      pendingByMerchant.set(r.merchant_id, (pendingByMerchant.get(r.merchant_id) ?? 0) + 1);
+    }
 
     const catMap = new Map(((cats ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
     const segMap = new Map(((segs ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]));
@@ -153,6 +165,7 @@ export const listMerchants = createServerFn({ method: "GET" })
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       docs: docsByMerchant.get(r.id) ?? [],
+      pendingItems: pendingByMerchant.get(r.id) ?? 0,
     }));
   });
 
@@ -440,6 +453,8 @@ export type MerchantProduct = {
   isActive: boolean;
   adminHidden: boolean;
   adminHiddenReason: string | null;
+  approvalStatus: "pending" | "approved" | "rejected";
+  approvalReason: string | null;
   imageUrl: string | null;
   createdAt: string;
 };
@@ -484,7 +499,7 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
       db
         .from("products")
         .select(
-          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, admin_hidden, admin_hidden_reason, image_url, created_at",
+          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, created_at",
         )
         .eq("merchant_id", data.merchantId)
         .order("created_at", { ascending: false })
@@ -510,6 +525,8 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         isActive: !!r.is_active,
         adminHidden: !!r.admin_hidden,
         adminHiddenReason: r.admin_hidden_reason ?? null,
+        approvalStatus: (r.approval_status ?? "approved") as "pending" | "approved" | "rejected",
+        approvalReason: r.approval_reason ?? null,
         imageUrl: r.image_url ?? null,
         createdAt: r.created_at,
       })),
@@ -558,6 +575,51 @@ export const setProductAdminHidden = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+export const setProductApproval = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { productIds: string[]; decision: "approved" | "rejected"; reason?: string | null }) => {
+      if (!input?.productIds?.length) throw new Error("Select at least one item");
+      if (input.decision === "rejected" && !(input.reason ?? "").trim())
+        throw new Error("Rejection reason is required");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }): Promise<{ ok: true; count: number }> => {
+    await staffRole(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
+    const { data: before, error: bErr } = await admin
+      .from("products")
+      .select("id, name, merchant_id, approval_status, approval_reason")
+      .in("id", data.productIds);
+    if (bErr) throw new Error(bErr.message);
+    const reason = data.decision === "rejected" ? (data.reason ?? "").trim() : null;
+    const { error } = await admin
+      .from("products")
+      .update({
+        approval_status: data.decision,
+        approval_reason: reason,
+        approval_reviewed_at: new Date().toISOString(),
+        approval_reviewed_by: context.userId,
+      })
+      .in("id", data.productIds);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const b of (before ?? []) as any[]) {
+      await admin.from("audit_logs").insert({
+        actor_id: context.userId,
+        action: `product_${data.decision}`,
+        target_table: "products",
+        target_id: b.id,
+        before_state: b,
+        after_state: { approval_status: data.decision, approval_reason: reason },
+      });
+    }
+    return { ok: true, count: (before ?? []).length };
   });
 
 // ---------------------------------------------------------------------------
