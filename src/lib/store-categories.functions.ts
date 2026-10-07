@@ -12,6 +12,7 @@ export type StoreCategory = {
   is_active: boolean;
   updated_at: string | null;
   merchants_count: number;
+  photo_preview?: string | null;
 };
 
 type StaffRole = "super_admin" | "ops_manager" | string;
@@ -101,6 +102,13 @@ export const listStoreCategories = createServerFn({ method: "GET" })
         updated_at: (r["updated_at"] as string | null) ?? null,
         merchants_count: counts.get(r["id"] as string) ?? 0,
       }));
+
+      const signed = await signCategoryPaths(
+        categories.map((c) => c.icon_url).filter(Boolean) as string[],
+      );
+      for (const c of categories) {
+        c.photo_preview = c.icon_url ? signed.get(c.icon_url) ?? null : null;
+      }
 
       return { role, categories };
     },
