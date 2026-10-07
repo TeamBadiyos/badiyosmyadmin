@@ -49,11 +49,14 @@ import {
   listStoreCategories,
   listStoreSegments,
   setStoreCategoryActive,
+  setStoreCategoryPhoto,
   upsertStoreCategory,
   type StoreCategory,
 } from "@/lib/store-categories.functions";
+import { StoreCategoryDetail } from "@/components/store-category-detail";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type PhotoChange = { base64: string; contentType: string } | null | undefined;
 
 const ICONS: Record<string, LucideIcon> = {
   ShoppingBasket,
@@ -125,6 +128,7 @@ export function StoreCategoriesPage({ role }: { role: StaffRole | null }) {
   const fetchSegments = useServerFn(listStoreSegments);
   const saveFn = useServerFn(upsertStoreCategory);
   const toggleFn = useServerFn(setStoreCategoryActive);
+  const photoFn = useServerFn(setStoreCategoryPhoto);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["store-categories", "list"],
@@ -144,6 +148,7 @@ export function StoreCategoriesPage({ role }: { role: StaffRole | null }) {
   const [editing, setEditing] = useState<
     { category: StoreCategory | null } | null
   >(null);
+  const [viewing, setViewing] = useState<StoreCategory | null>(null);
   const [confirmOff, setConfirmOff] = useState<StoreCategory | null>(null);
 
   const toggle = useMutation({
@@ -229,22 +234,34 @@ export function StoreCategoriesPage({ role }: { role: StaffRole | null }) {
               key={cat.id}
               className="grid md:grid-cols-[60px_1fr_140px_120px_110px_90px] gap-3 px-4 py-3 border-b border-border last:border-0 items-center"
             >
-              <div className="h-10 w-10 rounded-[14px] bg-primary/10 text-primary grid place-items-center">
-                <CategoryIcon name={cat.icon} />
+              <div className="h-11 w-11 overflow-hidden rounded-[14px] bg-primary/10 text-primary grid place-items-center">
+                {cat.photo_preview ? (
+                  <img src={cat.photo_preview} alt={cat.name} className="h-full w-full object-cover" />
+                ) : (
+                  <CategoryIcon name={cat.icon} />
+                )}
               </div>
 
-              <div className="min-w-0">
-                <p className="text-[14px] font-bold truncate">{cat.name}</p>
+              <button
+                type="button"
+                onClick={() => setViewing(cat)}
+                className="min-w-0 text-left"
+              >
+                <p className="text-[14px] font-bold truncate hover:text-primary">{cat.name}</p>
                 <p className="text-[12px] text-muted-foreground truncate">
                   {cat.slug} · updated {fmt(cat.updated_at)}
                 </p>
-              </div>
+              </button>
 
               <div>
-                <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-muted text-[12px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setViewing(cat)}
+                  className="inline-flex items-center h-7 px-2.5 rounded-full bg-muted text-[12px] font-semibold hover:bg-primary/10 hover:text-primary"
+                >
                   {cat.merchants_count} store
-                  {cat.merchants_count === 1 ? "" : "s"}
-                </span>
+                  {cat.merchants_count === 1 ? "" : "s"} · view
+                </button>
               </div>
 
               <div>
@@ -286,8 +303,11 @@ export function StoreCategoriesPage({ role }: { role: StaffRole | null }) {
           defaultSegmentId={defaultSegmentId}
           segments={segments}
           onClose={() => setEditing(null)}
-          onSave={async (payload) => {
-            await saveFn({ data: payload });
+          onSave={async ({ photo, ...payload }) => {
+            const res = await saveFn({ data: payload });
+            if (photo !== undefined && res?.id) {
+              await photoFn({ data: { id: res.id, photo } });
+            }
             toast.success(
               payload.id ? "Store category updated" : "Store category created",
             );
@@ -295,6 +315,10 @@ export function StoreCategoriesPage({ role }: { role: StaffRole | null }) {
             setEditing(null);
           }}
         />
+      )}
+
+      {viewing && (
+        <StoreCategoryDetail category={viewing} onClose={() => setViewing(null)} />
       )}
 
       {confirmOff && (
@@ -347,6 +371,7 @@ function CategoryDrawer({
     name: string;
     icon: string | null;
     sort_order: number;
+    photo?: PhotoChange;
   }) => Promise<void>;
 }) {
   const [name, setName] = useState(category?.name ?? "");
@@ -358,6 +383,11 @@ function CategoryDrawer({
     category?.segment_id ?? defaultSegmentId,
   );
   const [saving, setSaving] = useState(false);
+  // undefined = unchanged, null = remove, object = new upload
+  const [photo, setPhoto] = useState<PhotoChange>(undefined);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(
+    category?.photo_preview ?? null,
+  );
 
   useEffect(() => {
     if (!segmentId && defaultSegmentId) setSegmentId(defaultSegmentId);
@@ -380,6 +410,7 @@ function CategoryDrawer({
         name: name.trim(),
         icon,
         sort_order: Number(sortOrder) || 0,
+        photo,
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save");
@@ -451,7 +482,63 @@ function CategoryDrawer({
 
         <div className="space-y-2">
           <label className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
-            Icon
+            Category photo
+          </label>
+          <div className="flex items-center gap-3">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] border border-border bg-muted grid place-items-center text-muted-foreground">
+              {photoPreview ? (
+                <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <CategoryIcon name={icon} size={24} />
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold inline-flex items-center cursor-pointer">
+                {photoPreview ? "Replace photo" : "Upload photo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!f) return;
+                    if (f.size > 5 * 1024 * 1024) {
+                      toast.error("Photo must be under 5 MB");
+                      return;
+                    }
+                    const r = new FileReader();
+                    r.onload = () => {
+                      const url = String(r.result);
+                      setPhotoPreview(url);
+                      setPhoto({ base64: url.split(",")[1] ?? "", contentType: f.type || "image/jpeg" });
+                    };
+                    r.readAsDataURL(f);
+                  }}
+                />
+              </label>
+              {photoPreview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoto(null);
+                    setPhotoPreview(null);
+                  }}
+                  className="h-9 px-3 rounded-[12px] border border-border text-[13px] font-semibold text-destructive"
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Shown on the customer "Shop by category" tile. Square photo works best.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
+            Icon (fallback when no photo)
           </label>
           <div className="grid grid-cols-8 gap-2">
             {ICON_NAMES.map((n) => {

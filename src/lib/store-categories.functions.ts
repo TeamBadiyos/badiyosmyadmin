@@ -12,6 +12,7 @@ export type StoreCategory = {
   is_active: boolean;
   updated_at: string | null;
   merchants_count: number;
+  photo_preview?: string | null;
 };
 
 type StaffRole = "super_admin" | "ops_manager" | string;
@@ -101,6 +102,13 @@ export const listStoreCategories = createServerFn({ method: "GET" })
         updated_at: (r["updated_at"] as string | null) ?? null,
         merchants_count: counts.get(r["id"] as string) ?? 0,
       }));
+
+      const signed = await signCategoryPaths(
+        categories.map((c) => c.icon_url).filter(Boolean) as string[],
+      );
+      for (const c of categories) {
+        c.photo_preview = c.icon_url ? signed.get(c.icon_url) ?? null : null;
+      }
 
       return { role, categories };
     },
@@ -260,4 +268,177 @@ export const setStoreCategoryActive = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Category photo + category detail (stores & items)
+// ---------------------------------------------------------------------------
+
+export const setStoreCategoryPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { id: string; photo: { base64: string; contentType: string } | null }) => {
+      if (!input?.id) throw new Error("Category is required");
+      if (input.photo) {
+        if (input.photo.base64.length > 7_000_000) throw new Error("Photo too large (max ~5 MB)");
+        if (!input.photo.contentType.startsWith("image/")) throw new Error("Only image files allowed");
+      }
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    await requireSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
+    const { data: before, error: bErr } = await admin
+      .from("store_categories").select("*").eq("id", data.id).maybeSingle();
+    if (bErr) throw new Error(bErr.message);
+    if (!before) throw new Error("Store category not found");
+
+    let path: string | null = null;
+    if (data.photo) {
+      const ext = (data.photo.contentType.split("/")[1] ?? "jpg").replace("jpeg", "jpg").slice(0, 5);
+      path = `categories/${data.id}-${Date.now()}.${ext}`;
+      const { error } = await admin.storage
+        .from("product-images")
+        .upload(path, Buffer.from(data.photo.base64, "base64"), {
+          contentType: data.photo.contentType,
+          upsert: false,
+        });
+      if (error) throw new Error(`Photo upload failed: ${error.message}`);
+    }
+    const { data: after, error } = await admin
+      .from("store_categories").update({ icon_url: path }).eq("id", data.id).select("*").single();
+    if (error) throw new Error(error.message);
+    await admin.from("audit_logs").insert({
+      actor_id: context.userId,
+      action: path ? "update_store_category_photo" : "remove_store_category_photo",
+      target_table: "store_categories",
+      target_id: data.id,
+      before_state: before,
+      after_state: after,
+    });
+    return { ok: true };
+  });
+
+export async function signCategoryPaths(paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const rel = paths.filter((p) => p && !/^https?:\/\//.test(p));
+  for (const p of paths) if (p && /^https?:\/\//.test(p)) out.set(p, p);
+  if (!rel.length) return out;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.storage.from("product-images").createSignedUrls(rel, 3600);
+  for (const r of data ?? []) if (r.path && r.signedUrl) out.set(r.path, r.signedUrl);
+  return out;
+}
+
+export const signStoreCategoryPhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { paths: string[] }) => input)
+  .handler(async ({ data, context }) => {
+    await resolveStaffRole(context.supabase, context.userId);
+    const m = await signCategoryPaths(data.paths.slice(0, 200));
+    return Object.fromEntries(m) as Record<string, string>;
+  });
+
+export type CategoryStore = {
+  id: string;
+  storeName: string;
+  ownerName: string | null;
+  phone: string | null;
+  city: string | null;
+  address: string | null;
+  status: string;
+  acceptingOrders: boolean;
+  photoUrl: string | null;
+  productsCount: number;
+  activeProducts: number;
+};
+
+export type CategoryItem = {
+  id: string;
+  merchantId: string;
+  storeName: string;
+  name: string;
+  categoryLabel: string | null;
+  price: number;
+  unit: string | null;
+  stock: number;
+  lowStock: number;
+  isActive: boolean;
+  adminHidden: boolean;
+  approvalStatus: string;
+  imageUrl: string | null;
+};
+
+export const getStoreCategoryDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("Category is required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ stores: CategoryStore[]; items: CategoryItem[] }> => {
+    await resolveStaffRole(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = supabaseAdmin as any;
+    const { data: merchants, error } = await admin
+      .from("merchants")
+      .select("id, store_name, owner_name, phone, city, address, status, is_accepting_orders, shop_photo_url, deleted_at")
+      .eq("store_category_id", data.id)
+      .is("deleted_at", null)
+      .order("store_name", { ascending: true });
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ms = (merchants ?? []) as any[];
+    const ids = ms.map((m) => m.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let prods: any[] = [];
+    if (ids.length) {
+      const { data: p, error: pErr } = await admin
+        .from("products")
+        .select("id, merchant_id, name, category_label, price, unit, stock_quantity, low_stock_threshold, is_active, admin_hidden, approval_status, image_url")
+        .in("merchant_id", ids)
+        .order("name", { ascending: true })
+        .limit(2000);
+      if (pErr) throw new Error(pErr.message);
+      prods = p ?? [];
+    }
+    const signed = await signCategoryPaths(
+      [...prods.map((p) => p.image_url), ...ms.map((m) => m.shop_photo_url)].filter(Boolean),
+    );
+    const nameById = new Map(ms.map((m) => [m.id, m.store_name ?? "Store"]));
+    const stores: CategoryStore[] = ms.map((m) => {
+      const mine = prods.filter((p) => p.merchant_id === m.id);
+      return {
+        id: m.id,
+        storeName: m.store_name ?? "Unnamed store",
+        ownerName: m.owner_name,
+        phone: m.phone,
+        city: m.city,
+        address: m.address,
+        status: m.status ?? "draft",
+        acceptingOrders: !!m.is_accepting_orders,
+        photoUrl: m.shop_photo_url ? signed.get(m.shop_photo_url) ?? null : null,
+        productsCount: mine.length,
+        activeProducts: mine.filter((p) => p.is_active && !p.admin_hidden).length,
+      };
+    });
+    const items: CategoryItem[] = prods.map((p) => ({
+      id: p.id,
+      merchantId: p.merchant_id,
+      storeName: nameById.get(p.merchant_id) ?? "Store",
+      name: p.name,
+      categoryLabel: p.category_label,
+      price: Number(p.price ?? 0),
+      unit: p.unit,
+      stock: Number(p.stock_quantity ?? 0),
+      lowStock: Number(p.low_stock_threshold ?? 0),
+      isActive: !!p.is_active,
+      adminHidden: !!p.admin_hidden,
+      approvalStatus: p.approval_status ?? "approved",
+      imageUrl: p.image_url ? signed.get(p.image_url) ?? null : null,
+    }));
+    return { stores, items };
   });
