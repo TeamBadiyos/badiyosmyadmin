@@ -56,7 +56,7 @@ import {
 import { StoreCategoryDetail } from "@/components/store-category-detail";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
-type PhotoChange = { base64: string; contentType: string } | null | undefined;
+type PhotoChange = { base64: string; contentType: string; thumbBase64: string } | null | undefined;
 
 const ICONS: Record<string, LucideIcon> = {
   ShoppingBasket,
@@ -497,7 +497,7 @@ function CategoryDrawer({
                 {photoPreview ? "Replace photo" : "Upload photo"}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                   className="hidden"
                   onChange={async (e) => {
                     const f = e.target.files?.[0];

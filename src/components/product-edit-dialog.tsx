@@ -171,7 +171,7 @@ export function ProductEditDialog({
                   <div key={i} className="flex flex-col items-center gap-1">
                     <label className="h-24 w-24 rounded-[14px] border border-dashed border-border bg-muted overflow-hidden grid place-items-center cursor-pointer text-muted-foreground">
                       {src ? <img src={src} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" /> : <ImagePlus size={20} />}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(i, e.target.files?.[0])} />
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" onChange={(e) => pick(i, e.target.files?.[0])} />
                     </label>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       Photo {i + 1}
