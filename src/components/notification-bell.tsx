@@ -95,13 +95,79 @@ export function NotificationBell({
   });
   const clearAll = useMutation({ mutationFn: () => clearFn(), onSuccess: invalidate });
 
+  // ---- Live order events (shown in bell + Chrome) ----
+  const [orderEvents, setOrderEvents] = useState<StaffAlert[]>([]);
+  const [chromeOn, setChromeOn] = useState(false);
+  useEffect(() => {
+    setChromeOn(notifyEnabled());
+    try {
+      const raw = localStorage.getItem("cc-order-events");
+      if (raw) setOrderEvents(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const saveEvents = (list: StaffAlert[]) => {
+    setOrderEvents(list);
+    try {
+      localStorage.setItem("cc-order-events", JSON.stringify(list));
+    } catch {
+      /* ignore */
+    }
+  };
+  const eventsRef = useRef<StaffAlert[]>([]);
+  eventsRef.current = orderEvents;
+  const openRef = useRef(onOpenTarget);
+  openRef.current = onOpenTarget;
+
   useEffect(() => {
     const refresh = () =>
       queryClient.invalidateQueries({ queryKey: ["staff", "alerts"] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pushOrder = (title: string, detail: string, id: string, target: string, targetId: string | null) => {
+      if (eventsRef.current.some((e) => e.id === id)) return;
+      const ev: StaffAlert = {
+        id,
+        kind: "order" as StaffAlert["kind"],
+        title,
+        detail,
+        createdAt: new Date().toISOString(),
+        target,
+        targetId,
+        readAt: null,
+        dismissedAt: null,
+      };
+      saveEvents([ev, ...eventsRef.current].slice(0, 30));
+      showBrowserNotification(title, detail, id, () => openRef.current(ev));
+    };
     const channel = supabase
-      .channel("staff-alerts")
+      .channel(`staff-alerts-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bookings" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        if (r?.is_training) return;
+        const amt = r?.total_amount ?? r?.amount;
+        pushOrder(
+          "🛒 New order",
+          `${r?.service_label ?? "Service booking"}${amt != null ? ` — ₹${Math.round(Number(amt))}` : ""}`,
+          `order:${r?.id}`,
+          "bookings",
+          r?.id ?? null,
+        );
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "courier_orders" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        pushOrder("📦 New courier order", `Order ${String(r?.id ?? "").slice(0, 8)}`, `courier:${r?.id}`, "courier", null);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "merchant_orders" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        pushOrder("🛍️ New store order", `Order ${String(r?.id ?? "").slice(0, 8)}`, `store:${r?.id}`, "dashboard", null);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "merchants" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "emergency_alerts" }, refresh)
       .on(
         "postgres_changes",
@@ -114,10 +180,29 @@ export function NotificationBell({
         refresh,
       )
       .subscribe();
+    const poll = setInterval(refresh, 30_000);
     return () => {
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient]);
+
+  // Chrome popup for every new unread feed item (merchant, ticket, emergency, leads...)
+  const seenRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (filter !== "unread" || !data) return;
+    const ids = data.items.filter((a) => !a.readAt && !a.dismissedAt);
+    if (seenRef.current === null) {
+      seenRef.current = new Set(ids.map((a) => a.id));
+      return;
+    }
+    for (const a of ids) {
+      if (seenRef.current.has(a.id)) continue;
+      seenRef.current.add(a.id);
+      showBrowserNotification(a.title, a.detail, a.id, () => openRef.current(a));
+    }
+  }, [data, filter]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -127,8 +212,33 @@ export function NotificationBell({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  const total = data?.total ?? 0;
-  const items = data?.items ?? [];
+  const unreadOrders = orderEvents.filter((e) => !e.readAt && !e.dismissedAt);
+  const total = (data?.total ?? 0) + unreadOrders.length;
+  const localShown =
+    filter === "unread"
+      ? unreadOrders
+      : filter === "dismissed"
+        ? orderEvents.filter((e) => e.dismissedAt)
+        : orderEvents.filter((e) => !e.dismissedAt);
+  const items = [...localShown, ...(data?.items ?? [])].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+  const isLocal = (id: string) => orderEvents.some((e) => e.id === id);
+  const patchLocal = (id: string, patch: Partial<StaffAlert>) =>
+    saveEvents(orderEvents.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+
+  async function toggleChrome() {
+    if (chromeOn) {
+      disableNotify();
+      setChromeOn(false);
+      return;
+    }
+    const ok = await enableNotify();
+    setChromeOn(ok);
+    if (ok) showBrowserNotification("Notifications on", "You'll get Chrome alerts for new activity.", "test");
+    else alert("Chrome notifications are blocked. Allow them from the lock icon in the address bar.");
+  }
+
 
   return (
     <div className="relative" ref={ref}>
