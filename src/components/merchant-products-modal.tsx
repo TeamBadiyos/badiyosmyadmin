@@ -6,9 +6,12 @@ import { toast } from "sonner";
 
 import {
   listMerchantProducts,
+  type MerchantProduct,
+  raiseProductQuery,
   setProductAdminHidden,
   setProductApproval,
 } from "@/lib/merchants.functions";
+import { ProductEditDialog } from "@/components/product-edit-dialog";
 
 function inr(n: number) {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -70,6 +73,23 @@ export function MerchantProductsModal({
     if (!reason || !reason.trim()) return;
     approval.mutate({ productIds: ids, decision: "rejected", reason });
   };
+
+  const [editing, setEditing] = useState<MerchantProduct | null>(null);
+  const queryFn = useServerFn(raiseProductQuery);
+  const query = useMutation({
+    mutationFn: (p: { productIds: string[]; reason: string }) => queryFn({ data: p }),
+    onSuccess: () => {
+      toast.success("Item put on hold with query");
+      queryClient.invalidateQueries({ queryKey: ["merchant", "products", merchantId] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not raise query"),
+  });
+  const raiseQuery = (id: string) => {
+    const reason = window.prompt("Query for merchant (item will be on hold until resolved)");
+    if (!reason || !reason.trim()) return;
+    query.mutate({ productIds: [id], reason });
+  };
+
 
   const toggle = useMutation({
     mutationFn: (p: { productId: string; hidden: boolean; reason?: string | null }) =>
@@ -215,11 +235,19 @@ export function MerchantProductsModal({
                     {p.categoryLabel ?? "Uncategorised"}
                     {p.unit ? ` · ${p.unit}` : ""}
                   </p>
-                  {(!p.isActive || p.adminHidden || p.approvalStatus !== "approved") && (
+                  {(
                     <div className="flex flex-wrap gap-1.5 mt-1 items-center">
                       {p.approvalStatus === "pending" && (
                         <span className="inline-flex h-6 px-2 items-center rounded-full bg-accent text-accent-foreground border border-border text-[11px] font-semibold">
                           Pending approval
+                        </span>
+                      )}
+                      {p.approvalStatus === "query_raised" && (
+                        <span
+                          title={p.approvalReason ?? undefined}
+                          className="inline-flex min-h-6 px-2 items-center rounded-full bg-accent text-accent-foreground border border-border text-[11px] font-semibold"
+                        >
+                          On hold · Query: {p.approvalReason}
                         </span>
                       )}
                       {p.approvalStatus === "rejected" && (
@@ -236,7 +264,7 @@ export function MerchantProductsModal({
                           onClick={() => approval.mutate({ productIds: [p.id], decision: "approved" })}
                           className="h-6 px-2 rounded-full bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-50"
                         >
-                          Approve
+                          {p.approvalStatus === "query_raised" ? "Resolve & approve" : "Approve"}
                         </button>
                       )}
                       {canApprove && p.approvalStatus === "pending" && (
@@ -246,6 +274,23 @@ export function MerchantProductsModal({
                           className="h-6 px-2 rounded-full border border-border text-[11px] font-bold disabled:opacity-50"
                         >
                           Reject
+                        </button>
+                      )}
+                      {canApprove && (
+                        <button
+                          onClick={() => setEditing(p)}
+                          className="h-6 px-2 rounded-full border border-border text-[11px] font-bold"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {canApprove && p.approvalStatus !== "query_raised" && (
+                        <button
+                          disabled={query.isPending}
+                          onClick={() => raiseQuery(p.id)}
+                          className="h-6 px-2 rounded-full border border-border text-[11px] font-bold disabled:opacity-50"
+                        >
+                          Hold / Raise query
                         </button>
                       )}
                       {!p.isActive && (
