@@ -26,13 +26,13 @@ const input = "w-full h-10 px-3 rounded-[12px] border border-border bg-backgroun
 const label = "text-[12px] font-semibold text-muted-foreground mb-1 block";
 
 const UNIT_GROUPS: { label: string; units: string[] }[] = [
-  { label: "Weight", units: ["g", "kg"] },
+  { label: "Weight", units: ["gms", "kg"] },
   { label: "Volume", units: ["ml", "litre"] },
   { label: "Count", units: ["piece", "pack", "box", "dozen", "plate", "set", "meter"] },
 ];
 const ALL_UNITS = UNIT_GROUPS.flatMap((g) => g.units);
 const ALIASES: Record<string, string> = {
-  gm: "g", gms: "g", gram: "g", grams: "g", kgs: "kg", kilo: "kg",
+  g: "gms", gm: "gms", gram: "gms", grams: "gms", kgs: "kg", kilo: "kg",
   l: "litre", ltr: "litre", liter: "litre", litres: "litre", liters: "litre",
   pc: "piece", pcs: "piece", pieces: "piece", packs: "pack", boxes: "box", plates: "plate", sets: "set",
 };
@@ -60,9 +60,9 @@ function UnitPicker({ value, onChange }: { value: string; onChange: (v: string) 
   return (
     <div className="space-y-1.5">
       <div className="flex gap-2">
-        <input className={`${input} w-24 shrink-0`} type="number" min="0" step="any" inputMode="decimal"
+        <input className="w-24 shrink-0 h-10 px-3 rounded-[12px] border border-border bg-background text-[13px]" type="number" min="0" step="any" inputMode="decimal"
           value={st.qty} onChange={(e) => update({ qty: e.target.value })} placeholder="500" />
-        <select className={input} value={st.unit} onChange={(e) => update({ unit: e.target.value })}>
+        <select className={`${input} flex-1 min-w-0`} value={st.unit} onChange={(e) => update({ unit: e.target.value })}>
           {UNIT_GROUPS.map((g) => (
             <optgroup key={g.label} label={g.label}>
               {g.units.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -194,7 +194,7 @@ export function ProductEditDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><span className={label}>Category</span><input className={input} value={f.categoryLabel} onChange={(e) => set("categoryLabel", e.target.value)} /></div>
-            <div><span className={label}>Unit (quantity + type)</span><UnitPicker value={f.unit} onChange={(v) => set("unit", v)} /></div>
+            <div className="col-span-2"><span className={label}>Unit (quantity + type)</span><UnitPicker value={f.unit} onChange={(v) => set("unit", v)} /></div>
             <div><span className={label}>Price (₹)</span><input type="number" min={0} className={input} value={f.price} onChange={(e) => set("price", e.target.value)} /></div>
             <div><span className={label}>Stock</span><input type="number" min={0} className={input} value={f.stockQuantity} onChange={(e) => set("stockQuantity", e.target.value)} /></div>
             <div><span className={label}>Low stock alert at</span><input type="number" min={0} className={input} value={f.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} /></div>
