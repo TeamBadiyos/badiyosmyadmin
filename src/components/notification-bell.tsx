@@ -17,6 +17,7 @@ import {
   X,
   CheckCheck,
   BellRing,
+  ShoppingBag,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -28,6 +29,12 @@ import {
   type AlertFilter,
   type StaffAlert,
 } from "@/lib/alerts.functions";
+import {
+  notifyEnabled,
+  enableNotify,
+  disableNotify,
+  showBrowserNotification,
+} from "@/lib/browser-notify";
 
 const ICONS = {
   support: LifeBuoy,
@@ -42,6 +49,7 @@ const ICONS = {
   waitlist: ListChecks,
   payout: Wallet,
   dispatch: BellRing,
+  order: ShoppingBag,
 } as const;
 
 const TABS: { key: AlertFilter; label: string }[] = [
@@ -95,13 +103,79 @@ export function NotificationBell({
   });
   const clearAll = useMutation({ mutationFn: () => clearFn(), onSuccess: invalidate });
 
+  // ---- Live order events (shown in bell + Chrome) ----
+  const [orderEvents, setOrderEvents] = useState<StaffAlert[]>([]);
+  const [chromeOn, setChromeOn] = useState(false);
+  useEffect(() => {
+    setChromeOn(notifyEnabled());
+    try {
+      const raw = localStorage.getItem("cc-order-events");
+      if (raw) setOrderEvents(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const saveEvents = (list: StaffAlert[]) => {
+    setOrderEvents(list);
+    try {
+      localStorage.setItem("cc-order-events", JSON.stringify(list));
+    } catch {
+      /* ignore */
+    }
+  };
+  const eventsRef = useRef<StaffAlert[]>([]);
+  eventsRef.current = orderEvents;
+  const openRef = useRef(onOpenTarget);
+  openRef.current = onOpenTarget;
+
   useEffect(() => {
     const refresh = () =>
       queryClient.invalidateQueries({ queryKey: ["staff", "alerts"] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pushOrder = (title: string, detail: string, id: string, target: string, targetId: string | null) => {
+      if (eventsRef.current.some((e) => e.id === id)) return;
+      const ev: StaffAlert = {
+        id,
+        kind: "order" as StaffAlert["kind"],
+        title,
+        detail,
+        createdAt: new Date().toISOString(),
+        target,
+        targetId,
+        readAt: null,
+        dismissedAt: null,
+      };
+      saveEvents([ev, ...eventsRef.current].slice(0, 30));
+      showBrowserNotification(title, detail, id, () => openRef.current(ev));
+    };
     const channel = supabase
-      .channel("staff-alerts")
+      .channel(`staff-alerts-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bookings" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        if (r?.is_training) return;
+        const amt = r?.total_amount ?? r?.amount;
+        pushOrder(
+          "🛒 New order",
+          `${r?.service_label ?? "Service booking"}${amt != null ? ` — ₹${Math.round(Number(amt))}` : ""}`,
+          `order:${r?.id}`,
+          "bookings",
+          r?.id ?? null,
+        );
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "courier_orders" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        pushOrder("📦 New courier order", `Order ${String(r?.id ?? "").slice(0, 8)}`, `courier:${r?.id}`, "courier", null);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "merchant_orders" }, (p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = p.new as any;
+        pushOrder("🛍️ New store order", `Order ${String(r?.id ?? "").slice(0, 8)}`, `store:${r?.id}`, "dashboard", null);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "merchants" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "emergency_alerts" }, refresh)
       .on(
         "postgres_changes",
@@ -114,10 +188,29 @@ export function NotificationBell({
         refresh,
       )
       .subscribe();
+    const poll = setInterval(refresh, 30_000);
     return () => {
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient]);
+
+  // Chrome popup for every new unread feed item (merchant, ticket, emergency, leads...)
+  const seenRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (filter !== "unread" || !data) return;
+    const ids = data.items.filter((a) => !a.readAt && !a.dismissedAt);
+    if (seenRef.current === null) {
+      seenRef.current = new Set(ids.map((a) => a.id));
+      return;
+    }
+    for (const a of ids) {
+      if (seenRef.current.has(a.id)) continue;
+      seenRef.current.add(a.id);
+      showBrowserNotification(a.title, a.detail, a.id, () => openRef.current(a));
+    }
+  }, [data, filter]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -127,8 +220,33 @@ export function NotificationBell({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  const total = data?.total ?? 0;
-  const items = data?.items ?? [];
+  const unreadOrders = orderEvents.filter((e) => !e.readAt && !e.dismissedAt);
+  const total = (data?.total ?? 0) + unreadOrders.length;
+  const localShown =
+    filter === "unread"
+      ? unreadOrders
+      : filter === "dismissed"
+        ? orderEvents.filter((e) => e.dismissedAt)
+        : orderEvents.filter((e) => !e.dismissedAt);
+  const items = [...localShown, ...(data?.items ?? [])].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+  const isLocal = (id: string) => orderEvents.some((e) => e.id === id);
+  const patchLocal = (id: string, patch: Partial<StaffAlert>) =>
+    saveEvents(orderEvents.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+
+  async function toggleChrome() {
+    if (chromeOn) {
+      disableNotify();
+      setChromeOn(false);
+      return;
+    }
+    const ok = await enableNotify();
+    setChromeOn(ok);
+    if (ok) showBrowserNotification("Notifications on", "You'll get Chrome alerts for new activity.", "test");
+    else alert("Chrome notifications are blocked. Allow them from the lock icon in the address bar.");
+  }
+
 
   return (
     <div className="relative" ref={ref}>
@@ -147,12 +265,23 @@ export function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[360px] max-h-[460px] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-[min(360px,calc(100vw-24px))] max-h-[70dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
           <div className="px-4 pt-3 pb-2 border-b border-border">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Notifications</span>
               <span className="text-[11px] text-muted-foreground">{total} unread</span>
             </div>
+            <button
+              onClick={toggleChrome}
+              className={`mt-2 w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${
+                chromeOn ? "bg-primary-tint text-primary" : "bg-muted text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <BellRing size={13} /> Chrome notifications
+              </span>
+              <span>{chromeOn ? "ON" : "Turn on"}</span>
+            </button>
             <div className="mt-2 flex items-center gap-1">
               {TABS.map((t) => (
                 <button
@@ -169,14 +298,22 @@ export function NotificationBell({
               ))}
               <span className="flex-1" />
               <button
-                onClick={() => readAll.mutate()}
+                onClick={() => {
+                  const now = new Date().toISOString();
+                  saveEvents(orderEvents.map((e) => ({ ...e, readAt: e.readAt ?? now })));
+                  readAll.mutate();
+                }}
                 title="Mark all as read"
                 className="px-2 py-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted flex items-center gap-1"
               >
                 <CheckCheck size={13} /> Read all
               </button>
               <button
-                onClick={() => clearAll.mutate()}
+                onClick={() => {
+                  const now = new Date().toISOString();
+                  saveEvents(orderEvents.map((e) => ({ ...e, dismissedAt: e.dismissedAt ?? now })));
+                  clearAll.mutate();
+                }}
                 title="Clear all"
                 className="px-2 py-1 rounded-md text-[11px] font-semibold text-destructive hover:bg-muted"
               >
@@ -192,7 +329,7 @@ export function NotificationBell({
               </p>
             )}
             {items.map((a) => {
-              const Icon = ICONS[a.kind] ?? Bell;
+              const Icon = ICONS[a.kind as keyof typeof ICONS] ?? Bell;
               const unread = !a.readAt;
               return (
                 <div
@@ -204,7 +341,8 @@ export function NotificationBell({
                   <button
                     onClick={() => {
                       setOpen(false);
-                      readOne.mutate(a.id);
+                      if (isLocal(a.id)) patchLocal(a.id, { readAt: new Date().toISOString() });
+                      else readOne.mutate(a.id);
                       onOpenTarget(a);
                     }}
                     className="flex-1 text-left pl-4 pr-1 py-3 hover:bg-muted/40 flex gap-3 min-w-0"
@@ -237,7 +375,9 @@ export function NotificationBell({
                   </button>
                   <button
                     onClick={() =>
-                      dismissOne.mutate({ id: a.id, dismissed: !a.dismissedAt })
+                      isLocal(a.id)
+                        ? patchLocal(a.id, { dismissedAt: a.dismissedAt ? null : new Date().toISOString() })
+                        : dismissOne.mutate({ id: a.id, dismissed: !a.dismissedAt })
                     }
                     aria-label={a.dismissedAt ? "Restore notification" : "Dismiss notification"}
                     title={a.dismissedAt ? "Restore" : "Dismiss"}
