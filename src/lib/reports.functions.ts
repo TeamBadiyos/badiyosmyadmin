@@ -698,7 +698,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
           .select("total_amount,discount_amount,gst_amount,refund_amount,refund_status,razorpay_payment_id,commission_pct,status,created_at")
           .in("payment_status", ["paid", "PAID"]).gte("created_at", f).lte("created_at", t).limit(20000),
         db.from("merchant_orders")
-          .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at")
+          .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at").eq("is_training", false)
           .eq("status", "completed").gte("created_at", f).lte("created_at", t).limit(20000),
         db.from("wallet_ledger").select("amount,reason,type")
           .eq("wallet_type", "earnings").eq("type", "credit").gte("created_at", f).lte("created_at", t).limit(20000),

@@ -159,7 +159,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
           ),
@@ -168,7 +168,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("total_amount, refund_amount, refund_status")
+              .select("total_amount, refund_amount, refund_status").eq("is_training", false)
               .eq("status", "completed")
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
@@ -178,7 +178,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .in("status", ["accepted", "preparing", "ready"]),
           ),
       noMerchants
@@ -186,7 +186,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .eq("status", "completed")
               .gte("created_at", startOfDay)
               .lt("created_at", endOfDay),
@@ -196,7 +196,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         : scopeMerchant(
             db
               .from("merchant_orders")
-              .select("*", countOnly)
+              .select("*", countOnly).eq("is_training", false)
               .eq("status", "pending"),
           ),
       noMerchants

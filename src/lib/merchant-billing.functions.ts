@@ -217,7 +217,7 @@ export const listMerchantCommissionBilling = createServerFn({ method: "GET" })
       .from("merchant_orders")
       .select(
         "id, order_number, merchant_id, created_at, items_total, commission_pct, commission_amount, commission_gst_amount, merchant_net",
-      )
+      ).eq("is_training", false)
       .eq("status", "completed")
       .order("created_at", { ascending: false })
       .limit(5000);
