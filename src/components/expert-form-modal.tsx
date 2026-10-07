@@ -85,6 +85,7 @@ export function ExpertFormModal({
   const [bankAcc, setBankAcc] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
   const [bankHolder, setBankHolder] = useState("");
+  const [bankName, setBankName] = useState("");
   const [ifscInfo, setIfscInfo] = useState<{ bank: string; branch: string } | null>(null);
   const [ifscError, setIfscError] = useState<string | null>(null);
   const [ifscLoading, setIfscLoading] = useState(false);
@@ -125,6 +126,7 @@ export function ExpertFormModal({
       setBankAcc(existing.bankAccountNumber ?? "");
       setBankIfsc(existing.bankIfsc ?? "");
       setBankHolder(existing.bankAccountHolderName ?? "");
+      setBankName(existing.bankName ?? "");
       setReferredBy(existing.referredByExpertId ?? "");
       setJacketIssued(existing.jacketIssued);
       setJacketIssuedAt(existing.jacketIssuedAt ?? "");
@@ -155,6 +157,7 @@ export function ExpertFormModal({
       if (!res.ok) throw new Error("IFSC not found");
       const json = await res.json();
       setIfscInfo({ bank: json.BANK ?? "", branch: json.BRANCH ?? "" });
+      if (json.BANK) setBankName(json.BANK);
     } catch (e) {
       setIfscError(e instanceof Error ? e.message : "IFSC lookup failed");
     } finally {
@@ -177,6 +180,7 @@ export function ExpertFormModal({
           bank_account_number: bankAcc.trim() || null,
           bank_ifsc: bankIfsc.trim().toUpperCase() || null,
           bank_account_holder_name: bankHolder.trim() || null,
+          bank_name: bankName.trim() || null,
           kyc_aadhaar_url: aadhaar.path,
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
@@ -359,7 +363,8 @@ export function ExpertFormModal({
                   <p className="mt-1 text-[12px] text-destructive">{ifscError}</p>
                 )}
               </div>
-              <Field label="Account holder name" value={bankHolder} onChange={setBankHolder} className="md:col-span-2" />
+              <Field label="Bank name" value={bankName} onChange={setBankName} />
+              <Field label="Account holder name" value={bankHolder} onChange={setBankHolder} />
             </div>
           </section>
 
