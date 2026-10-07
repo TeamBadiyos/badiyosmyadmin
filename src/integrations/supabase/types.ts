@@ -9018,6 +9018,7 @@ export type Database = {
         Args: { _at?: string; _city?: string; _service_key: string }
         Returns: Json
       }
+      service_extensions_enabled: { Args: never; Returns: boolean }
       service_holiday_notify: { Args: { _phase: string }; Returns: undefined }
       service_hours_autooffline: { Args: never; Returns: undefined }
       service_hours_bypass: { Args: never; Returns: boolean }
