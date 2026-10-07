@@ -235,7 +235,7 @@ export function MerchantProductsModal({
                     {p.categoryLabel ?? "Uncategorised"}
                     {p.unit ? ` · ${p.unit}` : ""}
                   </p>
-                  {(
+                  {true && (
                     <div className="flex flex-wrap gap-1.5 mt-1 items-center">
                       {p.approvalStatus === "pending" && (
                         <span className="inline-flex h-6 px-2 items-center rounded-full bg-accent text-accent-foreground border border-border text-[11px] font-semibold">
@@ -347,6 +347,16 @@ export function MerchantProductsModal({
           })}
         </div>
       </div>
+      {editing && (
+        <ProductEditDialog
+          product={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            queryClient.invalidateQueries({ queryKey: ["merchant", "products", merchantId] });
+          }}
+        />
+      )}
     </div>
   );
 }
