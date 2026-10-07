@@ -128,6 +128,7 @@ export type ExpertDetails = ExpertRow & {
   bankAccountNumber: string | null;
   bankIfsc: string | null;
   bankAccountHolderName: string | null;
+  bankName: string | null;
   kycAadhaarPath: string | null;
   kycPanPath: string | null;
   kycAddressProofPath: string | null;
@@ -384,6 +385,7 @@ export const getExpert = createServerFn({ method: "POST" })
       bankAccountNumber: e.bank_account_number ?? null,
       bankIfsc: e.bank_ifsc ?? null,
       bankAccountHolderName: e.bank_account_holder_name ?? null,
+      bankName: (e as { bank_name?: string | null }).bank_name ?? null,
       kycAadhaarPath: e.kyc_aadhaar_url ?? null,
       kycPanPath: e.kyc_pan_url ?? null,
       kycAddressProofPath: e.kyc_address_proof_url ?? null,
@@ -406,6 +408,7 @@ export type UpsertExpertInput = {
   bank_account_number?: string | null;
   bank_ifsc?: string | null;
   bank_account_holder_name?: string | null;
+  bank_name?: string | null;
   kyc_aadhaar_url?: string | null;
   kyc_pan_url?: string | null;
   kyc_address_proof_url?: string | null;

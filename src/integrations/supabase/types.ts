@@ -3953,6 +3953,7 @@ export type Database = {
           bank_account_holder_name: string | null
           bank_account_number: string | null
           bank_ifsc: string | null
+          bank_name: string | null
           created_at: string
           current_lat: number | null
           current_lng: number | null
@@ -3996,6 +3997,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          bank_name?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
@@ -4039,6 +4041,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          bank_name?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null

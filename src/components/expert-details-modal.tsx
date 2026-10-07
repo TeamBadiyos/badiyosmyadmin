@@ -197,74 +197,6 @@ export function ExpertDetailsModal({
           )}
           {data && (
             <>
-              <ExpertTrainingModeCard
-                expertId={data.id}
-                name={data.name}
-                mode={data.mode}
-                ordersCompleted={data.trainingOrdersCompleted}
-                completedAt={data.trainingCompletedAt}
-                canChange={role === "super_admin"}
-              />
-              <section>
-                <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                  Joining, jacket & training
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                  <div className="rounded-[14px] border border-border p-3">
-                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Joining date</p>
-                    <p className="text-[14px] font-semibold">{data.joiningDate ? new Date(data.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
-                  </div>
-                  <div className={`rounded-[14px] border p-3 ${data.jacketIssued ? "border-primary/40 bg-primary/5" : "border-warning/50 bg-warning/10"}`}>
-                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Jacket</p>
-                    <p className="text-[14px] font-semibold">
-                      {data.jacketIssued ? `Given ✅${data.jacketIssuedAt ? ` · ${new Date(data.jacketIssuedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}` : "Not given yet"}
-                    </p>
-                  </div>
-                  <div className={`rounded-[14px] border p-3 ${data.trainingDone === TRAINING_DAYS.length ? "border-primary/40 bg-primary/5" : "border-border"}`}>
-                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Training</p>
-                    <p className="text-[14px] font-semibold">{data.trainingDone}/{TRAINING_DAYS.length} days {data.trainingDone === TRAINING_DAYS.length ? "✅" : ""}</p>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  {TRAINING_DAYS.map((d) => {
-                    const e = data.training[d.key];
-                    return (
-                      <div key={d.key} className="flex items-start gap-3 rounded-[12px] border border-border px-3 py-2 text-[13px]">
-                        <span className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${e?.done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                          {e?.done ? "✓" : d.key.slice(-1)}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p><span className="font-bold">{d.title}</span> — <span className="text-muted-foreground">{d.description}</span></p>
-                          {e?.notes && <p className="text-muted-foreground italic">{e.notes}</p>}
-                        </div>
-                        <span className="shrink-0 text-[12px] text-muted-foreground">
-                          {e?.done ? (e.date ? new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "Done") : "Pending"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-              {data.reviews.length > 0 && (
-                <section>
-                  <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                    Customer ratings ({data.reviews.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {data.reviews.map((r) => (
-                      <div key={r.bookingId} className="rounded-[12px] border border-border p-3">
-                        <div className="flex items-center justify-between gap-2 text-[12px]">
-                          <span className="font-bold text-foreground">★ {r.rating}/5 · {r.serviceLabel ?? "Order"}</span>
-                          <span className="text-muted-foreground">
-                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                          </span>
-                        </div>
-                        {r.reviewText && <p className="text-[13px] text-muted-foreground mt-1">“{r.reviewText}”</p>}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
               <section className="flex items-start gap-4">
                 <div className="w-20 h-20 rounded-full bg-primary-tint text-primary flex items-center justify-center overflow-hidden shrink-0">
                   {photoUrl ? (
@@ -413,6 +345,7 @@ export function ExpertDetailsModal({
 
                 </Card>
                 <Card title="Bank">
+                  <Row label="Bank" value={data.bankName ?? "—"} />
                   <Row label="Holder" value={data.bankAccountHolderName ?? "—"} />
                   <Row label="Account" value={data.bankAccountNumber ?? "—"} mono />
                   <Row label="IFSC" value={data.bankIfsc ?? "—"} mono />
@@ -502,6 +435,74 @@ export function ExpertDetailsModal({
                   <p className="mt-3 text-[12px] text-destructive">{actionError}</p>
                 )}
               </section>
+              <ExpertTrainingModeCard
+                expertId={data.id}
+                name={data.name}
+                mode={data.mode}
+                ordersCompleted={data.trainingOrdersCompleted}
+                completedAt={data.trainingCompletedAt}
+                canChange={role === "super_admin"}
+              />
+              <section>
+                <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                  Joining, jacket & training
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <div className="rounded-[14px] border border-border p-3">
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Joining date</p>
+                    <p className="text-[14px] font-semibold">{data.joiningDate ? new Date(data.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
+                  </div>
+                  <div className={`rounded-[14px] border p-3 ${data.jacketIssued ? "border-primary/40 bg-primary/5" : "border-warning/50 bg-warning/10"}`}>
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Jacket</p>
+                    <p className="text-[14px] font-semibold">
+                      {data.jacketIssued ? `Given ✅${data.jacketIssuedAt ? ` · ${new Date(data.jacketIssuedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}` : "Not given yet"}
+                    </p>
+                  </div>
+                  <div className={`rounded-[14px] border p-3 ${data.trainingDone === TRAINING_DAYS.length ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                    <p className="text-[11px] font-bold uppercase text-muted-foreground">Training</p>
+                    <p className="text-[14px] font-semibold">{data.trainingDone}/{TRAINING_DAYS.length} days {data.trainingDone === TRAINING_DAYS.length ? "✅" : ""}</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {TRAINING_DAYS.map((d) => {
+                    const e = data.training[d.key];
+                    return (
+                      <div key={d.key} className="flex items-start gap-3 rounded-[12px] border border-border px-3 py-2 text-[13px]">
+                        <span className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${e?.done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          {e?.done ? "✓" : d.key.slice(-1)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p><span className="font-bold">{d.title}</span> — <span className="text-muted-foreground">{d.description}</span></p>
+                          {e?.notes && <p className="text-muted-foreground italic">{e.notes}</p>}
+                        </div>
+                        <span className="shrink-0 text-[12px] text-muted-foreground">
+                          {e?.done ? (e.date ? new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "Done") : "Pending"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+              {data.reviews.length > 0 && (
+                <section>
+                  <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                    Customer ratings ({data.reviews.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {data.reviews.map((r) => (
+                      <div key={r.bookingId} className="rounded-[12px] border border-border p-3">
+                        <div className="flex items-center justify-between gap-2 text-[12px]">
+                          <span className="font-bold text-foreground">★ {r.rating}/5 · {r.serviceLabel ?? "Order"}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </span>
+                        </div>
+                        {r.reviewText && <p className="text-[13px] text-muted-foreground mt-1">“{r.reviewText}”</p>}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           )}
         </div>
