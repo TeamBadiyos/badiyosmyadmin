@@ -265,7 +265,13 @@ export function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[min(360px,calc(100vw-24px))] max-h-[70dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
+        <>
+        <button
+          aria-label="Close notifications"
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 bg-foreground/20 sm:hidden"
+        />
+        <div className="fixed inset-x-3 top-[72px] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-[380px] max-h-[75dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
           <div className="px-4 pt-3 pb-2 border-b border-border">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Notifications</span>
@@ -282,12 +288,12 @@ export function NotificationBell({
               </span>
               <span>{chromeOn ? "ON" : "Turn on"}</span>
             </button>
-            <div className="mt-2 flex items-center gap-1">
+            <div className="mt-2 flex flex-wrap items-center gap-1">
               {TABS.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setFilter(t.key)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${
                     filter === t.key
                       ? "bg-primary-tint text-primary"
                       : "text-muted-foreground hover:bg-muted"
@@ -394,6 +400,7 @@ export function NotificationBell({
             })}
           </div>
         </div>
+        </>
       )}
     </div>
   );
