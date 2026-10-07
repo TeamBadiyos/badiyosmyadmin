@@ -75,7 +75,7 @@ export const createStoreTrainingOrder = createServerFn({ method: "POST" })
     });
     const itemsTotal = lines.reduce((s, l) => s + Number(l.p.price) * l.qty, 0);
     let commission = { commission_pct: 0, commission_amount: 0, commission_gst_pct: 0, commission_gst_amount: 0, merchant_net: itemsTotal } as any;
-    const { data: snap } = await db.rpc("store_commission_snapshot" as any, { _merchant_id: data.merchantId, _base: itemsTotal } as any);
+    const { data: snap } = await db.rpc("store_commission_snapshot" as any, { _merchant_id: data.merchantId, _items_total: itemsTotal } as any);
     if (snap) commission = { ...commission, ...(snap as any) };
     const now = new Date().toISOString();
     const online = data.paymentMode === "online";
