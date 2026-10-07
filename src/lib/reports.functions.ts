@@ -376,7 +376,7 @@ export const getPartnerPerformance = createServerFn({ method: "POST" })
 
     const { data: bks } = await context.supabase
       .from("bookings")
-      .select("zone_id, service_duration_minutes, status, updated_at").eq("is_training", false)
+      .select("zone_id, snapshot_partner_payout, razorpay_payment_id, status, updated_at").eq("is_training", false)
       .is("deleted_at", null)
       .eq("status", "completed")
       .in("zone_id", zoneIds)
@@ -385,26 +385,9 @@ export const getPartnerPerformance = createServerFn({ method: "POST" })
       .limit(10000);
     const bookings = (bks ?? []) as Array<{
       zone_id: string;
-      service_duration_minutes: number | null;
+      snapshot_partner_payout: number | string | null;
+      razorpay_payment_id: string | null;
     }>;
-
-    // service payouts
-    const durations = Array.from(
-      new Set(bookings.map((b) => b.service_duration_minutes).filter((d): d is number => !!d)),
-    );
-    const payoutByDuration = new Map<number, number>();
-    if (durations.length) {
-      const { data: sc } = await context.supabase
-        .from("service_catalogue_config")
-        .select("duration_minutes, area_partner_payout")
-        .in("duration_minutes", durations);
-      for (const s of (sc ?? []) as Array<{
-        duration_minutes: number;
-        area_partner_payout: number | string | null;
-      }>) {
-        payoutByDuration.set(s.duration_minutes, Number(s.area_partner_payout ?? 0));
-      }
-    }
 
     // aggregate per zone → partner
     const perPartner = new Map<
@@ -424,7 +407,9 @@ export const getPartnerPerformance = createServerFn({ method: "POST" })
       const cur = perPartner.get(pid);
       if (!cur) continue;
       cur.bookings += 1;
-      cur.commission += payoutByDuration.get(b.service_duration_minutes ?? -1) ?? 0;
+      if (!(b.razorpay_payment_id ?? "").startsWith("free_")) {
+        cur.commission += Number(b.snapshot_partner_payout ?? 0);
+      }
     }
 
     const rows: PartnerPerformanceRow[] = Array.from(perPartner.entries()).map(
