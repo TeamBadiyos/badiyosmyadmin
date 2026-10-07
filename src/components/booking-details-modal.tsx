@@ -44,6 +44,7 @@ import { LiveTrackingMap } from "@/components/live-tracking-map";
 import { ShareLocation } from "@/components/share-location";
 import { ServiceTimerCard } from "@/components/service-timer";
 import { JobLocationDialog } from "@/components/job-location-dialog";
+import { ExpertHandoverPanel } from "@/components/expert-handover-panel";
 
 
 
@@ -696,6 +697,15 @@ export function BookingDetailsModal({
                   }
                 />
               )}
+
+              <ExpertHandoverPanel
+                bookingId={bookingId}
+                status={data.status}
+                startedAt={data.startedAt ?? null}
+                durationMinutes={data.serviceDurationMinutes ?? null}
+                currentExpertName={data.expert.name ?? null}
+                canEdit={canEdit}
+              />
 
               {canReschedule && (
                 <RescheduleSection
