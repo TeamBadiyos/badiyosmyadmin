@@ -26,6 +26,7 @@ export function MerchantProductsModal({
   const toggleFn = useServerFn(setProductAdminHidden);
   const approveFn = useServerFn(setProductApproval);
   const [q, setQ] = useState("");
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["merchant", "products", merchantId],
