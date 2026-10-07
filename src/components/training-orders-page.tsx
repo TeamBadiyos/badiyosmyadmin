@@ -12,6 +12,7 @@ import {
   type TrainingAddress,
   type TrainingOrder,
 } from "@/lib/training.functions";
+import { StoreTrainingPanel } from "@/components/store-training-panel";
 import { TrainingAddressCard, TrainingAddressFields } from "@/components/training-address-card";
 
 const inputCls = "w-full h-10 px-3 rounded-[10px] border border-border bg-card text-[13px] text-foreground";
@@ -91,6 +92,7 @@ export function TrainingOrdersPage() {
 
   return (
     <div className="space-y-6">
+      <StoreTrainingPanel />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[14px] text-muted-foreground">
           Practice orders for experts in Training mode. These never show on other screens.

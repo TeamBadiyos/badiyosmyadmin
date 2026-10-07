@@ -291,9 +291,10 @@ export function CommerceKanban({ segmentId }: { segmentId: string | null }) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listCommercePipeline);
 
+  const [training, setTraining] = useState(false);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["commerce", "board", segmentId],
-    queryFn: () => fetchPipeline({ data: { segmentId } }),
+    queryKey: ["commerce", "board", segmentId, training],
+    queryFn: () => fetchPipeline({ data: { segmentId, training } }),
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
@@ -372,8 +373,12 @@ export function CommerceKanban({ segmentId }: { segmentId: string | null }) {
             )}
           </h2>
           <p className="text-[12px] text-muted-foreground mt-1">
-            Live store orders with rider status. Click a card for actions.
+            {training ? "Training store orders only — safe to test." : "Live store orders with rider status. Click a card for actions."}
           </p>
+          <div className="mt-2 inline-flex rounded-full border border-border p-0.5 text-[12px] font-bold">
+            <button onClick={() => setTraining(false)} className={`px-3 h-7 rounded-full ${!training ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Live</button>
+            <button onClick={() => setTraining(true)} className={`px-3 h-7 rounded-full ${training ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>Training</button>
+          </div>
           {isError && (
             <p className="text-[12px] text-destructive mt-1">
               Failed to load board{error instanceof Error && error.message ? `: ${error.message}` : ""}.
