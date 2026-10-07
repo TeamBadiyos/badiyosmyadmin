@@ -25,6 +25,60 @@ function readFile(file: File): Promise<{ base64: string; preview: string }> {
 const input = "w-full h-10 px-3 rounded-[12px] border border-border bg-background text-[13px]";
 const label = "text-[12px] font-semibold text-muted-foreground mb-1 block";
 
+const UNIT_GROUPS: { label: string; units: string[] }[] = [
+  { label: "Weight", units: ["g", "kg"] },
+  { label: "Volume", units: ["ml", "litre"] },
+  { label: "Count", units: ["piece", "pack", "box", "dozen", "plate", "set", "meter"] },
+];
+const ALL_UNITS = UNIT_GROUPS.flatMap((g) => g.units);
+const ALIASES: Record<string, string> = {
+  gm: "g", gms: "g", gram: "g", grams: "g", kgs: "kg", kilo: "kg",
+  l: "litre", ltr: "litre", liter: "litre", litres: "litre", liters: "litre",
+  pc: "piece", pcs: "piece", pieces: "piece", packs: "pack", boxes: "box", plates: "plate", sets: "set",
+};
+
+function parseUnit(raw: string): { qty: string; unit: string; custom: string } {
+  const s = raw.trim();
+  if (!s) return { qty: "1", unit: "piece", custom: "" };
+  const m = s.match(/^(\d+(?:\.\d+)?)?\s*(.*)$/);
+  const qty = m?.[1] ?? "1";
+  const word = (m?.[2] ?? "").trim().toLowerCase();
+  const u = ALIASES[word] ?? word;
+  if (ALL_UNITS.includes(u)) return { qty, unit: u, custom: "" };
+  return { qty, unit: "other", custom: m?.[2]?.trim() ?? s };
+}
+
+function UnitPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [st, setSt] = useState(() => parseUnit(value));
+  const update = (next: Partial<typeof st>) => {
+    const n = { ...st, ...next };
+    setSt(n);
+    const u = n.unit === "other" ? n.custom.trim() : n.unit;
+    onChange([n.qty.trim(), u].filter(Boolean).join(" "));
+  };
+  const preview = [st.qty.trim(), st.unit === "other" ? st.custom.trim() : st.unit].filter(Boolean).join(" ");
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        <input className={`${input} w-24 shrink-0`} type="number" min="0" step="any" inputMode="decimal"
+          value={st.qty} onChange={(e) => update({ qty: e.target.value })} placeholder="500" />
+        <select className={input} value={st.unit} onChange={(e) => update({ unit: e.target.value })}>
+          {UNIT_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.units.map((u) => <option key={u} value={u}>{u}</option>)}
+            </optgroup>
+          ))}
+          <option value="other">Other (custom)</option>
+        </select>
+      </div>
+      {st.unit === "other" && (
+        <input className={input} value={st.custom} onChange={(e) => update({ custom: e.target.value })} placeholder="e.g. bundle" />
+      )}
+      {preview && <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground">Customer sees: {preview}</span>}
+    </div>
+  );
+}
+
 export function ProductEditDialog({
   product,
   onClose,
@@ -140,7 +194,7 @@ export function ProductEditDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><span className={label}>Category</span><input className={input} value={f.categoryLabel} onChange={(e) => set("categoryLabel", e.target.value)} /></div>
-            <div><span className={label}>Unit</span><input className={input} value={f.unit} onChange={(e) => set("unit", e.target.value)} placeholder="piece, kg, pack" /></div>
+            <div><span className={label}>Unit (quantity + type)</span><UnitPicker value={f.unit} onChange={(v) => set("unit", v)} /></div>
             <div><span className={label}>Price (₹)</span><input type="number" min={0} className={input} value={f.price} onChange={(e) => set("price", e.target.value)} /></div>
             <div><span className={label}>Stock</span><input type="number" min={0} className={input} value={f.stockQuantity} onChange={(e) => set("stockQuantity", e.target.value)} /></div>
             <div><span className={label}>Low stock alert at</span><input type="number" min={0} className={input} value={f.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} /></div>
