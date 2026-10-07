@@ -507,6 +507,22 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     ]);
     if (error) throw new Error(error.message);
 
+    // Product images live in the private "product-images" bucket; sign them so
+    // the admin modal can render them (public buckets are blocked).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const paths = ((rows ?? []) as any[])
+      .map((r) => r.image_url as string | null)
+      .filter((p): p is string => !!p && !p.startsWith("http"));
+    const signedMap = new Map<string, string>();
+    if (paths.length > 0) {
+      const { data: signed } = await db.storage
+        .from("product-images")
+        .createSignedUrls(paths, 3600);
+      for (const s of signed ?? []) {
+        if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
+      }
+    }
+
     return {
       role,
       storeName: merchant?.store_name ?? null,
@@ -527,7 +543,11 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         adminHiddenReason: r.admin_hidden_reason ?? null,
         approvalStatus: (r.approval_status ?? "approved") as "pending" | "approved" | "rejected",
         approvalReason: r.approval_reason ?? null,
-        imageUrl: r.image_url ?? null,
+        imageUrl: r.image_url
+          ? r.image_url.startsWith("http")
+            ? r.image_url
+            : (signedMap.get(r.image_url) ?? null)
+          : null,
         createdAt: r.created_at,
       })),
     };
