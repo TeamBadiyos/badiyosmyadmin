@@ -5516,6 +5516,10 @@ export type Database = {
         Row: {
           admin_hidden: boolean
           admin_hidden_reason: string | null
+          approval_reason: string | null
+          approval_reviewed_at: string | null
+          approval_reviewed_by: string | null
+          approval_status: string
           category_label: string | null
           created_at: string
           description: string | null
@@ -5534,6 +5538,10 @@ export type Database = {
         Insert: {
           admin_hidden?: boolean
           admin_hidden_reason?: string | null
+          approval_reason?: string | null
+          approval_reviewed_at?: string | null
+          approval_reviewed_by?: string | null
+          approval_status?: string
           category_label?: string | null
           created_at?: string
           description?: string | null
@@ -5552,6 +5560,10 @@ export type Database = {
         Update: {
           admin_hidden?: boolean
           admin_hidden_reason?: string | null
+          approval_reason?: string | null
+          approval_reviewed_at?: string | null
+          approval_reviewed_by?: string | null
+          approval_status?: string
           category_label?: string | null
           created_at?: string
           description?: string | null
