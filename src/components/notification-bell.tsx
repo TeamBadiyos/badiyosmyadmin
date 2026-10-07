@@ -76,6 +76,7 @@ export function NotificationBell({
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<AlertFilter>("unread");
   const ref = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
   const fetchAlerts = useServerFn(getStaffAlerts);
   const readFn = useServerFn(markAlertRead);
@@ -215,7 +216,7 @@ export function NotificationBell({
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node) && !panelRef.current?.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -272,7 +273,7 @@ export function NotificationBell({
           onClick={() => setOpen(false)}
           className="fixed inset-0 z-40 bg-foreground/20 sm:hidden"
         />
-        <div className="fixed left-3 right-3 top-[72px] sm:left-auto sm:right-6 sm:w-[380px] max-h-[75dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
+        <div ref={panelRef} className="fixed left-3 right-3 top-[72px] sm:left-auto sm:right-6 sm:w-[380px] max-h-[75dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
           <div className="px-4 pt-3 pb-2 border-b border-border">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Notifications</span>
