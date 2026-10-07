@@ -17,6 +17,7 @@ import {
   X,
   CheckCheck,
   BellRing,
+  ShoppingBag,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -28,6 +29,12 @@ import {
   type AlertFilter,
   type StaffAlert,
 } from "@/lib/alerts.functions";
+import {
+  notifyEnabled,
+  enableNotify,
+  disableNotify,
+  showBrowserNotification,
+} from "@/lib/browser-notify";
 
 const ICONS = {
   support: LifeBuoy,
@@ -42,6 +49,7 @@ const ICONS = {
   waitlist: ListChecks,
   payout: Wallet,
   dispatch: BellRing,
+  order: ShoppingBag,
 } as const;
 
 const TABS: { key: AlertFilter; label: string }[] = [
@@ -257,12 +265,23 @@ export function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[360px] max-h-[460px] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-[min(360px,calc(100vw-24px))] max-h-[70dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
           <div className="px-4 pt-3 pb-2 border-b border-border">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Notifications</span>
               <span className="text-[11px] text-muted-foreground">{total} unread</span>
             </div>
+            <button
+              onClick={toggleChrome}
+              className={`mt-2 w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${
+                chromeOn ? "bg-primary-tint text-primary" : "bg-muted text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <BellRing size={13} /> Chrome notifications
+              </span>
+              <span>{chromeOn ? "ON" : "Turn on"}</span>
+            </button>
             <div className="mt-2 flex items-center gap-1">
               {TABS.map((t) => (
                 <button
@@ -279,14 +298,22 @@ export function NotificationBell({
               ))}
               <span className="flex-1" />
               <button
-                onClick={() => readAll.mutate()}
+                onClick={() => {
+                  const now = new Date().toISOString();
+                  saveEvents(orderEvents.map((e) => ({ ...e, readAt: e.readAt ?? now })));
+                  readAll.mutate();
+                }}
                 title="Mark all as read"
                 className="px-2 py-1 rounded-md text-[11px] font-semibold text-muted-foreground hover:bg-muted flex items-center gap-1"
               >
                 <CheckCheck size={13} /> Read all
               </button>
               <button
-                onClick={() => clearAll.mutate()}
+                onClick={() => {
+                  const now = new Date().toISOString();
+                  saveEvents(orderEvents.map((e) => ({ ...e, dismissedAt: e.dismissedAt ?? now })));
+                  clearAll.mutate();
+                }}
                 title="Clear all"
                 className="px-2 py-1 rounded-md text-[11px] font-semibold text-destructive hover:bg-muted"
               >
@@ -302,7 +329,7 @@ export function NotificationBell({
               </p>
             )}
             {items.map((a) => {
-              const Icon = ICONS[a.kind] ?? Bell;
+              const Icon = ICONS[a.kind as keyof typeof ICONS] ?? Bell;
               const unread = !a.readAt;
               return (
                 <div
@@ -314,7 +341,8 @@ export function NotificationBell({
                   <button
                     onClick={() => {
                       setOpen(false);
-                      readOne.mutate(a.id);
+                      if (isLocal(a.id)) patchLocal(a.id, { readAt: new Date().toISOString() });
+                      else readOne.mutate(a.id);
                       onOpenTarget(a);
                     }}
                     className="flex-1 text-left pl-4 pr-1 py-3 hover:bg-muted/40 flex gap-3 min-w-0"
@@ -347,7 +375,9 @@ export function NotificationBell({
                   </button>
                   <button
                     onClick={() =>
-                      dismissOne.mutate({ id: a.id, dismissed: !a.dismissedAt })
+                      isLocal(a.id)
+                        ? patchLocal(a.id, { dismissedAt: a.dismissedAt ? null : new Date().toISOString() })
+                        : dismissOne.mutate({ id: a.id, dismissed: !a.dismissedAt })
                     }
                     aria-label={a.dismissedAt ? "Restore notification" : "Dismiss notification"}
                     title={a.dismissedAt ? "Restore" : "Dismiss"}
