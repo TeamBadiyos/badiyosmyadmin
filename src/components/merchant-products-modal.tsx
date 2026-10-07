@@ -26,6 +26,7 @@ export function MerchantProductsModal({
   const toggleFn = useServerFn(setProductAdminHidden);
   const approveFn = useServerFn(setProductApproval);
   const [q, setQ] = useState("");
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["merchant", "products", merchantId],
@@ -195,11 +196,13 @@ export function MerchantProductsModal({
                 className="grid grid-cols-[48px_1fr_auto] sm:grid-cols-[48px_1fr_110px_120px_70px] gap-3 px-5 py-3 border-b border-border last:border-0 items-center"
               >
                 <div className="h-12 w-12 rounded-[14px] bg-muted overflow-hidden grid place-items-center text-muted-foreground">
-                  {p.imageUrl ? (
+                  {p.imageUrl && !brokenImages.has(p.id) ? (
                     <img
                       src={p.imageUrl}
                       alt={p.name}
                       className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={() => setBrokenImages((s) => new Set(s).add(p.id))}
                     />
                   ) : (
                     <Package size={18} />
