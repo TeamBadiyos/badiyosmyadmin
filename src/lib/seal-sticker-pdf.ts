@@ -1,4 +1,5 @@
-import QRCode from "qrcode";
+// qrcode is loaded lazily in the browser only: its Node build breaks the live server.
+let QRCode: { create: (text: string, opts: { errorCorrectionLevel: string }) => any };
 import appIcon from "@/assets/badiyos-app-icon.png.asset.json";
 import wordmark from "@/assets/badiyos-wordmark-green.png.asset.json";
 
@@ -356,6 +357,9 @@ export function sealPdfFilename(options: Pick<SealPdfOptions, "batchNo" | "from"
 
 export async function generateSealStickerPdf(options: SealPdfOptions) {
   const { jsPDF } = await import("jspdf");
+  // @ts-expect-error untyped deep import (core encoder only, no Node file helpers)
+  const qrMod: any = await import("qrcode/lib/core/qrcode");
+  QRCode = qrMod.default ?? qrMod;
   const black = options.colour === "black";
   const ink = palette(options.colour);
   const [logo, mark] = await Promise.all([
