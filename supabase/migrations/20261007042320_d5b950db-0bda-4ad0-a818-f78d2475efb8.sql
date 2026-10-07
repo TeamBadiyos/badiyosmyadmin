@@ -1,0 +1,2 @@
+ALTER TABLE public.payout_batches DROP CONSTRAINT payout_batches_batch_type_check;
+ALTER TABLE public.payout_batches ADD CONSTRAINT payout_batches_batch_type_check CHECK (batch_type = ANY (ARRAY['expert'::text,'merchant'::text,'area_partner'::text]));

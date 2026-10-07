@@ -28,6 +28,7 @@ import {
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
+import { PartnerCommissionPanel } from "@/components/partner-commission-panel";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
 
@@ -421,6 +422,7 @@ function PartnersTab({ range }: { range: ReportRange }) {
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   const rows = data ?? [];
   return (
+    <div className="space-y-6">
     <Card>
       <h3 className="text-[15px] font-bold text-foreground mb-4">Area partner performance</h3>
       <SimpleTable
@@ -436,6 +438,8 @@ function PartnersTab({ range }: { range: ReportRange }) {
         emptyText="No partner activity in range."
       />
     </Card>
+    <PartnerCommissionPanel />
+    </div>
   );
 }
 
