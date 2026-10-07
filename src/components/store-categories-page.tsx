@@ -499,21 +499,26 @@ function CategoryDrawer({
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const f = e.target.files?.[0];
                     e.target.value = "";
                     if (!f) return;
-                    if (f.size > 5 * 1024 * 1024) {
-                      toast.error("Photo must be under 5 MB");
+                    if (f.size > 10 * 1024 * 1024) {
+                      toast.error("Photo must be under 10 MB");
                       return;
                     }
-                    const r = new FileReader();
-                    r.onload = () => {
-                      const url = String(r.result);
-                      setPhotoPreview(url);
-                      setPhoto({ base64: url.split(",")[1] ?? "", contentType: f.type || "image/jpeg" });
-                    };
-                    r.readAsDataURL(f);
+                    try {
+                      const { prepareCatalogImage } = await import("@/lib/catalog-image-prep");
+                      const p = await prepareCatalogImage(f);
+                      if (p.base64.length > 7_000_000) {
+                        toast.error("Photo too large (max ~5 MB)");
+                        return;
+                      }
+                      setPhotoPreview(p.preview);
+                      setPhoto({ base64: p.base64, contentType: p.contentType, thumbBase64: p.thumbBase64 });
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Could not read photo");
+                    }
                   }}
                 />
               </label>
