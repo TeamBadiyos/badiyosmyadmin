@@ -76,8 +76,9 @@ const minsSince = (iso: string | null, now: number) =>
 
 export const listCommercePipeline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { segmentId?: string | null }) => ({
+  .inputValidator((input?: { segmentId?: string | null; training?: boolean }) => ({
     segmentId: input?.segmentId ?? null,
+    training: !!input?.training,
   }))
   .handler(async ({ data, context }): Promise<CommercePipeline> => {
     const db = context.supabase;
@@ -110,12 +111,14 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
     let openQ = db
       .from("merchant_orders")
       .select(cols)
+      .eq("is_training", data.training)
       .in("status", ["pending", "accepted", "preparing", "ready"])
       .order("created_at", { ascending: false })
       .limit(200);
     let doneQ = db
       .from("merchant_orders")
       .select(cols)
+      .eq("is_training", data.training)
       .eq("status", "completed")
       .gte("created_at", startOfDay)
       .order("created_at", { ascending: false })
