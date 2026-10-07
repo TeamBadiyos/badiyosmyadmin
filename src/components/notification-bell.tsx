@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -264,14 +265,14 @@ export function NotificationBell({
         )}
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <>
         <button
           aria-label="Close notifications"
           onClick={() => setOpen(false)}
           className="fixed inset-0 z-40 bg-foreground/20 sm:hidden"
         />
-        <div className="fixed inset-x-3 top-[72px] sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-[380px] max-h-[75dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
+        <div className="fixed left-3 right-3 top-[72px] sm:left-auto sm:right-6 sm:w-[380px] max-h-[75dvh] overflow-hidden flex flex-col bg-card border border-border rounded-[16px] shadow-lg z-50">
           <div className="px-4 pt-3 pb-2 border-b border-border">
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Notifications</span>
@@ -400,7 +401,8 @@ export function NotificationBell({
             })}
           </div>
         </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
