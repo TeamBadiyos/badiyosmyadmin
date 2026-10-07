@@ -4449,6 +4449,7 @@ export type Database = {
           delivery_lng: number | null
           delivery_quote: Json | null
           id: string
+          is_training: boolean
           items_total: number
           merchant_id: string
           merchant_net: number
@@ -4497,6 +4498,7 @@ export type Database = {
           delivery_lng?: number | null
           delivery_quote?: Json | null
           id?: string
+          is_training?: boolean
           items_total?: number
           merchant_id: string
           merchant_net?: number
@@ -4545,6 +4547,7 @@ export type Database = {
           delivery_lng?: number | null
           delivery_quote?: Json | null
           id?: string
+          is_training?: boolean
           items_total?: number
           merchant_id?: string
           merchant_net?: number
