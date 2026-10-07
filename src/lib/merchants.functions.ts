@@ -510,24 +510,9 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     ]);
     if (error) throw new Error(error.message);
 
-    // Product images live in the private "product-images" bucket; sign them so
-    // the admin modal can render them (public buckets are blocked).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const paths = ((rows ?? []) as any[])
-      .flatMap((r) => [r.image_url as string | null, r.image_url_2 as string | null])
-      .filter((p): p is string => !!p && !p.startsWith("http"));
-    const signedMap = new Map<string, string>();
-    if (paths.length > 0) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: signed } = await supabaseAdmin.storage
-        .from("product-images")
-        .createSignedUrls(paths, 3600);
-      for (const s of signed ?? []) {
-        if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
-      }
-    }
-    const resolve = (u: string | null | undefined) =>
-      u ? (u.startsWith("http") ? u : (signedMap.get(u) ?? null)) : null;
+    // Product photos live in the public catalog bucket (custom-domain URLs).
+    const { catalogImageUrl } = await import("@/lib/catalog-images");
+    const resolve = (u: string | null | undefined) => catalogImageUrl(u);
 
     return {
       role,
@@ -614,9 +599,9 @@ export type UpdateProductInput = {
   hsnSacCode: string | null;
   gstRate: number;
   isActive: boolean;
-  // undefined = keep, null = remove, {base64,contentType} = replace
-  photo1?: { base64: string; contentType: string } | null;
-  photo2?: { base64: string; contentType: string } | null;
+  // undefined = keep, null = remove, {base64,contentType,thumbBase64} = replace
+  photo1?: { base64: string; contentType: string; thumbBase64: string } | null;
+  photo2?: { base64: string; contentType: string; thumbBase64: string } | null;
 };
 
 export const updateMerchantProduct = createServerFn({ method: "POST" })
@@ -628,13 +613,16 @@ export const updateMerchantProduct = createServerFn({ method: "POST" })
     if (!(Number(input.stockQuantity) >= 0)) throw new Error("Stock must be 0 or more");
     for (const p of [input.photo1, input.photo2]) {
       if (p && p.base64.length > 7_000_000) throw new Error("Photo too large (max ~5 MB)");
-      if (p && !p.contentType.startsWith("image/")) throw new Error("Only image files allowed");
+      if (p && !["image/jpeg", "image/png", "image/webp"].includes(p.contentType))
+        throw new Error("Only JPG, PNG or WebP photos allowed");
+      if (p && !p.thumbBase64) throw new Error("Photo thumbnail missing");
     }
     return input;
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await staffRole(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { CATALOG_BUCKET, catalogThumbPath } = await import("@/lib/catalog-images");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = supabaseAdmin as any;
     const { data: before, error: bErr } = await admin
@@ -642,14 +630,18 @@ export const updateMerchantProduct = createServerFn({ method: "POST" })
     if (bErr) throw new Error(bErr.message);
     if (!before) throw new Error("Product not found");
 
-    const upload = async (p: { base64: string; contentType: string }, slot: number) => {
+    const upload = async (p: { base64: string; contentType: string; thumbBase64: string }, slot: number) => {
       const ext = (p.contentType.split("/")[1] ?? "jpg").replace("jpeg", "jpg").slice(0, 5);
       const path = `${before.merchant_id}/product-${Date.now()}-${slot}.${ext}`;
-      const bytes = Buffer.from(p.base64, "base64");
-      const { error } = await admin.storage
-        .from("product-images")
-        .upload(path, bytes, { contentType: p.contentType, upsert: false });
+      const bucket = admin.storage.from(CATALOG_BUCKET);
+      const { error } = await bucket.upload(path, Buffer.from(p.base64, "base64"), {
+        contentType: p.contentType, upsert: false, cacheControl: "31536000",
+      });
       if (error) throw new Error(`Photo upload failed: ${error.message}`);
+      const { error: tErr } = await bucket.upload(catalogThumbPath(path), Buffer.from(p.thumbBase64, "base64"), {
+        contentType: "image/webp", upsert: true, cacheControl: "31536000",
+      });
+      if (tErr) throw new Error(`Thumbnail upload failed: ${tErr.message}`);
       return path;
     };
 

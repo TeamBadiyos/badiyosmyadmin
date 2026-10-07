@@ -277,11 +277,16 @@ export const setStoreCategoryActive = createServerFn({ method: "POST" })
 export const setStoreCategoryPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { id: string; photo: { base64: string; contentType: string } | null }) => {
+    (input: {
+      id: string;
+      photo: { base64: string; contentType: string; thumbBase64: string } | null;
+    }) => {
       if (!input?.id) throw new Error("Category is required");
       if (input.photo) {
         if (input.photo.base64.length > 7_000_000) throw new Error("Photo too large (max ~5 MB)");
-        if (!input.photo.contentType.startsWith("image/")) throw new Error("Only image files allowed");
+        if (!["image/jpeg", "image/png", "image/webp"].includes(input.photo.contentType))
+          throw new Error("Only JPG, PNG or WebP photos allowed");
+        if (!input.photo.thumbBase64) throw new Error("Photo thumbnail missing");
       }
       return input;
     },
@@ -289,6 +294,7 @@ export const setStoreCategoryPhoto = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { CATALOG_BUCKET, catalogThumbPath } = await import("@/lib/catalog-images");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = supabaseAdmin as any;
     const { data: before, error: bErr } = await admin
@@ -300,13 +306,16 @@ export const setStoreCategoryPhoto = createServerFn({ method: "POST" })
     if (data.photo) {
       const ext = (data.photo.contentType.split("/")[1] ?? "jpg").replace("jpeg", "jpg").slice(0, 5);
       path = `categories/${data.id}-${Date.now()}.${ext}`;
-      const { error } = await admin.storage
-        .from("product-images")
-        .upload(path, Buffer.from(data.photo.base64, "base64"), {
-          contentType: data.photo.contentType,
-          upsert: false,
-        });
+      const bucket = admin.storage.from(CATALOG_BUCKET);
+      const { error } = await bucket.upload(path, Buffer.from(data.photo.base64, "base64"), {
+        contentType: data.photo.contentType, upsert: false, cacheControl: "31536000",
+      });
       if (error) throw new Error(`Photo upload failed: ${error.message}`);
+      const { error: tErr } = await bucket.upload(
+        catalogThumbPath(path), Buffer.from(data.photo.thumbBase64, "base64"),
+        { contentType: "image/webp", upsert: true, cacheControl: "31536000" },
+      );
+      if (tErr) throw new Error(`Thumbnail upload failed: ${tErr.message}`);
     }
     const { data: after, error } = await admin
       .from("store_categories").update({ icon_url: path }).eq("id", data.id).select("*").single();
@@ -322,14 +331,14 @@ export const setStoreCategoryPhoto = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Maps stored catalog paths to public custom-domain URLs. */
 export async function signCategoryPaths(paths: string[]): Promise<Map<string, string>> {
+  const { catalogImageUrl } = await import("@/lib/catalog-images");
   const out = new Map<string, string>();
-  const rel = paths.filter((p) => p && !/^https?:\/\//.test(p));
-  for (const p of paths) if (p && /^https?:\/\//.test(p)) out.set(p, p);
-  if (!rel.length) return out;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin.storage.from("product-images").createSignedUrls(rel, 3600);
-  for (const r of data ?? []) if (r.path && r.signedUrl) out.set(r.path, r.signedUrl);
+  for (const p of paths) {
+    const u = catalogImageUrl(p);
+    if (p && u) out.set(p, u);
+  }
   return out;
 }
 

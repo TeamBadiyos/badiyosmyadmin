@@ -7,20 +7,8 @@ import { type MerchantProduct, updateMerchantProduct } from "@/lib/merchants.fun
 
 type PhotoState =
   | { kind: "keep"; url: string | null }
-  | { kind: "new"; preview: string; base64: string; contentType: string }
+  | { kind: "new"; preview: string; base64: string; contentType: string; thumbBase64: string }
   | { kind: "remove" };
-
-function readFile(file: File): Promise<{ base64: string; preview: string }> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => {
-      const s = String(r.result);
-      resolve({ base64: s.split(",")[1] ?? "", preview: s });
-    };
-    r.onerror = () => reject(new Error("Could not read file"));
-    r.readAsDataURL(file);
-  });
-}
 
 const input = "w-full h-10 px-3 rounded-[12px] border border-border bg-background text-[13px]";
 const label = "text-[12px] font-semibold text-muted-foreground mb-1 block";
@@ -110,14 +98,29 @@ export function ProductEditDialog({
 
   const pick = async (i: number, file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("Only image files");
-    if (file.size > 5 * 1024 * 1024) return toast.error("Photo must be under 5 MB");
-    const { base64, preview } = await readFile(file);
-    setPhotos((p) => p.map((x, j) => (j === i ? { kind: "new", preview, base64, contentType: file.type } : x)));
+    if (file.size > 10 * 1024 * 1024) return toast.error("Photo must be under 10 MB");
+    try {
+      const { prepareCatalogImage } = await import("@/lib/catalog-image-prep");
+      const r = await prepareCatalogImage(file);
+      if (r.base64.length > 7_000_000) return toast.error("Photo too large (max ~5 MB)");
+      setPhotos((p) =>
+        p.map((x, j) =>
+          j === i
+            ? { kind: "new", preview: r.preview, base64: r.base64, contentType: r.contentType, thumbBase64: r.thumbBase64 }
+            : x,
+        ),
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not read photo");
+    }
   };
 
   const payloadFor = (p: PhotoState) =>
-    p.kind === "keep" ? undefined : p.kind === "remove" ? null : { base64: p.base64, contentType: p.contentType };
+    p.kind === "keep"
+      ? undefined
+      : p.kind === "remove"
+        ? null
+        : { base64: p.base64, contentType: p.contentType, thumbBase64: p.thumbBase64 };
 
   const submit = async () => {
     setBusy(true);
@@ -168,7 +171,7 @@ export function ProductEditDialog({
                   <div key={i} className="flex flex-col items-center gap-1">
                     <label className="h-24 w-24 rounded-[14px] border border-dashed border-border bg-muted overflow-hidden grid place-items-center cursor-pointer text-muted-foreground">
                       {src ? <img src={src} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" /> : <ImagePlus size={20} />}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(i, e.target.files?.[0])} />
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" onChange={(e) => pick(i, e.target.files?.[0])} />
                     </label>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       Photo {i + 1}
