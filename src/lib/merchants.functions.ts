@@ -450,12 +450,15 @@ export type MerchantProduct = {
   unit: string | null;
   stockQuantity: number;
   lowStockThreshold: number;
+  hsnSacCode: string | null;
+  gstRate: number;
   isActive: boolean;
   adminHidden: boolean;
   adminHiddenReason: string | null;
-  approvalStatus: "pending" | "approved" | "rejected";
+  approvalStatus: "pending" | "approved" | "rejected" | "query_raised";
   approvalReason: string | null;
   imageUrl: string | null;
+  imageUrl2: string | null;
   createdAt: string;
 };
 
@@ -511,17 +514,20 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     // the admin modal can render them (public buckets are blocked).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const paths = ((rows ?? []) as any[])
-      .map((r) => r.image_url as string | null)
+      .flatMap((r) => [r.image_url as string | null, r.image_url_2 as string | null])
       .filter((p): p is string => !!p && !p.startsWith("http"));
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
-      const { data: signed } = await db.storage
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: signed } = await supabaseAdmin.storage
         .from("product-images")
         .createSignedUrls(paths, 3600);
       for (const s of signed ?? []) {
         if (s.path && s.signedUrl) signedMap.set(s.path, s.signedUrl);
       }
     }
+    const resolve = (u: string | null | undefined) =>
+      u ? (u.startsWith("http") ? u : (signedMap.get(u) ?? null)) : null;
 
     return {
       role,
@@ -538,16 +544,15 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         unit: r.unit ?? null,
         stockQuantity: Number(r.stock_quantity ?? 0),
         lowStockThreshold: Number(r.low_stock_threshold ?? 0),
+        hsnSacCode: r.hsn_sac_code ?? null,
+        gstRate: Number(r.gst_rate ?? 0),
         isActive: !!r.is_active,
         adminHidden: !!r.admin_hidden,
         adminHiddenReason: r.admin_hidden_reason ?? null,
-        approvalStatus: (r.approval_status ?? "approved") as "pending" | "approved" | "rejected",
+        approvalStatus: (r.approval_status ?? "approved") as MerchantProduct["approvalStatus"],
         approvalReason: r.approval_reason ?? null,
-        imageUrl: r.image_url
-          ? r.image_url.startsWith("http")
-            ? r.image_url
-            : (signedMap.get(r.image_url) ?? null)
-          : null,
+        imageUrl: resolve(r.image_url),
+        imageUrl2: resolve(r.image_url_2),
         createdAt: r.created_at,
       })),
     };
