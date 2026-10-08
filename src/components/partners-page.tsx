@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -409,8 +409,8 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
               const its = lines.filter((l) => l.item_id === it.id && (showDeleted || !l.is_deleted));
               const live = lines.filter((l) => l.item_id === it.id && !l.is_deleted).length;
               return (
-                <>
-                  <tr key={it.id} className={`border-t border-border ${it.is_deleted ? "opacity-50" : ""}`}>
+                <Fragment key={it.id}>
+                  <tr className={`border-t border-border ${it.is_deleted ? "opacity-50" : ""}`}>
                     <td className="p-2"><button onClick={() => setOpenItem(openItem === it.id ? null : it.id)}>{openItem === it.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button></td>
                     <td className="p-2 font-semibold">{it.partners?.name}<div className="text-xs font-normal text-muted-foreground">{it.partners?.phone}</div></td>
                     <td className="p-2">{PROGRAM_LABEL[it.partners?.program as PartnerProgram]}{it.partners?.level ? ` · ${it.partners.level}` : ""}</td>
@@ -455,7 +455,7 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
