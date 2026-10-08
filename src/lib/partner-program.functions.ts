@@ -11,7 +11,9 @@ export type PartnerRow = {
   name: string;
   phone: string;
   program: PartnerProgram;
-  level: "silver" | "gold" | "platinum" | null;
+  level: string | null;
+  plan_id: string | null;
+  fee_collected_at: string | null;
   city: string;
   zone_id: string | null;
   agreement_start: string;
@@ -20,6 +22,26 @@ export type PartnerRow = {
   status: "active" | "inactive";
   notes: string | null;
 };
+
+export type PlanLine = { plan_id?: string; line_key: string; enabled: boolean; pct: number };
+export type CommissionPlan = {
+  id: string;
+  name: string;
+  partner_type: PartnerProgram;
+  suggested_fee: number;
+  status: "active" | "inactive";
+  lines: PlanLine[];
+  partnerCount: number;
+};
+
+export const saveCommissionPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id?: string; name: string; partner_type: PartnerProgram; suggested_fee: number; status: string; lines: PlanLine[] }) => d)
+  .handler(async ({ data, context }) => {
+    await requireStaff(context.supabase, context.userId, true);
+    const id = await rpc(context.supabase, "staff_partner_plan_upsert", { _p: data });
+    return { id: id as string };
+  });
 
 async function requireStaff(db: Db, userId: string, write: boolean) {
   const { data, error } = await db
@@ -45,13 +67,16 @@ export const getPartnerProgram = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase as Db;
     await requireStaff(db, context.userId, false);
-    const [s, p, z, e] = await Promise.all([
+    const [s, p, z, e, pl, ln, bl] = await Promise.all([
       db.from("partner_program_settings").select("*").eq("id", 1).maybeSingle(),
       db.from("partners").select("*").order("created_at", { ascending: false }),
       db.from("zones").select("id, name, city").is("deleted_at", null).order("name"),
       db.from("experts").select("onboarded_by_partner_id").not("onboarded_by_partner_id", "is", null),
+      db.from("partner_commission_plans").select("*").order("partner_type").order("name"),
+      db.from("partner_plan_lines").select("*"),
+      db.from("partner_business_lines").select("*").order("sort_order"),
     ]);
-    for (const r of [s, p, z, e]) if (r.error) throw new Error(r.error.message);
+    for (const r of [s, p, z, e, pl, ln, bl]) if (r.error) throw new Error(r.error.message);
     const expertCounts: Record<string, number> = {};
     for (const r of e.data ?? []) expertCounts[r.onboarded_by_partner_id] = (expertCounts[r.onboarded_by_partner_id] ?? 0) + 1;
     return {
@@ -59,6 +84,12 @@ export const getPartnerProgram = createServerFn({ method: "GET" })
       partners: (p.data ?? []) as PartnerRow[],
       zones: (z.data ?? []) as { id: string; name: string; city: string }[],
       expertCounts,
+      businessLines: (bl.data ?? []) as { key: string; label: string }[],
+      plans: ((pl.data ?? []) as Omit<CommissionPlan, "lines" | "partnerCount">[]).map((x) => ({
+        ...x,
+        lines: ((ln.data ?? []) as PlanLine[]).filter((l) => l.plan_id === x.id),
+        partnerCount: ((p.data ?? []) as PartnerRow[]).filter((r) => r.plan_id === x.id).length,
+      })) as CommissionPlan[],
     };
   });
 
@@ -94,9 +125,10 @@ export const listGrowthPartners = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase as Db;
     await requireStaff(db, context.userId, false);
-    const { data, error } = await db.from("partners").select("id, name, level, status").eq("program", "growth").order("name");
+    const { data, error } = await db.from("partners").select("id, name, status, partner_commission_plans(name)").eq("program", "growth").order("name");
     if (error) throw new Error(error.message);
-    return (data ?? []) as { id: string; name: string; level: string; status: string }[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((r) => ({ id: r.id as string, name: r.name as string, status: r.status as string, level: (r.partner_commission_plans?.name ?? "No plan") as string }));
   });
 
 export const getExpertGrowthPartner = createServerFn({ method: "GET" })
@@ -137,7 +169,7 @@ export const getPartnerBatch = createServerFn({ method: "GET" })
     await requireStaff(db, context.userId, false);
     const [b, i, l] = await Promise.all([
       db.from("partner_payout_batches").select("*").eq("id", data.batchId).maybeSingle(),
-      db.from("partner_payout_items").select("*, partners(name, phone, program, level)").eq("batch_id", data.batchId),
+      db.from("partner_payout_items").select("*, partners(name, phone, program, partner_commission_plans(name))").eq("batch_id", data.batchId),
       db.from("partner_payout_lines").select("*").eq("batch_id", data.batchId).order("order_completed_at"),
     ]);
     for (const r of [b, i, l]) if (r.error) throw new Error(r.error.message);
