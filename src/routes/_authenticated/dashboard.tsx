@@ -10,7 +10,7 @@ import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
-import { GraduationCap, Handshake } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
