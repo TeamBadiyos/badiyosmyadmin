@@ -20,7 +20,6 @@ import {
   getRevenueReport,
   getBookingsReport,
   getExpertPerformance,
-  getPartnerPerformance,
   getReferralReport,
   getPayoutReport,
   getCustomerReport,
@@ -28,7 +27,6 @@ import {
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
-import { PartnerCommissionPanel } from "@/components/partner-commission-panel";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
 
@@ -39,7 +37,6 @@ const TABS = [
   { key: "revenue", label: "Revenue" },
   { key: "bookings", label: "Bookings" },
   { key: "experts", label: "Experts" },
-  { key: "partners", label: "Area Partners" },
   { key: "referrals", label: "Referrals" },
   { key: "payouts", label: "Payouts" },
   { key: "customers", label: "Customers" },
@@ -170,7 +167,6 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
       {tab === "revenue" && <RevenueTab range={range} />}
       {tab === "bookings" && <BookingsTab range={range} />}
       {tab === "experts" && <ExpertsTab range={range} />}
-      {tab === "partners" && <PartnersTab range={range} />}
       {tab === "referrals" && role !== "area_partner" && <ReferralsTab range={range} />}
       {tab === "payouts" && role !== "area_partner" && <PayoutsTab range={range} />}
       {tab === "customers" && <CustomersTab range={range} />}
@@ -411,37 +407,6 @@ function ExpertsTab({ range }: { range: ReportRange }) {
   );
 }
 
-// ============ Partners ============
-function PartnersTab({ range }: { range: ReportRange }) {
-  const fetchFn = useServerFn(getPartnerPerformance);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["reports", "partners", range],
-    queryFn: () => fetchFn({ data: range }),
-  });
-  if (isLoading) return <Loading />;
-  if (error) return <ErrorMsg msg={(error as Error).message} />;
-  const rows = data ?? [];
-  return (
-    <div className="space-y-6">
-    <Card>
-      <h3 className="text-[15px] font-bold text-foreground mb-4">Area partner performance</h3>
-      <SimpleTable
-        columns={["Partner", "Zone(s)", "Bookings", "Commission", "Setup fee"]}
-        rows={rows.map((r) => [
-          r.name,
-          r.zoneName,
-          String(r.bookings),
-          inr.format(r.commission),
-          r.setupFeeStatus,
-        ])}
-        rightAlign={[2, 3]}
-        emptyText="No partner activity in range."
-      />
-    </Card>
-    <PartnerCommissionPanel />
-    </div>
-  );
-}
 
 // ============ Referrals ============
 function ReferralsTab({ range }: { range: ReportRange }) {
@@ -675,7 +640,7 @@ function PnlTab({ range }: { range: ReportRange }) {
     const lines: Array<[string, number]> = [
       ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
       ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
-      ["Expert payouts", s.expertPayout], ["Area partner payouts", s.partnerPayout], ["Rider payouts", c.riderPayout],
+      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout],
       ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Platform profit", T.platformProfit],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
@@ -715,7 +680,6 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label="GST (goes to government)" value={T.gst} neg />
           <Row label="Net revenue" value={T.netRevenue} bold />
           <Row label="Expert payouts" value={s.expertPayout} neg />
-          <Row label="Area partner payouts" value={s.partnerPayout} neg />
           <Row label="Rider payouts" value={c.riderPayout} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
           <Row label="Platform profit" value={T.platformProfit} bold />

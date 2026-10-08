@@ -34,7 +34,7 @@ function digits(phone: string) {
 export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
   const canView = role === null || role === "super_admin" || role === "ops_manager";
   const canEdit = canView;
-  const [tab, setTab] = useState<"partner" | "expert" | "business" | "city">("partner");
+  const [tab, setTab] = useState<"expert" | "business" | "city">("expert");
   const fetchLeads = useServerFn(getInterestLeads);
   const statusFn = useServerFn(setLeadStatus);
   const queryClient = useQueryClient();
@@ -62,14 +62,13 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
 
   const business = data?.business ?? [];
   const city = data?.city ?? [];
-  const partner = data?.partner ?? [];
   const expert = data?.expert ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <p className="text-[14px] text-muted-foreground max-w-[620px]">
-          Everything submitted from the badiyos.com website — area partner and Home Expert
+          Everything submitted from the badiyos.com website — Home Expert
           applications, shops who want to join, and customers asking us to launch in their city.
         </p>
         <button
@@ -82,9 +81,6 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <TabBtn active={tab === "partner"} onClick={() => setTab("partner")} icon={Handshake}>
-          Area Partner Leads ({partner.length})
-        </TabBtn>
         <TabBtn active={tab === "expert"} onClick={() => setTab("expert")} icon={UserPlus}>
           Expert Leads ({expert.length})
         </TabBtn>
@@ -100,19 +96,15 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
         <p className="text-[14px] text-muted-foreground">Loading…</p>
       ) : isError ? (
         <p className="text-[14px] text-destructive">Could not load interest leads.</p>
-      ) : tab === "partner" || tab === "expert" ? (
+      ) : tab === "expert" ? (
         <ContactLeadList
-          leads={tab === "partner" ? partner : expert}
-          kind={tab === "partner" ? "area_partner" : "expert"}
-          source={tab === "partner" ? "/join-area-partner" : "/join-expert"}
+          leads={expert}
+          kind="expert"
+          source="/join-expert"
           canEdit={canEdit}
           onStatus={(vars) => updateStatus.mutate(vars)}
           pending={updateStatus.isPending}
-          empty={
-            tab === "partner"
-              ? "No area partner applications yet."
-              : "No Home Expert applications yet."
-          }
+          empty="No Home Expert applications yet."
         />
       ) : tab === "business" ? (
         <Table

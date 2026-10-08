@@ -11,7 +11,6 @@ import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
 import { GraduationCap } from "lucide-react";
-import { AreaPartnersPage } from "@/components/area-partners-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
@@ -113,7 +112,6 @@ const NAV_ITEMS = [
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "training-orders", label: "Training Orders", icon: GraduationCap },
-  { key: "partners", label: "Area Partners", icon: Handshake },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "merchants", label: "Merchants", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
@@ -183,7 +181,7 @@ const NAV_GROUPS = [
     id: "people",
     label: "People",
     icon: Users,
-    keys: ["users", "experts", "training-orders", "skills", "partners", "deletion-requests"],
+    keys: ["users", "experts", "training-orders", "skills", "deletion-requests"],
   },
   {
     id: "growth",
@@ -562,8 +560,6 @@ function Shell() {
           />
         ) : active === "training-orders" ? (
           <TrainingOrdersPage />
-        ) : active === "partners" ? (
-          <AreaPartnersPage role={role} />
         ) : active === "skills" ? (
           <SkillApprovalsPage role={role} />
         ) : active === "merchants" ? (
