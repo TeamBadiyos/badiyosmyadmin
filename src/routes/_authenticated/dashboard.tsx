@@ -28,6 +28,7 @@ import { UnassignedTripsPage } from "@/components/unassigned-trips-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
 import { InterestLeadsPage } from "@/components/interest-leads-page";
 import { InsurancePage } from "@/components/insurance-page";
+import { PartnersPage } from "@/components/partners-page";
 import { WaitlistPage } from "@/components/waitlist-page";
 import { UsersPage } from "@/components/users-page";
 import { MerchantApprovalsPage } from "@/components/merchant-approvals-page";
@@ -128,6 +129,7 @@ const NAV_ITEMS = [
   { key: "task-types", label: "Task Types", icon: ClipboardList },
   { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
+  { key: "partners", label: "Partner Program", icon: Handshake },
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "rewards", label: "Rewards", icon: Award },
   { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
@@ -193,7 +195,7 @@ const NAV_GROUPS = [
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "merchant-billing", "reports"],
+    keys: ["wallets", "partners", "merchant-billing", "reports"],
   },
   {
     id: "settings",
@@ -591,6 +593,8 @@ function Shell() {
           <TaskTypesPage />
         ) : active === "homepage" ? (
           <HomepageBuilderPage />
+        ) : active === "partners" ? (
+          <PartnersPage role={role} />
         ) : active === "wallets" ? (
           <WalletsPage role={role} />
         ) : active === "referrals" ? (

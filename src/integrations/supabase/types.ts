@@ -3839,6 +3839,7 @@ export type Database = {
           name: string
           offline_after_job: boolean
           onboarded_by: string | null
+          onboarded_by_partner_id: string | null
           pan_encrypted: string | null
           pan_last4: string | null
           pan_updated_at: string | null
@@ -3883,6 +3884,7 @@ export type Database = {
           name: string
           offline_after_job?: boolean
           onboarded_by?: string | null
+          onboarded_by_partner_id?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
           pan_updated_at?: string | null
@@ -3927,6 +3929,7 @@ export type Database = {
           name?: string
           offline_after_job?: boolean
           onboarded_by?: string | null
+          onboarded_by_partner_id?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
           pan_updated_at?: string | null
@@ -3949,6 +3952,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experts_onboarded_by_partner_id_fkey"
+            columns: ["onboarded_by_partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
           {
@@ -5135,6 +5145,286 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_payout_batches: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          delete_reason: string | null
+          deleted_at: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          paid_on: string | null
+          paid_reference: string | null
+          period_end: string
+          period_start: string
+          status: string
+          total_gross: number
+          total_net: number
+          total_tds: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          delete_reason?: string | null
+          deleted_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_on?: string | null
+          paid_reference?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          total_gross?: number
+          total_net?: number
+          total_tds?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          delete_reason?: string | null
+          deleted_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_on?: string | null
+          paid_reference?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          total_gross?: number
+          total_net?: number
+          total_tds?: number
+        }
+        Relationships: []
+      }
+      partner_payout_items: {
+        Row: {
+          batch_id: string
+          delete_reason: string | null
+          gross_amount: number
+          id: string
+          is_deleted: boolean
+          net_amount: number
+          partner_id: string
+          tds_amount: number
+          tds_rate: number
+        }
+        Insert: {
+          batch_id: string
+          delete_reason?: string | null
+          gross_amount?: number
+          id?: string
+          is_deleted?: boolean
+          net_amount?: number
+          partner_id: string
+          tds_amount?: number
+          tds_rate?: number
+        }
+        Update: {
+          batch_id?: string
+          delete_reason?: string | null
+          gross_amount?: number
+          id?: string
+          is_deleted?: boolean
+          net_amount?: number
+          partner_id?: string
+          tds_amount?: number
+          tds_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payout_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "partner_payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payout_items_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_payout_lines: {
+        Row: {
+          amount: number
+          base_amount: number
+          batch_id: string
+          calculated_amount: number
+          commission_pct: number
+          delete_reason: string | null
+          edit_reason: string | null
+          expert_id: string | null
+          id: string
+          is_deleted: boolean
+          item_id: string
+          order_completed_at: string
+          order_id: string
+          order_type: string
+          partner_id: string
+          program: string
+          service_name: string | null
+        }
+        Insert: {
+          amount: number
+          base_amount: number
+          batch_id: string
+          calculated_amount: number
+          commission_pct: number
+          delete_reason?: string | null
+          edit_reason?: string | null
+          expert_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_id: string
+          order_completed_at: string
+          order_id: string
+          order_type: string
+          partner_id: string
+          program: string
+          service_name?: string | null
+        }
+        Update: {
+          amount?: number
+          base_amount?: number
+          batch_id?: string
+          calculated_amount?: number
+          commission_pct?: number
+          delete_reason?: string | null
+          edit_reason?: string | null
+          expert_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_id?: string
+          order_completed_at?: string
+          order_id?: string
+          order_type?: string
+          partner_id?: string
+          program?: string
+          service_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payout_lines_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "partner_payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payout_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "partner_payout_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payout_lines_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_program_settings: {
+        Row: {
+          city_enabled: boolean
+          city_fee: number
+          city_pct: number
+          gold_fee: number
+          gold_pct: number
+          growth_enabled: boolean
+          id: number
+          master_enabled: boolean
+          platinum_fee: number
+          platinum_pct: number
+          silver_fee: number
+          silver_pct: number
+          updated_at: string
+          updated_by: string | null
+          zone_enabled: boolean
+          zone_fee: number
+          zone_pct: number
+        }
+        Insert: {
+          city_enabled?: boolean
+          city_fee?: number
+          city_pct?: number
+          gold_fee?: number
+          gold_pct?: number
+          growth_enabled?: boolean
+          id?: number
+          master_enabled?: boolean
+          platinum_fee?: number
+          platinum_pct?: number
+          silver_fee?: number
+          silver_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+          zone_enabled?: boolean
+          zone_fee?: number
+          zone_pct?: number
+        }
+        Update: {
+          city_enabled?: boolean
+          city_fee?: number
+          city_pct?: number
+          gold_fee?: number
+          gold_pct?: number
+          growth_enabled?: boolean
+          id?: number
+          master_enabled?: boolean
+          platinum_fee?: number
+          platinum_pct?: number
+          silver_fee?: number
+          silver_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+          zone_enabled?: boolean
+          zone_fee?: number
+          zone_pct?: number
+        }
+        Relationships: []
+      }
+      partner_program_toggle_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          enabled: boolean
+          id: string
+          program: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled: boolean
+          id?: string
+          program: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          id?: string
+          program?: string
+        }
+        Relationships: []
+      }
       partner_skills: {
         Row: {
           approved_at: string | null
@@ -5183,6 +5473,65 @@ export type Database = {
             columns: ["service_category_id"]
             isOneToOne: false
             referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          agreement_end: string
+          agreement_start: string
+          city: string
+          created_at: string
+          fee_paid: number
+          id: string
+          level: string | null
+          name: string
+          notes: string | null
+          phone: string
+          program: string
+          status: string
+          updated_at: string
+          zone_id: string | null
+        }
+        Insert: {
+          agreement_end: string
+          agreement_start: string
+          city: string
+          created_at?: string
+          fee_paid?: number
+          id?: string
+          level?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          program: string
+          status?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Update: {
+          agreement_end?: string
+          agreement_start?: string
+          city?: string
+          created_at?: string
+          fee_paid?: number
+          id?: string
+          level?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          program?: string
+          status?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
@@ -8806,10 +9155,24 @@ export type Database = {
       offers_caller_role: { Args: { _uid?: string }; Returns: string }
       offers_require_writer: { Args: never; Returns: string }
       pan_key: { Args: never; Returns: string }
+      partner_assert_draft: { Args: { _batch_id: string }; Returns: undefined }
       partner_decide_extension: {
         Args: { _decision: string; _extension_id: string }
         Returns: Json
       }
+      partner_growth_window: {
+        Args: { _expert_id: string }
+        Returns: {
+          win_end: string
+          win_start: string
+        }[]
+      }
+      partner_program_on_at: {
+        Args: { _at: string; _program: string }
+        Returns: boolean
+      }
+      partner_recalc_batch: { Args: { _batch_id: string }; Returns: undefined }
+      partner_require_admin: { Args: never; Returns: string }
       payout_batch_recalc_total: {
         Args: { _batch_id: string }
         Returns: undefined
@@ -9312,6 +9675,40 @@ export type Database = {
         Args: { _city?: string; _segment_id?: string }
         Returns: number
       }
+      staff_partner_batch_approve: {
+        Args: { _batch_id: string }
+        Returns: undefined
+      }
+      staff_partner_batch_delete: {
+        Args: { _batch_id: string; _reason: string }
+        Returns: undefined
+      }
+      staff_partner_batch_mark_paid: {
+        Args: { _batch_id: string; _paid_on: string; _reference: string }
+        Returns: undefined
+      }
+      staff_partner_generate_payout: {
+        Args: { _from: string; _notes?: string; _to: string }
+        Returns: string
+      }
+      staff_partner_item_delete: {
+        Args: { _item_id: string; _reason: string }
+        Returns: undefined
+      }
+      staff_partner_line_delete: {
+        Args: { _line_id: string; _reason: string }
+        Returns: undefined
+      }
+      staff_partner_line_edit: {
+        Args: { _amount: number; _line_id: string; _reason: string }
+        Returns: undefined
+      }
+      staff_partner_toggle: {
+        Args: { _enabled: boolean; _program: string }
+        Returns: undefined
+      }
+      staff_partner_update_settings: { Args: { _p: Json }; Returns: undefined }
+      staff_partner_upsert: { Args: { _p: Json }; Returns: string }
       staff_permanently_delete_user: {
         Args: { _confirm_phone: string; _user_id: string }
         Returns: Json
@@ -9553,6 +9950,10 @@ export type Database = {
       }
       staff_set_delivery_status: {
         Args: { _merchant_id: string; _reason: string; _status: string }
+        Returns: undefined
+      }
+      staff_set_expert_growth_partner: {
+        Args: { _expert_id: string; _partner_id: string }
         Returns: undefined
       }
       staff_set_expert_onboarding: {

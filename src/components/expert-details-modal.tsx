@@ -12,6 +12,7 @@ import {
   TRAINING_DAYS,
 } from "@/lib/experts.functions";
 import { ExpertTrainingModeCard } from "@/components/expert-training-mode-card";
+import { ExpertGrowthPartnerCard } from "@/components/expert-growth-partner-card";
 import {
   listExpertSkills,
   listActiveServiceCategories,
@@ -443,6 +444,7 @@ export function ExpertDetailsModal({
                 completedAt={data.trainingCompletedAt}
                 canChange={role === "super_admin"}
               />
+              <ExpertGrowthPartnerCard expertId={data.id} canChange={role === "super_admin"} />
               <section>
                 <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
                   Joining, jacket & training
