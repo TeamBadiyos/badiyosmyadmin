@@ -226,7 +226,7 @@ export const getPartnerBatch = createServerFn({ method: "GET" })
     await requireStaff(db, context.userId, false);
     const [b, i, l] = await Promise.all([
       db.from("partner_payout_batches").select("*").eq("id", data.batchId).maybeSingle(),
-      db.from("partner_payout_items").select("*, partners(name, phone, program, partner_commission_plans(name))").eq("batch_id", data.batchId),
+      db.from("partner_payout_items").select("*, partners(name, phone, program, partner_commission_plans!plan_id(name))").eq("batch_id", data.batchId),
       db.from("partner_payout_lines").select("*").eq("batch_id", data.batchId).order("order_completed_at"),
     ]);
     for (const r of [b, i, l]) if (r.error) throw new Error(r.error.message);

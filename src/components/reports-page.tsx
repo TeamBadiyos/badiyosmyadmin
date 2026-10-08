@@ -641,7 +641,7 @@ function PnlTab({ range }: { range: ReportRange }) {
     const lines: Array<[string, number]> = [
       ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
       ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
-      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout],
+      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission],
       ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Platform profit", T.platformProfit],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
@@ -682,6 +682,7 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label="Net revenue" value={T.netRevenue} bold />
           <Row label="Expert payouts" value={s.expertPayout} neg />
           <Row label="Rider payouts" value={c.riderPayout} neg />
+          <Row label="Partner Program commission" sub="Draft, approved and paid partner batches" value={data.programCommission} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
           <Row label="Platform profit" value={T.platformProfit} bold />
         </Card>

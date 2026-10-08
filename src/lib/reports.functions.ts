@@ -517,6 +517,7 @@ export type PnlReport = {
   courier: PnlLine & { riderPayout: number };
   store: { orders: number; gross: number; refunds: number; commission: number; commissionGst: number; merchantPayout: number };
   bonuses: number;
+  programCommission: number;
   paidOut: { paid: number; pending: number; tds: number };
   totals: {
     gross: number; discount: number; collected: number; refunds: number; gst: number;
@@ -555,6 +556,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
     const courier = { ...emptyLine(), riderPayout: 0 };
     const store = { orders: 0, gross: 0, refunds: 0, commission: 0, commissionGst: 0, merchantPayout: 0 };
     let bonuses = 0;
+    let programCommission = 0;
     const paidOut = { paid: 0, pending: 0, tds: 0 };
 
     if (zone !== "empty") {
@@ -642,13 +644,20 @@ export const getPnlReport = createServerFn({ method: "POST" })
         paidOut.tds += Number(r.tds_amount ?? 0);
         if (r.paid) paidOut.paid += net; else paidOut.pending += net;
       }
+      const ppb = await db.from("partner_payout_batches").select("total_gross,total_tds,total_net,status,period_start,period_end")
+        .in("status", ["draft", "approved", "paid"]).gte("period_end", data.from).lte("period_start", data.to).limit(5000);
+      if (!ppb.error) for (const r of (ppb.data ?? []) as Array<Record<string, unknown>>) {
+        programCommission += Number(r.total_gross ?? 0);
+        paidOut.tds += Number(r.tds_amount ?? 0);
+        if (r.status === "paid") paidOut.paid += Number(r.net_amount ?? 0); else paidOut.pending += Number(r.net_amount ?? 0);
+      }
     }
 
     const netRevenue = services.netRevenue + courier.netRevenue + store.commission;
-    const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout;
+    const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout + programCommission;
     const platformProfit = netRevenue - partnerPayouts - bonuses;
     return {
-      services, courier, store, bonuses, paidOut,
+      services, courier, store, bonuses, paidOut, programCommission,
       totals: {
         gross: services.gross + courier.gross + store.gross,
         discount: services.discount + services.coinDiscount + courier.discount + courier.coinDiscount,
