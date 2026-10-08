@@ -228,14 +228,15 @@ function Shell() {
   const queryClient = useQueryClient();
   const search = Route.useSearch();
   const isNavKey = (k: unknown): k is NavKey => typeof k === "string" && NAV_ITEMS.some((n) => n.key === k);
-  const [active, setActiveState] = useState<NavKey>(() => {
-    if (isNavKey(search.tab)) return search.tab;
+  const [active, setActiveState] = useState<NavKey>(() => (isNavKey(search.tab) ? search.tab : "dashboard"));
+  useEffect(() => {
+    if (search.tab) return;
     try {
-      const s = typeof window !== "undefined" ? window.sessionStorage.getItem("cc_active_tab") : null;
-      if (isNavKey(s)) return s;
+      const s = window.sessionStorage.getItem("cc_active_tab");
+      if (isNavKey(s) && s !== "dashboard") navigate({ to: "/dashboard", search: { tab: s }, replace: true });
     } catch { /* ignore */ }
-    return "dashboard";
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const setActive = (k: NavKey) => {
     setActiveState(k);
     try { window.sessionStorage.setItem("cc_active_tab", k); } catch { /* ignore */ }
