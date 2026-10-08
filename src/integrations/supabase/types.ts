@@ -2880,6 +2880,7 @@ export type Database = {
           vehicle_type_id: string
           wallet_amount: number
           weight_kg: number
+          zone_id: string | null
         }
         Insert: {
           arrived_pickup_at?: string | null
@@ -2961,6 +2962,7 @@ export type Database = {
           vehicle_type_id: string
           wallet_amount?: number
           weight_kg?: number
+          zone_id?: string | null
         }
         Update: {
           arrived_pickup_at?: string | null
@@ -3042,6 +3044,7 @@ export type Database = {
           vehicle_type_id?: string
           wallet_amount?: number
           weight_kg?: number
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -3119,6 +3122,13 @@ export type Database = {
             columns: ["vehicle_type_id"]
             isOneToOne: false
             referencedRelation: "courier_vehicle_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_orders_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
@@ -5145,6 +5155,57 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_business_lines: {
+        Row: {
+          created_at: string
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      partner_commission_plans: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          partner_type: string
+          status: string
+          suggested_fee: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          partner_type: string
+          status?: string
+          suggested_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          partner_type?: string
+          status?: string
+          suggested_fee?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_payout_batches: {
         Row: {
           approved_at: string | null
@@ -5264,6 +5325,7 @@ export type Database = {
           amount: number
           base_amount: number
           batch_id: string
+          business_line: string | null
           calculated_amount: number
           commission_pct: number
           delete_reason: string | null
@@ -5276,6 +5338,8 @@ export type Database = {
           order_id: string
           order_type: string
           partner_id: string
+          plan_id: string | null
+          plan_name: string | null
           program: string
           service_name: string | null
         }
@@ -5283,6 +5347,7 @@ export type Database = {
           amount: number
           base_amount: number
           batch_id: string
+          business_line?: string | null
           calculated_amount: number
           commission_pct: number
           delete_reason?: string | null
@@ -5295,6 +5360,8 @@ export type Database = {
           order_id: string
           order_type: string
           partner_id: string
+          plan_id?: string | null
+          plan_name?: string | null
           program: string
           service_name?: string | null
         }
@@ -5302,6 +5369,7 @@ export type Database = {
           amount?: number
           base_amount?: number
           batch_id?: string
+          business_line?: string | null
           calculated_amount?: number
           commission_pct?: number
           delete_reason?: string | null
@@ -5314,6 +5382,8 @@ export type Database = {
           order_id?: string
           order_type?: string
           partner_id?: string
+          plan_id?: string | null
+          plan_name?: string | null
           program?: string
           service_name?: string | null
         }
@@ -5337,6 +5407,42 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_plan_lines: {
+        Row: {
+          enabled: boolean
+          line_key: string
+          pct: number
+          plan_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          line_key: string
+          pct?: number
+          plan_id: string
+        }
+        Update: {
+          enabled?: boolean
+          line_key?: string
+          pct?: number
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_plan_lines_line_key_fkey"
+            columns: ["line_key"]
+            isOneToOne: false
+            referencedRelation: "partner_business_lines"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "partner_plan_lines_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commission_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -5483,12 +5589,14 @@ export type Database = {
           agreement_start: string
           city: string
           created_at: string
+          fee_collected_at: string | null
           fee_paid: number
           id: string
           level: string | null
           name: string
           notes: string | null
           phone: string
+          plan_id: string | null
           program: string
           status: string
           updated_at: string
@@ -5499,12 +5607,14 @@ export type Database = {
           agreement_start: string
           city: string
           created_at?: string
+          fee_collected_at?: string | null
           fee_paid?: number
           id?: string
           level?: string | null
           name: string
           notes?: string | null
           phone: string
+          plan_id?: string | null
           program: string
           status?: string
           updated_at?: string
@@ -5515,18 +5625,27 @@ export type Database = {
           agreement_start?: string
           city?: string
           created_at?: string
+          fee_collected_at?: string | null
           fee_paid?: number
           id?: string
           level?: string | null
           name?: string
           notes?: string | null
           phone?: string
+          plan_id?: string | null
           program?: string
           status?: string
           updated_at?: string
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partners_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commission_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partners_zone_id_fkey"
             columns: ["zone_id"]
@@ -8611,6 +8730,7 @@ export type Database = {
           vehicle_type_id: string
           wallet_amount: number
           weight_kg: number
+          zone_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -9703,6 +9823,7 @@ export type Database = {
         Args: { _amount: number; _line_id: string; _reason: string }
         Returns: undefined
       }
+      staff_partner_plan_upsert: { Args: { _p: Json }; Returns: string }
       staff_partner_toggle: {
         Args: { _enabled: boolean; _program: string }
         Returns: undefined
