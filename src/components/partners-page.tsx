@@ -10,7 +10,8 @@ import {
   partnerPayoutAction,
   savePartner,
   togglePartnerProgram,
-  updatePartnerSettings,
+  saveCommissionPlan,
+  type CommissionPlan,
   type PartnerProgram,
   type PartnerRow,
 } from "@/lib/partner-program.functions";
@@ -19,6 +20,10 @@ const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   growth: "Growth Partner",
   zone_franchise: "Zone Franchise",
   city_master: "City Master",
+};
+const LINE_LABEL: Record<string, string> = {
+  home_cleaning: "Home Cleaning", car_wash: "Car Wash", bike_wash: "Bike Wash",
+  courier: "Delivery / Courier", bulk_delivery: "Bulk / Business Delivery", store_orders: "Store Orders",
 };
 const inr = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—");
@@ -90,7 +95,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           <option value="inactive">Inactive</option>
         </select>
         {isAdmin && (
-          <button className={`${btnPrimary} ml-auto`} onClick={() => setEditing({ program: "growth", level: "silver", status: "active", agreement_start: new Date().toISOString().slice(0, 10) })}>
+          <button className={`${btnPrimary} ml-auto`} onClick={() => setEditing({ program: "growth", status: "active", fee_collected_at: new Date().toISOString().slice(0, 10), agreement_start: new Date().toISOString().slice(0, 10) })}>
             <Plus className="h-4 w-4" /> Add partner
           </button>
         )}
@@ -99,7 +104,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Program</th><th className="p-2">Level</th>
+              <th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Program</th><th className="p-2">Plan</th>
               <th className="p-2">City</th><th className="p-2">Zone</th><th className="p-2">Agreement</th><th className="p-2">Fee paid</th>
               <th className="p-2">Experts</th><th className="p-2">Status</th><th className="p-2" />
             </tr>
@@ -111,11 +116,11 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
                 <td className="p-2 font-semibold">{p.name}</td>
                 <td className="p-2">{p.phone}</td>
                 <td className="p-2">{PROGRAM_LABEL[p.program]}</td>
-                <td className="p-2 capitalize">{p.level ?? "—"}</td>
+                <td className="p-2">{q.data?.plans.find((x) => x.id === p.plan_id)?.name ?? "—"}</td>
                 <td className="p-2">{p.city}</td>
                 <td className="p-2">{p.program === "zone_franchise" ? zoneName(p.zone_id) : "—"}</td>
                 <td className="p-2 whitespace-nowrap">{fmtDate(p.agreement_start)} – {fmtDate(p.agreement_end)}</td>
-                <td className="p-2">{inr(p.fee_paid)}</td>
+                <td className="p-2">{inr(p.fee_paid)}{p.fee_collected_at && <div className="text-xs text-muted-foreground">{fmtDate(p.fee_collected_at)}</div>}</td>
                 <td className="p-2">{p.program === "growth" ? q.data?.expertCounts[p.id] ?? 0 : "—"}</td>
                 <td className="p-2">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{p.status === "active" ? "Active" : "Inactive"}</span>
@@ -126,7 +131,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           </tbody>
         </table>
       </div>
-      {editing && <PartnerForm initial={editing} zones={q.data?.zones ?? []} onClose={() => setEditing(null)} />}
+      {editing && <PartnerForm initial={editing} zones={q.data?.zones ?? []} plans={q.data?.plans ?? []} onClose={() => setEditing(null)} />}
     </div>
   );
 }
@@ -145,7 +150,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function PartnerForm({ initial, zones, onClose }: { initial: Partial<PartnerRow>; zones: { id: string; name: string; city: string }[]; onClose: () => void }) {
+function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<PartnerRow>; zones: { id: string; name: string; city: string }[]; plans: CommissionPlan[]; onClose: () => void }) {
   const qc = useQueryClient();
   const save = useServerFn(savePartner);
   const [f, setF] = useState<Partial<PartnerRow>>(initial);
@@ -175,18 +180,22 @@ function PartnerForm({ initial, zones, onClose }: { initial: Partial<PartnerRow>
         <label className="text-sm">Program
           <select className={input} value={f.program} onChange={(e) => {
             const p = e.target.value as PartnerProgram;
-            setF((x) => ({ ...x, program: p, level: p === "growth" ? x.level ?? "silver" : null, zone_id: p === "zone_franchise" ? x.zone_id : null }));
+            setF((x) => ({ ...x, program: p, plan_id: null, zone_id: p === "zone_franchise" ? x.zone_id : null }));
           }}>
             {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>
-        {f.program === "growth" && (
-          <label className="text-sm">Level
-            <select className={input} value={f.level ?? "silver"} onChange={(e) => set("level", e.target.value as PartnerRow["level"])}>
-              <option value="silver">Silver</option><option value="gold">Gold</option><option value="platinum">Platinum</option>
-            </select>
-          </label>
-        )}
+        <label className="text-sm">Commission plan
+          <select className={input} value={f.plan_id ?? ""} onChange={(e) => {
+            const pl = plans.find((x) => x.id === e.target.value);
+            setF((x) => ({ ...x, plan_id: e.target.value || null, fee_paid: x.id ? x.fee_paid : pl?.suggested_fee ?? x.fee_paid }));
+          }}>
+            <option value="">Choose plan</option>
+            {plans.filter((x) => x.partner_type === f.program && (x.status === "active" || x.id === initial.plan_id)).map((x) => (
+              <option key={x.id} value={x.id}>{x.name} · suggested {inr(x.suggested_fee)}{x.status !== "active" ? " (inactive)" : ""}</option>
+            ))}
+          </select>
+        </label>
         {f.program === "zone_franchise" ? (
           <label className="text-sm">Zone
             <select className={input} value={f.zone_id ?? ""} onChange={(e) => {
@@ -205,7 +214,8 @@ function PartnerForm({ initial, zones, onClose }: { initial: Partial<PartnerRow>
         )}
         <label className="text-sm">Agreement start<input type="date" className={input} value={f.agreement_start ?? ""} onChange={(e) => setF((x) => ({ ...x, agreement_start: e.target.value, agreement_end: e.target.value ? autoEnd(e.target.value) : x.agreement_end }))} /></label>
         <label className="text-sm">Agreement end<input type="date" className={input} value={f.agreement_end ?? ""} onChange={(e) => set("agreement_end", e.target.value)} /></label>
-        <label className="text-sm">Fee paid (₹)<input type="number" min={0} className={input} value={f.fee_paid ?? 0} onChange={(e) => set("fee_paid", Number(e.target.value))} /></label>
+        <label className="text-sm">Fee collected date<input type="date" className={input} value={f.fee_collected_at ?? ""} onChange={(e) => set("fee_collected_at", e.target.value || null)} /></label>
+        <label className="text-sm">Deposit / Fee collected (₹)<input type="number" min={0} className={input} value={f.fee_paid ?? 0} onChange={(e) => set("fee_paid", Number(e.target.value))} /></label>
         <label className="text-sm">Status
           <select className={input} value={f.status} onChange={(e) => set("status", e.target.value as PartnerRow["status"])}>
             <option value="active">Active</option><option value="inactive">Inactive</option>
@@ -222,29 +232,14 @@ function PartnerForm({ initial, zones, onClose }: { initial: Partial<PartnerRow>
 }
 
 /* ---------------- Settings ---------------- */
-const FEE_ROWS: { label: string; fee: string; pct: string }[] = [
-  { label: "Growth · Silver", fee: "silver_fee", pct: "silver_pct" },
-  { label: "Growth · Gold", fee: "gold_fee", pct: "gold_pct" },
-  { label: "Growth · Platinum", fee: "platinum_fee", pct: "platinum_pct" },
-  { label: "Zone Franchise", fee: "zone_fee", pct: "zone_pct" },
-  { label: "City Master", fee: "city_fee", pct: "city_pct" },
-];
-
 function SettingsTab({ isAdmin }: { isAdmin: boolean }) {
   const qc = useQueryClient();
   const q = usePartnerData();
   const toggle = useServerFn(togglePartnerProgram);
-  const save = useServerFn(updatePartnerSettings);
-  const [draft, setDraft] = useState<Record<string, number>>({});
   const s = q.data?.settings ?? {};
   const t = useMutation({
     mutationFn: (v: { program: "master" | PartnerProgram; enabled: boolean }) => toggle({ data: v }),
     onSuccess: () => { toast.success("Switch updated"); qc.invalidateQueries({ queryKey: ["partner-program"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const m = useMutation({
-    mutationFn: () => save({ data: draft }),
-    onSuccess: () => { toast.success("Fees and % saved"); setDraft({}); qc.invalidateQueries({ queryKey: ["partner-program"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -275,24 +270,7 @@ function SettingsTab({ isAdmin }: { isAdmin: boolean }) {
           })}
         </div>
       </section>
-      <section className="rounded-lg border border-border p-3">
-        <h3 className="mb-3 font-bold">Yearly fee and commission %</h3>
-        <div className="space-y-2">
-          {FEE_ROWS.map((r) => (
-            <div key={r.fee} className="grid grid-cols-[1fr_110px_80px] items-center gap-2">
-              <span className="text-sm">{r.label}</span>
-              <input type="number" min={0} disabled={!isAdmin} className={input} value={draft[r.fee] ?? Number(s[r.fee] ?? 0)} onChange={(e) => setDraft((d) => ({ ...d, [r.fee]: Number(e.target.value) }))} />
-              <input type="number" min={0} max={100} step="0.1" disabled={!isAdmin} className={input} value={draft[r.pct] ?? Number(s[r.pct] ?? 0)} onChange={(e) => setDraft((d) => ({ ...d, [r.pct]: Number(e.target.value) }))} />
-            </div>
-          ))}
-          <p className="text-xs text-muted-foreground">Fee in ₹/year · Commission in %</p>
-        </div>
-        {isAdmin && (
-          <div className="mt-3 flex justify-end">
-            <button className={btnPrimary} disabled={m.isPending || Object.keys(draft).length === 0} onClick={() => m.mutate()}>Save</button>
-          </div>
-        )}
-      </section>
+      <PlansSection isAdmin={isAdmin} plans={q.data?.plans ?? []} lines={q.data?.businessLines ?? []} />
     </div>
   );
 }
@@ -413,7 +391,7 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
                   <tr className={`border-t border-border ${it.is_deleted ? "opacity-50" : ""}`}>
                     <td className="p-2"><button onClick={() => setOpenItem(openItem === it.id ? null : it.id)}>{openItem === it.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button></td>
                     <td className="p-2 font-semibold">{it.partners?.name}<div className="text-xs font-normal text-muted-foreground">{it.partners?.phone}</div></td>
-                    <td className="p-2">{PROGRAM_LABEL[it.partners?.program as PartnerProgram]}{it.partners?.level ? ` · ${it.partners.level}` : ""}</td>
+                    <td className="p-2">{PROGRAM_LABEL[it.partners?.program as PartnerProgram]}{it.partners?.partner_commission_plans?.name ? ` · ${it.partners.partner_commission_plans.name}` : ""}</td>
                     <td className="p-2">{live}</td>
                     <td className="p-2">{inr(it.gross_amount)}</td>
                     <td className="p-2">{inr(it.tds_amount)} <span className="text-xs text-muted-foreground">({it.tds_rate}%)</span></td>
@@ -426,7 +404,7 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
                     <tr key={`${it.id}-lines`}>
                       <td colSpan={8} className="bg-muted/50 p-2">
                         <table className="w-full text-xs">
-                          <thead className="text-left text-muted-foreground"><tr><th className="p-1">Order</th><th className="p-1">Date</th><th className="p-1">Service</th><th className="p-1">Program</th><th className="p-1">Base</th><th className="p-1">%</th><th className="p-1">Commission</th><th className="p-1" /></tr></thead>
+                          <thead className="text-left text-muted-foreground"><tr><th className="p-1">Order</th><th className="p-1">Date</th><th className="p-1">Service</th><th className="p-1">Program</th><th className="p-1">Plan · Line</th><th className="p-1">Base</th><th className="p-1">%</th><th className="p-1">Commission</th><th className="p-1" /></tr></thead>
                           <tbody>
                             {its.map((l) => (
                               <tr key={l.id} className={l.is_deleted ? "opacity-50 line-through" : ""}>
@@ -434,6 +412,7 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
                                 <td className="p-1">{fmtDate(l.order_completed_at)}</td>
                                 <td className="p-1">{l.service_name}</td>
                                 <td className="p-1">{PROGRAM_LABEL[l.program as PartnerProgram]}</td>
+                                <td className="p-1">{l.plan_name ?? "—"} · {LINE_LABEL[l.business_line] ?? l.business_line ?? "—"}</td>
                                 <td className="p-1">{inr(l.base_amount)}</td>
                                 <td className="p-1">{l.commission_pct}%</td>
                                 <td className="p-1 font-semibold">{inr(l.amount)}{Number(l.amount) !== Number(l.calculated_amount) && <span className="ml-1 text-muted-foreground" title={l.edit_reason ?? ""}>(was {inr(l.calculated_amount)})</span>}</td>
@@ -462,5 +441,115 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
         </table>
       </div>
     </div>
+  );
+}
+
+function PlansSection({ isAdmin, plans, lines }: { isAdmin: boolean; plans: CommissionPlan[]; lines: { key: string; label: string }[] }) {
+  const [editing, setEditing] = useState<Partial<CommissionPlan> | null>(null);
+  return (
+    <section className="rounded-lg border border-border p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <h3 className="font-bold">Commission Plans</h3>
+          <p className="text-xs text-muted-foreground">Each plan sets ON/OFF and % per business line. Changes apply only to payouts generated afterwards.</p>
+        </div>
+        {isAdmin && <button className={btnPrimary} onClick={() => setEditing({ partner_type: "growth", status: "active", suggested_fee: 0, lines: [] })}><Plus className="h-4 w-4" /> New plan</button>}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {plans.map((p) => (
+          <div key={p.id} className={`rounded-md border border-border p-3 ${p.status !== "active" ? "opacity-60" : ""}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold">{p.name}</p>
+                <p className="text-xs text-muted-foreground">{PROGRAM_LABEL[p.partner_type]} · suggested {inr(p.suggested_fee)} / yr · {p.partnerCount} partner{p.partnerCount === 1 ? "" : "s"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">{p.status === "active" ? "Active" : "Inactive"}</span>
+                {isAdmin && <button className="text-primary" onClick={() => setEditing(p)}><Pencil className="h-4 w-4" /></button>}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {lines.map((bl) => {
+                const l = p.lines.find((x) => x.line_key === bl.key);
+                return (
+                  <span key={bl.key} className={`rounded-full px-2 py-0.5 text-[11px] ${l?.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground line-through"}`}>
+                    {bl.label}{l?.enabled ? ` ${l.pct}%` : ""}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      {editing && <PlanForm initial={editing} lines={lines} onClose={() => setEditing(null)} />}
+    </section>
+  );
+}
+
+function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan>; lines: { key: string; label: string }[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const save = useServerFn(saveCommissionPlan);
+  const [f, setF] = useState<Partial<CommissionPlan>>(initial);
+  const [rows, setRows] = useState(() =>
+    lines.map((bl) => {
+      const l = initial.lines?.find((x) => x.line_key === bl.key);
+      return { line_key: bl.key, label: bl.label, enabled: l?.enabled ?? false, pct: Number(l?.pct ?? 0) };
+    }),
+  );
+  const m = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          id: f.id,
+          name: f.name ?? "",
+          partner_type: (f.partner_type ?? "growth") as PartnerProgram,
+          suggested_fee: Number(f.suggested_fee ?? 0),
+          status: f.status ?? "active",
+          lines: rows.map(({ line_key, enabled, pct }) => ({ line_key, enabled, pct })),
+        },
+      }),
+    onSuccess: () => { toast.success("Plan saved"); qc.invalidateQueries({ queryKey: ["partner-program"] }); onClose(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Modal title={f.id ? "Edit plan" : "New plan"} onClose={onClose}>
+      {f.id && (
+        <p className="mb-3 rounded-md bg-warning/15 p-2 text-xs">
+          {initial.partnerCount ?? 0} partner{initial.partnerCount === 1 ? "" : "s"} use this plan. Changes apply only to payouts generated after saving.
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2">Plan name<input className={input} value={f.name ?? ""} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} /></label>
+        <label className="text-sm">Partner type
+          <select className={input} value={f.partner_type} disabled={!!f.id && (initial.partnerCount ?? 0) > 0} onChange={(e) => setF((x) => ({ ...x, partner_type: e.target.value as PartnerProgram }))}>
+            {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">Suggested yearly fee (₹)<input type="number" min={0} className={input} value={f.suggested_fee ?? 0} onChange={(e) => setF((x) => ({ ...x, suggested_fee: Number(e.target.value) }))} /></label>
+        <label className="text-sm">Status
+          <select className={input} value={f.status} onChange={(e) => setF((x) => ({ ...x, status: e.target.value as CommissionPlan["status"] }))}>
+            <option value="active">Active</option><option value="inactive">Inactive</option>
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 space-y-2">
+        <p className="text-xs font-bold uppercase text-muted-foreground">Business lines</p>
+        {rows.map((r, i) => (
+          <div key={r.line_key} className="grid grid-cols-[1fr_auto_80px] items-center gap-2">
+            <span className="text-sm">{r.label}</span>
+            <button
+              className={`rounded-full px-3 py-1 text-xs font-bold ${r.enabled ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground"}`}
+              onClick={() => setRows((x) => x.map((y, j) => (j === i ? { ...y, enabled: !y.enabled } : y)))}
+            >{r.enabled ? "ON" : "OFF"}</button>
+            <input type="number" min={0} max={100} step="0.1" disabled={!r.enabled} className={input} value={r.pct}
+              onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, pct: Number(e.target.value) } : y)))} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button className={btnGhost} onClick={onClose}>Cancel</button>
+        <button className={btnPrimary} disabled={m.isPending} onClick={() => m.mutate()}>{m.isPending ? "Saving…" : "Save plan"}</button>
+      </div>
+    </Modal>
   );
 }
