@@ -5594,6 +5594,7 @@ export type Database = {
           created_at: string
           fee_collected_at: string | null
           fee_paid: number
+          growth_plan_id: string | null
           id: string
           level: string | null
           name: string
@@ -5612,6 +5613,7 @@ export type Database = {
           created_at?: string
           fee_collected_at?: string | null
           fee_paid?: number
+          growth_plan_id?: string | null
           id?: string
           level?: string | null
           name: string
@@ -5630,6 +5632,7 @@ export type Database = {
           created_at?: string
           fee_collected_at?: string | null
           fee_paid?: number
+          growth_plan_id?: string | null
           id?: string
           level?: string | null
           name?: string
@@ -5642,6 +5645,13 @@ export type Database = {
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partners_growth_plan_id_fkey"
+            columns: ["growth_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commission_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partners_plan_id_fkey"
             columns: ["plan_id"]
