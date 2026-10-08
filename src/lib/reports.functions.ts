@@ -642,13 +642,20 @@ export const getPnlReport = createServerFn({ method: "POST" })
         paidOut.tds += Number(r.tds_amount ?? 0);
         if (r.paid) paidOut.paid += net; else paidOut.pending += net;
       }
+      const ppb = await db.from("partner_payout_batches").select("gross_amount,tds_amount,net_amount,status,period_start,period_end")
+        .in("status", ["draft", "approved", "paid"]).gte("period_end", data.from).lte("period_start", data.to).limit(5000);
+      if (!ppb.error) for (const r of (ppb.data ?? []) as Array<Record<string, unknown>>) {
+        programCommission += Number(r.gross_amount ?? 0);
+        paidOut.tds += Number(r.tds_amount ?? 0);
+        if (r.status === "paid") paidOut.paid += Number(r.net_amount ?? 0); else paidOut.pending += Number(r.net_amount ?? 0);
+      }
     }
 
     const netRevenue = services.netRevenue + courier.netRevenue + store.commission;
-    const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout;
+    const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout + programCommission;
     const platformProfit = netRevenue - partnerPayouts - bonuses;
     return {
-      services, courier, store, bonuses, paidOut,
+      services, courier, store, bonuses, paidOut, programCommission,
       totals: {
         gross: services.gross + courier.gross + store.gross,
         discount: services.discount + services.coinDiscount + courier.discount + courier.coinDiscount,
