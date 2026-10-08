@@ -153,10 +153,13 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
   const qc = useQueryClient();
   const save = useServerFn(savePartner);
   const [f, setF] = useState<Partial<PartnerRow>>(initial);
+  const [loginEmail, setLoginEmail] = useState(initial.login_email ?? "");
+  const [loginPassword, setLoginPassword] = useState("");
+  const hasLogin = !!initial.auth_user_id;
   const set = <K extends keyof PartnerRow>(k: K, v: PartnerRow[K] | null) => setF((p) => ({ ...p, [k]: v }));
   const cities = Array.from(new Set(zones.map((z) => z.city).filter(Boolean)));
   const m = useMutation({
-    mutationFn: () => save({ data: f }),
+    mutationFn: () => save({ data: { ...f, login_email: loginEmail || null, login_password: loginPassword || null } }),
     onSuccess: () => {
       toast.success("Partner saved");
       qc.invalidateQueries({ queryKey: ["partner-program"] });
@@ -176,6 +179,8 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-sm">Name<input className={input} value={f.name ?? ""} onChange={(e) => set("name", e.target.value)} /></label>
         <label className="text-sm">Phone<input className={input} value={f.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></label>
+        <label className="text-sm">Login email (Command Center)<input type="email" autoComplete="off" className={input} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="partner@example.com" /></label>
+        <label className="text-sm">{hasLogin ? "New password (blank = keep)" : "Login password"}<input type="text" autoComplete="new-password" className={input} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Min 6 characters" /></label>
         <label className="text-sm">Program
           <select className={input} value={f.program} onChange={(e) => {
             const p = e.target.value as PartnerProgram;
