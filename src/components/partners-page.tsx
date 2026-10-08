@@ -22,8 +22,8 @@ const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   city_master: "City Master",
 };
 const LINE_LABEL: Record<string, string> = {
-  home_cleaning: "Home Cleaning", car_wash: "Car Wash", bike_wash: "Bike Wash",
-  courier: "Delivery / Courier", bulk_delivery: "Bulk / Business Delivery", store_orders: "Store Orders",
+  home_cleaning: "Home Cleaning", auto_care: "Auto Care", car_wash: "Auto Care", bike_wash: "Auto Care",
+  courier: "Delivery", bulk_delivery: "Bulk Delivery", store_orders: "Store Orders",
 };
 const inr = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—");
