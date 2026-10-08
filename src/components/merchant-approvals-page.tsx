@@ -12,6 +12,7 @@ import {
   type MerchantRow,
 } from "@/lib/merchants.functions";
 import { MerchantEditModal } from "@/components/merchant-edit-modal";
+import { LiveStoresView } from "@/components/live-stores-view";
 import { MerchantProductsModal } from "@/components/merchant-products-modal";
 
 const QUERY_DOC_OPTIONS: { value: string; label: string }[] = [
@@ -41,8 +42,9 @@ const STATUS_STYLES: Record<MerchantStatus, string> = {
   suspended: "bg-red-50 text-red-700",
 };
 
-const TABS: { key: MerchantStatus | "" ; label: string }[] = [
+const TABS: { key: MerchantStatus | "" | "live"; label: string }[] = [
   { key: "", label: "All" },
+  { key: "live", label: "Live Stores" },
   { key: "pending_review", label: "Pending review" },
   { key: "draft", label: "Draft / Incomplete" },
   { key: "approved", label: "Approved" },
@@ -57,7 +59,7 @@ function fmt(ts: string) {
 export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<MerchantStatus | "">("");
+  const [tab, setTab] = useState<MerchantStatus | "" | "live">("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productsId, setProductsId] = useState<string | null>(null);
   const [commissionFor, setCommissionFor] = useState<MerchantRow | null>(null);
@@ -69,7 +71,8 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
 
   const { data: rows = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["merchants", "list", tab],
-    queryFn: () => fetchRows({ data: { status: tab || null } }),
+    queryFn: () => fetchRows({ data: { status: tab === "live" ? null : tab || null } }),
+    enabled: tab !== "live",
     staleTime: 10_000,
   });
 
@@ -124,11 +127,13 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
       {isError && (
         <p className="text-[13px] text-destructive py-10 text-center">Failed to load merchants.</p>
       )}
-      {!isLoading && !isError && rows.length === 0 && (
+      {tab !== "live" && !isLoading && !isError && rows.length === 0 && (
         <p className="text-[13px] text-muted-foreground py-10 text-center">Nothing here.</p>
       )}
 
-      {isDraftTab ? (
+      {tab === "live" ? (
+        <LiveStoresView />
+      ) : isDraftTab ? (
         <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
 <div className="min-w-[760px]">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_minmax(0,1fr)_190px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
