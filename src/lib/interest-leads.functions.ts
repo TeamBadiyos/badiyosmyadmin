@@ -43,7 +43,7 @@ export const getInterestLeads = createServerFn({ method: "GET" })
       expert: ContactLead[];
     }> => {
       const db = context.supabase;
-      const [biz, city, partner, expert] = await Promise.all([
+      const [biz, city, expert] = await Promise.all([
         db
           .from("business_interest_leads")
           .select("id, business_name, owner_name, phone, category_interested, city, created_at")
@@ -55,11 +55,6 @@ export const getInterestLeads = createServerFn({ method: "GET" })
           .order("created_at", { ascending: false })
           .limit(500),
         db
-          .from("area_partner_leads")
-          .select("id, name, phone, email, area, status, created_at")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        db
           .from("expert_leads")
           .select("id, name, phone, email, area, status, created_at")
           .order("created_at", { ascending: false })
@@ -67,12 +62,11 @@ export const getInterestLeads = createServerFn({ method: "GET" })
       ]);
       if (biz.error) throw new Error(biz.error.message);
       if (city.error) throw new Error(city.error.message);
-      if (partner.error) throw new Error(partner.error.message);
       if (expert.error) throw new Error(expert.error.message);
       return {
         business: (biz.data ?? []) as BusinessLead[],
         city: (city.data ?? []) as CityLead[],
-        partner: (partner.data ?? []) as ContactLead[],
+        partner: [] as ContactLead[],
         expert: (expert.data ?? []) as ContactLead[],
       };
     },

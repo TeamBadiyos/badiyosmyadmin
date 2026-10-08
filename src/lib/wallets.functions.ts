@@ -94,26 +94,8 @@ export const listWalletOwners = createServerFn({ method: "GET" })
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
     const db = context.supabase;
 
-    const [{ data: experts, error: e1 }, { data: partners, error: e2 }, { data: ledger, error: e3 }] =
-      await Promise.all([
-        db.from("experts").select("id, name, phone, wallet_balance"),
-        db.from("area_partners").select("id, name, phone"),
-        db
-          .from("wallet_ledger")
-          .select("owner_type, owner_id, type, amount")
-          .eq("owner_type", "area_partner")
-          .eq("wallet_type", "earnings"),
-      ]);
+    const { data: experts, error: e1 } = await db.from("experts").select("id, name, phone, wallet_balance");
     if (e1) throw new Error(e1.message);
-    if (e2) throw new Error(e2.message);
-    if (e3) throw new Error(e3.message);
-
-    const partnerBalances = new Map<string, number>();
-    for (const l of ledger ?? []) {
-      if (l.owner_type !== "area_partner") continue;
-      const delta = l.type === "credit" ? Number(l.amount) : -Number(l.amount);
-      partnerBalances.set(l.owner_id, (partnerBalances.get(l.owner_id) ?? 0) + delta);
-    }
 
     const rows: WalletOwner[] = [];
     for (const e of experts ?? []) {
@@ -123,15 +105,6 @@ export const listWalletOwners = createServerFn({ method: "GET" })
         name: e.name,
         phone: e.phone,
         balance: Number(e.wallet_balance ?? 0),
-      });
-    }
-    for (const p of partners ?? []) {
-      rows.push({
-        id: p.id,
-        owner_type: "area_partner",
-        name: p.name,
-        phone: p.phone,
-        balance: Number(partnerBalances.get(p.id) ?? 0),
       });
     }
     rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -248,26 +221,21 @@ export const listPayoutItems = createServerFn({ method: "GET" })
 
     const ids = (t: string) => list.filter((i) => i.owner_type === t).map((i) => i.owner_id);
     const expertIds = ids("expert");
-    const partnerIds = ids("area_partner");
     const merchantIds = ids("merchant");
     const none = Promise.resolve({ data: [], error: null });
 
-    const [expertsRes, partnersRes, merchantsRes] = await Promise.all([
+    const [expertsRes, merchantsRes] = await Promise.all([
       expertIds.length ? db.from("experts").select("id, name, phone").in("id", expertIds) : none,
-      partnerIds.length ? db.from("area_partners").select("id, name, phone").in("id", partnerIds) : none,
       merchantIds.length
         ? db.from("merchants").select("id, store_name, owner_name, phone").in("id", merchantIds)
         : none,
     ]);
     if (expertsRes.error) throw new Error(expertsRes.error.message);
-    if (partnersRes.error) throw new Error(partnersRes.error.message);
     if (merchantsRes.error) throw new Error(merchantsRes.error.message);
 
     const nameMap = new Map<string, { name: string; phone: string | null }>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const e of expertsRes.data as any[]) nameMap.set(`expert:${e.id}`, { name: e.name, phone: e.phone ?? null });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of partnersRes.data as any[]) nameMap.set(`area_partner:${p.id}`, { name: p.name, phone: p.phone ?? null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const m of merchantsRes.data as any[])
       nameMap.set(`merchant:${m.id}`, { name: m.store_name || m.owner_name || m.phone, phone: m.phone ?? null });

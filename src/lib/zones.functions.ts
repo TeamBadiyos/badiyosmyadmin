@@ -25,8 +25,6 @@ export type ZoneRow = {
   name: string;
   city: string;
   status: "active" | "inactive";
-  assignedAreaPartnerId: string | null;
-  assignedAreaPartnerName: string | null;
   deletedAt: string | null;
   deleteReason: string | null;
 };
@@ -50,7 +48,7 @@ export const listZones = createServerFn({ method: "GET" })
 
     let query = context.supabase
       .from("zones")
-      .select("id, name, city, status, assigned_area_partner_id, deleted_at, delete_reason")
+      .select("id, name, city, status, deleted_at, delete_reason")
       .order("created_at", { ascending: false });
 
     if (!includeDeleted) query = query.is("deleted_at", null);
@@ -64,34 +62,11 @@ export const listZones = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const rows = rows_ ?? [];
 
-    const partnerIds = Array.from(
-      new Set(
-        rows
-          .map((z) => z.assigned_area_partner_id as string | null)
-          .filter((id): id is string => !!id),
-      ),
-    );
-    const partnerMap = new Map<string, string>();
-    if (partnerIds.length) {
-      const { data: partners } = await context.supabase
-        .from("area_partners")
-        .select("id, name")
-        .in("id", partnerIds);
-      for (const p of partners ?? []) {
-        partnerMap.set(p.id as string, p.name as string);
-      }
-    }
-
     return rows.map((z) => ({
       id: z.id as string,
       name: z.name as string,
       city: z.city as string,
       status: z.status as "active" | "inactive",
-      assignedAreaPartnerId: (z.assigned_area_partner_id as string | null) ?? null,
-      assignedAreaPartnerName:
-        (z.assigned_area_partner_id &&
-          partnerMap.get(z.assigned_area_partner_id as string)) ||
-        null,
       deletedAt: (z.deleted_at as string | null) ?? null,
       deleteReason: (z.delete_reason as string | null) ?? null,
     }));
@@ -282,44 +257,6 @@ export const createZone = createServerFn({ method: "POST" })
     return { id: inserted.id as string };
   });
 
-export type AreaPartner = { id: string; name: string; phone: string };
 
-export const listAreaPartners = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<AreaPartner[]> => {
-    const { data: staff } = await context.supabase
-      .from("staff_users")
-      .select("status")
-      .eq("auth_user_id", context.userId)
-      .maybeSingle();
-    if (!staff || staff.status !== "active") throw new Error("Forbidden");
-    const { data, error } = await context.supabase
-      .from("area_partners")
-      .select("id, name, phone")
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .order("name", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as AreaPartner[];
-  });
-
-export const assignAreaPartner = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { zoneId: string; partnerId: string | null }) => {
-    if (!input?.zoneId) throw new Error("zoneId required");
-    return {
-      zoneId: input.zoneId,
-      partnerId: input.partnerId ? input.partnerId : null,
-    };
-  })
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("staff_assign_area_partner", {
-      _zone_id: data.zoneId,
-      _partner_id: data.partnerId as string,
-    });
-
-    if (error) throw new Error(error.message);
-    return { ok: true as const };
-  });
 
 
