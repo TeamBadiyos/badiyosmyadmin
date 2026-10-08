@@ -861,3 +861,117 @@ export const setMerchantCommission = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ------------------------------------------------------------- live stores */
+
+export type LiveStoreItem = {
+  id: string;
+  name: string;
+  category: string | null;
+  price: number;
+  unit: string | null;
+  stock: number;
+  inStock: boolean;
+  imageUrl: string | null;
+  thumbUrl: string | null;
+};
+
+export type LiveStore = {
+  id: string;
+  storeName: string;
+  ownerName: string | null;
+  phone: string;
+  categoryName: string | null;
+  segmentName: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  photoUrl: string | null;
+  acceptingOrders: boolean;
+  storeEnabled: boolean;
+  deliveryEnabled: boolean;
+  commissionPct: number;
+  approvedAt: string | null;
+  items: LiveStoreItem[];
+};
+
+export const listLiveStores = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<LiveStore[]> => {
+    const db = context.supabase;
+    await assertStaff(db, context.userId);
+    const { data: rows, error } = await db
+      .from("merchants")
+      .select(
+        "id, store_name, owner_name, phone, store_category_id, segment_id, address, city, state, pincode, latitude, longitude, shop_photo_url, is_accepting_orders, store_enabled, delivery_enabled, commission_value, approved_at",
+      )
+      .eq("status", "approved")
+      .is("deleted_at", null)
+      .order("store_name", { ascending: true })
+      .limit(300);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ms = (rows ?? []) as any[];
+    if (!ms.length) return [];
+    const ids = ms.map((m) => m.id);
+    const catIds = [...new Set(ms.map((m) => m.store_category_id).filter(Boolean))];
+    const segIds = [...new Set(ms.map((m) => m.segment_id).filter(Boolean))];
+    const [{ data: cats }, { data: segs }, { data: prods }] = await Promise.all([
+      catIds.length ? db.from("store_categories").select("id, name").in("id", catIds) : Promise.resolve({ data: [] }),
+      segIds.length ? db.from("segments").select("id, name").in("id", segIds) : Promise.resolve({ data: [] }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (db as any)
+        .from("products")
+        .select("id, merchant_id, name, category_label, price, unit, stock_quantity, image_url, is_active, admin_hidden, approval_status")
+        .in("merchant_id", ids)
+        .eq("is_active", true)
+        .eq("admin_hidden", false)
+        .order("name", { ascending: true })
+        .limit(5000),
+    ]);
+    const { catalogImageUrl, catalogThumbUrl } = await import("@/lib/catalog-images");
+    const cMap = new Map(((cats ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+    const sMap = new Map(((segs ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+    const byM = new Map<string, LiveStoreItem[]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of (prods ?? []) as any[]) {
+      if (p.approval_status && p.approval_status !== "approved") continue;
+      const list = byM.get(p.merchant_id) ?? [];
+      list.push({
+        id: p.id,
+        name: p.name,
+        category: p.category_label ?? null,
+        price: Number(p.price ?? 0),
+        unit: p.unit ?? null,
+        stock: Number(p.stock_quantity ?? 0),
+        inStock: Number(p.stock_quantity ?? 0) > 0,
+        imageUrl: catalogImageUrl(p.image_url),
+        thumbUrl: catalogThumbUrl(p.image_url),
+      });
+      byM.set(p.merchant_id, list);
+    }
+    return ms.map((m) => ({
+      id: m.id,
+      storeName: m.store_name || "Unnamed store",
+      ownerName: m.owner_name,
+      phone: m.phone,
+      categoryName: m.store_category_id ? cMap.get(m.store_category_id) ?? null : null,
+      segmentName: m.segment_id ? sMap.get(m.segment_id) ?? null : null,
+      address: m.address,
+      city: m.city,
+      state: m.state,
+      pincode: m.pincode,
+      latitude: m.latitude,
+      longitude: m.longitude,
+      photoUrl: catalogImageUrl(m.shop_photo_url),
+      acceptingOrders: !!m.is_accepting_orders,
+      storeEnabled: !!m.store_enabled,
+      deliveryEnabled: !!m.delivery_enabled,
+      commissionPct: Number(m.commission_value ?? 0),
+      approvedAt: m.approved_at,
+      items: byM.get(m.id) ?? [],
+    }));
+  });
