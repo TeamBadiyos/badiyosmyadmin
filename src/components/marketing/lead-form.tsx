@@ -1,15 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2 } from "lucide-react";
-import {
-  submitAreaPartnerLead,
-  submitExpertLead,
-} from "@/lib/public-leads.functions";
+import { submitExpertLead } from "@/lib/public-leads.functions";
 
-type Kind = "area_partner" | "expert";
+type Kind = "expert";
 
 export function LeadForm({ kind }: { kind: Kind }) {
-  const submitFn = useServerFn(kind === "area_partner" ? submitAreaPartnerLead : submitExpertLead);
+  const submitFn = useServerFn(submitExpertLead);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [area, setArea] = useState("");

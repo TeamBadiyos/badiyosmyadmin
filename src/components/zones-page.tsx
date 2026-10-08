@@ -12,13 +12,11 @@ import {
   X,
 } from "lucide-react";
 import {
-  assignAreaPartner,
   createZone,
   deleteZone,
   getMapsBrowserKey,
   getZoneBoundary,
   getZoneDeleteImpact,
-  listAreaPartners,
   listZones,
   redrawZoneBoundary,
   updateZone,
@@ -94,15 +92,15 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
   const zones = data ?? [];
 
   const cols = canManage
-    ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_100px_240px_136px]"
-    : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)_120px]";
+    ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_100px_136px]"
+    : "grid-cols-[40px_minmax(0,2fr)_minmax(0,1.5fr)_120px]";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] text-muted-foreground">
           {canManage
-            ? "Manage service zones and area partner assignments."
+            ? "Manage service zones."
             : "Your assigned zone."}
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -135,9 +133,7 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
           <span></span>
           <span>Name</span>
           <span>City</span>
-          <span>Assigned Area Partner</span>
           <span>Status</span>
-          {canManage && <span className="text-right">Actions</span>}
           {canManage && <span className="text-right">Manage</span>}
         </div>
 
@@ -185,35 +181,12 @@ function ZoneRowItem({
   cols: string;
 }) {
   const queryClient = useQueryClient();
-  const fetchPartners = useServerFn(listAreaPartners);
-  const assign = useServerFn(assignAreaPartner);
-  const [selected, setSelected] = useState<string>(zone.assignedAreaPartnerId ?? "");
-  const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [redrawOpen, setRedrawOpen] = useState(false);
 
 
   const isDeleted = !!zone.deletedAt;
-
-  const { data: partners = [] } = useQuery({
-    queryKey: ["area-partners", "active"],
-    queryFn: () => fetchPartners(),
-    staleTime: 60_000,
-    enabled: canManage && !isDeleted,
-  });
-
-  const mutation = useMutation({
-    mutationFn: (partnerId: string | null) =>
-      assign({ data: { zoneId: zone.id, partnerId } }),
-    onSuccess: () => {
-      setError(null);
-      queryClient.invalidateQueries({ queryKey: ["zones", "list"] });
-    },
-    onError: (e) => setError(e instanceof Error ? e.message : "Failed to assign"),
-  });
-
-  const dirty = (selected || null) !== (zone.assignedAreaPartnerId ?? null);
 
   return (
     <div
@@ -238,13 +211,6 @@ function ZoneRowItem({
         )}
       </span>
       <span className="text-muted-foreground truncate">{zone.city}</span>
-      <span className="truncate">
-        {zone.assignedAreaPartnerName ? (
-          <span className="text-foreground">{zone.assignedAreaPartnerName}</span>
-        ) : (
-          <span className="text-muted-foreground italic">Unassigned</span>
-        )}
-      </span>
       <span>
         <span
           className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${
@@ -256,41 +222,6 @@ function ZoneRowItem({
           {zone.status}
         </span>
       </span>
-      {canManage && (
-        <div className="flex flex-col items-end gap-1">
-          {isDeleted ? (
-            <span className="text-[12px] text-muted-foreground italic">—</span>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 w-full">
-                <select
-                  value={selected}
-                  onChange={(e) => setSelected(e.target.value)}
-                  disabled={mutation.isPending}
-                  className="flex-1 min-w-0 h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] text-foreground disabled:opacity-60"
-                >
-                  <option value="">
-                    {partners.length === 0 ? "No active partners" : "Unassigned"}
-                  </option>
-                  {partners.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => mutation.mutate(selected ? selected : null)}
-                  disabled={!dirty || mutation.isPending}
-                  className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold disabled:opacity-50"
-                >
-                  {mutation.isPending ? "…" : "Save"}
-                </button>
-              </div>
-              {error && <p className="text-[11px] text-destructive">{error}</p>}
-            </>
-          )}
-        </div>
-      )}
       {canManage && (
         <div className="flex items-center justify-end gap-2">
           {!isDeleted && (
@@ -425,7 +356,7 @@ function DeleteZoneModal({ zone, onClose }: { zone: ZoneRow; onClose: () => void
   });
 
   const warn =
-    impact && (impact.activeExperts > 0 || impact.hasPartner || impact.openBookings > 0);
+    impact && (impact.activeExperts > 0 || impact.openBookings > 0);
 
   return (
     <ModalShell title="Delete Zone" onClose={onClose}>
@@ -439,7 +370,6 @@ function DeleteZoneModal({ zone, onClose }: { zone: ZoneRow; onClose: () => void
           <div className="rounded-[14px] border border-warning/40 bg-warning/10 p-3 text-[13px] text-foreground">
             This zone has {impact!.activeExperts} active expert
             {impact!.activeExperts === 1 ? "" : "s"}
-            {impact!.hasPartner ? " and an assigned partner" : ""}
             {impact!.openBookings > 0
               ? `, plus ${impact!.openBookings} open booking${impact!.openBookings === 1 ? "" : "s"}`
               : ""}

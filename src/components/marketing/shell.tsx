@@ -137,7 +137,6 @@ function MarketingFooter() {
           <Link to="/support" className="hover:text-foreground">About & Support</Link>
         </FooterCol>
         <FooterCol title="Partner with us">
-          <Link to="/join-area-partner" className="hover:text-foreground">Join as Area Partner</Link>
           <Link to="/join-expert" className="hover:text-foreground">Join as Expert</Link>
           <Link to="/join-merchant" className="hover:text-foreground">Join as Merchant</Link>
         </FooterCol>

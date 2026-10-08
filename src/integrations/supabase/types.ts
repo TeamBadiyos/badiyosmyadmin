@@ -240,131 +240,6 @@ export type Database = {
         }
         Relationships: []
       }
-      area_partner_leads: {
-        Row: {
-          area: string
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          phone: string
-          status: string
-        }
-        Insert: {
-          area: string
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          phone: string
-          status?: string
-        }
-        Update: {
-          area?: string
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          phone?: string
-          status?: string
-        }
-        Relationships: []
-      }
-      area_partners: {
-        Row: {
-          address: string | null
-          bank_account_holder_name: string | null
-          bank_account_number: string | null
-          bank_ifsc: string | null
-          commission_rate: number
-          commission_type: string
-          commission_value: number
-          created_at: string
-          delete_reason: string | null
-          deleted_at: string | null
-          deleted_by: string | null
-          id: string
-          kyc_aadhaar_url: string | null
-          kyc_address_proof_url: string | null
-          kyc_pan_url: string | null
-          kyc_rejection_reason: string | null
-          kyc_status: string
-          name: string
-          pan_encrypted: string | null
-          pan_last4: string | null
-          pan_updated_at: string | null
-          phone: string
-          photo_url: string | null
-          setup_fee_status: string
-          status: string
-          zone_id: string | null
-        }
-        Insert: {
-          address?: string | null
-          bank_account_holder_name?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          commission_rate?: number
-          commission_type?: string
-          commission_value?: number
-          created_at?: string
-          delete_reason?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          id?: string
-          kyc_aadhaar_url?: string | null
-          kyc_address_proof_url?: string | null
-          kyc_pan_url?: string | null
-          kyc_rejection_reason?: string | null
-          kyc_status?: string
-          name: string
-          pan_encrypted?: string | null
-          pan_last4?: string | null
-          pan_updated_at?: string | null
-          phone: string
-          photo_url?: string | null
-          setup_fee_status?: string
-          status?: string
-          zone_id?: string | null
-        }
-        Update: {
-          address?: string | null
-          bank_account_holder_name?: string | null
-          bank_account_number?: string | null
-          bank_ifsc?: string | null
-          commission_rate?: number
-          commission_type?: string
-          commission_value?: number
-          created_at?: string
-          delete_reason?: string | null
-          deleted_at?: string | null
-          deleted_by?: string | null
-          id?: string
-          kyc_aadhaar_url?: string | null
-          kyc_address_proof_url?: string | null
-          kyc_pan_url?: string | null
-          kyc_rejection_reason?: string | null
-          kyc_status?: string
-          name?: string
-          pan_encrypted?: string | null
-          pan_last4?: string | null
-          pan_updated_at?: string | null
-          phone?: string
-          photo_url?: string | null
-          setup_fee_status?: string
-          status?: string
-          zone_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "area_partners_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       audit_logs: {
         Row: {
           action: string
@@ -651,7 +526,6 @@ export type Database = {
         Row: {
           address_id: string | null
           arrived_at: string | null
-          assigned_area_partner_id: string | null
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
@@ -721,7 +595,6 @@ export type Database = {
         Insert: {
           address_id?: string | null
           arrived_at?: string | null
-          assigned_area_partner_id?: string | null
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
@@ -791,7 +664,6 @@ export type Database = {
         Update: {
           address_id?: string | null
           arrived_at?: string | null
-          assigned_area_partner_id?: string | null
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
@@ -864,13 +736,6 @@ export type Database = {
             columns: ["address_id"]
             isOneToOne: false
             referencedRelation: "addresses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_assigned_area_partner_id_fkey"
-            columns: ["assigned_area_partner_id"]
-            isOneToOne: false
-            referencedRelation: "area_partners"
             referencedColumns: ["id"]
           },
           {
@@ -4087,13 +3952,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "experts_onboarded_by_fkey"
-            columns: ["onboarded_by"]
-            isOneToOne: false
-            referencedRelation: "area_partners"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "experts_referred_by_expert_id_fkey"
             columns: ["referred_by_expert_id"]
             isOneToOne: false
@@ -5025,13 +4883,6 @@ export type Database = {
             columns: ["fee_tier_id"]
             isOneToOne: false
             referencedRelation: "merchant_fee_tiers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "merchants_onboarded_by_fkey"
-            columns: ["onboarded_by"]
-            isOneToOne: false
-            referencedRelation: "area_partners"
             referencedColumns: ["id"]
           },
           {
@@ -7495,7 +7346,6 @@ export type Database = {
       }
       zones: {
         Row: {
-          assigned_area_partner_id: string | null
           boundary: Json
           city: string
           created_at: string
@@ -7508,7 +7358,6 @@ export type Database = {
           status: string
         }
         Insert: {
-          assigned_area_partner_id?: string | null
           boundary: Json
           city: string
           created_at?: string
@@ -7521,7 +7370,6 @@ export type Database = {
           status?: string
         }
         Update: {
-          assigned_area_partner_id?: string | null
           boundary?: Json
           city?: string
           created_at?: string
@@ -7534,13 +7382,6 @@ export type Database = {
           status?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "zones_assigned_area_partner_fk"
-            columns: ["assigned_area_partner_id"]
-            isOneToOne: false
-            referencedRelation: "area_partners"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "zones_segment_id_fkey"
             columns: ["segment_id"]
@@ -8049,7 +7890,6 @@ export type Database = {
         Returns: {
           address_id: string | null
           arrived_at: string | null
-          assigned_area_partner_id: string | null
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
@@ -9128,14 +8968,6 @@ export type Database = {
         Args: { _archived?: boolean; _id: string }
         Returns: undefined
       }
-      staff_area_partner_kyc_decision: {
-        Args: { _decision: string; _partner_id: string; _reason: string }
-        Returns: undefined
-      }
-      staff_assign_area_partner: {
-        Args: { _partner_id: string; _zone_id: string }
-        Returns: undefined
-      }
       staff_assign_business_plans: {
         Args: {
           _dispatch_plan_id: string
@@ -9772,10 +9604,6 @@ export type Database = {
         Args: { _owner_id: string; _owner_type: string; _pan: string }
         Returns: undefined
       }
-      staff_set_partner_zones: {
-        Args: { _partner_id: string; _zone_ids: string[] }
-        Returns: undefined
-      }
       staff_set_payout_item_removed: {
         Args: { _item_id: string; _reason?: string; _removed: boolean }
         Returns: undefined
@@ -9846,10 +9674,6 @@ export type Database = {
       staff_set_vehicle_archived: {
         Args: { _archived: boolean; _id: string }
         Returns: boolean
-      }
-      staff_soft_delete_area_partner: {
-        Args: { _partner_id: string; _reason: string }
-        Returns: undefined
       }
       staff_soft_delete_booking: {
         Args: { _booking_id: string; _reason: string }
@@ -9947,7 +9771,6 @@ export type Database = {
         Args: { _payload: Json; _zone_id: string }
         Returns: undefined
       }
-      staff_upsert_area_partner: { Args: { _payload: Json }; Returns: string }
       staff_upsert_business_profile: {
         Args: {
           _auto_qty_enabled: boolean
