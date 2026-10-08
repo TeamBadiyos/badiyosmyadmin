@@ -1,0 +1,1 @@
+ALTER TABLE public.partners ADD COLUMN IF NOT EXISTS login_email text, ADD COLUMN IF NOT EXISTS auth_user_id uuid;

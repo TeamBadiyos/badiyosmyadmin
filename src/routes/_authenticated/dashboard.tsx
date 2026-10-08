@@ -98,6 +98,8 @@ import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  validateSearch: (s: Record<string, unknown>): { tab?: string } =>
+    typeof s.tab === "string" && s.tab ? { tab: s.tab } : {},
   head: () => ({
     meta: [
       { title: "Badiyos Command Center" },
@@ -224,7 +226,27 @@ const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
 function Shell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<NavKey>("dashboard");
+  const search = Route.useSearch();
+  const isNavKey = (k: unknown): k is NavKey => typeof k === "string" && NAV_ITEMS.some((n) => n.key === k);
+  const [active, setActiveState] = useState<NavKey>(() => (isNavKey(search.tab) ? search.tab : "dashboard"));
+  useEffect(() => {
+    if (search.tab) return;
+    try {
+      const s = window.sessionStorage.getItem("cc_active_tab");
+      if (isNavKey(s) && s !== "dashboard") navigate({ to: "/dashboard", search: { tab: s }, replace: true });
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const setActive = (k: NavKey) => {
+    setActiveState(k);
+    try { window.sessionStorage.setItem("cc_active_tab", k); } catch { /* ignore */ }
+    if (search.tab !== k) navigate({ to: "/dashboard", search: k === "dashboard" ? {} : { tab: k } });
+  };
+  useEffect(() => {
+    const t = isNavKey(search.tab) ? search.tab : "dashboard";
+    setActiveState((cur) => (cur === t ? cur : t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.tab]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);

@@ -5590,6 +5590,7 @@ export type Database = {
         Row: {
           agreement_end: string
           agreement_start: string
+          auth_user_id: string | null
           city: string
           created_at: string
           fee_collected_at: string | null
@@ -5597,6 +5598,7 @@ export type Database = {
           growth_plan_id: string | null
           id: string
           level: string | null
+          login_email: string | null
           name: string
           notes: string | null
           phone: string
@@ -5609,6 +5611,7 @@ export type Database = {
         Insert: {
           agreement_end: string
           agreement_start: string
+          auth_user_id?: string | null
           city: string
           created_at?: string
           fee_collected_at?: string | null
@@ -5616,6 +5619,7 @@ export type Database = {
           growth_plan_id?: string | null
           id?: string
           level?: string | null
+          login_email?: string | null
           name: string
           notes?: string | null
           phone: string
@@ -5628,6 +5632,7 @@ export type Database = {
         Update: {
           agreement_end?: string
           agreement_start?: string
+          auth_user_id?: string | null
           city?: string
           created_at?: string
           fee_collected_at?: string | null
@@ -5635,6 +5640,7 @@ export type Database = {
           growth_plan_id?: string | null
           id?: string
           level?: string | null
+          login_email?: string | null
           name?: string
           notes?: string | null
           phone?: string
