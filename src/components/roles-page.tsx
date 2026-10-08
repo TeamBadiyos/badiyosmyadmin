@@ -255,7 +255,6 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
               >
                 <option value="ops_manager">Ops Manager</option>
-                <option value="area_partner">Area Partner</option>
               </select>
             </Field>
             {role === "area_partner" && (
