@@ -3,13 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Pause, Play, Send, X } from "lucide-react";
+import { Plus, Pencil, Pause, Play, Send, X, Trash2 } from "lucide-react";
 import {
   getOffersAccess,
   listCoupons,
   listOfferCategories,
   saveCoupon,
   setCouponActive,
+  deleteCoupon,
   listCouponRedemptions,
 
   listMilestones,
@@ -292,6 +293,16 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const del = useServerFn(deleteCoupon);
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Coupon deleted");
+      qc.invalidateQueries({ queryKey: ["offers", "coupons"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const rows = useMemo(
     () =>
       data.filter((c) =>
@@ -398,6 +409,17 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
                       onClick={() => toggleMut.mutate({ id: c.id, active: !c.is_active })}
                     >
                       {c.is_active ? <Pause size={14} /> : <Play size={14} />}
+                    </button>
+                    <button
+                      className={`${ghostBtn} text-destructive`}
+                      title="Delete coupon"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Delete coupon ${c.code}? This cannot be undone.`))
+                          deleteMut.mutate(c.id);
+                      }}
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </>
                 )}

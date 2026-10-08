@@ -309,6 +309,20 @@ export const setCouponActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const deleteCoupon = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireOffersWriter(context.supabase, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await context.supabase.rpc("staff_delete_coupon" as any, { _id: data.id } as any);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export type RedemptionRow = {
   id: string;
   user_name: string | null;
