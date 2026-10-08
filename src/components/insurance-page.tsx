@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -41,7 +42,7 @@ function daysUntil(d: string | null) {
 }
 function fmtDate(d: string | null) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 function waLink(v: VehicleRow) {
   const msg = `Namaste ${v.customerName}, aapki gaadi ${v.regNumber} ka insurance ${fmtDate(v.insuranceExpiry)} ko expire ho raha hai. Renewal ke liye Badiyos se baat karein.`;
@@ -482,8 +483,8 @@ function VehicleForm({
         </Field>
         <Field label="Company / Model"><input className={inp} value={f.makeModel} onChange={(e) => set("makeModel", e.target.value)} /></Field>
         <Field label="Insurer"><input className={inp} value={f.insurer} onChange={(e) => set("insurer", e.target.value)} /></Field>
-        <Field label="Insurance expiry"><input type="date" className={inp} value={f.insuranceExpiry} onChange={(e) => set("insuranceExpiry", e.target.value)} /></Field>
-        <Field label="PUC expiry"><input type="date" className={inp} value={f.pucExpiry} onChange={(e) => set("pucExpiry", e.target.value)} /></Field>
+        <Field label="Insurance expiry"><DateInput  className={inp} value={f.insuranceExpiry} onChange={(e) => set("insuranceExpiry", e.target.value)} /></Field>
+        <Field label="PUC expiry"><DateInput  className={inp} value={f.pucExpiry} onChange={(e) => set("pucExpiry", e.target.value)} /></Field>
         <Field label="Consent for reminders">
           <select className={inp} value={f.consent ? "yes" : "no"} onChange={(e) => set("consent", e.target.value === "yes")}>
             <option value="yes">Yes</option>
@@ -607,7 +608,7 @@ function LeadDetail({
               ))}
             </select>
           </Field>
-          <Field label="Next follow-up"><input type="date" className={inp} value={next} onChange={(e) => setNext(e.target.value)} /></Field>
+          <Field label="Next follow-up"><DateInput  className={inp} value={next} onChange={(e) => setNext(e.target.value)} /></Field>
           <div className="col-span-2">
             <Field label="Assigned to">
               <select className={inp} value={assigned} onChange={(e) => setAssigned(e.target.value)}>

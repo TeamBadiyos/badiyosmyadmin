@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { ExpertRatingPill } from "@/components/expert-rating";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -276,8 +277,8 @@ export function BookingsPage({
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             From
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={from}
             onChange={(e) => updateFilter(() => setFrom(e.target.value))}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
@@ -287,8 +288,8 @@ export function BookingsPage({
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             To
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={to}
             onChange={(e) => updateFilter(() => setTo(e.target.value))}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"

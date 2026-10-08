@@ -44,7 +44,7 @@ function dayLabel(ts: string) {
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (same(d, today)) return "Today";
   if (same(d, yest)) return "Yesterday";
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 function money(n: number) {
@@ -512,7 +512,7 @@ function ContactPanel({ ticket }: { ticket: SupportTicket }) {
             <Row label="Email" value={data.email} />
             <Row
               label="Joined"
-              value={data.joinedAt ? new Date(data.joinedAt).toLocaleDateString("en-IN") : null}
+              value={data.joinedAt ? new Date(data.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : null}
             />
             <Row label="Language" value={data.language} />
             <Row label="Address" value={data.address} />
@@ -546,7 +546,7 @@ function ContactPanel({ ticket }: { ticket: SupportTicket }) {
                     <span className="text-[12px] font-bold">{money(b.price)}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN") : ""} ·{" "}
+                    {b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : ""} ·{" "}
                     {String(b.status).replace(/_/g, " ")}
                   </p>
                 </div>

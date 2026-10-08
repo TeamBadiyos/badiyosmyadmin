@@ -21,9 +21,9 @@ export function LegalPageView({ slug, fallbackTitle }: { slug: string; fallbackT
         {data?.effectiveDate && (
           <p className="mt-3 text-[13px] text-muted-foreground">
             Effective{" "}
-            {new Date(data.effectiveDate).toLocaleDateString("en-IN", { dateStyle: "long" })}
+            {new Date(data.effectiveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
             {" · "}Last updated{" "}
-            {new Date(data.lastUpdatedAt).toLocaleDateString("en-IN", { dateStyle: "long" })}
+            {new Date(data.lastUpdatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
           </p>
         )}
         <div className="mt-8">

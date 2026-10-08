@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -127,8 +128,8 @@ export function BonusPreviewTab() {
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>Period start</label>
-          <input
-            type="date"
+          <DateInput
+            
             value={start}
             onChange={(e) => setStart(e.target.value)}
             className={inputCls}

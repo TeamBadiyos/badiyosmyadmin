@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,7 +27,7 @@ const LINE_LABEL: Record<string, string> = {
   courier: "Delivery", bulk_delivery: "Bulk Delivery", store_orders: "Store Orders",
 };
 const inr = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—");
 const input = "w-full rounded-md border border-input bg-background px-2 py-2 text-sm";
 const btn = "inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold disabled:opacity-50";
 const btnPrimary = `${btn} bg-primary text-primary-foreground`;
@@ -226,9 +227,9 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
             <datalist id="partner-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
           </label>
         )}
-        <label className="text-sm">Agreement start<input type="date" className={input} value={f.agreement_start ?? ""} onChange={(e) => setF((x) => ({ ...x, agreement_start: e.target.value, agreement_end: e.target.value ? autoEnd(e.target.value) : x.agreement_end }))} /></label>
-        <label className="text-sm">Agreement end<input type="date" className={input} value={f.agreement_end ?? ""} onChange={(e) => set("agreement_end", e.target.value)} /></label>
-        <label className="text-sm">Fee collected date<input type="date" className={input} value={f.fee_collected_at ?? ""} onChange={(e) => set("fee_collected_at", e.target.value || null)} /></label>
+        <label className="text-sm">Agreement start<DateInput  className={input} value={f.agreement_start ?? ""} onChange={(e) => setF((x) => ({ ...x, agreement_start: e.target.value, agreement_end: e.target.value ? autoEnd(e.target.value) : x.agreement_end }))} /></label>
+        <label className="text-sm">Agreement end<DateInput  className={input} value={f.agreement_end ?? ""} onChange={(e) => set("agreement_end", e.target.value)} /></label>
+        <label className="text-sm">Fee collected date<DateInput  className={input} value={f.fee_collected_at ?? ""} onChange={(e) => set("fee_collected_at", e.target.value || null)} /></label>
         <label className="text-sm">Deposit / Fee collected (₹)<input type="number" min={0} className={input} value={f.fee_paid ?? 0} onChange={(e) => set("fee_paid", Number(e.target.value))} /></label>
         <label className="text-sm">Status
           <select className={input} value={f.status} onChange={(e) => set("status", e.target.value as PartnerRow["status"])}>
@@ -315,8 +316,8 @@ function PayoutsTab({ isAdmin }: { isAdmin: boolean }) {
     <div className="space-y-3">
       {isAdmin && (
         <section className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
-          <label className="text-sm">From<input type="date" className={input} value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} /></label>
-          <label className="text-sm">To<input type="date" className={input} value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} /></label>
+          <label className="text-sm">From<DateInput  className={input} value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} /></label>
+          <label className="text-sm">To<DateInput  className={input} value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} /></label>
           <button className={btnPrimary} disabled={gen.isPending} onClick={() => gen.mutate()}>{gen.isPending ? "Generating…" : "Generate Partner Payout"}</button>
           <p className="w-full text-xs text-muted-foreground">Default is last Monday–Sunday (IST). Orders already in another live batch are skipped.</p>
         </section>

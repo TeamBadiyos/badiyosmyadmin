@@ -43,11 +43,7 @@ function inr(n: number) {
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) => void }) {

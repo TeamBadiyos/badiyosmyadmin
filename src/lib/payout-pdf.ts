@@ -2,7 +2,7 @@ import type { PayoutBatch, PayoutItem } from "@/lib/wallets.functions";
 
 const rs = (n: number) => "Rs " + Math.round(n).toLocaleString("en-IN");
 const d = (s?: string | null) =>
-  s ? new Date(s.length === 10 ? s + "T00:00:00" : s).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
+  s ? new Date(s.length === 10 ? s + "T00:00:00" : s).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "-";
 const typeLabel = (t: string) => (t === "expert" ? "Expert" : t === "merchant" ? "Merchant" : "Partner");
 
 /** Browser-generated A4 payout sheet for one batch. */

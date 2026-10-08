@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -478,8 +479,8 @@ export function ServiceHoursEditor({
           <div className="mt-3 grid gap-3 rounded-[12px] border border-border p-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">Start date</span>
-              <input
-                type="date"
+              <DateInput
+                
                 value={holStart}
                 disabled={!canWrite}
                 onChange={(e) => setHolStart(e.target.value)}
@@ -490,8 +491,8 @@ export function ServiceHoursEditor({
               <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
                 End date (optional — range ke liye)
               </span>
-              <input
-                type="date"
+              <DateInput
+                
                 value={holEnd}
                 disabled={!canWrite}
                 onChange={(e) => setHolEnd(e.target.value)}

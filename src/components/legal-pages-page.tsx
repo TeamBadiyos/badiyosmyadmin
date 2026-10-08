@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -109,8 +110,8 @@ export function LegalPagesPage({ role }: { role: StaffRole | null }) {
                 <span className="block text-[12px] font-semibold text-muted-foreground mb-1">
                   Effective date
                 </span>
-                <input
-                  type="date"
+                <DateInput
+                  
                   value={effectiveDate ?? ""}
                   onChange={(e) => setEffectiveDate(e.target.value)}
                   disabled={!canEdit}
@@ -160,7 +161,7 @@ export function LegalPagesPage({ role }: { role: StaffRole | null }) {
             <h3 className="text-[24px] font-bold tracking-tight text-foreground">{title}</h3>
             {effectiveDate && (
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Effective {new Date(effectiveDate).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                Effective {new Date(effectiveDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
               </p>
             )}
             <div className="mt-4">

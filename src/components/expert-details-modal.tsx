@@ -452,12 +452,12 @@ export function ExpertDetailsModal({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                   <div className="rounded-[14px] border border-border p-3">
                     <p className="text-[11px] font-bold uppercase text-muted-foreground">Joining date</p>
-                    <p className="text-[14px] font-semibold">{data.joiningDate ? new Date(data.joiningDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
+                    <p className="text-[14px] font-semibold">{data.joiningDate ? new Date(data.joiningDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—"}</p>
                   </div>
                   <div className={`rounded-[14px] border p-3 ${data.jacketIssued ? "border-primary/40 bg-primary/5" : "border-warning/50 bg-warning/10"}`}>
                     <p className="text-[11px] font-bold uppercase text-muted-foreground">Jacket</p>
                     <p className="text-[14px] font-semibold">
-                      {data.jacketIssued ? `Given ✅${data.jacketIssuedAt ? ` · ${new Date(data.jacketIssuedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}` : ""}` : "Not given yet"}
+                      {data.jacketIssued ? `Given ✅${data.jacketIssuedAt ? ` · ${new Date(data.jacketIssuedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}` : ""}` : "Not given yet"}
                     </p>
                   </div>
                   <div className={`rounded-[14px] border p-3 ${data.trainingDone === TRAINING_DAYS.length ? "border-primary/40 bg-primary/5" : "border-border"}`}>
@@ -478,7 +478,7 @@ export function ExpertDetailsModal({
                           {e?.notes && <p className="text-muted-foreground italic">{e.notes}</p>}
                         </div>
                         <span className="shrink-0 text-[12px] text-muted-foreground">
-                          {e?.done ? (e.date ? new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "Done") : "Pending"}
+                          {e?.done ? (e.date ? new Date(e.date).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "Done") : "Pending"}
                         </span>
                       </div>
                     );
@@ -496,7 +496,7 @@ export function ExpertDetailsModal({
                         <div className="flex items-center justify-between gap-2 text-[12px]">
                           <span className="font-bold text-foreground">★ {r.rating}/5 · {r.serviceLabel ?? "Order"}</span>
                           <span className="text-muted-foreground">
-                            {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            {new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
                           </span>
                         </div>
                         {r.reviewText && <p className="text-[13px] text-muted-foreground mt-1">“{r.reviewText}”</p>}

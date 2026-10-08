@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -209,8 +210,8 @@ export function RewardsPage() {
                   <p className="font-semibold truncate">{p.name}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {p.valid_from || p.valid_until
-                      ? `${p.valid_from ? new Date(p.valid_from).toLocaleDateString() : "—"} → ${
-                          p.valid_until ? new Date(p.valid_until).toLocaleDateString() : "—"
+                      ? `${p.valid_from ? new Date(p.valid_from).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—"} → ${
+                          p.valid_until ? new Date(p.valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—"
                         }`
                       : "Always scheduled"}
                   </p>
@@ -442,11 +443,11 @@ function ReportsSection({ programs, actor }: { programs: RewardProgram[]; actor:
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>From</label>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls} />
+          <DateInput  value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>To</label>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputCls} />
+          <DateInput  value={to} onChange={(e) => setTo(e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1.5 flex-1 min-w-[220px]">
           <label className={labelCls}>Search actor (name / phone)</label>

@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -486,11 +487,11 @@ function GenerateBatchDialog({
         <div className="grid grid-cols-2 gap-3">
           <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
             <span>From</span>
-            <input type="date" className={inp} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput  className={inp} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
           </label>
           <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
             <span>To</span>
-            <input type="date" className={inp} value={to} min={from} max={r.today} onChange={(e) => setTo(e.target.value)} />
+            <DateInput  className={inp} value={to} min={from} max={r.today} onChange={(e) => setTo(e.target.value)} />
           </label>
         </div>
         <input className={inp} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -1024,7 +1025,7 @@ function RecordPaymentDialog({
         </p>
         <label className="block text-[12px] font-semibold text-muted-foreground space-y-1">
           <span>Payment date</span>
-          <input type="date" className={inp} value={paidOn} max={today} onChange={(e) => setPaidOn(e.target.value)} />
+          <DateInput  className={inp} value={paidOn} max={today} onChange={(e) => setPaidOn(e.target.value)} />
         </label>
         <label className="block text-[12px] font-semibold text-muted-foreground space-y-1">
           <span>Mode</span>
@@ -1297,5 +1298,5 @@ function TdsTab({ role }: { role: Role }) {
 
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }

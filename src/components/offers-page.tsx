@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -170,7 +171,7 @@ function discountLabel(type: string, value: number, max: number | null) {
 }
 
 function fmtDate(v: string | null) {
-  return v ? new Date(v).toLocaleDateString("en-IN") : "—";
+  return v ? new Date(v).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—";
 }
 
 function audienceLabel(c: { audience: string; target_user_ids?: string[] | null }) {
@@ -544,17 +545,17 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           />
         </Field>
         <Field label="Valid from">
-          <input
+          <DateInput
             className={inputCls}
-            type="date"
+            
             value={form.valid_from}
             onChange={(e) => setForm({ ...form, valid_from: e.target.value })}
           />
         </Field>
         <Field label="Valid until">
-          <input
+          <DateInput
             className={inputCls}
-            type="date"
+            
             value={form.valid_until}
             onChange={(e) => setForm({ ...form, valid_until: e.target.value })}
           />

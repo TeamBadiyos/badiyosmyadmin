@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -154,8 +155,8 @@ export function SuggestionsPage() {
               <option value="">All priorities</option>
               {SUGGESTION_PRIORITIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input type="date" className={selectCls} value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} aria-label="From date" />
-            <input type="date" className={selectCls} value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} aria-label="To date" />
+            <DateInput  className={selectCls} value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} aria-label="From date" />
+            <DateInput  className={selectCls} value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} aria-label="To date" />
             <label className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Show archived
             </label>

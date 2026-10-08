@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -70,7 +71,7 @@ function defaultRange(): { from: string; to: string } {
 
 function fmtShortDate(d: string) {
   const dt = new Date(d + (d.length === 10 ? "T00:00:00" : ""));
-  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 export function ReportsPage({ role }: { role: StaffRole | null }) {
@@ -107,8 +108,8 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
           <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
             From
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px]"
@@ -118,8 +119,8 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
           <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
             To
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={to}
             onChange={(e) => setTo(e.target.value)}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px]"
