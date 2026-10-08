@@ -22,6 +22,8 @@ export type PartnerRow = {
   fee_paid: number;
   status: "active" | "inactive";
   notes: string | null;
+  login_email?: string | null;
+  auth_user_id?: string | null;
 };
 
 export type PlanLine = { plan_id?: string; line_key: string; enabled: boolean; pct: number };
@@ -115,11 +117,53 @@ export const togglePartnerProgram = createServerFn({ method: "POST" })
 
 export const savePartner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: Partial<PartnerRow>) => d)
+  .inputValidator((d: Partial<PartnerRow> & { login_email?: string | null; login_password?: string | null }) => d)
   .handler(async ({ data, context }) => {
     await requireStaff(context.supabase, context.userId, true);
-    const id = await rpc(context.supabase, "staff_partner_upsert", { _p: data });
-    return { id: id as string };
+    const { login_email, login_password, auth_user_id: _ignored, ...rest } = data;
+    const email = (login_email ?? "").trim().toLowerCase();
+    const password = login_password ?? "";
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Valid login email required");
+    if (password && password.length < 6) throw new Error("Password must be at least 6 characters");
+    const id = (await rpc(context.supabase, "staff_partner_upsert", { _p: rest })) as string;
+
+    if (!email && !password) return { id };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p, error: pe } = await supabaseAdmin.from("partners").select("id, name, zone_id, auth_user_id, login_email").eq("id", id).single();
+    if (pe) throw new Error(pe.message);
+
+    let authId = p.auth_user_id as string | null;
+    if (!authId) {
+      if (!email || !password) throw new Error("Login email and password are both required to create a login");
+      const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+        email, password, email_confirm: true, user_metadata: { name: p.name },
+      });
+      if (error || !created?.user) throw new Error(`Partner saved, but login failed: ${error?.message ?? "unknown"}`);
+      authId = created.user.id;
+      const { data: su, error: se } = await supabaseAdmin.from("staff_users").insert({
+        auth_user_id: authId, name: p.name, email, role: "area_partner", zone_id: p.zone_id ?? null, status: "active",
+      }).select("id").single();
+      if (se) {
+        await supabaseAdmin.auth.admin.deleteUser(authId).catch(() => {});
+        throw new Error(`Partner saved, but login failed: ${se.message}`);
+      }
+      if (p.zone_id) await supabaseAdmin.from("staff_user_zones").insert({ staff_user_id: su.id, zone_id: p.zone_id });
+    } else {
+      const upd: { email?: string; password?: string } = {};
+      if (email && email !== p.login_email) upd.email = email;
+      if (password) upd.password = password;
+      if (Object.keys(upd).length) {
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(authId, { ...upd, ...(upd.email ? { email_confirm: true } : {}) });
+        if (error) throw new Error(error.message);
+        if (upd.email) await supabaseAdmin.from("staff_users").update({ email: upd.email }).eq("auth_user_id", authId);
+      }
+    }
+    await supabaseAdmin.from("partners").update({ auth_user_id: authId, login_email: email || p.login_email }).eq("id", id);
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId, action: "partner_login_set", target_table: "partners", target_id: id,
+      after_state: { login_email: email || p.login_email, password_changed: !!password },
+    });
+    return { id };
   });
 
 export const listGrowthPartners = createServerFn({ method: "GET" })
