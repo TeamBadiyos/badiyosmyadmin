@@ -113,10 +113,7 @@ function CategoryIcon({
 function fmt(ts: string | null) {
   if (!ts) return "—";
   try {
-    return new Date(ts).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    return new Date(ts).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
   } catch {
     return "—";
   }

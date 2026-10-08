@@ -203,7 +203,7 @@ export function TrainingOrdersPage() {
                 <td className="px-3 py-3 font-mono font-bold text-[15px]">{o.startOtp ?? "—"}</td>
                 <td className="px-3 py-3 font-mono font-bold text-[15px]">{o.endOtp ?? "—"}</td>
                 <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
-                  {new Date(o.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" })}
+                  {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </td>
                 {isSuper && (
                   <td className="px-3 py-3">

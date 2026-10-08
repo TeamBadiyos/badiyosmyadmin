@@ -4,7 +4,7 @@ import { getLeftBehindToday, getTripLeftBehind } from "@/lib/left-behind.functio
 
 const inr = (n: number | null) => (n == null ? "—" : `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`);
 const cap = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-const time = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+const time = (s: string) => new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 
 export function TripLeftBehind({ courierOrderId }: { courierOrderId: string }) {
   const fn = useServerFn(getTripLeftBehind);

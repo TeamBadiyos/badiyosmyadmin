@@ -51,7 +51,7 @@ const TABS: { key: MerchantStatus | "" ; label: string }[] = [
 ];
 
 function fmt(ts: string) {
-  return new Date(ts).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  return new Date(ts).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 }
 
 export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {

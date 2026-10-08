@@ -85,7 +85,7 @@ export function StoreTrainingPanel() {
                   <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-muted text-muted-foreground capitalize">{o.status}</span>
                 </div>
                 <p className="text-[12px] text-muted-foreground mt-1 truncate">
-                  {o.storeName} · {o.customerName} · ₹{o.totalAmount} · {new Date(o.createdAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                  {o.storeName} · {o.customerName} · ₹{o.totalAmount} · {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </p>
                 <p className="text-[12px] text-muted-foreground truncate">{o.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</p>
               </div>

@@ -217,12 +217,7 @@ export function DispatchAlertsPage() {
                 </p>
                 <p className="text-[12px] text-muted-foreground">
                   {e.city ?? "Unknown city"} ·{" "}
-                  {new Date(e.triggered_at).toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
+                  {new Date(e.triggered_at).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}{" "}
                   · WhatsApp {e.whatsapp_sent ? "processed" : "pending"}
                 </p>
               </div>

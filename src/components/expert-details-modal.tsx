@@ -240,12 +240,7 @@ export function ExpertDetailsModal({
                   </h3>
                   <p className="text-[14px] text-foreground mt-1">
                     {data.lastSeenAt
-                      ? new Date(data.lastSeenAt).toLocaleString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? new Date(data.lastSeenAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
                       : "No location ping yet"}
                   </p>
                 </div>
@@ -321,7 +316,7 @@ export function ExpertDetailsModal({
                         <p className="text-[11px] text-emerald-700/80 mt-0.5">
                           {s.approvedByName ? `By ${s.approvedByName}` : "By —"}
                           {s.approvedAt
-                            ? ` · ${new Date(s.approvedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
+                            ? ` · ${new Date(s.approvedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}`
                             : ""}
                         </p>
                       </div>

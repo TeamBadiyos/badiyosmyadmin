@@ -529,7 +529,7 @@ function BizOrdersTab({ biz, canWrite, rows, receivers, onChanged }: { biz: Busi
             <td className={`${td} font-semibold`}>{o.reference_no ?? "—"}</td><td className={td}>{recMap.get(o.receiver_id) ?? "—"}</td>
             <td className={td}>{o.packet_count ?? 1}</td><td className={td}><Pill tone="info">{o.status}</Pill></td>
             <td className={td}>{o.batch_id ? <span className="font-mono text-[11px]">#{String(o.batch_id).slice(0, 8)}</span> : "—"}</td>
-            <td className={td}>{new Date(o.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+            <td className={td}>{new Date(o.created_at).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}</td>
           </tr>
         ))}
       </Table>
@@ -574,7 +574,7 @@ function TripsTab({ rows, runs: runRows, canWriteOrders }: { rows: Array<Record<
         <div key={run.key} className="rounded-[14px] border border-border">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border bg-muted/40 px-3 py-2 text-[12px]">
             {run.noRun ? <span className="font-semibold">Earlier trips (no run)</span> : <>
-            <span className="font-semibold">{new Date(run.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}</span>
+            <span className="font-semibold">{new Date(run.at).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}</span>
             <span>Trigger: {String(run.trigger ?? "—").replace(/_/g, " ")}</span>
             <span>Method: {run.method}</span>
             <span>{run.drops} drops</span><span>{run.tripCount} trip{run.tripCount === 1 ? "" : "s"}</span>
@@ -618,12 +618,12 @@ function WalletTab({ biz, canWrite, ledger, topups, onChanged }: { biz: Business
       </div>
       <h4 className="text-[13px] font-bold">Ledger</h4>
       <Table head={["When", "Type", "Amount", "Reason"]}>
-        {ledger.map((l) => <tr key={l.id}><td className={td}>{new Date(l.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td><td className={td}><Pill tone={l.type === "credit" ? "ok" : "warn"}>{l.type}</Pill></td><td className={`${td} font-semibold`}>{l.type === "credit" ? "+" : "−"}{inr(l.amount)}</td><td className={td}>{l.reason}</td></tr>)}
+        {ledger.map((l) => <tr key={l.id}><td className={td}>{new Date(l.created_at).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}</td><td className={td}><Pill tone={l.type === "credit" ? "ok" : "warn"}>{l.type}</Pill></td><td className={`${td} font-semibold`}>{l.type === "credit" ? "+" : "−"}{inr(l.amount)}</td><td className={td}>{l.reason}</td></tr>)}
       </Table>
       {ledger.length === 0 ? <p className="text-[13px] text-muted-foreground">No ledger entries.</p> : null}
       <h4 className="text-[13px] font-bold">Top-ups</h4>
       <Table head={["When", "Amount", "Status", "Payment", "By"]}>
-        {topups.map((t) => <tr key={t.id}><td className={td}>{new Date(t.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td><td className={td}>{inr(t.amount)}</td><td className={td}><Pill tone={t.status === "paid" ? "ok" : "off"}>{t.status}</Pill></td><td className={`${td} font-mono text-[11px]`}>{t.razorpay_payment_id ?? "—"}</td><td className={td}>{t.created_by_label ?? "—"}</td></tr>)}
+        {topups.map((t) => <tr key={t.id}><td className={td}>{new Date(t.created_at).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}</td><td className={td}>{inr(t.amount)}</td><td className={td}><Pill tone={t.status === "paid" ? "ok" : "off"}>{t.status}</Pill></td><td className={`${td} font-mono text-[11px]`}>{t.razorpay_payment_id ?? "—"}</td><td className={td}>{t.created_by_label ?? "—"}</td></tr>)}
       </Table>
       {topups.length === 0 ? <p className="text-[13px] text-muted-foreground">No top-ups.</p> : null}
       {form && !confirm ? (

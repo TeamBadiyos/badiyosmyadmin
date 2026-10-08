@@ -100,7 +100,7 @@ export function SkillApprovalsPage({ role }: { role: StaffRole | null }) {
             </span>
             <span className="text-foreground truncate">{r.categoryName}</span>
             <span className="text-[13px] text-muted-foreground">
-              {new Date(r.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+              {new Date(r.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
             </span>
             <span
               className={`justify-self-start text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full ${STATUS_STYLES[r.status]}`}
