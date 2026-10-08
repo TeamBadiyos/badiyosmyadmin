@@ -13,6 +13,7 @@ import { TrainingOrdersPage } from "@/components/training-orders-page";
 import { GraduationCap } from "lucide-react";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
+import { LiveStoresView } from "@/components/live-stores-view";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
 import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
@@ -117,6 +118,7 @@ const NAV_ITEMS = [
   { key: "training-orders", label: "Training Orders", icon: GraduationCap },
   { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
   { key: "merchants", label: "Merchants", icon: Store },
+  { key: "live-stores", label: "Live Stores", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
@@ -179,7 +181,7 @@ const NAV_GROUPS = [
     id: "store",
     label: "Store",
     icon: Store,
-    keys: ["store-orders", "merchants", "store-categories", "store-settings"],
+    keys: ["store-orders", "merchants", "live-stores", "store-categories", "store-settings"],
   },
   {
     id: "people",
@@ -609,6 +611,8 @@ function Shell() {
           <ServiceCataloguePage />
         ) : active === "store-settings" ? (
           <StoreSettingsPage />
+        ) : active === "live-stores" ? (
+          <LiveStoresView />
         ) : active === "store-categories" ? (
           <StoreCategoriesPage role={role} />
         ) : active === "task-types" ? (
