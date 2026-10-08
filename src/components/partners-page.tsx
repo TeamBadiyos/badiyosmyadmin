@@ -104,18 +104,17 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Program</th><th className="p-2">Plan</th>
+              <th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">Plan</th>
               <th className="p-2">City</th><th className="p-2">Zone</th><th className="p-2">Agreement</th><th className="p-2">Fee paid</th>
               <th className="p-2">Experts</th><th className="p-2">Status</th><th className="p-2" />
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={11} className="p-4 text-center text-muted-foreground">No partners yet.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No partners yet.</td></tr>}
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-border">
                 <td className="p-2 font-semibold">{p.name}</td>
                 <td className="p-2">{p.phone}</td>
-                <td className="p-2">{PROGRAM_LABEL[p.program]}</td>
                 <td className="p-2">{q.data?.plans.find((x) => x.id === p.plan_id)?.name ?? "—"}</td>
                 <td className="p-2">{p.city}</td>
                 <td className="p-2">{p.program === "zone_franchise" ? zoneName(p.zone_id) : "—"}</td>
