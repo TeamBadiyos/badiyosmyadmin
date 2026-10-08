@@ -453,14 +453,14 @@ function PlansSection({ isAdmin, plans, lines }: { isAdmin: boolean; plans: Comm
           <h3 className="font-bold">Commission Plans</h3>
           <p className="text-xs text-muted-foreground">Each plan sets ON/OFF and % per business line. Changes apply only to payouts generated afterwards.</p>
         </div>
-        {isAdmin && <button className={btnPrimary} onClick={() => setEditing({ partner_type: "growth", status: "active", suggested_fee: 0, lines: [] })}><Plus className="h-4 w-4" /> New plan</button>}
+        {isAdmin && <button className={btnPrimary} onClick={() => setEditing({ partner_type: "growth", status: "active", suggested_fee: 0, sort_order: plans.reduce((m, x) => Math.max(m, x.sort_order ?? 0), 0) + 1, lines: [] })}><Plus className="h-4 w-4" /> New plan</button>}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        {plans.map((p) => (
+        {[...plans].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name)).map((p) => (
           <div key={p.id} className={`rounded-md border border-border p-3 ${p.status !== "active" ? "opacity-60" : ""}`}>
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="font-semibold">{p.name}</p>
+                <p className="font-semibold"><span className="mr-1.5 rounded bg-muted px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">#{p.sort_order}</span>{p.name}</p>
                 <p className="text-xs text-muted-foreground">{PROGRAM_LABEL[p.partner_type]} · suggested {inr(p.suggested_fee)} / yr · {p.partnerCount} partner{p.partnerCount === 1 ? "" : "s"}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -504,6 +504,7 @@ function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan
           name: f.name ?? "",
           partner_type: (f.partner_type ?? "growth") as PartnerProgram,
           suggested_fee: Number(f.suggested_fee ?? 0),
+          sort_order: Number(f.sort_order ?? 0),
           status: f.status ?? "active",
           lines: rows.map(({ line_key, enabled, pct }) => ({ line_key, enabled, pct })),
         },
@@ -525,6 +526,7 @@ function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan
             {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>
+        <label className="text-sm">Sort No.<input type="number" min={0} step={1} className={input} value={f.sort_order ?? 0} onChange={(e) => setF((x) => ({ ...x, sort_order: Number(e.target.value) }))} /></label>
         <label className="text-sm">Suggested yearly fee (₹)<input type="number" min={0} className={input} value={f.suggested_fee ?? 0} onChange={(e) => setF((x) => ({ ...x, suggested_fee: Number(e.target.value) }))} /></label>
         <label className="text-sm">Status
           <select className={input} value={f.status} onChange={(e) => setF((x) => ({ ...x, status: e.target.value as CommissionPlan["status"] }))}>

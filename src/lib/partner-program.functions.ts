@@ -29,6 +29,7 @@ export type CommissionPlan = {
   name: string;
   partner_type: PartnerProgram;
   suggested_fee: number;
+  sort_order: number;
   status: "active" | "inactive";
   lines: PlanLine[];
   partnerCount: number;
@@ -36,7 +37,7 @@ export type CommissionPlan = {
 
 export const saveCommissionPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id?: string; name: string; partner_type: PartnerProgram; suggested_fee: number; status: string; lines: PlanLine[] }) => d)
+  .inputValidator((d: { id?: string; name: string; partner_type: PartnerProgram; suggested_fee: number; sort_order: number; status: string; lines: PlanLine[] }) => d)
   .handler(async ({ data, context }) => {
     await requireStaff(context.supabase, context.userId, true);
     const id = await rpc(context.supabase, "staff_partner_plan_upsert", { _p: data });
@@ -72,7 +73,7 @@ export const getPartnerProgram = createServerFn({ method: "GET" })
       db.from("partners").select("*").order("created_at", { ascending: false }),
       db.from("zones").select("id, name, city").is("deleted_at", null).order("name"),
       db.from("experts").select("onboarded_by_partner_id").not("onboarded_by_partner_id", "is", null),
-      db.from("partner_commission_plans").select("*").order("partner_type").order("name"),
+      db.from("partner_commission_plans").select("*").order("sort_order").order("name"),
       db.from("partner_plan_lines").select("*"),
       db.from("partner_business_lines").select("*").order("sort_order"),
     ]);
