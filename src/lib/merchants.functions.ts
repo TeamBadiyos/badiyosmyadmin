@@ -895,6 +895,10 @@ export type LiveStore = {
   deliveryEnabled: boolean;
   commissionPct: number;
   approvedAt: string | null;
+  zoneName: string | null;
+  fulfillmentMode: string | null;
+  deliveryFeePayer: string | null;
+  hours: { day: number; open: string | null; close: string | null; closed: boolean }[];
   items: LiveStoreItem[];
 };
 
@@ -906,7 +910,7 @@ export const listLiveStores = createServerFn({ method: "GET" })
     const { data: rows, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, store_category_id, segment_id, address, city, state, pincode, latitude, longitude, shop_photo_url, is_accepting_orders, store_enabled, delivery_enabled, commission_value, approved_at",
+        "id, store_name, owner_name, phone, store_category_id, segment_id, address, city, state, pincode, latitude, longitude, shop_photo_url, is_accepting_orders, store_enabled, delivery_enabled, commission_value, approved_at, zone_id, fulfillment_mode, delivery_fee_payer",
       )
       .eq("status", "approved")
       .is("deleted_at", null)
@@ -919,6 +923,19 @@ export const listLiveStores = createServerFn({ method: "GET" })
     const ids = ms.map((m) => m.id);
     const catIds = [...new Set(ms.map((m) => m.store_category_id).filter(Boolean))];
     const segIds = [...new Set(ms.map((m) => m.segment_id).filter(Boolean))];
+    const zoneIds = [...new Set(ms.map((m) => m.zone_id).filter(Boolean))];
+    const [{ data: zs }, { data: hrs }] = await Promise.all([
+      zoneIds.length ? db.from("zones").select("id, name").in("id", zoneIds) : Promise.resolve({ data: [] }),
+      db.from("merchant_store_hours").select("merchant_id, day_of_week, open_time, close_time, is_closed").in("merchant_id", ids),
+    ]);
+    const zMap = new Map(((zs ?? []) as { id: string; name: string }[]).map((z) => [z.id, z.name]));
+    const hMap = new Map<string, LiveStore["hours"]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const h of (hrs ?? []) as any[]) {
+      const l = hMap.get(h.merchant_id) ?? [];
+      l.push({ day: h.day_of_week, open: h.open_time, close: h.close_time, closed: !!h.is_closed });
+      hMap.set(h.merchant_id, l);
+    }
     const [{ data: cats }, { data: segs }, { data: prods }] = await Promise.all([
       catIds.length ? db.from("store_categories").select("id, name").in("id", catIds) : Promise.resolve({ data: [] }),
       segIds.length ? db.from("segments").select("id, name").in("id", segIds) : Promise.resolve({ data: [] }),
@@ -972,6 +989,10 @@ export const listLiveStores = createServerFn({ method: "GET" })
       deliveryEnabled: !!m.delivery_enabled,
       commissionPct: Number(m.commission_value ?? 0),
       approvedAt: m.approved_at,
+      zoneName: m.zone_id ? zMap.get(m.zone_id) ?? null : null,
+      fulfillmentMode: m.fulfillment_mode ?? null,
+      deliveryFeePayer: m.delivery_fee_payer ?? null,
+      hours: (hMap.get(m.id) ?? []).sort((a, b) => a.day - b.day),
       items: byM.get(m.id) ?? [],
     }));
   });

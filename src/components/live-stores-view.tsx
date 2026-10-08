@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { MapPin, Phone, Search, Store, Package, ArrowLeft, Navigation, MessageCircle } from "lucide-react";
+import { MapPin, Phone, Search, Store, Package, ArrowLeft, Navigation, MessageCircle, Clock } from "lucide-react";
 import { listLiveStores, type LiveStore, type LiveStoreItem } from "@/lib/merchants.functions";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -37,6 +37,21 @@ function StatusPill({ s }: { s: LiveStore }) {
       {open ? "Open · taking orders" : "Closed now"}
     </span>
   );
+}
+
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function t12(t: string | null) {
+  if (!t) return "—";
+  const [h, m] = t.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+function istDay() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay();
+}
+function todayLabel(s: LiveStore) {
+  const h = s.hours.find((x) => x.day === istDay());
+  if (!h) return "Timing not set";
+  return h.closed ? "Closed today" : `Today ${t12(h.open)} – ${t12(h.close)}`;
 }
 
 function mapUrl(s: LiveStore) {
@@ -101,6 +116,9 @@ export function LiveStoresView() {
               <p className="text-[13px] text-muted-foreground flex items-center gap-1 truncate">
                 <MapPin size={13} className="shrink-0" /> {[s.city, s.pincode].filter(Boolean).join(" · ") || "Location not set"}
               </p>
+              <p className="text-[13px] text-muted-foreground flex items-center gap-1">
+                <Clock size={13} className="shrink-0" /> {todayLabel(s)}
+              </p>
               <p className="text-[13px] font-semibold text-foreground flex items-center gap-1">
                 <Package size={13} /> {s.items.length} live item{s.items.length === 1 ? "" : "s"}
               </p>
@@ -156,6 +174,38 @@ function StoreDetail({ store: s, onBack }: { store: LiveStore; onBack: () => voi
             <Info label="Items">
               {s.items.length} live{outOfStock ? ` · ${outOfStock} out of stock` : ""}
             </Info>
+            <Info label="Zone">{s.zoneName || "—"}</Info>
+            <Info label="Fulfilment">
+              {s.fulfillmentMode === "PLATFORM" ? "Badiyos rider" : s.fulfillmentMode === "SELF" ? "Store delivers" : s.fulfillmentMode || "—"}
+            </Info>
+            <Info label="Delivery fee paid by">
+              {s.deliveryFeePayer === "CUSTOMER" ? "Customer" : s.deliveryFeePayer === "MERCHANT" ? "Store" : s.deliveryFeePayer || "—"}
+            </Info>
+            <Info label="Commission">{s.commissionPct}% per order</Info>
+          </div>
+
+          <div className="rounded-[14px] border border-border p-3">
+            <p className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-2">
+              <Clock size={13} /> Store timings
+            </p>
+            {s.hours.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">Timing not set by store.</p>
+            ) : (
+              <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4 text-[13px]">
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+                  const h = s.hours.find((x) => x.day === d);
+                  const today = d === istDay();
+                  return (
+                    <div key={d} className={`flex justify-between gap-2 rounded-[10px] px-2 py-1 ${today ? "bg-primary/10 font-semibold" : ""}`}>
+                      <span>{DAYS[d]}</span>
+                      <span className={!h || h.closed ? "text-destructive" : "text-foreground"}>
+                        {!h ? "Not set" : h.closed ? "Closed" : `${t12(h.open)} – ${t12(h.close)}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="rounded-[14px] border border-border p-3 flex items-start justify-between gap-3 flex-wrap">
