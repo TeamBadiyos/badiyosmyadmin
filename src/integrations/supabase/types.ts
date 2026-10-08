@@ -5182,6 +5182,7 @@ export type Database = {
           id: string
           name: string
           partner_type: string
+          sort_order: number
           status: string
           suggested_fee: number
           updated_at: string
@@ -5191,6 +5192,7 @@ export type Database = {
           id?: string
           name: string
           partner_type: string
+          sort_order?: number
           status?: string
           suggested_fee?: number
           updated_at?: string
@@ -5200,6 +5202,7 @@ export type Database = {
           id?: string
           name?: string
           partner_type?: string
+          sort_order?: number
           status?: string
           suggested_fee?: number
           updated_at?: string
