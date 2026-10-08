@@ -133,7 +133,7 @@ function StepCell({ amount, date }: { amount: number; date: string | null }) {
     <span className="text-right">
       <span className="font-semibold">{amount}</span>
       <span className="block text-[11px] text-muted-foreground">
-        {date ? new Date(date).toLocaleDateString() : ""}
+        {date ? new Date(date).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : ""}
       </span>
     </span>
   );

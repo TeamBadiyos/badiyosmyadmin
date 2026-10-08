@@ -117,7 +117,7 @@ export function RolesPage() {
               </span>
             </span>
             <span className="text-muted-foreground text-[13px]">
-              {new Date(u.createdAt).toLocaleDateString()}
+              {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
             </span>
             <button
               onClick={() => setEditing(u)}

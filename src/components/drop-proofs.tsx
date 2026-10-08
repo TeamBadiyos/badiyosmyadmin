@@ -19,7 +19,7 @@ const inputCls = "w-full rounded-[10px] border border-border bg-background px-3 
 const btnGhost = "rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-40";
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
 const err = (e: unknown) => toast.error(e instanceof Error ? e.message : "Failed");
-const time = (s: string | null) => (s ? new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) : "—");
+const time = (s: string | null) => (s ? new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }) : "—");
 const via = (v: string | null) => (v === "otp" ? "OTP" : v ? "Photo" : "—");
 const firstTag = <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning">Location first time</span>;
 

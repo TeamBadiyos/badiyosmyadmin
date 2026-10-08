@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -375,7 +376,7 @@ export function ExpertFormModal({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Joining date</label>
-                <input type="date" value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)}
+                <DateInput  value={joiningDate} onChange={(e) => setJoiningDate(e.target.value)}
                   className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]" />
               </div>
               <div className="flex flex-col gap-1">
@@ -392,7 +393,7 @@ export function ExpertFormModal({
               {jacketIssued && (
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Jacket given on</label>
-                  <input type="date" value={jacketIssuedAt} onChange={(e) => setJacketIssuedAt(e.target.value)}
+                  <DateInput  value={jacketIssuedAt} onChange={(e) => setJacketIssuedAt(e.target.value)}
                     className="h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]" />
                 </div>
               )}
@@ -415,7 +416,7 @@ export function ExpertFormModal({
                         <span className="text-[14px] font-bold">{d.title}</span>
                       </label>
                       <span className="text-[13px] text-muted-foreground flex-1 min-w-[180px]">{d.description}</span>
-                      <input type="date" value={e.date ?? ""} onChange={(ev) => set({ date: ev.target.value || null })}
+                      <DateInput  value={e.date ?? ""} onChange={(ev) => set({ date: ev.target.value || null })}
                         className="h-9 px-2 rounded-[10px] border border-border bg-card text-[13px]" />
                     </div>
                     <input value={e.notes ?? ""} onChange={(ev) => set({ notes: ev.target.value || null })}

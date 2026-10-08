@@ -58,7 +58,7 @@ export function ExpertTrainingModeCard({
         {completedAt && (
           <p className="text-[13px] text-muted-foreground">
             Went live on{" "}
-            {new Date(completedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+            {new Date(completedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
           </p>
         )}
       </div>

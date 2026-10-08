@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -190,7 +191,7 @@ export function TrainingOrdersPage() {
                 <td className="px-3 py-3">{o.serviceLabel ?? "—"}</td>
                 <td className="px-3 py-3">
                   {o.scheduledDate
-                    ? new Date(o.scheduledDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+                    ? new Date(o.scheduledDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })
                     : "Now"}
                   {o.scheduledTimeSlot ? ` · ${o.scheduledTimeSlot}` : ""}
                 </td>
@@ -202,7 +203,7 @@ export function TrainingOrdersPage() {
                 <td className="px-3 py-3 font-mono font-bold text-[15px]">{o.startOtp ?? "—"}</td>
                 <td className="px-3 py-3 font-mono font-bold text-[15px]">{o.endOtp ?? "—"}</td>
                 <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
-                  {new Date(o.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" })}
+                  {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </td>
                 {isSuper && (
                   <td className="px-3 py-3">
@@ -354,7 +355,7 @@ function CreateDialog({
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
           <span className={labelCls}>Date</span>
-          <input type="date" className={inputCls} value={date} min={todayIso()} onChange={(e) => setDate(e.target.value)} disabled={!slot} />
+          <DateInput  className={inputCls} value={date} min={todayIso()} onChange={(e) => setDate(e.target.value)} disabled={!slot} />
         </label>
         <label className="block space-y-1">
           <span className={labelCls}>Slot</span>
@@ -418,11 +419,11 @@ function ClearDialog({
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
           <span className={labelCls}>From</span>
-          <input type="date" className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
+          <DateInput  className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label className="block space-y-1">
           <span className={labelCls}>To</span>
-          <input type="date" className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
+          <DateInput  className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
       </div>
       <label className="block space-y-1">

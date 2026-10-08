@@ -140,7 +140,7 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                     <span className="text-muted-foreground"> / {g.notified}</span>
                   </td>
                   <td className="px-5 py-3 text-right text-muted-foreground whitespace-nowrap">
-                    {new Date(g.latestAt).toLocaleDateString()}
+                    {new Date(g.latestAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <button

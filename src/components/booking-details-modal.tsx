@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -87,13 +88,7 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
 
 function fmtDateTime(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 }
 
 export function BookingDetailsModal({
@@ -844,8 +839,8 @@ export function BookingDetailsModal({
                         </label>
                         <label className="text-[12px] font-semibold text-muted-foreground">
                           Scheduled date
-                          <input
-                            type="date"
+                          <DateInput
+                            
                             value={editDate}
                             onChange={(e) => setEditDate(e.target.value)}
                             className="mt-1 h-11 w-full px-3 rounded-[14px] border border-border bg-card text-[14px] text-foreground font-normal"
@@ -1535,8 +1530,8 @@ function RescheduleSection({
                   {q.label}
                 </button>
               ))}
-              <input
-                type="date"
+              <DateInput
+                
                 min={ymdLocal(today)}
                 value={date}
                 onChange={(e) => {

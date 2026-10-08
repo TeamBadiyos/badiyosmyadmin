@@ -36,12 +36,7 @@ export function availabilityLabel(o: AvailabilityOverride): string {
     const f = new Date(o.unavailable_from);
     const t = new Date(o.unavailable_until);
     const fmt = (d: Date) =>
-      d.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      d.toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
     return `Scheduled ${fmt(f)} → ${fmt(t)}`;
   }
   return "Available";

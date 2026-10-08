@@ -213,8 +213,8 @@ export function IncentivesTab({ canWrite }: { canWrite: boolean }) {
                 <p className="font-semibold truncate">{p.name}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {p.valid_from || p.valid_until
-                    ? `${p.valid_from ? new Date(p.valid_from).toLocaleDateString() : "—"} → ${
-                        p.valid_until ? new Date(p.valid_until).toLocaleDateString() : "—"
+                    ? `${p.valid_from ? new Date(p.valid_from).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—"} → ${
+                        p.valid_until ? new Date(p.valid_until).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }) : "—"
                       }`
                     : "Always running"}
                 </p>

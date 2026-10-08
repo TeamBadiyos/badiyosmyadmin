@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { ExpertRatingPill } from "@/components/expert-rating";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,13 +53,7 @@ function fmtDuration(mins: number) {
 function fmtDateTime(iso: string) {
 
   const d = new Date(iso);
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return d.toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 }
 
 export type BookingsInitialFilters = {
@@ -276,8 +271,8 @@ export function BookingsPage({
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             From
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={from}
             onChange={(e) => updateFilter(() => setFrom(e.target.value))}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
@@ -287,8 +282,8 @@ export function BookingsPage({
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             To
           </label>
-          <input
-            type="date"
+          <DateInput
+            
             value={to}
             onChange={(e) => updateFilter(() => setTo(e.target.value))}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"

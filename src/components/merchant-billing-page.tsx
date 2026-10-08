@@ -52,7 +52,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
     { key: "net", label: "Merchant payout", type: "number", value: (m: CommissionMerchant) => m.merchantNet, filterable: false },
   ]);
   const dedSf = useSortFilter(q.data?.deductions ?? [], [
-    { key: "date", label: "Date", value: (d: CommissionDeduction) => d.createdAt, display: (d: CommissionDeduction) => new Date(d.createdAt).toLocaleDateString("en-IN"), filterable: false },
+    { key: "date", label: "Date", value: (d: CommissionDeduction) => d.createdAt, display: (d: CommissionDeduction) => new Date(d.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" }), filterable: false },
     { key: "order", label: "Order", value: (d: CommissionDeduction) => d.orderNumber, filterable: false },
     { key: "merchant", label: "Merchant", value: (d: CommissionDeduction) => d.merchantName || "—" },
     { key: "items", label: "Items total", type: "number", value: (d: CommissionDeduction) => d.itemsTotal, filterable: false },
@@ -204,7 +204,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
             <tbody>
               {dedSf.rows.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2.5">{new Date(d.createdAt).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2.5">{new Date(d.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}</td>
                   <td className="px-4 py-2.5 font-mono text-[12px]">{d.orderNumber || d.id.slice(0, 8)}</td>
                   <td className="px-4 py-2.5">{d.merchantName || "—"}</td>
                   <td className="px-4 py-2.5">{inr(d.itemsTotal)}</td>

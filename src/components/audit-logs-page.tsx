@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -126,8 +127,8 @@ export function AuditLogsPage() {
           </select>
         </FilterField>
         <FilterField label="From">
-          <input
-            type="date"
+          <DateInput
+            
             value={from}
             onChange={(e) => {
               setPage(1);
@@ -137,8 +138,8 @@ export function AuditLogsPage() {
           />
         </FilterField>
         <FilterField label="To">
-          <input
-            type="date"
+          <DateInput
+            
             value={to}
             onChange={(e) => {
               setPage(1);

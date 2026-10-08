@@ -201,7 +201,7 @@ export function SealStickersTab({ canWrite, canVoid }: { canWrite: boolean; canV
                 <td className={td}>{b.total}</td>
                 <td className={td}>{b.business ?? <span className="text-muted-foreground">Unassigned</span>}</td>
                 <td className={td}>{b.available}</td><td className={td}>{b.used}</td><td className={td}>{b.void}</td>
-                <td className={td}>{new Date(b.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                <td className={td}>{new Date(b.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}</td>
                 <td className={`${td} whitespace-nowrap`}>
                   {canWrite && !b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setAssignErr(null); setAssigning({ batch: b, merchant: "", charge: "" }); }}>Assign</button> : null}
                   {canWrite && b.merchant_id ? <button className={`${btnGhost} mr-2`} onClick={() => { setMoveErr(null); setMoving({ batch: b, mode: "business", merchant: "", refund: "", charge: "", reason: "" }); }}><ArrowLeftRight size={13} className="mr-1 inline" />Reassign</button> : null}

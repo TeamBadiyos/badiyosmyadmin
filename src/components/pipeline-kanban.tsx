@@ -90,7 +90,7 @@ function formatPlacedAt(iso: string): string {
       minute: "2-digit",
     });
     if (sameDay) return `Placed at ${time}`;
-    const date = d.toLocaleDateString([], { day: "2-digit", month: "short" });
+    const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
     return `Placed ${date}, ${time}`;
   } catch {
     return "";
@@ -590,13 +590,9 @@ export function dispatchNote(
     timeZone: "Asia/Kolkata",
   });
   const dayKey = (d: Date) =>
-    d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+    d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
   if (dayKey(at) === dayKey(new Date())) return `Dispatches at ${time}`;
-  const date = at.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    timeZone: "Asia/Kolkata",
-  });
+  const date = at.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
   return `Dispatches on ${date}, ${time}`;
 }
 
