@@ -13,7 +13,7 @@ export function ExpertGrowthPartnerCard({ expertId, canChange }: { expertId: str
   const m = useMutation({
     mutationFn: (partnerId: string | null) => save({ data: { expertId, partnerId } }),
     onSuccess: () => {
-      toast.success("Growth Partner updated");
+      toast.success("Partner updated");
       qc.invalidateQueries({ queryKey: ["expert-growth-partner", expertId] });
       qc.invalidateQueries({ queryKey: ["partner-program"] });
     },
@@ -23,7 +23,7 @@ export function ExpertGrowthPartnerCard({ expertId, canChange }: { expertId: str
   const name = list.data?.find((p) => p.id === value)?.name;
   return (
     <section className="rounded-[14px] border border-border p-3">
-      <p className="text-[11px] font-bold uppercase text-muted-foreground">Onboarded by Growth Partner</p>
+      <p className="text-[11px] font-bold uppercase text-muted-foreground">Onboarded by Partner</p>
       {canChange ? (
         <select
           className="mt-2 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"

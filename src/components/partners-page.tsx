@@ -180,7 +180,7 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
         <label className="text-sm">Program
           <select className={input} value={f.program} onChange={(e) => {
             const p = e.target.value as PartnerProgram;
-            setF((x) => ({ ...x, program: p, plan_id: null, zone_id: p === "zone_franchise" ? x.zone_id : null }));
+            setF((x) => ({ ...x, program: p, plan_id: null, growth_plan_id: p === "growth" ? null : x.growth_plan_id ?? null, zone_id: p === "zone_franchise" ? x.zone_id : null }));
           }}>
             {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -196,6 +196,16 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
             ))}
           </select>
         </label>
+        {f.program !== "growth" && (
+          <label className="text-sm sm:col-span-2">Growth plan (for own onboarded Experts)
+            <select className={input} value={f.growth_plan_id ?? ""} onChange={(e) => set("growth_plan_id", e.target.value || null)}>
+              <option value="">— None —</option>
+              {plans.filter((x) => x.partner_type === "growth" && (x.status === "active" || x.id === initial.growth_plan_id)).map((x) => (
+                <option key={x.id} value={x.id}>{x.name}{x.status !== "active" ? " (inactive)" : ""}</option>
+              ))}
+            </select>
+          </label>
+        )}
         {f.program === "zone_franchise" ? (
           <label className="text-sm">Zone
             <select className={input} value={f.zone_id ?? ""} onChange={(e) => {
