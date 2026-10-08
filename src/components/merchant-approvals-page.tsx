@@ -44,7 +44,6 @@ const STATUS_STYLES: Record<MerchantStatus, string> = {
 
 const TABS: { key: MerchantStatus | "" | "live"; label: string }[] = [
   { key: "", label: "All" },
-  { key: "live", label: "Live Stores" },
   { key: "pending_review", label: "Pending review" },
   { key: "draft", label: "Draft / Incomplete" },
   { key: "approved", label: "Approved" },
