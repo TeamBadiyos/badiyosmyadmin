@@ -33,20 +33,6 @@ const inquirySchema = z.object({
 export type LeadInput = z.infer<typeof leadSchema>;
 export type InquiryInput = z.infer<typeof inquirySchema>;
 
-export const submitAreaPartnerLead = createServerFn({ method: "POST" })
-  .inputValidator((raw: unknown) => leadSchema.parse(raw))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("area_partner_leads").insert({
-      name: data.name,
-      phone: data.phone,
-      area: data.area,
-      email: data.email ?? null,
-    });
-    if (error) throw new Error("Could not submit right now. Please try again.");
-    return { ok: true as const };
-  });
-
 export const submitExpertLead = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => leadSchema.parse(raw))
   .handler(async ({ data }) => {
