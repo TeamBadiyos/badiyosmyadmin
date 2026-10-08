@@ -13,6 +13,7 @@ export type PartnerRow = {
   program: PartnerProgram;
   level: string | null;
   plan_id: string | null;
+  growth_plan_id?: string | null;
   fee_collected_at: string | null;
   city: string;
   zone_id: string | null;
@@ -126,10 +127,21 @@ export const listGrowthPartners = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase as Db;
     await requireStaff(db, context.userId, false);
-    const { data, error } = await db.from("partners").select("id, name, status, partner_commission_plans(name)").eq("program", "growth").order("name");
-    if (error) throw new Error(error.message);
+    const [pr, pl] = await Promise.all([
+      db.from("partners").select("id, name, status, program, plan_id, growth_plan_id")
+        .or("program.eq.growth,and(program.in.(zone_franchise,city_master),growth_plan_id.not.is.null)").order("name"),
+      db.from("partner_commission_plans").select("id, name"),
+    ]);
+    if (pr.error) throw new Error(pr.error.message);
+    if (pl.error) throw new Error(pl.error.message);
+    const names: Record<string, string> = {};
+    for (const x of pl.data ?? []) names[x.id] = x.name;
+    const tag: Record<string, string> = { zone_franchise: " (Zone Franchise)", city_master: " (City Master)" };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((data ?? []) as any[]).map((r) => ({ id: r.id as string, name: r.name as string, status: r.status as string, level: (r.partner_commission_plans?.name ?? "No plan") as string }));
+    return ((pr.data ?? []) as any[]).map((r) => {
+      const planId = r.program === "growth" ? r.plan_id : r.growth_plan_id;
+      return { id: r.id as string, name: r.name as string, status: r.status as string, level: `${names[planId] ?? "No plan"}${tag[r.program] ?? ""}` };
+    });
   });
 
 export const getExpertGrowthPartner = createServerFn({ method: "GET" })
