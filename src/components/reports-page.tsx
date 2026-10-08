@@ -25,6 +25,9 @@ import {
   getPayoutReport,
   getCustomerReport,
   getPnlReport,
+  getRiderReport,
+  getStoreReport,
+  getPayoutOverview,
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
@@ -37,7 +40,9 @@ const TABS = [
   { key: "pnl", label: "Profit & Loss" },
   { key: "revenue", label: "Revenue" },
   { key: "bookings", label: "Bookings" },
-  { key: "experts", label: "Experts" },
+  { key: "experts", label: "Experts (Services)" },
+  { key: "riders", label: "Riders (Delivery)" },
+  { key: "stores", label: "Store-wise" },
   { key: "referrals", label: "Referrals" },
   { key: "payouts", label: "Payouts" },
   { key: "customers", label: "Customers" },
@@ -97,7 +102,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
   const visibleTabs = TABS.filter((t) => {
     if (role !== "area_partner") return true;
     // area_partner sees only reports meaningful in their zone scope
-    return t.key !== "referrals" && t.key !== "payouts";
+    return !["referrals", "payouts", "riders", "stores"].includes(t.key);
   });
 
   return (
@@ -168,6 +173,8 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
       {tab === "revenue" && <RevenueTab range={range} />}
       {tab === "bookings" && <BookingsTab range={range} />}
       {tab === "experts" && <ExpertsTab range={range} />}
+      {tab === "riders" && role !== "area_partner" && <RidersTab range={range} />}
+      {tab === "stores" && role !== "area_partner" && <StoresTab range={range} />}
       {tab === "referrals" && role !== "area_partner" && <ReferralsTab range={range} />}
       {tab === "payouts" && role !== "area_partner" && <PayoutsTab range={range} />}
       {tab === "customers" && <CustomersTab range={range} />}
@@ -455,75 +462,144 @@ function ReferralsTab({ range }: { range: ReportRange }) {
 
 // ============ Payouts ============
 function PayoutsTab({ range }: { range: ReportRange }) {
-  const fetchFn = useServerFn(getPayoutReport);
+  const fetchFn = useServerFn(getPayoutOverview);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["reports", "payouts", range],
+    queryKey: ["reports", "payouts-all", range],
     queryFn: () => fetchFn({ data: range }),
   });
   const [openBatch, setOpenBatch] = useState<PayoutBatch | null>(null);
-  if (openBatch) {
-    return <BatchDetail batch={openBatch} onBack={() => setOpenBatch(null)} />;
-  }
+  if (openBatch) return <BatchDetail batch={openBatch} onBack={() => setOpenBatch(null)} />;
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   const rows = data ?? [];
+  const groups = ["Experts & Riders", "Stores", "Area Partners"] as const;
   return (
-    <Card>
-      <h3 className="text-[15px] font-bold text-foreground mb-4">Payout batches</h3>
-      {rows.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground text-center py-10">
-          No payout batches in range.
-        </p>
-      ) : (
-        <div className="border border-border rounded-[14px] overflow-hidden">
-          <div className="grid grid-cols-[minmax(0,1fr)_140px_140px_120px] gap-4 px-5 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Week</span>
-            <span className="text-right">Total</span>
-            <span>Status</span>
-            <span className="text-right">Action</span>
-          </div>
-          {rows.map((r) => (
-            <div
-              key={r.id}
-              className="grid grid-cols-[minmax(0,1fr)_140px_140px_120px] gap-4 items-center px-5 py-3 border-b border-border last:border-b-0 text-[14px]"
-            >
-              <span className="font-semibold text-foreground">
-                {fmtShortDate(r.weekStart)} – {fmtShortDate(r.weekEnd)}
-              </span>
-              <span className="text-right font-semibold">{inr.format(r.totalAmount)}</span>
-              <span
-                className={`inline-flex items-center justify-center h-6 px-2.5 rounded-full text-[11px] font-bold uppercase w-fit ${
-                  r.status === "paid"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-amber-50 text-amber-700"
-                }`}
-              >
-                {r.status}
-              </span>
-              <div className="text-right">
-                <button
-                  onClick={() =>
-                    setOpenBatch({
-                      id: r.id,
-                      week_start: r.weekStart,
-                      week_end: r.weekEnd,
-                      status: r.status,
-                      total_amount: r.totalAmount,
-                      created_at: r.weekStart,
-                      batch_type: "expert",
-
-                    })
-                  }
-                  className="h-8 px-3 rounded-[10px] border border-border font-semibold text-[12px] hover:bg-muted"
-                >
-                  View
-                </button>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {groups.map((g) => {
+          const gr = rows.filter((r) => r.group === g);
+          const paid = gr.filter((r) => r.status === "paid").reduce((x, r) => x + r.net, 0);
+          const pending = gr.filter((r) => r.status !== "paid").reduce((x, r) => x + r.net, 0);
+          return (
+            <div key={g} className="bg-card border border-border rounded-[18px] p-5">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{g}</p>
+              <p className="mt-2 text-[20px] font-bold text-foreground">{inr.format(paid)} paid</p>
+              <p className="text-[13px] text-muted-foreground">{inr.format(pending)} pending · {gr.length} batches</p>
+            </div>
+          );
+        })}
+      </div>
+      {groups.map((g) => {
+        const gr = rows.filter((r) => r.group === g);
+        return (
+          <Card key={g}>
+            <h3 className="text-[15px] font-bold text-foreground mb-1">{g} payout batches</h3>
+            {g === "Experts & Riders" && (
+              <p className="text-[12px] text-muted-foreground mb-3">Riders are paid from the same wallet batch; see Riders tab for their delivery earnings.</p>
+            )}
+            {g === "Area Partners" && (
+              <p className="text-[12px] text-muted-foreground mb-3">Open Partner Program → Payouts to edit, approve or mark paid.</p>
+            )}
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px]">
+                <SimpleTable
+                  columns={["Period", "Status", "Gross", "TDS", "Net", ""]}
+                  rightAlign={[2, 3, 4]}
+                  emptyText="No batches in range."
+                  rows={gr.map((r) => [
+                    `${fmtShortDate(r.from)} – ${fmtShortDate(r.to)}`,
+                    r.status.toUpperCase(),
+                    inr.format(r.gross),
+                    inr.format(r.tds),
+                    inr.format(r.net),
+                    "",
+                  ])}
+                />
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </Card>
+            {g !== "Area Partners" && gr.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {gr.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setOpenBatch({ id: r.id, week_start: r.from, week_end: r.to, status: r.status as "pending" | "paid", total_amount: r.net, created_at: r.from, batch_type: r.batchType ?? "expert" })}
+                    className="h-8 px-3 rounded-[10px] border border-border font-semibold text-[12px] hover:bg-muted"
+                  >
+                    View {fmtShortDate(r.from)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============ Riders ============
+function RidersTab({ range }: { range: ReportRange }) {
+  const fetchFn = useServerFn(getRiderReport);
+  const { data, isLoading, error } = useQuery({ queryKey: ["reports", "riders", range], queryFn: () => fetchFn({ data: range }) });
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMsg msg={(error as Error).message} />;
+  if (!data) return null;
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {data.byKind.map((k) => (
+          <div key={k.kind} className="bg-card border border-border rounded-[18px] p-5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{k.kind}</p>
+            <p className="mt-2 text-[20px] font-bold text-foreground">{k.orders} delivered</p>
+            <p className="text-[13px] text-muted-foreground">Rider pay {inr.format(k.riderPayout)} · Our earning {inr.format(k.platformEarning)}</p>
+          </div>
+        ))}
+      </div>
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-1">Rider performance</h3>
+        <p className="text-[12px] text-muted-foreground mb-3">Delivered paid orders only. Rider pay = amount excl. GST × rider share.</p>
+        <div className="overflow-x-auto"><div className="min-w-[760px]">
+          <SimpleTable
+            columns={["Rider", "Total", "Delivery", "Store", "Bulk", "Collected", "Rider pay", "Our earning"]}
+            rightAlign={[1, 2, 3, 4, 5, 6, 7]}
+            emptyText="No delivered orders in range."
+            rows={data.rows.map((r) => [r.name, String(r.orders), String(r.delivery), String(r.store), String(r.bulk), inr.format(r.collected), inr.format(r.riderPayout), inr.format(r.platformEarning)])}
+          />
+        </div></div>
+      </Card>
+    </div>
+  );
+}
+
+// ============ Store-wise ============
+function StoresTab({ range }: { range: ReportRange }) {
+  const fetchFn = useServerFn(getStoreReport);
+  const { data, isLoading, error } = useQuery({ queryKey: ["reports", "stores", range], queryFn: () => fetchFn({ data: range }) });
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMsg msg={(error as Error).message} />;
+  const rows = data ?? [];
+  const sum = (k: "sales" | "commission" | "commissionGst" | "merchantPayout" | "orders") => rows.reduce((x, r) => x + r[k], 0);
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat label="Store Sales" value={inr.format(sum("sales"))} />
+        <Stat label="Our Commission" value={inr.format(sum("commission"))} />
+        <Stat label="GST on Commission" value={inr.format(sum("commissionGst"))} />
+        <Stat label="Payable to Stores" value={inr.format(sum("merchantPayout"))} />
+      </div>
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-1">Commission by store</h3>
+        <p className="text-[12px] text-muted-foreground mb-3">Completed, non-training store orders. Store delivery fees are in the Riders tab.</p>
+        <div className="overflow-x-auto"><div className="min-w-[760px]">
+          <SimpleTable
+            columns={["Store", "Orders", "Sales", "Refunds", "Commission", "Comm. %", "GST", "Store payout"]}
+            rightAlign={[1, 2, 3, 4, 5, 6, 7]}
+            emptyText="No completed store orders in range."
+            rows={rows.map((r) => [r.storeName, String(r.orders), inr.format(r.sales), inr.format(r.refunds), inr.format(r.commission), `${r.commissionPct.toFixed(1)}%`, inr.format(r.commissionGst), inr.format(r.merchantPayout)])}
+          />
+        </div></div>
+      </Card>
+    </div>
   );
 }
 
@@ -642,7 +718,7 @@ function PnlTab({ range }: { range: ReportRange }) {
       ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
       ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
       ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission],
-      ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Platform profit", T.platformProfit],
+      ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Gross profit", T.grossProfit], ["Net profit", T.platformProfit],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
     const csv = ["Item,Amount", ...lines.map(([k, v]) => `"${k}",${v.toFixed(2)}`), "", "Date,Collected,Payouts,Profit",
@@ -668,7 +744,10 @@ function PnlTab({ range }: { range: ReportRange }) {
         <Stat label="Bonuses" value={inr.format(T.bonuses)} />
         <Stat label="GST Collected" value={inr.format(T.gst)} />
         <Stat label="Refunds" value={inr.format(T.refunds)} />
-        <Stat label={`Platform Profit (${T.marginPct.toFixed(1)}%)`} value={inr.format(T.platformProfit)} />
+        <Stat label={`Gross Profit (${T.grossPct.toFixed(1)}%)`} value={inr.format(T.grossProfit)} />
+        <Stat label={`Net Profit (${T.marginPct.toFixed(1)}%)`} value={inr.format(T.platformProfit)} />
+        <Stat label="Store Commission" value={inr.format(m.commission)} />
+        <Stat label="Area Partner Commission" value={inr.format(data.programCommission)} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -679,12 +758,13 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label="Collected from customers" value={T.collected} bold />
           <Row label="Refunds" value={T.refunds} neg />
           <Row label="GST (goes to government)" value={T.gst} neg />
-          <Row label="Net revenue" value={T.netRevenue} bold />
-          <Row label="Expert payouts" value={s.expertPayout} neg />
-          <Row label="Rider payouts" value={c.riderPayout} neg />
+          <Row label="Net revenue" sub="Includes store commission (excl GST)" value={T.netRevenue} bold />
+          <Row label="Expert payouts (services)" value={s.expertPayout} neg />
+          <Row label="Rider payouts (delivery, store & bulk)" value={c.riderPayout} neg />
+          <Row label={`Gross profit · ${T.grossPct.toFixed(1)}%`} value={T.grossProfit} bold />
           <Row label="Partner Program commission" sub="Draft, approved and paid partner batches" value={data.programCommission} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
-          <Row label="Platform profit" value={T.platformProfit} bold />
+          <Row label={`Net profit · ${T.marginPct.toFixed(1)}%`} value={T.platformProfit} bold />
         </Card>
         <Card>
           <h3 className="text-[15px] font-bold text-foreground mb-2">Payout status (batches in range)</h3>
@@ -705,8 +785,8 @@ function PnlTab({ range }: { range: ReportRange }) {
           emptyText="No orders in range."
           rows={[
             ["Services", String(s.orders), inr.format(s.gross), inr.format(s.discount + s.coinDiscount), inr.format(s.netRevenue), inr.format(s.expertPayout + s.partnerPayout), inr.format(s.platformEarning)],
-            ["Courier", String(c.orders), inr.format(c.gross), inr.format(c.discount + c.coinDiscount), inr.format(c.netRevenue), inr.format(c.riderPayout), inr.format(c.platformEarning)],
-            ["Store", String(m.orders), inr.format(m.gross), inr.format(0), inr.format(m.commission), inr.format(m.merchantPayout), inr.format(m.commission)],
+            ["Delivery (all rider work)", String(c.orders), inr.format(c.gross), inr.format(c.discount + c.coinDiscount), inr.format(c.netRevenue), inr.format(c.riderPayout), inr.format(c.platformEarning)],
+            ["Store items", String(m.orders), inr.format(m.gross), inr.format(0), inr.format(m.commission), inr.format(m.merchantPayout), inr.format(m.commission)],
           ]}
         />
       </Card>
