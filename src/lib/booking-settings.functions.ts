@@ -198,3 +198,56 @@ export const setInstantBooking = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const getSlotCapacity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { date: string }) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    const sb = (context as Ctx).supabase;
+    const [cfg, day, cap, busy] = await Promise.all([
+      sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "default_slot_capacity", "slot_capacity_mode"]),
+      sb.from("service_daily_capacity").select("capacity").eq("service_key", "clean").eq("cap_date", data.date).maybeSingle(),
+      sb.rpc("slot_capacity_for", { _service_key: "clean", _date: data.date }),
+      sb.rpc("slot_busy_by_hour", { _service_key: "clean", _date: data.date }),
+    ]);
+    if (cap.error) throw new Error(cap.error.message);
+    if (busy.error) throw new Error(busy.error.message);
+    const c: Record<string, string> = {};
+    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
+    const busyMap: Record<number, number> = {};
+    for (const r of (busy.data ?? []) as Array<{ start_hour: number; busy: number }>) busyMap[r.start_hour] = r.busy;
+    return {
+      enabled: c["slot_capacity_enabled"] === "1",
+      mode: (c["slot_capacity_mode"] === "live" ? "live" : "manual") as "live" | "manual",
+      defaultCap: Number(c["default_slot_capacity"] ?? 5),
+      dayCap: (day.data as { capacity: number } | null)?.capacity ?? null,
+      capacity: Number(cap.data ?? 0),
+      busy: busyMap,
+    };
+  });
+
+export const setDailyCapacity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { date: string; capacity: number | null }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_daily_capacity", { _date: data.date, _capacity: data.capacity });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setCapacitySetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { key: "slot_capacity_enabled" | "default_slot_capacity" | "slot_capacity_mode"; value: string }) => {
+    if (i.key === "slot_capacity_enabled" && !["0", "1"].includes(i.value)) throw new Error("Invalid");
+    if (i.key === "slot_capacity_mode" && !["manual", "live"].includes(i.value)) throw new Error("Invalid");
+    if (i.key === "default_slot_capacity") { const n = Number(i.value); if (!Number.isInteger(n) || n < 0 || n > 500) throw new Error("Maid count must be 0–500"); }
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", { _key: data.key, _value: data.value });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
