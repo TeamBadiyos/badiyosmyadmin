@@ -214,7 +214,7 @@ export function BookingsPage({
       if (toMs != null && t > toMs) return false;
       return true;
     });
-  }, [courierAll, orderType, page, from, to, status, zoneId, canSeeCourier]);
+  }, [courierAll, orderType, page, from, to, status, zoneId, canSeeCourier, search]);
 
 
   function updateFilter(fn: () => void) {
@@ -227,6 +227,32 @@ export function BookingsPage({
   return (
     <div className="space-y-6">
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Search
+          </label>
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Customer or expert (name / phone)…"
+              className="h-10 pl-8 pr-8 rounded-[12px] border border-border bg-card text-[13px] min-w-[230px] w-full sm:w-auto"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
         {canSeeCourier && (
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
