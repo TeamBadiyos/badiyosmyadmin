@@ -690,17 +690,18 @@ function BoardCard({
     : 0;
   const timedOut = isBroadcasting && elapsedSec > broadcastTimeoutSeconds;
 
-  // Countdown to the automatic no-expert refund (dispatch start + timeout).
+  // Countdown to the automatic no-expert refund: scheduled → slot + refund
+  // window (ops setting); ASAP → dispatch start + no-expert timeout.
+  const refundSlot = slotStartMs(booking);
   const dispatchStartMs = booking.broadcastStartedAt
     ? new Date(booking.broadcastStartedAt).getTime()
     : new Date(booking.createdAt).getTime();
+  const refundAtMs =
+    refundSlot != null
+      ? refundSlot + journeyConfig.noExpertRefundAfterSlotMinutes * 60_000
+      : dispatchStartMs + noExpertTimeoutMinutes * 60_000;
   const autoCancelMinsLeft = isBroadcasting
-    ? Math.max(
-        0,
-        Math.ceil(
-          (dispatchStartMs + noExpertTimeoutMinutes * 60_000 - nowMs) / 60_000,
-        ),
-      )
+    ? Math.max(0, Math.ceil((refundAtMs - nowMs) / 60_000))
     : null;
 
   // ---- Journey steps: on the way / arrived, and the "running late" alert ----
