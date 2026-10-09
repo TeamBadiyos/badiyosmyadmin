@@ -47,6 +47,7 @@ import { ShareLocation } from "@/components/share-location";
 import { ServiceTimerCard } from "@/components/service-timer";
 import { JobLocationDialog } from "@/components/job-location-dialog";
 import { ExpertHandoverPanel } from "@/components/expert-handover-panel";
+import { TransferWorkPanel } from "@/components/transfer-work-panel";
 
 
 
@@ -713,6 +714,15 @@ export function BookingDetailsModal({
                 currentExpertName={data.expert.name ?? null}
                 canEdit={canEdit}
               />
+
+              <TransferWorkPanel
+                bookingId={bookingId}
+                status={data.status}
+                currentExpertId={data.expert.id ?? null}
+                currentExpertName={data.expert.name ?? null}
+                canEdit={canEdit}
+              />
+
 
               {canEdit && data.status === "confirmed" && !data.expert.id && (
                 <section className="bg-background border border-border rounded-[18px] p-4 flex flex-wrap items-center justify-between gap-3">

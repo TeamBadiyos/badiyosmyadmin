@@ -70,3 +70,27 @@ export const handoverBookingExpert = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return res as { previous_payout: number; remaining_payout: number };
   });
+
+export const listTransferExperts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (context.supabase as any)
+      .from("experts").select("id, name, phone").eq("status", "active").order("name");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; name: string; phone: string | null }[];
+  });
+
+export const transferCompletedWork = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; newExpertId: string; reason: string }) => {
+    if (!input?.bookingId || !input?.newExpertId) throw new Error("Booking and expert required");
+    if (!input.reason || input.reason.trim().length < 3) throw new Error("Reason is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { data: res, error } = await (context.supabase as any).rpc("staff_transfer_completed_work", {
+      _booking_id: data.bookingId, _new_expert_id: data.newExpertId, _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return res as { amount: number; minutes: number; from: string | null; to: string | null };
+  });
