@@ -1189,6 +1189,7 @@ function AssignExpertInline({ bookingId }: { bookingId: string }) {
               <option key={ex.id} value={ex.id}>
                 {ex.name}
                 {ex.distanceKm != null ? ` · ${ex.distanceKm.toFixed(1)} km` : ""}
+                  {(ex as { busy?: boolean }).busy ? " · Busy (assign as next order)" : ""}
               </option>
             ))}
           </select>

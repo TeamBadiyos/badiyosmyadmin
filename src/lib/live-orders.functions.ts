@@ -134,6 +134,8 @@ export type ActiveExpert = {
   name: string;
   phone: string;
   distanceKm: number | null;
+  /** true = expert is on a running order; assigning queues this as their next order */
+  busy?: boolean;
 };
 
 // Radius-based eligible experts for a booking (uses dispatch_config radius
@@ -170,10 +172,27 @@ export const listActiveExperts = createServerFn({ method: "POST" })
           Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2;
         return 2 * R * Math.asin(Math.sqrt(x));
       };
+      // Busy experts may get ONE upcoming order from CC (max 1 running + 1 upcoming).
+      const ids = (experts ?? []).map((e) => e.id as string);
+      const counts = new Map<string, number>();
+      if (ids.length) {
+        const { data: act } = await db
+          .from("bookings")
+          .select("id, assigned_expert_id")
+          .in("assigned_expert_id", ids)
+          .is("deleted_at", null)
+          .in("status", ["expert_assigned", "on_the_way", "arrived", "in_progress"]);
+        for (const r of act ?? []) {
+          if (r.id === data.bookingId) continue;
+          const k = r.assigned_expert_id as string;
+          counts.set(k, (counts.get(k) ?? 0) + 1);
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return ((experts ?? []) as any[])
-        .filter((e) => !e.is_busy)
+        .filter((e) => (counts.get(e.id) ?? 0) < 2 && (!e.is_busy || (counts.get(e.id) ?? 0) === 1))
         .map((e) => ({
+          busy: !!e.is_busy || (counts.get(e.id) ?? 0) > 0,
           id: e.id as string,
           name: e.name as string,
           phone: e.phone as string,
@@ -182,7 +201,8 @@ export const listActiveExperts = createServerFn({ method: "POST" })
               ? hav(bLat, bLng, Number(e.current_lat), Number(e.current_lng))
               : null,
         }))
-        .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
+        .sort((a, b) =>
+          Number(a.busy) - Number(b.busy) || (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
     }
 
     const { data: rows, error } = await db
