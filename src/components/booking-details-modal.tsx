@@ -315,6 +315,17 @@ export function BookingDetailsModal({
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Reschedule failed"),
   });
+  const shootFn = useServerFn(acceptPendingBooking);
+  const shootMutation = useMutation({
+    mutationFn: () => shootFn({ data: { bookingId } }),
+    onSuccess: () => {
+      toast.success("Order shot to experts · moved to Needs Expert");
+      queryClient.invalidateQueries({ queryKey: ["bookings", "details", bookingId] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
 
   // Expert assignment / reassignment
@@ -701,6 +712,28 @@ export function BookingDetailsModal({
                 currentExpertName={data.expert.name ?? null}
                 canEdit={canEdit}
               />
+
+              {canEdit && data.status === "confirmed" && !data.expert.id && (
+                <section className="bg-background border border-border rounded-[18px] p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Shoot now
+                    </h3>
+                    <p className="text-[12px] text-muted-foreground">
+                      Send this scheduled order to experts right away (moves to Needs Expert).
+                    </p>
+                  </div>
+                  <button
+                    disabled={shootMutation.isPending}
+                    onClick={() => {
+                      if (confirm("Is order ko abhi experts ko bhej dein (Needs Expert)?")) shootMutation.mutate();
+                    }}
+                    className="h-10 px-4 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
+                  >
+                    {shootMutation.isPending ? "Sending…" : "Shoot Now"}
+                  </button>
+                </section>
+              )}
 
               {canReschedule && (
                 <RescheduleSection
