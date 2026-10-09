@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -85,8 +85,8 @@ export function SettlementsPage() {
             {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
             {!isLoading && !rows.length && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No settlements in these dates. Click “Sync now”.</td></tr>}
             {rows.map((r) => (
-              <>
-                <tr key={r.id} className="border-b border-border">
+              <Fragment key={r.id}>
+                <tr className="border-b border-border">
                   <td className="p-3 whitespace-nowrap">{fmt(r.settled_at)}</td>
                   <td className="p-3 font-mono text-[12px]">{r.id}</td>
                   <td className="p-3">{inr.format(r.gross_amount)}</td>
@@ -104,7 +104,7 @@ export function SettlementsPage() {
                   <td className="p-3"><button onClick={() => setOpen(open === r.id ? null : r.id)} className="text-primary text-[12px] font-semibold">{open === r.id ? "Hide" : "Orders"}</button></td>
                 </tr>
                 {open === r.id && <tr key={r.id + "-d"}><td colSpan={9} className="p-3 bg-muted/40"><Items id={r.id} /></td></tr>}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
