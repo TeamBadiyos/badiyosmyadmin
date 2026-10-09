@@ -141,7 +141,7 @@ const NAV_ITEMS = [
   { key: "rewards", label: "Rewards", icon: Award },
   { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
-  { key: "settlements", label: "Settlements & Bank Tally", icon: Landmark },
+  { key: "settlements", label: "Settlement", icon: Landmark },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
