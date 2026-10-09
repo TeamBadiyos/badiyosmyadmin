@@ -144,6 +144,36 @@ export const listBookings = createServerFn({ method: "POST" })
     if (data.from) q = q.gte("created_at", `${data.from}T00:00:00Z`);
     if (data.to) q = q.lte("created_at", `${data.to}T23:59:59Z`);
 
+    // Search by customer or expert name / phone: resolve matching ids first,
+    // then filter bookings on user_id / assigned_expert_id.
+    const search = (data.search ?? "").trim();
+    if (search) {
+      const like = `%${search.replace(/[%_,()]/g, " ")}%`;
+      const [matchUsers, matchExperts] = await Promise.all([
+        context.supabase
+          .from("users")
+          .select("id")
+          .or(`full_name.ilike.${like},phone.ilike.${like}`)
+          .limit(500),
+        context.supabase
+          .from("experts")
+          .select("id")
+          .or(`name.ilike.${like},phone.ilike.${like}`)
+          .limit(500),
+      ]);
+      const uIds = ((matchUsers.data ?? []) as { id: string }[]).map((r) => r.id);
+      const eIds = ((matchExperts.data ?? []) as { id: string }[]).map(
+        (r) => r.id,
+      );
+      if (!uIds.length && !eIds.length) {
+        return { rows: [], total: 0, page, pageSize };
+      }
+      const parts: string[] = [];
+      if (uIds.length) parts.push(`user_id.in.(${uIds.join(",")})`);
+      if (eIds.length) parts.push(`assigned_expert_id.in.(${eIds.join(",")})`);
+      q = q.or(parts.join(","));
+    }
+
     const { data: rows, error, count } = await q;
     if (error) throw new Error(error.message);
 
