@@ -9047,6 +9047,10 @@ export type Database = {
       }
       evaluate_zone_capacity: { Args: { _booking_id: string }; Returns: Json }
       expand_stale_broadcasts: { Args: never; Returns: number }
+      expert_active_booking_count: {
+        Args: { _exclude?: string; _expert_id: string }
+        Returns: number
+      }
       expert_ensure_booking_codes: {
         Args: { _booking_id: string }
         Returns: {
