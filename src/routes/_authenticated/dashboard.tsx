@@ -93,6 +93,8 @@ import {
   SlidersHorizontal,
   Truck,
   Lightbulb,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { SuggestionsPage } from "@/components/suggestions-page";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
@@ -257,6 +259,17 @@ function Shell() {
   >(null);
   const [expertsOnlineOnly, setExpertsOnlineOnly] = useState(false);
   const [navNonce, setNavNonce] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("cc_sidebar_collapsed") === "1");
+  }, []);
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      localStorage.setItem("cc_sidebar_collapsed", c ? "0" : "1");
+      return !c;
+    });
+  }
+  const mini = collapsed && !mobileOpen;
   const activeItem = NAV_ITEMS.find((n) => n.key === active)!;
 
   function gotoBookings(preset: { status?: string; from?: string; to?: string } | null) {
@@ -341,15 +354,23 @@ function Shell() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background lg:pl-[240px]">
+    <div className={`min-h-screen w-full bg-background transition-[padding] duration-200 ${collapsed ? "lg:pl-[68px]" : "lg:pl-[240px]"}`}>
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[240px] bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[240px] ${collapsed ? "lg:w-[68px]" : ""} bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-          <img src={badiyoLogo.url} alt="Badiyos" className="h-7 w-auto" />
+        <div className={`h-16 flex items-center justify-between border-b border-border ${mini ? "lg:justify-center lg:px-2 px-6" : "px-6"}`}>
+          <img src={badiyoLogo.url} alt="Badiyos" className={`h-7 w-auto ${mini ? "lg:hidden" : ""}`} />
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand menu" : "Minimize menu"}
+            title={collapsed ? "Expand menu" : "Minimize menu"}
+            className="hidden lg:flex items-center justify-center w-9 h-9 rounded-[10px] text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+          </button>
           <button
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
@@ -365,11 +386,12 @@ function Shell() {
             return (
               <button
                 key={item.key}
+                title={item.label}
                 onClick={() => {
                   setActive(item.key);
                   setMobileOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                   isActive
                     ? "border-primary bg-primary-tint text-foreground font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -380,7 +402,7 @@ function Shell() {
                   strokeWidth={isActive ? 2.25 : 2}
                   className={isActive ? "text-primary" : ""}
                 />
-                <span>{item.label}</span>
+                <span className={mini ? "lg:hidden" : ""}>{item.label}</span>
               </button>
             );
           })}
@@ -391,7 +413,13 @@ function Shell() {
             return (
               <div key={group.id}>
                 <button
+                  title={group.label}
                   onClick={() => {
+                    if (mini) {
+                      toggleCollapsed();
+                      setOpenGroups((p) => ({ ...p, [group.id]: true }));
+                      return;
+                    }
                     setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
                     if (!open && group.items[0]) {
                       setActive(group.items[0].key);
@@ -400,7 +428,7 @@ function Shell() {
                     }
                   }}
                   aria-expanded={open}
-                  className={`w-full flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                  className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                     group.isActive && !open
                       ? "border-primary bg-primary-tint text-foreground font-semibold"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -411,7 +439,7 @@ function Shell() {
                     strokeWidth={group.isActive ? 2.25 : 2}
                     className={group.isActive ? "text-primary" : ""}
                   />
-                  <span className="flex-1 text-left">{group.label}</span>
+                  <span className={`flex-1 text-left ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
                   {!open &&
                     (group.keys as readonly string[]).includes("support") &&
                     openTickets > 0 && (
@@ -422,11 +450,11 @@ function Shell() {
 
                   <ChevronDown
                     size={16}
-                    className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                    className={`${mini ? "lg:hidden" : ""} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                   />
                 </button>
 
-                {open &&
+                {open && !mini &&
                   group.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = item.key === active;
