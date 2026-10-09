@@ -149,39 +149,40 @@ export const listActiveExperts = createServerFn({ method: "POST" })
     const db = context.supabase;
 
     if (data.bookingId) {
-      const { data: eligible, error: rpcErr } = await db.rpc(
-        "get_eligible_experts_for_booking",
-        { p_booking_id: data.bookingId },
-      );
-      if (rpcErr) throw new Error(rpcErr.message);
-      const rows = (eligible ?? []) as Array<{
-        expert_id: string;
-        distance_km: number | string | null;
-      }>;
-      if (rows.length === 0) return [];
-      const ids = rows.map((r) => r.expert_id);
+      // Manual staff assign/reassign: show every active, online, free expert
+      // (no GPS-staleness or radius limit). Automatic broadcast keeps strict rules.
+      const { data: bk } = await db
+        .from("bookings")
+        .select("booking_lat, booking_lng")
+        .eq("id", data.bookingId)
+        .maybeSingle();
       const { data: experts, error } = await db
         .from("experts")
-        .select("id, name, phone")
-        .in("id", ids);
+        .select("id, name, phone, current_lat, current_lng, is_busy")
+        .eq("status", "active")
+        .eq("is_online", true);
       if (error) throw new Error(error.message);
-      const map = new Map(
-        ((experts ?? []) as Array<{ id: string; name: string; phone: string }>)
-          .map((e) => [e.id, e]),
-      );
-      return rows
-        .map((r) => {
-          const ex = map.get(r.expert_id);
-          if (!ex) return null;
-          const d = r.distance_km == null ? null : Number(r.distance_km);
-          return {
-            id: ex.id,
-            name: ex.name,
-            phone: ex.phone,
-            distanceKm: Number.isFinite(d as number) ? (d as number) : null,
-          };
-        })
-        .filter((e): e is ActiveExpert => e !== null);
+      const bLat = bk?.booking_lat == null ? null : Number(bk.booking_lat);
+      const bLng = bk?.booking_lng == null ? null : Number(bk.booking_lng);
+      const hav = (a: number, b: number, c: number, d: number) => {
+        const R = 6371, r = Math.PI / 180;
+        const x = Math.sin(((c - a) * r) / 2) ** 2 +
+          Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(x));
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((experts ?? []) as any[])
+        .filter((e) => !e.is_busy)
+        .map((e) => ({
+          id: e.id as string,
+          name: e.name as string,
+          phone: e.phone as string,
+          distanceKm:
+            bLat != null && bLng != null && e.current_lat != null && e.current_lng != null
+              ? hav(bLat, bLng, Number(e.current_lat), Number(e.current_lng))
+              : null,
+        }))
+        .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
     }
 
     const { data: rows, error } = await db
