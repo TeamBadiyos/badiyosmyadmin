@@ -38,6 +38,7 @@ import {
 
 import {
   assignExpertToBooking,
+  acceptPendingBooking,
   listActiveExperts,
 } from "@/lib/live-orders.functions";
 
