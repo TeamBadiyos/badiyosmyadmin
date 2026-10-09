@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { MapPin, Phone, Search, Store, Package, ArrowLeft, Navigation, MessageCircle, Clock } from "lucide-react";
 import { listLiveStores, type LiveStore, type LiveStoreItem } from "@/lib/merchants.functions";
+import { StoreAnalyticsPanel } from "@/components/store-analytics-panel";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -231,6 +232,8 @@ function StoreDetail({ store: s, onBack }: { store: LiveStore; onBack: () => voi
           </div>
         </div>
       </div>
+
+      <StoreAnalyticsPanel merchantId={s.id} />
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="text-[16px] font-bold text-foreground">Items in store</h3>
