@@ -19,6 +19,16 @@ async function rz(path: string) {
   return res.json();
 }
 
+/** Returns the payer contact phone for a Razorpay payment or refund id. */
+export async function razorpayContact(entityId: string): Promise<string | null> {
+  try {
+    let pid = entityId;
+    if (entityId.startsWith("rfnd_")) pid = (await rz(`/refunds/${entityId}`)).payment_id ?? "";
+    if (!pid) return null;
+    return (await rz(`/payments/${pid}`)).contact ?? null;
+  } catch { return null; }
+}
+
 export async function syncRazorpaySettlements(
   admin: Admin,
   trigger: "manual" | "nightly",

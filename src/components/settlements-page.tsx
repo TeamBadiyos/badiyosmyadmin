@@ -122,11 +122,13 @@ function Items({ id }: { id: string }) {
   if (!data.length) return <p className="text-muted-foreground">Per-payment breakdown not available yet for this settlement.</p>;
   return (
     <table className="w-full text-[12px]">
-      <thead className="text-muted-foreground text-left"><tr>{["Time", "Type", "Payment / Refund", "Amount", "Fee", "GST", "Credit", "Debit"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+      <thead className="text-muted-foreground text-left"><tr>{["Time", "Type", "Customer", "Payment / Refund", "Amount", "Fee", "GST", "Credit", "Debit"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
       <tbody>
         {(data as Array<Record<string, any>>).map((i) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
           <tr key={i.id} className="border-t border-border">
-            <td className="p-2">{fmt(i.txn_at)}</td><td className="p-2">{i.type}</td><td className="p-2 font-mono">{i.entity_id}</td>
+            <td className="p-2">{fmt(i.txn_at)}</td><td className="p-2">{i.type}</td>
+            <td className="p-2"><span className="font-semibold">{i.customer_name ?? "—"}</span>{i.customer_phone && <span className="block text-[11px] text-muted-foreground">{i.customer_phone}</span>}</td>
+            <td className="p-2 font-mono">{i.entity_id}</td>
             <td className="p-2">{inr.format(i.amount)}</td><td className="p-2">{inr.format(i.fee - i.tax)}</td><td className="p-2">{inr.format(i.tax)}</td>
             <td className="p-2">{inr.format(i.credit)}</td><td className="p-2">{inr.format(i.debit)}</td>
           </tr>

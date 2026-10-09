@@ -47,10 +47,55 @@ export const listSettlementItems = createServerFn({ method: "GET" })
   .inputValidator((d: { settlementId: string }) => d)
   .handler(async ({ data, context }) => {
     await requireFinance(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rows } = await (context.supabase as any).from("gateway_settlement_items").select("*")
+    const sb = supabaseAdmin as any;
+    const { data: rows } = await sb.from("gateway_settlement_items").select("*")
       .eq("settlement_id", data.settlementId).order("txn_at").limit(2000);
-    return rows ?? [];
+    const items = (rows ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!items.length) return [];
+    const ent = [...new Set(items.map((i) => i.entity_id).filter(Boolean))] as string[];
+    const ord = [...new Set(items.map((i) => i.order_id).filter(Boolean))] as string[];
+    const [bp, bo, ex, tp] = await Promise.all([
+      sb.from("bookings").select("user_id, razorpay_payment_id, razorpay_order_id").in("razorpay_payment_id", ent),
+      ord.length ? sb.from("bookings").select("user_id, razorpay_payment_id, razorpay_order_id").in("razorpay_order_id", ord) : { data: [] },
+      sb.from("booking_extensions").select("booking_id, razorpay_payment_id").in("razorpay_payment_id", ent),
+      sb.from("booking_tips").select("user_id, razorpay_payment_id").in("razorpay_payment_id", ent),
+    ]);
+    const byPay = new Map<string, string>(), byOrder = new Map<string, string>();
+    for (const b of [...(bp.data ?? []), ...(bo.data ?? [])]) {
+      if (b.razorpay_payment_id) byPay.set(b.razorpay_payment_id, b.user_id);
+      if (b.razorpay_order_id) byOrder.set(b.razorpay_order_id, b.user_id);
+    }
+    for (const t of tp.data ?? []) byPay.set(t.razorpay_payment_id, t.user_id);
+    const extB = (ex.data ?? []) as Array<{ booking_id: string; razorpay_payment_id: string }>;
+    if (extB.length) {
+      const { data: eb } = await sb.from("bookings").select("id, user_id").in("id", extB.map((e) => e.booking_id));
+      const m = new Map((eb ?? []).map((b: { id: string; user_id: string }) => [b.id, b.user_id]));
+      for (const e of extB) { const u = m.get(e.booking_id); if (u) byPay.set(e.razorpay_payment_id, u as string); }
+    }
+    const uidOf = (i: Record<string, string>) => byPay.get(i.entity_id) ?? (i.order_id ? byOrder.get(i.order_id) : undefined);
+    // Fallback: payer phone from Razorpay for anything not linked (extensions, courier, etc.)
+    const { razorpayContact } = await import("@/lib/razorpay-settlements.server");
+    const missing = items.filter((i) => !uidOf(i)).slice(0, 40);
+    const contacts = new Map<string, string>();
+    await Promise.all(missing.map(async (i) => { const c = await razorpayContact(i.entity_id); if (c) contacts.set(i.entity_id, c); }));
+    const p10 = (p: string) => p.replace(/\D/g, "").slice(-10);
+    const phones = [...new Set([...contacts.values()].map(p10))];
+    const uids = [...new Set(items.map(uidOf).filter(Boolean))] as string[];
+    const [ur, pr] = await Promise.all([
+      uids.length ? sb.from("users").select("id, full_name, phone").in("id", uids) : { data: [] },
+      phones.length ? sb.from("users").select("id, full_name, phone").in("phone", phones.flatMap((p) => [p, `+91${p}`])) : { data: [] },
+    ]);
+    type U = { id: string; full_name: string | null; phone: string | null };
+    const uMap = new Map<string, U>((ur.data ?? []).map((u: U) => [u.id, u]));
+    const pMap = new Map<string, U>((pr.data ?? []).map((u: U) => [p10(u.phone ?? ""), u]));
+    return items.map((i) => {
+      const id = uidOf(i);
+      const c = contacts.get(i.entity_id);
+      const u = id ? uMap.get(id) : c ? pMap.get(p10(c)) : undefined;
+      return { ...i, customer_name: u?.full_name ?? null, customer_phone: u?.phone ?? c ?? null };
+    });
   });
 
 export const syncSettlementsNow = createServerFn({ method: "POST" })
