@@ -623,8 +623,10 @@ function cardTimeState(
   }
   if (b.status === "accepted") {
     const slot = slotStartMs(b);
-    if (b.dispatchExhaustedAt || (slot != null && nowMs > slot))
+    if (slot != null ? nowMs > slot : !!b.dispatchExhaustedAt)
       return { tone: "overtime", label: "Slot missed · no expert" };
+    if (b.dispatchExhaustedAt)
+      return { tone: "ending", label: "No expert found yet · assign manually" };
     if (b.noExpertAlertSent || (slot != null && slot - nowMs <= 20 * 60_000))
       return { tone: "ending", label: "Urgent · slot close, no expert" };
     return { tone: "fresh", label: "Searching expert" };
