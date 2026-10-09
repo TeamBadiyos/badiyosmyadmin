@@ -114,8 +114,9 @@ export function BookingsPage({
       page,
       pageSize: PAGE_SIZE,
       includeDeleted: includeDeleted && role === "super_admin",
+      search: search || null,
     };
-  }, [status, zoneId, from, to, page, includeDeleted, role]);
+  }, [status, zoneId, from, to, page, includeDeleted, role, search]);
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
@@ -197,9 +198,17 @@ export function BookingsPage({
       cancelled: ["CANCELLED"],
     };
     const wanted = status ? (statusMap[status] ?? null) : null;
+    const q = search.trim().toLowerCase();
     return (courierAll ?? []).filter((o) => {
       if (status && !wanted) return false; // service-only statuses (confirmed etc.) have no parcel equivalent
       if (wanted && !wanted.includes(o.status)) return false;
+      if (
+        q &&
+        !(o.customerName ?? "").toLowerCase().includes(q) &&
+        !(o.riderName ?? "").toLowerCase().includes(q) &&
+        !(o.order_code ?? "").toLowerCase().includes(q)
+      )
+        return false;
       const t = new Date(o.created_at).getTime();
       if (fromMs != null && t < fromMs) return false;
       if (toMs != null && t > toMs) return false;
