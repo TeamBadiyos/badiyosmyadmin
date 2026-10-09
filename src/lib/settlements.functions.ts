@@ -19,8 +19,27 @@ export const listSettlements = createServerFn({ method: "GET" })
       .gte("settled_at", `${data.from}T00:00:00+05:30`).lte("settled_at", `${data.to}T23:59:59+05:30`)
       .order("settled_at", { ascending: false }).limit(1000);
     if (error) throw new Error(error.message);
+    const ids = (rows ?? []).map((r: { id: string }) => r.id);
+    const agg: Record<string, { gross: number; fees: number; tax: number; refunds: number; n: number }> = {};
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data: items } = await sb.from("gateway_settlement_items").select("settlement_id,type,amount,fee,tax,debit")
+        .in("settlement_id", ids.slice(i, i + 100)).limit(10000);
+      for (const it of (items ?? []) as Array<Record<string, number | string>>) {
+        const a = (agg[it.settlement_id as string] ??= { gross: 0, fees: 0, tax: 0, refunds: 0, n: 0 });
+        const fee = Number(it.fee || 0), debit = Number(it.debit || 0);
+        if (it.type === "payment") { a.gross += Number(it.amount || 0); a.n++; }
+        a.fees += fee; a.tax += Number(it.tax || 0);
+        if (debit > 0) a.refunds += debit - fee;
+      }
+    }
+    const r2 = (n: number) => +n.toFixed(2);
+    const out = (rows ?? []).map((r: Record<string, unknown>) => {
+      const a = agg[r.id as string];
+      if (!a) return { ...r, refunds: 0, payments_count: 0, has_items: false };
+      return { ...r, gross_amount: r2(a.gross), fees: r2(a.fees), tax: r2(a.tax), refunds: r2(a.refunds), payments_count: a.n, has_items: true };
+    });
     const { data: last } = await sb.from("gateway_sync_log").select("*").order("created_at", { ascending: false }).limit(1);
-    return { rows: rows ?? [], lastSync: last?.[0] ?? null };
+    return { rows: out, lastSync: last?.[0] ?? null };
   });
 
 export const listSettlementItems = createServerFn({ method: "GET" })

@@ -9,7 +9,7 @@ const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR",
 const fmt = (d?: string | null) =>
   d ? new Date(d).toLocaleString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
-type S = { id: string; amount: number; fees: number; tax: number; gross_amount: number; status: string | null; utr: string | null; settled_at: string | null; bank_reconciled: boolean; bank_reference_note: string | null; bank_reconciled_at: string | null };
+type S = { id: string; amount: number; fees: number; tax: number; gross_amount: number; refunds: number; payments_count: number; has_items: boolean; status: string | null; utr: string | null; settled_at: string | null; bank_reconciled: boolean; bank_reference_note: string | null; bank_reconciled_at: string | null };
 
 export function SettlementsPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -61,11 +61,12 @@ export function SettlementsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         {[
-          ["Gross collected", sum((r) => r.gross_amount)],
+          ["Customer payments", sum((r) => r.gross_amount)],
           ["Razorpay fees", sum((r) => r.fees - r.tax)],
           ["GST on fees", sum((r) => r.tax)],
+          ["Refunds / debits", sum((r) => r.refunds)],
           ["Net settled to bank", sum((r) => r.amount)],
           [`Pending tally (${pending.length})`, pending.reduce((a, r) => a + Number(r.amount), 0)],
         ].map(([l, v]) => (
@@ -79,19 +80,20 @@ export function SettlementsPage() {
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead className="text-muted-foreground text-left border-b border-border">
-            <tr>{["Settled on", "Settlement ID", "Gross", "Fees", "GST", "Net to bank", "UTR", "Bank tally", ""].map((h) => <th key={h} className="p-3 font-semibold">{h}</th>)}</tr>
+            <tr>{["Settled on", "Settlement ID", "Gross", "Fees", "GST", "Refunds", "Net to bank", "UTR", "Bank tally", ""].map((h) => <th key={h} className="p-3 font-semibold">{h}</th>)}</tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-            {!isLoading && !rows.length && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No settlements in these dates. Click “Sync now”.</td></tr>}
+            {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+            {!isLoading && !rows.length && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No settlements in these dates. Click “Sync now”.</td></tr>}
             {rows.map((r) => (
               <Fragment key={r.id}>
                 <tr className="border-b border-border">
                   <td className="p-3 whitespace-nowrap">{fmt(r.settled_at)}</td>
                   <td className="p-3 font-mono text-[12px]">{r.id}</td>
-                  <td className="p-3">{inr.format(r.gross_amount)}</td>
+                  <td className="p-3">{inr.format(r.gross_amount)}{r.has_items ? <span className="block text-[11px] text-muted-foreground">{r.payments_count} payments</span> : <span className="block text-[11px] text-muted-foreground">sync for breakdown</span>}</td>
                   <td className="p-3 text-destructive">{inr.format(r.fees - r.tax)}</td>
                   <td className="p-3 text-destructive">{inr.format(r.tax)}</td>
+                  <td className="p-3 text-destructive">{inr.format(r.refunds)}</td>
                   <td className="p-3 font-semibold">{inr.format(r.amount)}</td>
                   <td className="p-3 font-mono text-[12px]">{r.utr ?? "—"}</td>
                   <td className="p-3">
@@ -103,7 +105,7 @@ export function SettlementsPage() {
                   </td>
                   <td className="p-3"><button onClick={() => setOpen(open === r.id ? null : r.id)} className="text-primary text-[12px] font-semibold">{open === r.id ? "Hide" : "Orders"}</button></td>
                 </tr>
-                {open === r.id && <tr key={r.id + "-d"}><td colSpan={9} className="p-3 bg-muted/40"><Items id={r.id} /></td></tr>}
+                {open === r.id && <tr key={r.id + "-d"}><td colSpan={10} className="p-3 bg-muted/40"><Items id={r.id} /></td></tr>}
               </Fragment>
             ))}
           </tbody>

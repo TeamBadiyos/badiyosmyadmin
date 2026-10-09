@@ -641,9 +641,16 @@ export const getPnlReport = createServerFn({ method: "POST" })
     const gatewayCharges = { fees: 0, gst: 0, total: 0 };
     if (scope.role !== "area_partner") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const gs = await (context.supabase as any).from("gateway_settlements").select("fees,tax")
+      const gs = await (context.supabase as any).from("gateway_settlements").select("id")
         .gte("settled_at", `${data.from}T00:00:00+05:30`).lte("settled_at", `${data.to}T23:59:59+05:30`).limit(5000);
-      for (const r of (gs.data ?? []) as Array<{ fees: number; tax: number }>) {
+      const gsIds = ((gs.data ?? []) as Array<{ id: string }>).map((x) => x.id);
+      const gsItems: Array<{ fee: number; tax: number }> = [];
+      for (let i = 0; i < gsIds.length; i += 100) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: it } = await (context.supabase as any).from("gateway_settlement_items").select("fee:fee,tax").in("settlement_id", gsIds.slice(i, i + 100)).limit(10000);
+        for (const x of (it ?? []) as Array<{ fee: number; tax: number }>) gsItems.push(x);
+      }
+      for (const r0 of gsItems) { const r = { fees: r0.fee, tax: r0.tax };
         gatewayCharges.gst += Number(r.tax ?? 0);
         gatewayCharges.fees += Number(r.fees ?? 0) - Number(r.tax ?? 0);
       }
