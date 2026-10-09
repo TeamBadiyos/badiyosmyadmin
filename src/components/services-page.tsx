@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Info, SlidersHorizontal } from "lucide-reac
 import { toast } from "sonner";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { BookingTimingsTab } from "@/components/booking-timings-tab";
+import { SlotAvailabilityTab } from "@/components/slot-availability-tab";
 import { TrainingAddressTab } from "@/components/training-address-tab";
 import { SuggestionStatusesTab } from "@/components/suggestion-statuses-tab";
 import {
@@ -152,6 +153,7 @@ export function ServicesPage() {
           <div className="flex w-max gap-2">
             {([
               ["controls", "Service Controls"],
+              ["slots", "Slot Availability"],
               ["timings", "Booking Timings"],
               ["capacity", "Capacity Messages"],
               ["suggestions", "Suggestion statuses"],
@@ -194,6 +196,7 @@ export function ServicesPage() {
       </div>
 
       {tab === "capacity" ? <CapacityMessagesPage /> : null}
+      {tab === "slots" ? <SlotAvailabilityTab /> : null}
       {tab === "timings" ? <BookingTimingsTab /> : null}
       {tab === "suggestions" ? <SuggestionStatusesTab /> : null}
       {tab === "training" ? <TrainingAddressTab /> : null}
