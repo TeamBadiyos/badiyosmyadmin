@@ -3,7 +3,7 @@ import { ExpertRatingPill } from "@/components/expert-rating";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BOOKING_STATUSES,
@@ -79,6 +79,17 @@ export function BookingsPage({
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
   const [orderType, setOrderType] = useState<"all" | "service" | "courier">("all");
   const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
+  const [searchInput, setSearchInput] = useState<string>("");
+  const [search, setSearch] = useState<string>("");
+
+  // Debounce the search box so typing does not fire a query per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
@@ -103,8 +114,9 @@ export function BookingsPage({
       page,
       pageSize: PAGE_SIZE,
       includeDeleted: includeDeleted && role === "super_admin",
+      search: search || null,
     };
-  }, [status, zoneId, from, to, page, includeDeleted, role]);
+  }, [status, zoneId, from, to, page, includeDeleted, role, search]);
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
@@ -186,15 +198,23 @@ export function BookingsPage({
       cancelled: ["CANCELLED"],
     };
     const wanted = status ? (statusMap[status] ?? null) : null;
+    const q = search.trim().toLowerCase();
     return (courierAll ?? []).filter((o) => {
       if (status && !wanted) return false; // service-only statuses (confirmed etc.) have no parcel equivalent
       if (wanted && !wanted.includes(o.status)) return false;
+      if (
+        q &&
+        !(o.customerName ?? "").toLowerCase().includes(q) &&
+        !(o.riderName ?? "").toLowerCase().includes(q) &&
+        !(o.order_code ?? "").toLowerCase().includes(q)
+      )
+        return false;
       const t = new Date(o.created_at).getTime();
       if (fromMs != null && t < fromMs) return false;
       if (toMs != null && t > toMs) return false;
       return true;
     });
-  }, [courierAll, orderType, page, from, to, status, zoneId, canSeeCourier]);
+  }, [courierAll, orderType, page, from, to, status, zoneId, canSeeCourier, search]);
 
 
   function updateFilter(fn: () => void) {
@@ -207,6 +227,32 @@ export function BookingsPage({
   return (
     <div className="space-y-6">
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Search
+          </label>
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Customer or expert (name / phone)…"
+              className="h-10 pl-8 pr-8 rounded-[12px] border border-border bg-card text-[13px] min-w-[230px] w-full sm:w-auto"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
         {canSeeCourier && (
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -290,7 +336,7 @@ export function BookingsPage({
           />
         </div>
 
-        {(status || zoneId || from || to) && (
+        {(status || zoneId || from || to || searchInput) && (
           <button
             onClick={() =>
               updateFilter(() => {
@@ -298,6 +344,7 @@ export function BookingsPage({
                 setZoneId("");
                 setFrom("");
                 setTo("");
+                setSearchInput("");
               })
             }
             className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold text-muted-foreground hover:bg-muted"
