@@ -3,7 +3,7 @@ import { ExpertRatingPill } from "@/components/expert-rating";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronLeft, ChevronRight, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BOOKING_STATUSES,
@@ -79,6 +79,17 @@ export function BookingsPage({
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
   const [orderType, setOrderType] = useState<"all" | "service" | "courier">("all");
   const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
+  const [searchInput, setSearchInput] = useState<string>("");
+  const [search, setSearch] = useState<string>("");
+
+  // Debounce the search box so typing does not fire a query per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchBookings = useServerFn(listBookings);
   const fetchZones = useServerFn(listZoneOptions);
