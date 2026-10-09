@@ -20,7 +20,7 @@ import { getCourierAccess, listServiceFlags } from "@/lib/courier.functions";
 import { listServiceControl } from "@/lib/service-control.functions";
 import { listSegments, setSegmentActive, type Segment } from "@/lib/segments.functions";
 
-type ServicesTab = "controls" | "capacity" | "timings" | "suggestions" | "training";
+type ServicesTab = "controls" | "slots" | "capacity" | "timings" | "suggestions" | "training";
 
 const SERVICE_ORDER = ["clean", "store", "courier"] as const;
 const SEGMENT_SLUG_BY_SERVICE: Partial<Record<(typeof SERVICE_ORDER)[number], string>> = {
