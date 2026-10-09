@@ -19,7 +19,8 @@ import { TrainingAddressCard, TrainingAddressFields } from "@/components/trainin
 const inputCls = "w-full h-10 px-3 rounded-[10px] border border-border bg-card text-[13px] text-foreground";
 const labelCls = "text-[11px] font-bold uppercase tracking-wide text-muted-foreground";
 
-const SLOT_HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18];
+// Training orders have no timing rules — every hour of the day is allowed.
+const SLOT_HOURS = Array.from({ length: 24 }, (_, h) => h);
 function hourLabel(h: number) {
   const hh = h % 12 === 0 ? 12 : h % 12;
   return `${hh} ${h < 12 ? "AM" : "PM"}`;
@@ -355,7 +356,7 @@ function CreateDialog({
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
           <span className={labelCls}>Date</span>
-          <DateInput  className={inputCls} value={date} min={todayIso()} onChange={(e) => setDate(e.target.value)} disabled={!slot} />
+          <DateInput  className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} disabled={!slot} />
         </label>
         <label className="block space-y-1">
           <span className={labelCls}>Slot</span>
