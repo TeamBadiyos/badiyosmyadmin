@@ -29,6 +29,7 @@ import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
 import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
+import { Route as ApiPublicHooksSyncRazorpaySettlementsRouteImport } from './routes/api/public/hooks/sync-razorpay-settlements'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -132,6 +133,12 @@ const ApiPublicHooksExpireStaleBookingsRoute =
     path: '/api/public/hooks/expire-stale-bookings',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncRazorpaySettlementsRoute =
+  ApiPublicHooksSyncRazorpaySettlementsRouteImport.update({
+    id: '/api/public/hooks/sync-razorpay-settlements',
+    path: '/api/public/hooks/sync-razorpay-settlements',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
+  '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
+  '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -197,6 +206,7 @@ export interface FileRoutesById {
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
+  '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
+    | '/api/public/hooks/sync-razorpay-settlements'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
+    | '/api/public/hooks/sync-razorpay-settlements'
   id:
     | '__root__'
     | '/'
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
+    | '/api/public/hooks/sync-razorpay-settlements'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -284,6 +297,7 @@ export interface RootRouteChildren {
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
   ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
+  ApiPublicHooksSyncRazorpaySettlementsRoute: typeof ApiPublicHooksSyncRazorpaySettlementsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -428,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksExpireStaleBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-razorpay-settlements': {
+      id: '/api/public/hooks/sync-razorpay-settlements'
+      path: '/api/public/hooks/sync-razorpay-settlements'
+      fullPath: '/api/public/hooks/sync-razorpay-settlements'
+      preLoaderRoute: typeof ApiPublicHooksSyncRazorpaySettlementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -473,6 +494,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,
   ApiPublicHooksExpireStaleBookingsRoute:
     ApiPublicHooksExpireStaleBookingsRoute,
+  ApiPublicHooksSyncRazorpaySettlementsRoute:
+    ApiPublicHooksSyncRazorpaySettlementsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

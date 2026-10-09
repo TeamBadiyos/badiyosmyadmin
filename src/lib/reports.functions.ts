@@ -502,6 +502,7 @@ export type PnlReport = {
   store: { orders: number; gross: number; refunds: number; commission: number; commissionGst: number; merchantPayout: number };
   bonuses: number;
   programCommission: number;
+  gatewayCharges: { fees: number; gst: number; total: number };
   paidOut: { paid: number; pending: number; tds: number };
   totals: {
     gross: number; discount: number; collected: number; refunds: number; gst: number;
@@ -637,12 +638,23 @@ export const getPnlReport = createServerFn({ method: "POST" })
       }
     }
 
+    const gatewayCharges = { fees: 0, gst: 0, total: 0 };
+    if (scope.role !== "area_partner") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gs = await (context.supabase as any).from("gateway_settlements").select("fees,tax")
+        .gte("settled_at", `${data.from}T00:00:00+05:30`).lte("settled_at", `${data.to}T23:59:59+05:30`).limit(5000);
+      for (const r of (gs.data ?? []) as Array<{ fees: number; tax: number }>) {
+        gatewayCharges.gst += Number(r.tax ?? 0);
+        gatewayCharges.fees += Number(r.fees ?? 0) - Number(r.tax ?? 0);
+      }
+      gatewayCharges.total = gatewayCharges.fees + gatewayCharges.gst;
+    }
     const netRevenue = services.netRevenue + courier.netRevenue + store.commission;
     const partnerPayouts = services.expertPayout + services.partnerPayout + courier.riderPayout + programCommission;
-    const platformProfit = netRevenue - partnerPayouts - bonuses;
+    const platformProfit = netRevenue - partnerPayouts - bonuses - gatewayCharges.total;
     const grossProfit = netRevenue - services.expertPayout - services.partnerPayout - courier.riderPayout;
     return {
-      services, courier, store, bonuses, paidOut, programCommission,
+      services, courier, store, bonuses, paidOut, programCommission, gatewayCharges,
       totals: {
         gross: services.gross + courier.gross + store.gross,
         discount: services.discount + services.coinDiscount + courier.discount + courier.coinDiscount,

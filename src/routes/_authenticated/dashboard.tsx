@@ -24,6 +24,7 @@ import { RewardsPage } from "@/components/rewards-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
+import { SettlementsPage } from "@/components/settlements-page";
 import { EmergencyAlertsPage } from "@/components/emergency-alerts-page";
 import { UnassignedTripsPage } from "@/components/unassigned-trips-page";
 import { SkillApprovalsPage } from "@/components/skill-approvals-page";
@@ -140,6 +141,7 @@ const NAV_ITEMS = [
   { key: "rewards", label: "Rewards", icon: Award },
   { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
+  { key: "settlements", label: "Settlements & Bank Tally", icon: Landmark },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
@@ -201,7 +203,7 @@ const NAV_GROUPS = [
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "partners", "merchant-billing", "reports"],
+    keys: ["wallets", "partners", "merchant-billing", "settlements", "reports"],
   },
   {
     id: "settings",
@@ -685,6 +687,8 @@ function Shell() {
           <CommerceKanban segmentId={null} />
         ) : active === "audit" ? (
           <AuditLogsPage />
+        ) : active === "settlements" ? (
+          <SettlementsPage />
         ) : active === "reports" ? (
           <ReportsPage role={role} />
         ) : (
