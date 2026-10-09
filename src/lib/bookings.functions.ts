@@ -72,6 +72,7 @@ export type ListBookingsInput = {
   page?: number;
   pageSize?: number;
   includeDeleted?: boolean;
+  search?: string | null; // customer / expert name or phone
 };
 
 export type ListBookingsResult = {
