@@ -996,3 +996,28 @@ export const listLiveStores = createServerFn({ method: "GET" })
       items: byM.get(m.id) ?? [],
     }));
   });
+
+export type StoreAnalytics = {
+  totalVisits: number;
+  uniqueVisitors: number;
+  loggedInVisitors: number;
+  todayVisits: number;
+  yesterdayVisits: number;
+  orders: number;
+  orderingCustomers: number;
+  daily: { date: string; visits: number; unique: number; orders: number }[];
+  recent: { at: string; name: string | null; phone: string | null; guest: boolean }[];
+};
+
+export const getStoreAnalytics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { merchantId: string; days: number }) => d)
+  .handler(async ({ data, context }) => {
+    await assertStaff(context.supabase, context.userId);
+    const { data: r, error } = await (context.supabase as any).rpc("get_merchant_store_analytics", { // eslint-disable-line @typescript-eslint/no-explicit-any
+      _merchant_id: data.merchantId,
+      _days: data.days,
+    });
+    if (error) throw new Error(error.message);
+    return r as StoreAnalytics;
+  });
