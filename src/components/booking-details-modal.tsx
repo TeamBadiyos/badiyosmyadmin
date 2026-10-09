@@ -1444,6 +1444,7 @@ function ExpertAssignSection({
                 <option key={e.id} value={e.id}>
                   {e.name} — {e.phone}
                   {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
+                  {(e as { busy?: boolean }).busy ? " · Busy (assign as next order)" : ""}
                 </option>
               ))}
             </select>

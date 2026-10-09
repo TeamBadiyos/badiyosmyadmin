@@ -52,6 +52,7 @@ export function ExpertHandoverPanel({
   }, [info.data, elapsed, total]);
 
   const list = (experts.data ?? []).filter((e) => {
+    if (e.busy) return false;
     const q = search.trim().toLowerCase();
     return !q || e.name.toLowerCase().includes(q) || (e.phone ?? "").includes(q);
   });
