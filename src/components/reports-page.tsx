@@ -717,7 +717,7 @@ function PnlTab({ range }: { range: ReportRange }) {
     const lines: Array<[string, number]> = [
       ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
       ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
-      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission],
+      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission], ["Razorpay gateway charges", data.gatewayCharges.total],
       ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Gross profit", T.grossProfit], ["Net profit", T.platformProfit],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
@@ -763,6 +763,7 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label="Rider payouts (delivery, store & bulk)" value={c.riderPayout} neg />
           <Row label={`Gross profit · ${T.grossPct.toFixed(1)}%`} value={T.grossProfit} bold />
           <Row label="Partner Program commission" sub="Draft, approved and paid partner batches" value={data.programCommission} neg />
+          <Row label="Razorpay gateway charges" sub={`Fees ${inr.format(data.gatewayCharges.fees)} + GST ${inr.format(data.gatewayCharges.gst)} (from synced settlements)`} value={data.gatewayCharges.total} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
           <Row label={`Net profit · ${T.marginPct.toFixed(1)}%`} value={T.platformProfit} bold />
         </Card>
