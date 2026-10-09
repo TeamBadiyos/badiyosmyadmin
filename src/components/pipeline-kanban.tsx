@@ -10,12 +10,13 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-
+  acceptPendingBooking,
   assignExpertToBooking,
   countEligibleExperts,
   getBookingJourneyConfig,
@@ -954,6 +955,16 @@ function ConfirmedActions({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const shootFn = useServerFn(acceptPendingBooking);
+  const shootMut = useMutation({
+    mutationFn: () => shootFn({ data: { bookingId } }),
+    onSuccess: () => {
+      toast.success("Order shot to experts · moved to Needs Expert");
+      invalidate();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
     <div
       className="mt-3 pt-3 border-t border-border"
@@ -964,6 +975,16 @@ function ConfirmedActions({
           <span className="flex-1 text-[11px] font-semibold text-muted-foreground">
             {note}
           </span>
+          <button
+            disabled={shootMut.isPending}
+            onClick={() => {
+              if (confirm("Is order ko abhi experts ko bhej dein (Needs Expert)?")) shootMut.mutate();
+            }}
+            className="h-8 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold inline-flex items-center justify-center gap-1 disabled:opacity-50"
+          >
+            <Send size={13} />
+            {shootMut.isPending ? "…" : "Shoot Now"}
+          </button>
           <button
             onClick={() => setRejectOpen(true)}
             className="h-8 px-3 rounded-[10px] border border-destructive text-destructive text-[12px] font-bold inline-flex items-center justify-center gap-1 hover:bg-red-50"
