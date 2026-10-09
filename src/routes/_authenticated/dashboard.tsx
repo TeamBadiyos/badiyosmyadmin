@@ -150,7 +150,7 @@ const NAV_ITEMS = [
   { key: "courier", label: "Courier", icon: PackageCheck },
   { key: "courier-orders", label: "Orders", icon: PackageCheck },
   { key: "courier-rates", label: "Rates", icon: IndianRupee },
-  { key: "courier-types", label: "Parcel & Vehicle Types", icon: Boxes },
+  { key: "courier-types", label: "Parcel", icon: Boxes },
   { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Orders", icon: Receipt },
