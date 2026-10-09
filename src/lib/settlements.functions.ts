@@ -64,7 +64,7 @@ export const setSettlementTally = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await admin.from("audit_logs").insert({
       actor_id: staff.id, action: data.reconciled ? "settlement_bank_tallied" : "settlement_bank_untallied",
-      entity_type: "gateway_settlement", before_value: before, after_value: { ...before, ...patch },
+      target_table: "gateway_settlements", target_id: null, before_state: before, after_state: { ...before, ...patch },
     }).then(() => null, () => null);
     return { ok: true };
   });
