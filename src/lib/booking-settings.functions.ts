@@ -32,6 +32,7 @@ export const BOOKING_TIMING_KEYS = [
   "no_expert_refund_after_slot_minutes",
   "expert_journey_steps_enabled",
   "service_extensions_enabled",
+  "instant_booking_enabled",
 ] as const;
 
 export type BookingTimingKey = (typeof BOOKING_TIMING_KEYS)[number];
@@ -54,6 +55,7 @@ const DEFAULTS: Record<BookingTimingKey, string> = {
   no_expert_refund_after_slot_minutes: "30",
   expert_journey_steps_enabled: "0",
   service_extensions_enabled: "1",
+  instant_booking_enabled: "1",
 };
 
 export const getBookingTimingSettings = createServerFn({ method: "GET" })
@@ -99,7 +101,7 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
       if (!(BOOKING_TIMING_KEYS as readonly string[]).includes(key)) {
         throw new Error(`Unknown setting: ${key}`);
       }
-      if (key === "expert_journey_steps_enabled" || key === "service_extensions_enabled") {
+      if (key === "expert_journey_steps_enabled" || key === "service_extensions_enabled" || key === "instant_booking_enabled") {
         if (raw !== "0" && raw !== "1") throw new Error("Journey steps switch must be on or off");
         continue;
       }
@@ -136,5 +138,63 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
     }
+    return { ok: true };
+  });
+
+export const listSlotOverrides = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { date: string }) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context as Ctx);
+    const sb = (context as Ctx).supabase;
+    const [ov, bk, cfg] = await Promise.all([
+      sb.from("service_slot_overrides").select("start_hour, reason").eq("service_key", "clean").eq("slot_date", data.date).eq("status", "fully_booked"),
+      sb.from("bookings").select("scheduled_time_slot, status").eq("scheduled_date", data.date).neq("slot_type", "now"),
+      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "instant_booking_enabled"]),
+    ]);
+    if (ov.error) throw new Error(ov.error.message);
+    const c: Record<string, string> = {};
+    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
+    const counts: Record<number, number> = {};
+    for (const b of (bk.data ?? []) as Array<{ scheduled_time_slot: string | null; status: string }>) {
+      if (["cancelled", "refunded", "rejected"].includes(b.status)) continue;
+      const m = /(\d{1,2})(?::\d{2})?\s*([AaPp][Mm])/.exec(b.scheduled_time_slot ?? "");
+      if (!m) continue;
+      let h = Number(m[1]); const ap = m[2]!.toUpperCase();
+      if (ap === "PM" && h < 12) h += 12; if (ap === "AM" && h === 12) h = 0;
+      counts[h] = (counts[h] ?? 0) + 1;
+    }
+    return {
+      canEdit: role === "super_admin" || role === "ops_manager",
+      first: Number(c["slot_first_start_hour"] ?? 10),
+      last: Number(c["slot_last_start_hour"] ?? 18),
+      instantOn: (c["instant_booking_enabled"] ?? "1") !== "0",
+      full: ((ov.data ?? []) as Array<{ start_hour: number; reason: string | null }>),
+      counts,
+    };
+  });
+
+export const setSlotFull = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { date: string; hour: number; full: boolean; reason?: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_slot_full", {
+      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setInstantBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { on: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", {
+      _key: "instant_booking_enabled", _value: data.on ? "1" : "0",
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });

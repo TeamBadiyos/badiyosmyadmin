@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Info, SlidersHorizontal } from "lucide-reac
 import { toast } from "sonner";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { BookingTimingsTab } from "@/components/booking-timings-tab";
+import { SlotAvailabilityTab } from "@/components/slot-availability-tab";
 import { TrainingAddressTab } from "@/components/training-address-tab";
 import { SuggestionStatusesTab } from "@/components/suggestion-statuses-tab";
 import {
@@ -19,7 +20,7 @@ import { getCourierAccess, listServiceFlags } from "@/lib/courier.functions";
 import { listServiceControl } from "@/lib/service-control.functions";
 import { listSegments, setSegmentActive, type Segment } from "@/lib/segments.functions";
 
-type ServicesTab = "controls" | "capacity" | "timings" | "suggestions" | "training";
+type ServicesTab = "controls" | "slots" | "capacity" | "timings" | "suggestions" | "training";
 
 const SERVICE_ORDER = ["clean", "store", "courier"] as const;
 const SEGMENT_SLUG_BY_SERVICE: Partial<Record<(typeof SERVICE_ORDER)[number], string>> = {
@@ -152,6 +153,7 @@ export function ServicesPage() {
           <div className="flex w-max gap-2">
             {([
               ["controls", "Service Controls"],
+              ["slots", "Slot Availability"],
               ["timings", "Booking Timings"],
               ["capacity", "Capacity Messages"],
               ["suggestions", "Suggestion statuses"],
@@ -194,6 +196,7 @@ export function ServicesPage() {
       </div>
 
       {tab === "capacity" ? <CapacityMessagesPage /> : null}
+      {tab === "slots" ? <SlotAvailabilityTab /> : null}
       {tab === "timings" ? <BookingTimingsTab /> : null}
       {tab === "suggestions" ? <SuggestionStatusesTab /> : null}
       {tab === "training" ? <TrainingAddressTab /> : null}
