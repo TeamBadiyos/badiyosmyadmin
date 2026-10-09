@@ -336,7 +336,7 @@ export function BookingsPage({
           />
         </div>
 
-        {(status || zoneId || from || to) && (
+        {(status || zoneId || from || to || searchInput) && (
           <button
             onClick={() =>
               updateFilter(() => {
@@ -344,6 +344,7 @@ export function BookingsPage({
                 setZoneId("");
                 setFrom("");
                 setTo("");
+                setSearchInput("");
               })
             }
             className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold text-muted-foreground hover:bg-muted"
