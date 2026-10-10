@@ -25,6 +25,7 @@ export const BOOKING_TIMING_KEYS = [
   "booking_buffer_minutes",
   "slot_first_start_hour",
   "slot_last_start_hour",
+  "slot_step_minutes",
   "asap_onway_deadline_minutes",
   "scheduled_onway_deadline_before_slot_minutes",
   "expert_reminder_before_slot_minutes",
@@ -48,6 +49,7 @@ const DEFAULTS: Record<BookingTimingKey, string> = {
   booking_buffer_minutes: "5",
   slot_first_start_hour: "10",
   slot_last_start_hour: "18",
+  slot_step_minutes: "30",
   asap_onway_deadline_minutes: "3",
   scheduled_onway_deadline_before_slot_minutes: "15",
   expert_reminder_before_slot_minutes: "30",
@@ -85,6 +87,7 @@ const NUMERIC_BOUNDS: Partial<Record<BookingTimingKey, [number, number]>> = {
   booking_buffer_minutes: [0, 120],
   slot_first_start_hour: [0, 23],
   slot_last_start_hour: [0, 23],
+  slot_step_minutes: [30, 60],
   asap_onway_deadline_minutes: [1, 120],
   scheduled_onway_deadline_before_slot_minutes: [0, 240],
   expert_reminder_before_slot_minutes: [0, 240],
@@ -151,9 +154,9 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
     const role = await staffRole(context as Ctx);
     const sb = (context as Ctx).supabase;
     const [ov, bk, cfg] = await Promise.all([
-      sb.from("service_slot_overrides").select("start_hour, reason").eq("service_key", "clean").eq("slot_date", data.date).eq("status", "fully_booked"),
+      sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", "clean").eq("slot_date", data.date).eq("status", "fully_booked"),
       sb.from("bookings").select("scheduled_time_slot, status").eq("scheduled_date", data.date).neq("slot_type", "now"),
-      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "instant_booking_enabled"]),
+      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled"]),
     ]);
     if (ov.error) throw new Error(ov.error.message);
     const c: Record<string, string> = {};
@@ -161,28 +164,31 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
     const counts: Record<number, number> = {};
     for (const b of (bk.data ?? []) as Array<{ scheduled_time_slot: string | null; status: string }>) {
       if (["cancelled", "refunded", "rejected"].includes(b.status)) continue;
-      const m = /(\d{1,2})(?::\d{2})?\s*([AaPp][Mm])/.exec(b.scheduled_time_slot ?? "");
+      const m = /(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])/.exec(b.scheduled_time_slot ?? "");
       if (!m) continue;
-      let h = Number(m[1]); const ap = m[2]!.toUpperCase();
+      let h = Number(m[1]); const ap = m[3]!.toUpperCase();
       if (ap === "PM" && h < 12) h += 12; if (ap === "AM" && h === 12) h = 0;
-      counts[h] = (counts[h] ?? 0) + 1;
+      const k = h * 60 + Math.floor(Number(m[2] ?? 0) / 30) * 30;
+      counts[k] = (counts[k] ?? 0) + 1;
     }
     return {
       canEdit: role === "super_admin" || role === "ops_manager",
       first: Number(c["slot_first_start_hour"] ?? 10),
       last: Number(c["slot_last_start_hour"] ?? 18),
+      step: Number(c["slot_step_minutes"] ?? 30) === 60 ? 60 : 30,
       instantOn: (c["instant_booking_enabled"] ?? "1") !== "0",
-      full: ((ov.data ?? []) as Array<{ start_hour: number; reason: string | null }>),
+      full: ((ov.data ?? []) as Array<{ start_hour: number; start_minute: number | null; reason: string | null }>).map((f) => ({ ...f, key: f.start_hour * 60 + (f.start_minute ?? 0) })),
       counts,
     };
   });
 
 export const setSlotFull = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; hour: number; full: boolean; reason?: string }) => i)
+  .inputValidator((i: { date: string; hour: number; minute?: number; full: boolean; reason?: string }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await (context as Ctx).supabase.rpc("staff_set_slot_full", {
-      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_slot_full", {
+      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null, _start_minute: data.minute === 30 ? 30 : 0,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -211,14 +217,15 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
       sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "default_slot_capacity", "slot_capacity_mode"]),
       sb.from("service_daily_capacity").select("capacity").eq("service_key", "clean").eq("cap_date", data.date).maybeSingle(),
       sb.rpc("slot_capacity_for", { _service_key: "clean", _date: data.date }),
-      sb.rpc("slot_busy_by_hour", { _service_key: "clean", _date: data.date }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sb.rpc as any)("slot_busy_by_half", { _service_key: "clean", _date: data.date }),
     ]);
     if (cap.error) throw new Error(cap.error.message);
     if (busy.error) throw new Error(busy.error.message);
     const c: Record<string, string> = {};
     for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
     const busyMap: Record<number, number> = {};
-    for (const r of (busy.data ?? []) as Array<{ start_hour: number; busy: number }>) busyMap[r.start_hour] = r.busy;
+    for (const r of (busy.data ?? []) as Array<{ start_min: number; busy: number }>) busyMap[r.start_min] = r.busy;
     return {
       enabled: c["slot_capacity_enabled"] === "1",
       mode: (c["slot_capacity_mode"] === "live" ? "live" : "manual") as "live" | "manual",
