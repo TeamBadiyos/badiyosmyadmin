@@ -248,6 +248,21 @@ export function PipelineKanban({
         return Date.parse(a.createdAt) - Date.parse(b.createdAt);
       });
     }
+    // In Progress: least time remaining (incl. overtime) on top.
+    const prog = map.get("in_progress");
+    if (prog) {
+      const endOf = (b: PipelineBooking) => {
+        if (b.serviceEndAt) return Date.parse(b.serviceEndAt);
+        if (b.startedAt && b.serviceDurationMinutes)
+          return Date.parse(b.startedAt) + b.serviceDurationMinutes * 60_000;
+        return Number.MAX_SAFE_INTEGER;
+      };
+      prog.sort((a, b) => {
+        const ea = endOf(a);
+        const eb = endOf(b);
+        return (Number.isFinite(ea) ? ea : Number.MAX_SAFE_INTEGER) - (Number.isFinite(eb) ? eb : Number.MAX_SAFE_INTEGER);
+      });
+    }
     return map;
   }, [data]);
 
