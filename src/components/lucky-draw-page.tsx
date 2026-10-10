@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SortFilterHeader, SortFilterReset, useSortFilter, type SortFilterColumn } from "@/components/table-sort-filter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -650,7 +651,7 @@ function EnrolmentsTable({
   useEffect(() => {
     if (!defaultApplied.current) {
       defaultApplied.current = true;
-      sf.setSort?.({ key: "referrals", dir: "desc" });
+      sf.headerProps("referrals").setSort({ key: "referrals", dir: "desc" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
