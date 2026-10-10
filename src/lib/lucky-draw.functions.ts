@@ -180,3 +180,23 @@ export const publishLuckyWinners = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+const LUCKY_MEDIA_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+/** Super Admin only: uploads a banner/prize photo to the public lucky-draw-media bucket and returns its public URL. */
+export const uploadLuckyMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { kind: "banner" | "prize"; contentType: string; base64: string }) => d)
+  .handler(async ({ data, context }) => {
+    await requireSuperAdmin(context.supabase, context.userId);
+    const ext = LUCKY_MEDIA_TYPES[data.contentType];
+    if (!ext) throw new Error("Only JPG, PNG or WebP allowed");
+    const buf = Buffer.from(data.base64, "base64");
+    if (buf.byteLength > 2 * 1024 * 1024) throw new Error("Max 2 MB allowed");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const path = `${data.kind}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const bucket = supabaseAdmin.storage.from("lucky-draw-media");
+    const { error } = await bucket.upload(path, buf, { contentType: data.contentType, upsert: false, cacheControl: "31536000" });
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+    return { url: bucket.getPublicUrl(path).data.publicUrl };
+  });
