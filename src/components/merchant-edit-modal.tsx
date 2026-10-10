@@ -9,6 +9,7 @@ import {
   getMerchantDetail,
   listMerchantEditOptions,
   updateMerchantDetails,
+  setMerchantCommissionMode,
   type MerchantStatus,
 } from "@/lib/merchants.functions";
 import { getMerchantModules, setBusinessModules } from "@/lib/bulk-courier.functions";
@@ -286,8 +287,9 @@ export function MerchantEditModal({
               <Text label="PAN" value={form.pan} onChange={(v) => set("pan", v.toUpperCase())} />
             </Section>
             <p className="-mt-3 text-[12px] text-muted-foreground">
-              Commission: <b>{detail?.commissionPct ?? 0}%</b> per order — change it from Merchant Commission & Billing.
+              Flat commission: <b>{detail?.commissionPct ?? 0}%</b> per order — change it from Merchant Commission & Billing.
             </p>
+            {detail && <CommissionModeBox merchantId={merchantId} detail={detail} />}
           </div>
         )}
 
@@ -542,5 +544,38 @@ function Toggle({
         />
       </span>
     </button>
+  );
+}
+
+function CommissionModeBox({ merchantId, detail }: { merchantId: string; detail: { commissionMode: "flat" | "split"; mrpCommissionPct: number; otherCommissionPct: number } }) {
+  const qc = useQueryClient();
+  const save = useServerFn(setMerchantCommissionMode);
+  const [mode, setMode] = useState(detail.commissionMode);
+  const [mrp, setMrp] = useState(String(detail.mrpCommissionPct));
+  const [other, setOther] = useState(String(detail.otherCommissionPct));
+  const m = useMutation({
+    mutationFn: () => save({ data: { merchantId, mode, mrpPct: Number(mrp), otherPct: Number(other) } }),
+    onSuccess: () => { toast.success("Commission mode saved (applies to new orders)"); qc.invalidateQueries(); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to save"),
+  });
+  const inp = "mt-1 w-full h-9 rounded-[10px] border border-border bg-background px-3 text-[13px]";
+  return (
+    <div className="rounded-[14px] border border-border p-4 space-y-3">
+      <div className="text-[14px] font-bold text-foreground">Commission mode</div>
+      <div className="flex gap-4 text-[13px]">
+        <label className="flex items-center gap-2"><input type="radio" checked={mode === "flat"} onChange={() => setMode("flat")} /> Flat (one % for all items)</label>
+        <label className="flex items-center gap-2"><input type="radio" checked={mode === "split"} onChange={() => setMode("split")} /> Split: MRP vs other items</label>
+      </div>
+      {mode === "split" && (
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-[12px] font-semibold text-muted-foreground">MRP items %<input type="number" min={0} max={50} step="0.01" className={inp} value={mrp} onChange={(e) => setMrp(e.target.value)} /></label>
+          <label className="text-[12px] font-semibold text-muted-foreground">Other items %<input type="number" min={0} max={50} step="0.01" className={inp} value={other} onChange={(e) => setOther(e.target.value)} /></label>
+          <p className="col-span-2 text-[12px] text-muted-foreground">Mark items as "MRP item" in the store's products. Super Admin only.</p>
+        </div>
+      )}
+      <button type="button" disabled={m.isPending} onClick={() => m.mutate()} className="h-9 px-4 rounded-[10px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
+        {m.isPending ? "Saving…" : "Save commission mode"}
+      </button>
+    </div>
   );
 }
