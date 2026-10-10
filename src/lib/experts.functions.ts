@@ -425,10 +425,13 @@ export const getExpert = createServerFn({ method: "POST" })
     }));
     const ratingCount = reviews.length;
     const avgRating = ratingCount ? reviews.reduce((a, b) => a + b.rating, 0) / ratingCount : null;
+    const hrs = await loadWorkMinutes(context.supabase, [data.id]);
     return {
       reviews,
       avgRating,
       ratingCount,
+      lastWeekMinutes: hrs.lastWeek.get(data.id) ?? 0,
+      monthMinutes: hrs.month.get(data.id) ?? 0,
       referredByExpertId: e.referred_by_expert_id ?? null,
       referredByExpertName,
       id: e.id,
