@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, UserRound } from "lucide-react";
-import { listExperts, type ExpertLevel, type KycStatus, type ExpertRow } from "@/lib/experts.functions";
+import { listExperts, workHourRanges, type ExpertLevel, type KycStatus, type ExpertRow } from "@/lib/experts.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
 import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
@@ -101,6 +101,8 @@ export function ExpertsPage({
     },
     { key: "level", label: "Level", value: (e: ExpertRow) => e.level },
     { key: "kyc", label: "KYC", value: (e: ExpertRow) => e.kycStatus },
+    { key: "lastWeek", label: "Last week", type: "number", align: "right", value: (e: ExpertRow) => e.lastWeekMinutes, filterable: false },
+    { key: "month", label: "This month", type: "number", align: "right", value: (e: ExpertRow) => e.monthMinutes, filterable: false },
     {
       key: "wallet",
       label: "Wallet",
@@ -112,6 +114,7 @@ export function ExpertsPage({
     { key: "status", label: "Status", value: (e: ExpertRow) => e.status },
   ]);
   const experts = sf.rows;
+  const hr = workHourRanges();
 
   return (
     <div className="space-y-6">
@@ -164,11 +167,13 @@ export function ExpertsPage({
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
-        <div className="grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_90px_100px] min-w-[720px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_80px_80px_90px_100px] min-w-[900px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Photo</span>
           <SortFilterHeader {...sf.headerProps("name")} />
           <SortFilterHeader {...sf.headerProps("phone")} />
           <SortFilterHeader {...sf.headerProps("zone")} />
+          <span title={`${hr.weekFrom} – ${hr.weekTo} (Mon–Sun)`}><SortFilterHeader {...sf.headerProps("lastWeek")} /></span>
+          <span title={`${hr.monthFrom} – ${hr.today}`}><SortFilterHeader {...sf.headerProps("month")} /></span>
           <SortFilterHeader {...sf.headerProps("wallet")} />
           <SortFilterHeader {...sf.headerProps("status")} />
         </div>
@@ -241,7 +246,7 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
   return (
     <button
       onClick={onOpen}
-      className="w-full grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_90px_100px] min-w-[720px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
+      className="w-full grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_80px_80px_90px_100px] min-w-[900px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40 transition-colors"
     >
       <ExpertAvatar url={expert.photoUrl} />
       <span className="min-w-0 flex flex-col gap-1">
@@ -290,6 +295,8 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         )}
       </span>
 
+      <span className="text-right font-semibold text-foreground">{fmtHrs(expert.lastWeekMinutes)}</span>
+      <span className="text-right font-semibold text-foreground">{fmtHrs(expert.monthMinutes)}</span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
       <span className="flex items-center gap-1.5 flex-wrap">
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
@@ -320,4 +327,8 @@ function ExpertAvatar({ url }: { url: string | null }) {
       )}
     </div>
   );
+}
+
+function fmtHrs(m: number) {
+  return `${(m / 60).toFixed(1)} hrs`;
 }

@@ -24,6 +24,8 @@ export type ExpertRow = {
   lastSeenAt: string | null;
   avgRating: number | null;
   ratingCount: number;
+  lastWeekMinutes: number;
+  monthMinutes: number;
   jacketIssued: boolean;
   jacketIssuedAt: string | null;
   joiningDate: string | null;
@@ -163,6 +165,67 @@ async function loadRatings(
   return out;
 }
 
+/** IST ranges: last week = previous Mon–Sun, month = 1st of current month → today. */
+export function workHourRanges(now = new Date()) {
+  const ist = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
+  const [y, m, d] = ist.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const since = (dow + 6) % 7;
+  const iso = (dd: number) => new Date(Date.UTC(y, m - 1, dd)).toISOString().slice(0, 10);
+  return {
+    weekFrom: iso(d - since - 7),
+    weekTo: iso(d - since - 1),
+    monthFrom: iso(1),
+    today: ist,
+  };
+}
+
+async function loadWorkMinutes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  expertIds: string[],
+) {
+  const lastWeek = new Map<string, number>();
+  const month = new Map<string, number>();
+  if (!expertIds.length) return { lastWeek, month };
+  const r = workHourRanges();
+  const start = r.weekFrom < r.monthFrom ? r.weekFrom : r.monthFrom;
+  const { data } = await supabase
+    .from("bookings")
+    .select("id, assigned_expert_id, service_duration_minutes, started_at, scheduled_date, created_at")
+    .eq("status", "completed")
+    .eq("is_training", false)
+    .is("deleted_at", null)
+    .in("assigned_expert_id", expertIds)
+    .gte("created_at", `${start}T00:00:00+05:30`)
+    .limit(20000);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (data ?? []) as any[];
+  const ext = new Map<string, number>();
+  const ids = rows.map((b) => b.id);
+  for (let i = 0; i < ids.length; i += 300) {
+    const { data: xs } = await supabase
+      .from("booking_extensions")
+      .select("booking_id, extra_minutes")
+      .eq("approval_status", "accepted")
+      .in("booking_id", ids.slice(i, i + 300));
+    for (const x of (xs ?? []) as { booking_id: string; extra_minutes: number }[]) {
+      ext.set(x.booking_id, (ext.get(x.booking_id) ?? 0) + Number(x.extra_minutes ?? 0));
+    }
+  }
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+  for (const b of rows) {
+    const raw = b.started_at ?? (b.scheduled_date ? `${b.scheduled_date}T00:00:00+05:30` : b.created_at);
+    if (!raw) continue;
+    const day = fmt.format(new Date(raw));
+    const mins = Number(b.service_duration_minutes ?? 0) + (ext.get(b.id) ?? 0);
+    const id = b.assigned_expert_id as string;
+    if (day >= r.weekFrom && day <= r.weekTo) lastWeek.set(id, (lastWeek.get(id) ?? 0) + mins);
+    if (day >= r.monthFrom && day <= r.today) month.set(id, (month.get(id) ?? 0) + mins);
+  }
+  return { lastWeek, month };
+}
+
 async function requireStaff(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
@@ -261,6 +324,7 @@ export const listExperts = createServerFn({ method: "POST" })
       raw.map((r) => r.id),
     );
     const ratings = await loadRatings(context.supabase, raw.map((r) => r.id));
+    const hours = await loadWorkMinutes(context.supabase, raw.map((r) => r.id));
     const relPaths = raw
       .map((r) => r.photo_url as string | null)
       .filter((p): p is string => !!p && !/^https?:\/\//i.test(p));
@@ -295,6 +359,8 @@ export const listExperts = createServerFn({ method: "POST" })
         lastSeenAt: r.location_updated_at ?? null,
         avgRating: ratings.get(r.id) ? ratings.get(r.id)!.sum / ratings.get(r.id)!.count : null,
         ratingCount: ratings.get(r.id)?.count ?? 0,
+        lastWeekMinutes: hours.lastWeek.get(r.id) ?? 0,
+        monthMinutes: hours.month.get(r.id) ?? 0,
         ...mapOnboarding(r),
       };
     });
@@ -359,10 +425,13 @@ export const getExpert = createServerFn({ method: "POST" })
     }));
     const ratingCount = reviews.length;
     const avgRating = ratingCount ? reviews.reduce((a, b) => a + b.rating, 0) / ratingCount : null;
+    const hrs = await loadWorkMinutes(context.supabase, [data.id]);
     return {
       reviews,
       avgRating,
       ratingCount,
+      lastWeekMinutes: hrs.lastWeek.get(data.id) ?? 0,
+      monthMinutes: hrs.month.get(data.id) ?? 0,
       referredByExpertId: e.referred_by_expert_id ?? null,
       referredByExpertName,
       id: e.id,
