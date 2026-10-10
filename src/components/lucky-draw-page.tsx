@@ -617,11 +617,14 @@ function EnrolmentsTable({
 
   const flat = useMemo(
     () =>
-      filtered.flatMap((r) => {
-        const ts = r.tickets?.length ? r.tickets : [r.entry_no];
-        const ordered = [r.entry_no, ...ts.filter((t) => t !== r.entry_no)];
-        return ordered.map((t, i) => ({ r, ticket: t, first: i === 0 }));
-      }),
+      filtered
+        .flatMap((r) => {
+          const ts = r.tickets?.length ? r.tickets : [r.entry_no];
+          const ordered = [r.entry_no, ...ts.filter((t) => t !== r.entry_no)];
+          return ordered.map((t) => ({ r, ticket: t, first: t === r.entry_no }));
+        })
+        .sort((a, b) => a.ticket.localeCompare(b.ticket, undefined, { numeric: true }))
+        .map((x, i) => ({ ...x, serial: i + 1 })),
     [filtered],
   );
 
