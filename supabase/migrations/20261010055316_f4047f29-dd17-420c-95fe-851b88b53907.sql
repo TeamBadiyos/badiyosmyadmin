@@ -1,0 +1,1 @@
+ALTER FUNCTION public.lucky_draw_display_name(text) SET search_path = public;
