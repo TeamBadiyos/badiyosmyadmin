@@ -25,6 +25,7 @@ import {
   type LuckyCampaign,
   type LuckyPrize,
 } from "@/lib/lucky-draw.functions";
+import { LuckyMediaUpload } from "@/components/lucky-media-upload";
 
 const toLocalInput = (iso?: string | null) => {
   if (!iso) return "";
@@ -217,10 +218,7 @@ function CampaignFormFields({ form, onChange }: { form: CampaignForm; onChange: 
         <Label>Description</Label>
         <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} />
       </div>
-      <div>
-        <Label>Banner image URL</Label>
-        <Input value={form.banner_url} onChange={(e) => set("banner_url", e.target.value)} placeholder="https://…" />
-      </div>
+      <LuckyMediaUpload label="Banner image" kind="banner" value={form.banner_url} onChange={(u) => set("banner_url", u)} />
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label>Start</Label>
@@ -577,7 +575,9 @@ function PrizeList({
           {edit && (
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">{field("name", "Name", false)}</div>
-              <div className="col-span-2">{field("photo_url", "Photo URL", false)}</div>
+              <div className="col-span-2">
+                <LuckyMediaUpload label="Photo" kind="prize" value={String(edit.f.photo_url ?? "")} onChange={(u) => setEdit({ ...edit, f: { ...edit.f, photo_url: u } })} />
+              </div>
               {field("value_inr", "Value (₹)")}
               {field("sort_no", "Sort No.")}
               {isLb ? (
