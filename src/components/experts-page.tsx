@@ -101,7 +101,7 @@ export function ExpertsPage({
     },
     { key: "level", label: "Level", value: (e: ExpertRow) => e.level },
     { key: "kyc", label: "KYC", value: (e: ExpertRow) => e.kycStatus },
-    { key: "lastWeek", label: "Last week", type: "number", align: "right", value: (e: ExpertRow) => e.lastWeekMinutes, filterable: false },
+    { key: "lastWeek", label: "This week", type: "number", align: "right", value: (e: ExpertRow) => e.lastWeekMinutes, filterable: false },
     { key: "month", label: "This month", type: "number", align: "right", value: (e: ExpertRow) => e.monthMinutes, filterable: false },
     {
       key: "wallet",
@@ -172,7 +172,7 @@ export function ExpertsPage({
           <SortFilterHeader {...sf.headerProps("name")} />
           <SortFilterHeader {...sf.headerProps("phone")} />
           <SortFilterHeader {...sf.headerProps("zone")} />
-          <span title={`${hr.weekFrom} – ${hr.weekTo} (Mon–Sun)`}><SortFilterHeader {...sf.headerProps("lastWeek")} /></span>
+          <span title={`${hr.weekFrom} – ${hr.weekTo} (Mon–today)`}><SortFilterHeader {...sf.headerProps("lastWeek")} /></span>
           <span title={`${hr.monthFrom} – ${hr.today}`}><SortFilterHeader {...sf.headerProps("month")} /></span>
           <SortFilterHeader {...sf.headerProps("wallet")} />
           <SortFilterHeader {...sf.headerProps("status")} />
