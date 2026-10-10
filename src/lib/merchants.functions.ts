@@ -274,6 +274,9 @@ export type MerchantDetail = {
   bankIfsc: string | null;
   pan: string | null;
   commissionPct: number;
+  commissionMode: "flat" | "split";
+  mrpCommissionPct: number;
+  otherCommissionPct: number;
   deletedAt: string | null;
   deleteReason: string | null;
 };
@@ -290,7 +293,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -318,6 +321,9 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       bankIfsc: m.bank_ifsc ?? null,
       pan: m.pan ?? null,
       commissionPct: Number(m.commission_value ?? 0),
+      commissionMode: ((m as any).commission_mode === "split" ? "split" : "flat"), // eslint-disable-line @typescript-eslint/no-explicit-any
+      mrpCommissionPct: Number((m as any).mrp_commission_pct ?? 0), // eslint-disable-line @typescript-eslint/no-explicit-any
+      otherCommissionPct: Number((m as any).other_commission_pct ?? 0), // eslint-disable-line @typescript-eslint/no-explicit-any
       deletedAt: m.deleted_at ?? null,
       deleteReason: m.delete_reason ?? null,
     };
@@ -452,6 +458,7 @@ export type MerchantProduct = {
   lowStockThreshold: number;
   hsnSacCode: string | null;
   gstRate: number;
+  isMrp: boolean;
   isActive: boolean;
   adminHidden: boolean;
   adminHiddenReason: string | null;
@@ -502,7 +509,7 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
       db
         .from("products")
         .select(
-          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, hsn_sac_code, gst_rate, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, image_url_2, created_at",
+          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, hsn_sac_code, gst_rate, is_mrp, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, image_url_2, created_at",
         )
         .eq("merchant_id", data.merchantId)
         .order("created_at", { ascending: false })
@@ -531,6 +538,7 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
         lowStockThreshold: Number(r.low_stock_threshold ?? 0),
         hsnSacCode: r.hsn_sac_code ?? null,
         gstRate: Number(r.gst_rate ?? 0),
+        isMrp: !!r.is_mrp,
         isActive: !!r.is_active,
         adminHidden: !!r.admin_hidden,
         adminHiddenReason: r.admin_hidden_reason ?? null,
@@ -598,6 +606,7 @@ export type UpdateProductInput = {
   lowStockThreshold: number;
   hsnSacCode: string | null;
   gstRate: number;
+  isMrp?: boolean;
   isActive: boolean;
   // undefined = keep, null = remove, {base64,contentType,thumbBase64} = replace
   photo1?: { base64: string; contentType: string; thumbBase64: string } | null;
@@ -657,6 +666,7 @@ export const updateMerchantProduct = createServerFn({ method: "POST" })
       low_stock_threshold: Math.floor(Number(data.lowStockThreshold) || 0),
       hsn_sac_code: t(data.hsnSacCode),
       gst_rate: Number(data.gstRate) || 0,
+      ...(data.isMrp !== undefined ? { is_mrp: !!data.isMrp } : {}),
       is_active: !!data.isActive,
     };
     if (data.photo1 !== undefined) patch.image_url = data.photo1 ? await upload(data.photo1, 1) : null;
@@ -857,6 +867,26 @@ export const setMerchantCommission = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_set_merchant_commission", {
       _merchant_id: data.merchantId,
       _pct: data.pct,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setMerchantCommissionMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string; mode: "flat" | "split"; mrpPct: number; otherPct: number }) => {
+    if (!input?.merchantId) throw new Error("merchantId required");
+    if (input.mode !== "flat" && input.mode !== "split") throw new Error("Invalid mode");
+    if (input.mode === "split") {
+      for (const v of [input.mrpPct, input.otherPct]) {
+        if (!Number.isFinite(v) || v < 0 || v > 50) throw new Error("Commission must be between 0 and 50%");
+      }
+    }
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await (context.supabase as any).rpc("staff_set_merchant_commission_mode", { // eslint-disable-line @typescript-eslint/no-explicit-any
+      _merchant_id: data.merchantId, _mode: data.mode, _mrp_pct: data.mrpPct, _other_pct: data.otherPct,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
