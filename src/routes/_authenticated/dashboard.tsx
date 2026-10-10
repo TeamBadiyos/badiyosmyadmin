@@ -98,6 +98,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { SuggestionsPage } from "@/components/suggestions-page";
+import { LuckyDrawPage } from "@/components/lucky-draw-page";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -128,6 +129,7 @@ const NAV_ITEMS = [
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
   { key: "insurance", label: "Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
+  { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
   { key: "emergency", label: "Emergency Alerts", icon: Siren },
   { key: "unassigned-trips", label: "Unassigned Trips", icon: Truck },
@@ -197,7 +199,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads", "insurance", "suggestions"],
+    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads", "insurance", "suggestions", "lucky-draw"],
   },
   {
     id: "finance",
@@ -628,6 +630,8 @@ function Shell() {
           <WaitlistPage role={role} />
         ) : active === "insurance" ? (
           <InsurancePage role={role} />
+        ) : active === "lucky-draw" ? (
+          <LuckyDrawPage />
         ) : active === "suggestions" ? (
           <SuggestionsPage />
         ) : active === "interest-leads" ? (
