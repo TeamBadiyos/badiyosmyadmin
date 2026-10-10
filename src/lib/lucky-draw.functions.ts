@@ -88,6 +88,7 @@ export const getLuckyCampaignDetail = createServerFn({ method: "GET" })
           phone: string | null;
           referrals: number;
           entries: number;
+          tickets?: string[];
           rank: number;
           enrolled_at: string;
         }>;
