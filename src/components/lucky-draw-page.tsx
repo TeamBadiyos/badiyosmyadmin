@@ -631,9 +631,9 @@ function EnrolmentsTable({
   const exportCsv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [
-      ["Rank", "Ticket No", "Full name", "Phone", "Type", "Referrals", "Entries", "Enrolled at"].join(","),
-      ...flat.map(({ r, ticket, first }) =>
-        [first ? r.rank : "", ticket, r.full_name, r.phone, first ? "Signup" : "Ref bonus", first ? r.referrals : "", first ? r.entries : "", first ? fmt(r.enrolled_at) : ""].map(esc).join(","),
+      ["#", "Ticket No", "Full name", "Phone", "Type", "Referrals", "Entries", "Enrolled at"].join(","),
+      ...flat.map(({ r, ticket, first, serial }) =>
+        [serial, ticket, r.full_name, r.phone, first ? "Signup" : "Ref bonus", first ? r.referrals : "", first ? r.entries : "", first ? fmt(r.enrolled_at) : ""].map(esc).join(","),
       ),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -658,7 +658,7 @@ function EnrolmentsTable({
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground">
               <tr>
-                <th className="py-1">Rank</th>
+                <th className="py-1">#</th>
                 <th>Ticket No</th>
                 <th>Full name</th>
                 <th>Phone</th>
@@ -669,9 +669,9 @@ function EnrolmentsTable({
               </tr>
             </thead>
             <tbody>
-              {flat.slice(0, 1000).map(({ r, ticket, first }) => (
-                <tr key={ticket} className={first ? "border-t" : "text-muted-foreground"}>
-                  <td className="py-1">{first ? r.rank : ""}</td>
+              {flat.slice(0, 1000).map(({ r, ticket, first, serial }) => (
+                <tr key={ticket} className="border-t">
+                  <td className="py-1">{serial}</td>
                   <td className="py-1 font-mono">{ticket}</td>
                   <td>{r.full_name ?? "—"}</td>
                   <td>{r.phone ?? "—"}</td>
