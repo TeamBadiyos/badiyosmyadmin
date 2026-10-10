@@ -55,6 +55,14 @@ const GROUPS: Array<{ title: string; blurb: string; fields: FieldDef[] }> = [
         min: 0,
         max: 23,
       },
+      {
+        key: "slot_step_minutes",
+        label: "Slot gap",
+        help: "30 = half-hourly slots (10:00, 10:30, 11:00…). 60 = hourly slots.",
+        unit: "minutes",
+        min: 30,
+        max: 60,
+      },
     ],
   },
   {
