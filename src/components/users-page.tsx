@@ -51,7 +51,7 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [sort, setSort] = useState<"recent" | "spend">("recent");
+  const [sort, setSort] = useState<"recent" | "oldest" | "spend" | "bookings">("recent");
   const [selected, setSelected] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<CustomerRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<CustomerRow | null>(null);
@@ -175,13 +175,15 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
           <select
             value={sort}
             onChange={(e) => {
-              setSort(e.target.value as "recent" | "spend");
+              setSort(e.target.value as typeof sort);
               setPage(1);
             }}
             className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
           >
             <option value="recent">Newest first</option>
-            <option value="spend">Highest spend (this page)</option>
+            <option value="oldest">Oldest first</option>
+            <option value="spend">Highest spend (all customers)</option>
+            <option value="bookings">Most bookings (all customers)</option>
           </select>
         </div>
 

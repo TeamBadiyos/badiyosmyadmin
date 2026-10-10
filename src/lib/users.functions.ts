@@ -135,7 +135,7 @@ export const listCustomers = createServerFn({ method: "GET" })
             page?: number;
             pageSize?: number;
             includeDeleted?: boolean;
-            sort?: "recent" | "spend";
+            sort?: "recent" | "oldest" | "spend" | "bookings";
           }
         | undefined,
     ) => input ?? {},
@@ -147,27 +147,75 @@ export const listCustomers = createServerFn({ method: "GET" })
     const pageSize = Math.min(100, Math.max(5, data.pageSize ?? 25));
     const search = (data.search ?? "").trim();
 
-    let q = db
-      .from("users")
-      .select(
-        "id, full_name, phone, email, created_at, preferred_language, referral_code, successful_referrals, total_coins_earned, deleted_at",
-        { count: "exact" },
+    const sort = data.sort ?? "recent";
+    const globalSort = sort === "spend" || sort === "bookings";
+    const cols =
+      "id, full_name, phone, email, created_at, preferred_language, referral_code, successful_referrals, total_coins_earned, deleted_at";
+    const buildQ = () => {
+      let q = db.from("users").select(cols, { count: "exact" });
+      if (!data.includeDeleted) q = q.is("deleted_at", null);
+      if (search) {
+        const esc = search.replace(/[%,]/g, "");
+        q = q.or(`full_name.ilike.%${esc}%,phone.ilike.%${esc}%,email.ilike.%${esc}%`);
+      }
+      return q.order("created_at", { ascending: sort === "oldest", nullsFirst: false });
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let users: any[] = [];
+    let count = 0;
+    if (globalSort) {
+      // Load every matching customer so sorting covers the whole list, not one page.
+      for (let from = 0; ; from += 1000) {
+        const { data: chunk, error, count: c } = await buildQ().range(from, from + 999);
+        if (error) throw new Error(error.message);
+        users.push(...(chunk ?? []));
+        count = c ?? users.length;
+        if (!chunk || chunk.length < 1000) break;
+      }
+    } else {
+      const { data: chunk, error, count: c } = await buildQ().range(
+        (page - 1) * pageSize,
+        page * pageSize - 1,
       );
-    if (!data.includeDeleted) q = q.is("deleted_at", null);
-    if (search) {
-      const esc = search.replace(/[%,]/g, "");
-      q = q.or(`full_name.ilike.%${esc}%,phone.ilike.%${esc}%,email.ilike.%${esc}%`);
+      if (error) throw new Error(error.message);
+      users = chunk ?? [];
+      count = c ?? users.length;
     }
-    q = q
-      .order("created_at", { ascending: false, nullsFirst: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
 
-    const { data: users, error, count } = await q;
-    if (error) throw new Error(error.message);
-    const ids = (users ?? []).map((u: { id: string }) => u.id);
+    const agg = new Map<string, { count: number; spend: number }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const addBookings = (list: any[]) => {
+      for (const b of list) {
+        const cur = agg.get(b.user_id) ?? { count: 0, spend: 0 };
+        cur.count += 1;
+        if (b.status === "completed") cur.spend += Number(b.price ?? 0);
+        agg.set(b.user_id, cur);
+      }
+    };
+    if (globalSort) {
+      for (let from = 0; ; from += 1000) {
+        const { data: chunk, error } = await db
+          .from("bookings")
+          .select("user_id, price, status")
+          .eq("is_training", false)
+          .not("user_id", "is", null)
+          .order("id")
+          .range(from, from + 999);
+        if (error) throw new Error(error.message);
+        addBookings(chunk ?? []);
+        if (!chunk || chunk.length < 1000) break;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const key = (u: any) =>
+        sort === "spend" ? agg.get(u.id)?.spend ?? 0 : agg.get(u.id)?.count ?? 0;
+      users.sort((a, b) => key(b) - key(a));
+      users = users.slice((page - 1) * pageSize, page * pageSize);
+    }
 
+    const ids = users.map((u: { id: string }) => u.id);
     const [bookingsRes, addressRes] = await Promise.all([
-      ids.length
+      !globalSort && ids.length
         ? db.from("bookings").select("user_id, price, status").eq("is_training", false).in("user_id", ids)
         : Promise.resolve({ data: [], error: null }),
       ids.length
@@ -179,15 +227,9 @@ export const listCustomers = createServerFn({ method: "GET" })
     ]);
     if (bookingsRes.error) throw new Error(bookingsRes.error.message);
     if (addressRes.error) throw new Error(addressRes.error.message);
-
-    const agg = new Map<string, { count: number; spend: number }>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const b of (bookingsRes.data ?? []) as any[]) {
-      const cur = agg.get(b.user_id) ?? { count: 0, spend: 0 };
-      cur.count += 1;
-      if (b.status === "completed") cur.spend += Number(b.price ?? 0);
-      agg.set(b.user_id, cur);
-    }
+    addBookings((bookingsRes.data ?? []) as any[]);
+
     const addr = new Map<string, { area: string | null; city: string | null }>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const a of (addressRes.data ?? []) as any[]) {
@@ -195,8 +237,7 @@ export const listCustomers = createServerFn({ method: "GET" })
         addr.set(a.user_id, { area: a.area ?? null, city: a.city ?? null });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: CustomerRow[] = ((users ?? []) as any[]).map((u) => ({
+    const rows: CustomerRow[] = users.map((u) => ({
       id: u.id,
       full_name: u.full_name ?? null,
       phone: u.phone ?? null,
@@ -213,9 +254,7 @@ export const listCustomers = createServerFn({ method: "GET" })
       deleted_at: u.deleted_at ?? null,
     }));
 
-    if (data.sort === "spend") rows.sort((a, b) => b.total_spend - a.total_spend);
-
-    return { rows, total: count ?? rows.length };
+    return { rows, total: count };
   });
 
 export const getCustomerProfile = createServerFn({ method: "GET" })
