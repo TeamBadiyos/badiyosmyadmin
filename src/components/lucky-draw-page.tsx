@@ -615,12 +615,22 @@ function EnrolmentsTable({
     );
   }, [rows, q]);
 
+  const flat = useMemo(
+    () =>
+      filtered.flatMap((r) => {
+        const ts = r.tickets?.length ? r.tickets : [r.entry_no];
+        const ordered = [r.entry_no, ...ts.filter((t) => t !== r.entry_no)];
+        return ordered.map((t, i) => ({ r, ticket: t, first: i === 0 }));
+      }),
+    [filtered],
+  );
+
   const exportCsv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [
-      ["Rank", "Entry No", "Ticket codes", "Full name", "Phone", "Referrals", "Entries", "Enrolled at"].join(","),
-      ...filtered.map((r) =>
-        [r.rank, r.entry_no, (r.tickets ?? [r.entry_no]).join(" "), r.full_name, r.phone, r.referrals, r.entries, fmt(r.enrolled_at)].map(esc).join(","),
+      ["Rank", "Ticket No", "Full name", "Phone", "Type", "Referrals", "Entries", "Enrolled at"].join(","),
+      ...flat.map(({ r, ticket, first }) =>
+        [first ? r.rank : "", ticket, r.full_name, r.phone, first ? "Signup" : "Ref bonus", first ? r.referrals : "", first ? r.entries : "", first ? fmt(r.enrolled_at) : ""].map(esc).join(","),
       ),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -639,39 +649,35 @@ function EnrolmentsTable({
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-1 h-4 w-4" /> CSV
           </Button>
-          <span className="self-center text-xs text-muted-foreground">{filtered.length} rows</span>
+          <span className="self-center text-xs text-muted-foreground">{filtered.length} customers · {flat.length} tickets</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground">
               <tr>
                 <th className="py-1">Rank</th>
-                <th>Ticket codes</th>
+                <th>Ticket No</th>
                 <th>Full name</th>
                 <th>Phone</th>
+                <th>Type</th>
                 <th>Referrals</th>
                 <th>Entries</th>
                 <th>Enrolled at</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 500).map((r) => (
-                <tr key={r.entry_no} className="border-t">
-                  <td className="py-1">{r.rank}</td>
-                  <td className="py-1">
-                    <div className="flex flex-wrap gap-1">
-                      {(r.tickets?.length ? r.tickets : [r.entry_no]).map((t) => (
-                        <Badge key={t} variant={t === r.entry_no ? "secondary" : "outline"} className="font-mono">
-                          {t}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
+              {flat.slice(0, 1000).map(({ r, ticket, first }) => (
+                <tr key={ticket} className={first ? "border-t" : "text-muted-foreground"}>
+                  <td className="py-1">{first ? r.rank : ""}</td>
+                  <td className="py-1 font-mono">{ticket}</td>
                   <td>{r.full_name ?? "—"}</td>
                   <td>{r.phone ?? "—"}</td>
-                  <td>{r.referrals}</td>
-                  <td>{r.entries}</td>
-                  <td>{fmt(r.enrolled_at)}</td>
+                  <td>
+                    <Badge variant={first ? "secondary" : "outline"}>{first ? "Signup" : "Ref bonus"}</Badge>
+                  </td>
+                  <td>{first ? r.referrals : ""}</td>
+                  <td>{first ? r.entries : ""}</td>
+                  <td>{first ? fmt(r.enrolled_at) : ""}</td>
                 </tr>
               ))}
             </tbody>
