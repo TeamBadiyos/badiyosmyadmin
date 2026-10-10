@@ -13,7 +13,8 @@ function slotLabel(m: number, step: number) {
     const h = Math.floor(x / 60), mi = x % 60;
     return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, "0")} ${h < 12 || h === 24 ? "AM" : "PM"}`;
   };
-  return `${f(m)} – ${f(m + step)}`;
+  void step;
+  return f(m);
 }
 function ddmmyyyy(iso: string) {
   const [y, m, d] = iso.split("-");
