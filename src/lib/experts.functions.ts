@@ -197,7 +197,11 @@ async function loadWorkMinutes(
     .eq("is_training", false)
     .is("deleted_at", null)
     .in("assigned_expert_id", expertIds)
-    .gte("created_at", `${start}T00:00:00+05:30`)
+    // Bound on the work day, not created_at, so advance bookings (booked before
+    // the week/month started but worked inside it) are included.
+    .or(
+      `started_at.gte.${start}T00:00:00+05:30,scheduled_date.gte.${start},created_at.gte.${start}T00:00:00+05:30`,
+    )
     .limit(20000);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (data ?? []) as any[];
