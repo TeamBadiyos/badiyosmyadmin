@@ -603,7 +603,7 @@ function EnrolmentsTable({
   rows,
   title,
 }: {
-  rows: Array<{ entry_no: string; full_name: string | null; phone: string | null; referrals: number; entries: number; rank: number; enrolled_at: string }>;
+  rows: Array<{ entry_no: string; full_name: string | null; phone: string | null; referrals: number; entries: number; rank: number; enrolled_at: string; tickets?: string[] }>;
   title: string;
 }) {
   const [q, setQ] = useState("");
@@ -611,16 +611,16 @@ function EnrolmentsTable({
     const s = q.trim().toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      [r.full_name, r.phone, r.entry_no].some((v) => (v ?? "").toLowerCase().includes(s)),
+      [r.full_name, r.phone, r.entry_no, ...(r.tickets ?? [])].some((v) => (v ?? "").toLowerCase().includes(s)),
     );
   }, [rows, q]);
 
   const exportCsv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [
-      ["Rank", "Entry No", "Full name", "Phone", "Referrals", "Entries", "Enrolled at"].join(","),
+      ["Rank", "Entry No", "Ticket codes", "Full name", "Phone", "Referrals", "Entries", "Enrolled at"].join(","),
       ...filtered.map((r) =>
-        [r.rank, r.entry_no, r.full_name, r.phone, r.referrals, r.entries, fmt(r.enrolled_at)].map(esc).join(","),
+        [r.rank, r.entry_no, (r.tickets ?? [r.entry_no]).join(" "), r.full_name, r.phone, r.referrals, r.entries, fmt(r.enrolled_at)].map(esc).join(","),
       ),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -635,7 +635,7 @@ function EnrolmentsTable({
     <Card>
       <CardContent className="space-y-3 pt-6">
         <div className="flex flex-wrap gap-2">
-          <Input className="max-w-xs" placeholder="Search name, phone, entry no." value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="max-w-xs" placeholder="Search name, phone, ticket no." value={q} onChange={(e) => setQ(e.target.value)} />
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-1 h-4 w-4" /> CSV
           </Button>
@@ -646,7 +646,7 @@ function EnrolmentsTable({
             <thead className="text-left text-muted-foreground">
               <tr>
                 <th className="py-1">Rank</th>
-                <th>Entry No.</th>
+                <th>Ticket codes</th>
                 <th>Full name</th>
                 <th>Phone</th>
                 <th>Referrals</th>
@@ -658,7 +658,15 @@ function EnrolmentsTable({
               {filtered.slice(0, 500).map((r) => (
                 <tr key={r.entry_no} className="border-t">
                   <td className="py-1">{r.rank}</td>
-                  <td className="font-mono">{r.entry_no}</td>
+                  <td className="py-1">
+                    <div className="flex flex-wrap gap-1">
+                      {(r.tickets?.length ? r.tickets : [r.entry_no]).map((t) => (
+                        <Badge key={t} variant={t === r.entry_no ? "secondary" : "outline"} className="font-mono">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
                   <td>{r.full_name ?? "—"}</td>
                   <td>{r.phone ?? "—"}</td>
                   <td>{r.referrals}</td>
