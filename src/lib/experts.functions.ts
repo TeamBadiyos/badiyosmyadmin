@@ -173,8 +173,8 @@ export function workHourRanges(now = new Date()) {
   const since = (dow + 6) % 7;
   const iso = (dd: number) => new Date(Date.UTC(y, m - 1, dd)).toISOString().slice(0, 10);
   return {
-    weekFrom: iso(d - since - 7),
-    weekTo: iso(d - since - 1),
+    weekFrom: iso(d - since),
+    weekTo: ist,
     monthFrom: iso(1),
     today: ist,
   };
