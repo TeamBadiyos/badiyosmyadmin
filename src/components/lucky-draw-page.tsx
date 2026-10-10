@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SortFilterHeader, SortFilterReset, useSortFilter, type SortFilterColumn } from "@/components/table-sort-filter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -599,6 +600,12 @@ function PrizeList({
   );
 }
 
+type FlatTicketRow = {
+  r: { entry_no: string; full_name: string | null; phone: string | null; referrals: number; entries: number; rank: number; enrolled_at: string; tickets?: string[] };
+  ticket: string;
+  first: boolean;
+};
+
 function EnrolmentsTable({
   rows,
   title,
@@ -615,24 +622,48 @@ function EnrolmentsTable({
     );
   }, [rows, q]);
 
-  const flat = useMemo(
+  const flat = useMemo<FlatTicketRow[]>(
     () =>
-      filtered
-        .flatMap((r) => {
-          const ts = r.tickets?.length ? r.tickets : [r.entry_no];
-          const ordered = [r.entry_no, ...ts.filter((t) => t !== r.entry_no)];
-          return ordered.map((t) => ({ r, ticket: t, first: t === r.entry_no }));
-        })
-        .sort((a, b) => a.ticket.localeCompare(b.ticket, undefined, { numeric: true }))
-        .map((x, i) => ({ ...x, serial: i + 1 })),
+      filtered.flatMap((r) => {
+        const ts = r.tickets?.length ? r.tickets : [r.entry_no];
+        const ordered = [r.entry_no, ...ts.filter((t) => t !== r.entry_no)];
+        return ordered.map((t) => ({ r, ticket: t, first: t === r.entry_no }));
+      }),
     [filtered],
   );
+
+  const columns = useMemo<SortFilterColumn<FlatTicketRow>[]>(
+    () => [
+      { key: "ticket", label: "Ticket No", value: (x) => x.ticket },
+      { key: "name", label: "Full name", value: (x) => x.r.full_name },
+      { key: "phone", label: "Phone", value: (x) => x.r.phone },
+      { key: "type", label: "Type", value: (x) => (x.first ? "Signup" : "Ref bonus") },
+      { key: "referrals", label: "Referrals", value: (x) => (x.first ? x.r.referrals : null), type: "number" },
+      { key: "entries", label: "Entries", value: (x) => (x.first ? x.r.entries : null), type: "number" },
+      { key: "enrolled", label: "Enrolled at", value: (x) => (x.first ? x.r.enrolled_at : null), display: (x) => (x.first ? fmt(x.r.enrolled_at) : "—") },
+    ],
+    [],
+  );
+
+  const sf = useSortFilter(flat, columns);
+  // Default view: highest referrals on top.
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (!defaultApplied.current) {
+      defaultApplied.current = true;
+      sf.headerProps("referrals").setSort({ key: "referrals", dir: "desc" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sorted = sf.rows;
+  const display = useMemo(() => sorted.map((x, i) => ({ ...x, serial: i + 1 })), [sorted]);
 
   const exportCsv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [
       ["#", "Ticket No", "Full name", "Phone", "Type", "Referrals", "Entries", "Enrolled at"].join(","),
-      ...flat.map(({ r, ticket, first, serial }) =>
+      ...display.map(({ r, ticket, first, serial }) =>
         [serial, ticket, r.full_name, r.phone, first ? "Signup" : "Ref bonus", first ? r.referrals : "", first ? r.entries : "", first ? fmt(r.enrolled_at) : ""].map(esc).join(","),
       ),
     ];
@@ -652,24 +683,23 @@ function EnrolmentsTable({
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-1 h-4 w-4" /> CSV
           </Button>
-          <span className="self-center text-xs text-muted-foreground">{filtered.length} customers · {flat.length} tickets</span>
+          <SortFilterReset api={sf} />
+          <span className="self-center text-xs text-muted-foreground">{filtered.length} customers · {sorted.length} tickets</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground">
               <tr>
                 <th className="py-1">#</th>
-                <th>Ticket No</th>
-                <th>Full name</th>
-                <th>Phone</th>
-                <th>Type</th>
-                <th>Referrals</th>
-                <th>Entries</th>
-                <th>Enrolled at</th>
+                {columns.map((c) => (
+                  <th key={c.key}>
+                    <SortFilterHeader {...sf.headerProps(c.key)} />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {flat.slice(0, 1000).map(({ r, ticket, first, serial }) => (
+              {display.slice(0, 1000).map(({ r, ticket, first, serial }) => (
                 <tr key={ticket} className="border-t">
                   <td className="py-1">{serial}</td>
                   <td className="py-1 font-mono">{ticket}</td>
