@@ -8,9 +8,12 @@ function istDate(offsetDays = 0) {
   const d = new Date(Date.now() + 5.5 * 3600000 + offsetDays * 86400000);
   return d.toISOString().slice(0, 10);
 }
-function hourLabel(h: number) {
-  const f = (x: number) => `${x % 12 === 0 ? 12 : x % 12} ${x < 12 || x === 24 ? "AM" : "PM"}`;
-  return `${f(h)} – ${f(h + 1)}`;
+function slotLabel(m: number, step: number) {
+  const f = (x: number) => {
+    const h = Math.floor(x / 60), mi = x % 60;
+    return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, "0")} ${h < 12 || h === 24 ? "AM" : "PM"}`;
+  };
+  return `${f(m)} – ${f(m + step)}`;
 }
 function ddmmyyyy(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -26,7 +29,7 @@ export function SlotAvailabilityTab() {
   const q = useQuery({ queryKey: ["slot-overrides", date], queryFn: () => listFn({ data: { date } }) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["slot-overrides"] });
   const slotMut = useMutation({
-    mutationFn: (v: { hour: number; full: boolean }) => fullFn({ data: { date, ...v } }),
+    mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, ...v } }),
     onSuccess: (_r, v) => { toast.success(v.full ? "Slot marked fully booked" : "Slot re-opened"); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -55,9 +58,10 @@ export function SlotAvailabilityTab() {
   const cap = cq.data;
 
   const d = q.data;
+  const step = d?.step ?? 30;
   const hours: number[] = [];
-  if (d) for (let h = d.first; h <= d.last; h++) hours.push(h);
-  const fullSet = new Set((d?.full ?? []).map((f) => f.start_hour));
+  if (d) for (let m = d.first * 60; m <= d.last * 60; m += step) hours.push(m);
+  const fullSet = new Set((d?.full ?? []).map((f) => f.key));
 
   return (
     <div className="space-y-4">
@@ -83,7 +87,7 @@ export function SlotAvailabilityTab() {
           <div className="min-w-0 max-w-xl">
             <h3 className="text-[15px] font-bold text-foreground">Automatic slot capacity</h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              ON: a slot shows Fully Booked by itself when all maids are busy. Long bookings (e.g. 3 hours) keep one maid busy in every hour they cover. Only Super Admin can change these settings.
+              ON: a slot shows Fully Booked by itself when all maids are busy. Long bookings (e.g. 3 hours) keep one maid busy in every half-hour they cover (plus travel gap). Only Super Admin can change these settings.
             </p>
           </div>
           <button type="button" role="switch" aria-checked={!!cap?.enabled} aria-label="Automatic capacity"
@@ -151,15 +155,15 @@ export function SlotAvailabilityTab() {
         {q.isError ? <p className="p-4 text-[13px] text-destructive">{(q.error as Error).message}</p> : null}
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
           {hours.map((h) => {
-            const busy = cap?.busy[h] ?? 0;
+            const busy = Math.max(cap?.busy[h] ?? 0, step === 60 ? cap?.busy[h + 30] ?? 0 : 0);
             const autoFull = !!cap?.enabled && busy >= (cap?.capacity ?? 0);
             const manualFull = fullSet.has(h);
             const full = manualFull || autoFull;
-            const count = d?.counts[h] ?? 0;
+            const count = (d?.counts[h] ?? 0) + (step === 60 ? d?.counts[h + 30] ?? 0 : 0);
             return (
               <div key={h} className={`rounded-[12px] border p-3 ${full ? "border-destructive/50 bg-destructive/10" : "border-border"}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[14px] font-bold text-foreground">{hourLabel(h)}</span>
+                  <span className="text-[14px] font-bold text-foreground">{slotLabel(h, step)}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${full ? "bg-destructive text-destructive-foreground" : "bg-success/15 text-success"}`}>
                     {manualFull ? "Fully Booked" : autoFull ? "Auto Full" : "Open"}
                   </span>
@@ -167,7 +171,7 @@ export function SlotAvailabilityTab() {
                 <p className="mt-1 text-[12px] text-muted-foreground">{count} booking{count === 1 ? "" : "s"} start here · {busy} / {cap?.capacity ?? "–"} maids busy</p>
                 {d?.canEdit ? (
                   <button type="button" disabled={slotMut.isPending}
-                    onClick={() => slotMut.mutate({ hour: h, full: !manualFull })}
+                    onClick={() => slotMut.mutate({ hour: Math.floor(h / 60), minute: h % 60, full: !manualFull })}
                     className={`mt-2 h-9 w-full rounded-[10px] text-[12px] font-bold disabled:opacity-50 ${full ? "border border-border text-foreground" : "bg-destructive text-destructive-foreground"}`}>
                     {manualFull ? "Re-open slot" : "Mark Fully Booked"}
                   </button>

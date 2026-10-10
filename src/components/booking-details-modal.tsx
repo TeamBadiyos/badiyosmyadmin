@@ -1474,10 +1474,13 @@ function ExpertAssignSection({
 }
 
 
-const RESCHEDULE_SLOTS = Array.from({ length: 14 }, (_, i) => {
-  const h = 7 + i; // 7 AM … 8 PM
-  const fmt = (x: number) => `${x % 12 === 0 ? 12 : x % 12} ${x < 12 ? "AM" : "PM"}`;
-  return `${fmt(h)} (${fmt(h)} – ${fmt(h + 1)})`;
+const RESCHEDULE_SLOTS = Array.from({ length: 27 }, (_, i) => {
+  const m = 7 * 60 + i * 30; // 7:00 AM … 8:00 PM, every 30 min
+  const fmt = (x: number) => {
+    const h = Math.floor(x / 60) % 24, mi = x % 60;
+    return `${h % 12 === 0 ? 12 : h % 12}${mi ? `:${String(mi).padStart(2, "0")}` : ""} ${h < 12 ? "AM" : "PM"}`;
+  };
+  return `${fmt(m)} (${fmt(m)} – ${fmt(m + 60)})`;
 });
 
 function ymdLocal(d: Date) {
@@ -1486,11 +1489,11 @@ function ymdLocal(d: Date) {
 }
 
 function slotStartHour(slot: string): number | null {
-  const m = slot.match(/^(\d{1,2})\s*(AM|PM)/i);
+  const m = slot.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
   if (!m) return null;
   let h = Number(m[1]) % 12;
-  if (m[2].toUpperCase() === "PM") h += 12;
-  return h;
+  if (m[3].toUpperCase() === "PM") h += 12;
+  return h + Number(m[2] ?? 0) / 60;
 }
 
 function RescheduleSection({
@@ -1521,7 +1524,7 @@ function RescheduleSection({
     };
   });
   const isToday = date === ymdLocal(today);
-  const nowHour = today.getHours();
+  const nowHour = today.getHours() + today.getMinutes() / 60;
 
   const close = () => {
     setOpen(false);
