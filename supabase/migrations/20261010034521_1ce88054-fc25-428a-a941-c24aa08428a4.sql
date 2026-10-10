@@ -1,0 +1,1 @@
+UPDATE public.dispatch_config SET broadcast_timeout_seconds = 10800 WHERE broadcast_timeout_seconds < 10800;
