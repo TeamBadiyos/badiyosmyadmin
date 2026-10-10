@@ -173,6 +173,12 @@ export function ExpertDetailsModal({
                 </span>
               )}
             </h2>
+            {data && (
+              <p className="text-[12px] text-muted-foreground mt-0.5">
+                Last week (Mon–Sun): <b className="text-foreground">{(data.lastWeekMinutes / 60).toFixed(1)} hrs</b>
+                {" · "}This month: <b className="text-foreground">{(data.monthMinutes / 60).toFixed(1)} hrs</b>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {onEdit && (
