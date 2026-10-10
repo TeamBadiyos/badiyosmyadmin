@@ -458,6 +458,7 @@ export type MerchantProduct = {
   lowStockThreshold: number;
   hsnSacCode: string | null;
   gstRate: number;
+  isMrp: boolean;
   isActive: boolean;
   adminHidden: boolean;
   adminHiddenReason: string | null;
@@ -605,6 +606,7 @@ export type UpdateProductInput = {
   lowStockThreshold: number;
   hsnSacCode: string | null;
   gstRate: number;
+  isMrp?: boolean;
   isActive: boolean;
   // undefined = keep, null = remove, {base64,contentType,thumbBase64} = replace
   photo1?: { base64: string; contentType: string; thumbBase64: string } | null;
