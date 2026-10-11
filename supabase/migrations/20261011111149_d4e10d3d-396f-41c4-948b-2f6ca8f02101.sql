@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.instant_free_expert_count() FROM public, anon, authenticated;
