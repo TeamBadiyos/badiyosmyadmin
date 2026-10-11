@@ -9633,6 +9633,7 @@ export type Database = {
         Returns: number
       }
       instant_booking_enabled: { Args: never; Returns: boolean }
+      instant_free_expert_count: { Args: never; Returns: number }
       is_active_staff: {
         Args: { _roles: string[]; _uid: string }
         Returns: boolean
