@@ -169,7 +169,7 @@ const NAV_GROUPS = [
     id: "live-ops",
     label: "Live Ops",
     icon: Activity,
-    keys: ["emergency", "support", "unassigned-trips"],
+    keys: ["emergency", "support", "unassigned-trips", "suggestions"],
   },
   {
     id: "clean",
@@ -199,7 +199,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["offers", "referrals", "rewards", "homepage", "waitlist", "interest-leads", "insurance", "suggestions", "lucky-draw"],
+    keys: ["offers", "referrals", "rewards", "waitlist", "interest-leads", "insurance", "lucky-draw"],
   },
   {
     id: "finance",
@@ -211,7 +211,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "zones", "dispatch-alerts", "notification-sounds", "legal", "roles", "audit"],
+    keys: ["services", "zones", "homepage", "dispatch-alerts", "notification-sounds", "legal", "roles", "audit"],
   },
 ] as const;
 
