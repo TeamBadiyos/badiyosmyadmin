@@ -127,6 +127,8 @@ export type ExpertReview = {
 
 export type ExpertDetails = ExpertRow & {
   address: string | null;
+  currentLat: number | null;
+  currentLng: number | null;
   bankAccountNumber: string | null;
   bankIfsc: string | null;
   bankAccountHolderName: string | null;
@@ -455,6 +457,8 @@ export const getExpert = createServerFn({ method: "POST" })
       isBusy: !!e.is_busy,
       lastSeenAt: e.location_updated_at ?? null,
       address: e.address ?? null,
+      currentLat: e.current_lat != null ? Number(e.current_lat) : null,
+      currentLng: e.current_lng != null ? Number(e.current_lng) : null,
       bankAccountNumber: e.bank_account_number ?? null,
       bankIfsc: e.bank_ifsc ?? null,
       bankAccountHolderName: e.bank_account_holder_name ?? null,
