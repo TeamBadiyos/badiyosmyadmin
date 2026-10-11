@@ -13,6 +13,7 @@ import {
 } from "@/lib/experts.functions";
 import { ExpertTrainingModeCard } from "@/components/expert-training-mode-card";
 import { ExpertGrowthPartnerCard } from "@/components/expert-growth-partner-card";
+import { ExpertLocationMap } from "@/components/expert-location-map";
 import {
   listExpertSkills,
   listActiveServiceCategories,
@@ -260,6 +261,8 @@ export function ExpertDetailsModal({
                   </button>
                 )}
               </section>
+
+              <ExpertLocationMap lat={data.currentLat} lng={data.currentLng} updatedAt={data.lastSeenAt} />
 
               <section className="bg-background border border-border rounded-[18px] p-4">
                 <div className="flex items-center justify-between gap-3 mb-3">
