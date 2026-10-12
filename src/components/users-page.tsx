@@ -799,28 +799,7 @@ function CustomerProfileModal({
                 )}
               </Section>
 
-              <Section title="Referrals">
-                {data.referrals.length === 0 ? (
-                  <Empty label="No referrals." />
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {data.referrals.map((r) => (
-                      <li key={r.id} className="px-4 py-2 text-[13px] flex items-center justify-between">
-                        <div>
-                          <div className="text-foreground">
-                            {r.direction === "made" ? "Referred" : "Referred by"}{" "}
-                            {r.counterpart_name ?? r.counterpart_phone ?? "Unknown"}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {fmtDate(r.created_at)} · {r.status}
-                          </div>
-                        </div>
-                        <span className="text-muted-foreground">{r.reward_amount} coins</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Section>
+              <ReferralsSection referrals={data.referrals} />
 
               <Section title="Support tickets">
                 {data.tickets.length === 0 ? (
@@ -1141,6 +1120,88 @@ function DeleteUserModal({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+type RefItem = {
+  id: string;
+  direction: "made" | "received";
+  counterpart_name: string | null;
+  counterpart_phone: string | null;
+  status: string;
+  successful: boolean;
+  reward_amount: number;
+  created_at: string | null;
+};
+
+function ReferralsSection({ referrals }: { referrals: RefItem[] }) {
+  const made = referrals.filter((r) => r.direction === "made");
+  const by = referrals.find((r) => r.direction === "received");
+  const ok = made.filter((r) => r.successful).length;
+  const coins = made.reduce((s, r) => s + r.reward_amount, 0);
+  const [filter, setFilter] = useState<null | "all" | "ok" | "pending">(null);
+  const list = made.filter((r) =>
+    filter === "ok" ? r.successful : filter === "pending" ? !r.successful : true,
+  );
+  const cards = [
+    { k: "all" as const, label: "Total referrals", value: made.length },
+    { k: "ok" as const, label: "Successful", value: ok },
+    { k: "pending" as const, label: "Pending", value: made.length - ok },
+  ];
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[14px] font-semibold text-foreground">Referrals</h3>
+      {by && (
+        <p className="text-[12px] text-muted-foreground">
+          Referred by {by.counterpart_name ?? by.counterpart_phone ?? "Unknown"}
+        </p>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {cards.map((c) => (
+          <button
+            key={c.k}
+            type="button"
+            onClick={() => setFilter(filter === c.k ? null : c.k)}
+            className={`text-left rounded-[14px] border p-3 hover:bg-muted ${filter === c.k ? "border-primary bg-muted" : "border-border"}`}
+          >
+            <div className="text-[11px] uppercase text-muted-foreground">{c.label}</div>
+            <div className="text-[20px] font-bold text-primary underline-offset-2 hover:underline">{c.value}</div>
+          </button>
+        ))}
+        <div className="rounded-[14px] border border-border p-3">
+          <div className="text-[11px] uppercase text-muted-foreground">Coins earned</div>
+          <div className="text-[20px] font-bold text-foreground">{coins}</div>
+        </div>
+      </div>
+      {filter && (
+        <div className="rounded-[14px] border border-border">
+          {list.length === 0 ? (
+            <p className="p-4 text-[13px] text-muted-foreground">No customers here.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {list.map((r) => (
+                <li key={r.id} className="px-4 py-2 text-[13px] flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-foreground font-medium">{r.counterpart_name ?? "Unknown"}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {r.counterpart_phone ?? "—"} · Joined {fmtDate(r.created_at)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${r.successful ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {r.successful ? "Successful" : "Pending"}
+                    </span>
+                    <div className="text-[11px] text-muted-foreground">{r.reward_amount} coins</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

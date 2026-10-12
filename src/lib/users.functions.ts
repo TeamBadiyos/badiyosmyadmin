@@ -107,6 +107,7 @@ export type CustomerProfile = {
     counterpart_name: string | null;
     counterpart_phone: string | null;
     status: string;
+    successful: boolean;
     reward_amount: number;
     created_at: string | null;
   }>;
@@ -300,7 +301,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .limit(200),
       db
         .from("referral_transactions")
-        .select("id, status, reward_amount, created_at, referrer_id, referred_user_id")
+        .select("id, status, reward_amount, booking_reward_date, booking_id, created_at, referrer_id, referred_user_id")
         .or(`referrer_id.eq.${uid},referred_user_id.eq.${uid}`)
         .order("created_at", { ascending: false })
         .limit(100),
@@ -460,6 +461,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
           counterpart_name: person?.name ?? null,
           counterpart_phone: person?.phone ?? null,
           status: r.status,
+          successful:
+            !!r.booking_reward_date ||
+            ["completed", "rewarded", "success", "successful", "credited"].includes(String(r.status).toLowerCase()),
           reward_amount: Number(r.reward_amount ?? 0),
           created_at: r.created_at ?? null,
         };
