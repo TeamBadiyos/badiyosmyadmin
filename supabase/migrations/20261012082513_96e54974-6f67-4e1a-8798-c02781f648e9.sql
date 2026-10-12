@@ -1,0 +1,2 @@
+ALTER TABLE public.coin_redemptions DROP CONSTRAINT coin_redemptions_status_check;
+ALTER TABLE public.coin_redemptions ADD CONSTRAINT coin_redemptions_status_check CHECK (status = ANY (ARRAY['reserved','released','used','refunded']));
