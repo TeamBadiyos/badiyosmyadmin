@@ -12,6 +12,7 @@ import { ExpertsPage } from "@/components/experts-page";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
 import { GraduationCap } from "lucide-react";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
+import { DiscountBreakdownModal } from "@/components/discount-breakdown-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
 import { LiveStoresView } from "@/components/live-stores-view";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
@@ -600,6 +601,7 @@ function Shell() {
             role={role}
             onGoBookings={gotoBookings}
             onGoExperts={gotoExperts}
+            onOpenBooking={(id) => setSelectedBookingId(id)}
           />
         ) : active === "zones" ? (
           <ZonesPage role={role} />
@@ -718,7 +720,9 @@ function DashboardHome({
   role,
   onGoBookings,
   onGoExperts,
+  onOpenBooking,
 }: {
+  onOpenBooking: (id: string) => void;
   role: StaffRole | null;
   onGoBookings: (preset: { status?: string; from?: string; to?: string } | null) => void;
   onGoExperts: (onlineOnly: boolean) => void;
@@ -726,6 +730,7 @@ function DashboardHome({
   const fetchStats = useServerFn(getDashboardStats);
   const queryClient = useQueryClient();
   const [segmentId, setSegmentId] = useState<string | null>(null);
+  const [discountOpen, setDiscountOpen] = useState(false);
 
   const segmentsQuery = useQuery({
     queryKey: ["segments", "filter"],
@@ -800,7 +805,7 @@ function DashboardHome({
       value: inr.format(data?.discountToday ?? 0),
       hint: `Today · ${inr.format(data?.discountGiven ?? 0)} all time`,
       icon: BadgePercent,
-      onClick: () => onGoBookings({ from: today, to: today }),
+      onClick: () => setDiscountOpen(true),
     },
     {
       label: "Actual Revenue",
@@ -895,6 +900,11 @@ function DashboardHome({
         <PipelineKanban role={role} segmentId={segmentId} />
         {showCommerce && <CommerceKanban segmentId={segmentId} />}
       </div>
+      <DiscountBreakdownModal
+        open={discountOpen}
+        onClose={() => setDiscountOpen(false)}
+        onOpenBooking={onOpenBooking}
+      />
     </div>
   );
 }
