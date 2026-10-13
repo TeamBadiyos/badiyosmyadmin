@@ -606,6 +606,7 @@ export type ExpertWorkReport = {
   to: string;
   orders: ExpertWorkOrder[];
   paidMinutes: number;
+  extensionMinutes: number;
   trainingMinutes: number;
   completedCount: number;
   avgRating: number | null;
@@ -752,6 +753,7 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
       to: data.to,
       orders,
       paidMinutes: paid,
+      extensionMinutes: extTotal,
       trainingMinutes: training,
       completedCount: done,
       avgRating: rN ? Math.round((rSum / rN) * 10) / 10 : null,

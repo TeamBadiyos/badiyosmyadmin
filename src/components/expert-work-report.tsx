@@ -86,8 +86,10 @@ export function ExpertWorkReport({ expertId }: { expertId: string }) {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Stat label="Paid work hours" value={hrs(data.paidMinutes)} strong />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <Stat label="Paid work hours (total)" value={hrs(data.paidMinutes)} strong />
+            <Stat label="Booked hours" value={hrs(data.paidMinutes - data.extensionMinutes)} />
+            <Stat label="Extended hours" value={hrs(data.extensionMinutes)} />
             <Stat label="Training hours (not counted)" value={hrs(data.trainingMinutes)} />
             <Stat label="Completed orders" value={String(data.completedCount)} />
             <Stat label="Avg rating" value={data.avgRating != null ? `★ ${data.avgRating}` : "—"} />
