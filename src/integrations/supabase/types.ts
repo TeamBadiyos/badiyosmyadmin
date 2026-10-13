@@ -9953,6 +9953,7 @@ export type Database = {
         Args: { _expert_id: string }
         Returns: undefined
       }
+      reward_effective_ts: { Args: never; Returns: string }
       reward_gates_pass: {
         Args: {
           _condition: Json
