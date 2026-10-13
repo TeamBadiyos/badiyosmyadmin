@@ -9967,6 +9967,7 @@ export type Database = {
         Args: { _date: string; _slot: string }
         Returns: string
       }
+      run_expert_referral_reward_job: { Args: never; Returns: number }
       run_reward_period_jobs: {
         Args: { _force_period_start?: string }
         Returns: number
