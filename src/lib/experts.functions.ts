@@ -584,3 +584,160 @@ export const signStorageUrl = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { url: signed.signedUrl };
   });
+
+export type ExpertWorkOrder = {
+  id: string;
+  workDate: string;
+  slot: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  service: string | null;
+  minutes: number;
+  extensionMinutes: number;
+  isTraining: boolean;
+  isAdvance: boolean;
+  status: string;
+  rating: number | null;
+  payout: number | null;
+};
+
+export type ExpertWorkReport = {
+  from: string;
+  to: string;
+  orders: ExpertWorkOrder[];
+  paidMinutes: number;
+  trainingMinutes: number;
+  completedCount: number;
+  avgRating: number | null;
+  daily: { date: string; minutes: number; orders: number }[];
+  slabs: { id: string; name: string; hours: number; period: string; value: number }[];
+  bonuses: { id: string; name: string; value: number; status: string; ref: string; creditedAt: string | null; notes: string | null }[];
+};
+
+export const getExpertWorkReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { expertId: string; from: string; to: string }) => {
+    const re = /^\d{4}-\d{2}-\d{2}$/;
+    if (!input?.expertId || !re.test(input.from) || !re.test(input.to)) throw new Error("Invalid input");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<ExpertWorkReport> => {
+    await requireStaff(context.supabase, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = context.supabase;
+    // Pad range by 1 day on both sides; exact IST day filtering happens below.
+    const lo = new Date(`${data.from}T00:00:00+05:30`);
+    lo.setDate(lo.getDate() - 1);
+    const loIso = lo.toISOString();
+    const { data: rows, error } = await sb
+      .from("bookings")
+      .select("id, user_id, status, is_training, service_duration_minutes, service_label, scheduled_date, scheduled_time_slot, started_at, created_at, rating, expert_payout")
+      .eq("assigned_expert_id", data.expertId)
+      .or(`scheduled_date.gte.${data.from},started_at.gte.${loIso},created_at.gte.${loIso}`)
+      .order("created_at", { ascending: true })
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (rows ?? []) as any[];
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+    const inRange = list
+      .map((b) => {
+        const raw = b.started_at ?? (b.scheduled_date ? `${b.scheduled_date}T00:00:00+05:30` : b.created_at);
+        return { b, day: raw ? fmt.format(new Date(raw)) : "" };
+      })
+      .filter((x) => x.day >= data.from && x.day <= data.to);
+
+    const ids = inRange.map((x) => x.b.id);
+    const ext = new Map<string, number>();
+    if (ids.length) {
+      const { data: exts } = await sb
+        .from("booking_extensions")
+        .select("booking_id, extra_minutes, status")
+        .in("booking_id", ids);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const e of (exts ?? []) as any[]) {
+        if (e.status && !["accepted", "paid", "completed"].includes(e.status)) continue;
+        ext.set(e.booking_id, (ext.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0));
+      }
+    }
+    const userIds = Array.from(new Set(inRange.map((x) => x.b.user_id).filter(Boolean)));
+    const users = new Map<string, { name: string | null; phone: string | null }>();
+    if (userIds.length) {
+      const { data: us } = await sb.from("users").select("id, full_name, phone").in("id", userIds);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const u of (us ?? []) as any[]) users.set(u.id, { name: u.full_name, phone: u.phone });
+    }
+
+    const orders: ExpertWorkOrder[] = inRange.map(({ b, day }) => {
+      const u = b.user_id ? users.get(b.user_id) : null;
+      const createdDay = b.created_at ? fmt.format(new Date(b.created_at)) : day;
+      return {
+        id: b.id,
+        workDate: day,
+        slot: b.scheduled_time_slot ?? null,
+        customerName: u?.name ?? null,
+        customerPhone: u?.phone ?? null,
+        service: b.service_label ?? null,
+        minutes: Number(b.service_duration_minutes ?? 0),
+        extensionMinutes: ext.get(b.id) ?? 0,
+        isTraining: !!b.is_training,
+        isAdvance: createdDay < day,
+        status: b.status,
+        rating: b.rating != null ? Number(b.rating) : null,
+        payout: b.expert_payout != null ? Number(b.expert_payout) : null,
+      };
+    });
+    orders.sort((a, b) => (a.workDate === b.workDate ? (a.slot ?? "").localeCompare(b.slot ?? "") : a.workDate.localeCompare(b.workDate)));
+
+    let paid = 0, training = 0, done = 0, rSum = 0, rN = 0;
+    const daily = new Map<string, { minutes: number; orders: number }>();
+    for (const o of orders) {
+      if (o.status !== "completed") continue;
+      const m = o.minutes + o.extensionMinutes;
+      if (o.isTraining) { training += m; continue; }
+      paid += m; done++;
+      if (o.rating) { rSum += o.rating; rN++; }
+      const d = daily.get(o.workDate) ?? { minutes: 0, orders: 0 };
+      d.minutes += m; d.orders++;
+      daily.set(o.workDate, d);
+    }
+
+    const { data: progs } = await sb
+      .from("reward_programs")
+      .select("id, name, condition, reward_value, is_active, archived_at, trigger_type")
+      .eq("trigger_type", "hours_threshold")
+      .eq("is_active", true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slabs = ((progs ?? []) as any[])
+      .filter((p) => !p.archived_at)
+      .map((p) => ({ id: p.id, name: p.name, hours: Number(p.condition?.hours ?? 0), period: String(p.condition?.period ?? ""), value: Number(p.reward_value ?? 0) }))
+      .sort((a, b) => a.hours - b.hours);
+
+    const { data: led } = await sb
+      .from("reward_ledger")
+      .select("id, program_name, reward_value, status, trigger_event_ref, credited_at, notes")
+      .eq("actor_id", data.expertId)
+      .order("credited_at", { ascending: false })
+      .limit(200);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bonuses = ((led ?? []) as any[])
+      .filter((l) => {
+        const m = /(\d{4}-\d{2}-\d{2})$/.exec(l.trigger_event_ref ?? "");
+        const d = m?.[1] ?? (l.credited_at ? fmt.format(new Date(l.credited_at)) : "");
+        return d >= data.from && d <= data.to;
+      })
+      .map((l) => ({ id: l.id, name: l.program_name ?? "Bonus", value: Number(l.reward_value ?? 0), status: l.status, ref: l.trigger_event_ref ?? "", creditedAt: l.credited_at, notes: l.notes }));
+
+    return {
+      from: data.from,
+      to: data.to,
+      orders,
+      paidMinutes: paid,
+      trainingMinutes: training,
+      completedCount: done,
+      avgRating: rN ? Math.round((rSum / rN) * 10) / 10 : null,
+      daily: Array.from(daily.entries()).map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date)),
+      slabs,
+      bonuses,
+    };
+  });
