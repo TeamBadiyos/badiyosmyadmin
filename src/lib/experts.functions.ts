@@ -660,6 +660,23 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
         ext.set(e.booking_id, (ext.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0));
       }
     }
+    // Actual credited payout (includes extension pay) from the Expert wallet ledger.
+    const paidOut = new Map<string, number>();
+    for (let i = 0; i < ids.length; i += 100) {
+      const reasons = ids.slice(i, i + 100).map((id) => `Booking payout: ${id}`);
+      const { data: wl } = await sb
+        .from("wallet_ledger")
+        .select("reason, amount, type")
+        .eq("owner_type", "expert")
+        .eq("owner_id", data.expertId)
+        .in("reason", reasons);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const l of (wl ?? []) as any[]) {
+        const id = String(l.reason).slice("Booking payout: ".length);
+        const amt = Number(l.amount ?? 0) * (l.type === "debit" ? -1 : 1);
+        paidOut.set(id, (paidOut.get(id) ?? 0) + amt);
+      }
+    }
     const userIds = Array.from(new Set(inRange.map((x) => x.b.user_id).filter(Boolean)));
     const users = new Map<string, { name: string | null; phone: string | null }>();
     if (userIds.length) {
@@ -684,18 +701,20 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
         isAdvance: createdDay < day,
         status: b.status,
         rating: b.rating != null ? Number(b.rating) : null,
-        payout: b.snapshot_expert_payout != null ? Number(b.snapshot_expert_payout) : null,
+        payout: paidOut.has(b.id)
+          ? paidOut.get(b.id)!
+          : b.snapshot_expert_payout != null ? Number(b.snapshot_expert_payout) : null,
       };
     });
     orders.sort((a, b) => (a.workDate === b.workDate ? (a.slot ?? "").localeCompare(b.slot ?? "") : a.workDate.localeCompare(b.workDate)));
 
-    let paid = 0, training = 0, done = 0, rSum = 0, rN = 0;
+    let paid = 0, training = 0, done = 0, rSum = 0, rN = 0, extTotal = 0;
     const daily = new Map<string, { minutes: number; orders: number }>();
     for (const o of orders) {
       if (o.status !== "completed") continue;
       const m = o.minutes + o.extensionMinutes;
       if (o.isTraining) { training += m; continue; }
-      paid += m; done++;
+      paid += m; done++; extTotal += o.extensionMinutes;
       if (o.rating) { rSum += o.rating; rN++; }
       const d = daily.get(o.workDate) ?? { minutes: 0, orders: 0 };
       d.minutes += m; d.orders++;
