@@ -236,7 +236,7 @@ export const listBookings = createServerFn({ method: "POST" })
           amount: 0,
           pending: false,
         };
-        if (e.approval_status === "approved") {
+        if (e.approval_status === "approved" || e.approval_status === "accepted") {
           cur.minutes += Number(e.extra_minutes ?? 0);
           cur.amount += Number(e.price ?? 0);
         } else if (e.approval_status === "pending") {
@@ -422,7 +422,7 @@ async function loadBookingDetails(
     approvalStatus: e.approval_status ?? "pending",
     createdAt: e.created_at,
   }));
-  const approved = extensions.filter((e) => e.approvalStatus === "approved");
+  const approved = extensions.filter((e) => e.approvalStatus === "approved" || e.approvalStatus === "accepted");
 
   return {
     id: b.id,
