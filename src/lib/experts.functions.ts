@@ -631,7 +631,7 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
     const loIso = lo.toISOString();
     const { data: rows, error } = await sb
       .from("bookings")
-      .select("id, user_id, status, is_training, service_duration_minutes, service_label, scheduled_date, scheduled_time_slot, started_at, created_at, rating, expert_payout")
+      .select("id, user_id, status, is_training, service_duration_minutes, service_label, scheduled_date, scheduled_time_slot, started_at, created_at, rating, snapshot_expert_payout")
       .eq("assigned_expert_id", data.expertId)
       .or(`scheduled_date.gte.${data.from},started_at.gte.${loIso},created_at.gte.${loIso}`)
       .order("created_at", { ascending: true })
@@ -652,11 +652,11 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
     if (ids.length) {
       const { data: exts } = await sb
         .from("booking_extensions")
-        .select("booking_id, extra_minutes, status")
+        .select("booking_id, extra_minutes, approval_status")
         .in("booking_id", ids);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const e of (exts ?? []) as any[]) {
-        if (e.status && !["accepted", "paid", "completed"].includes(e.status)) continue;
+        if (e.approval_status !== "accepted") continue;
         ext.set(e.booking_id, (ext.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0));
       }
     }
@@ -684,7 +684,7 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
         isAdvance: createdDay < day,
         status: b.status,
         rating: b.rating != null ? Number(b.rating) : null,
-        payout: b.expert_payout != null ? Number(b.expert_payout) : null,
+        payout: b.snapshot_expert_payout != null ? Number(b.snapshot_expert_payout) : null,
       };
     });
     orders.sort((a, b) => (a.workDate === b.workDate ? (a.slot ?? "").localeCompare(b.slot ?? "") : a.workDate.localeCompare(b.workDate)));
