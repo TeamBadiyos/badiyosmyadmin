@@ -155,7 +155,10 @@ export function DiscountBreakdownModal({
                   <tr
                     key={r.id}
                     className="border-t border-border hover:bg-accent/40 cursor-pointer"
-                    onClick={() => onOpenBooking(r.id)}
+                    onClick={() => {
+                      onClose();
+                      onOpenBooking(r.id);
+                    }}
                   >
                     <td className="p-2">
                       <div className="font-medium text-foreground">{r.customerName ?? "—"}</div>
