@@ -9962,6 +9962,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      reward_slot_start: {
+        Args: { _date: string; _slot: string }
+        Returns: string
+      }
       run_reward_period_jobs: {
         Args: { _force_period_start?: string }
         Returns: number
