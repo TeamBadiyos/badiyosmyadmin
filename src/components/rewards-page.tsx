@@ -14,6 +14,7 @@ import {
   getRewardProgramStats,
   searchRewardLedger,
   reverseReward,
+  decidePendingReward,
   runRewardPeriodJobs,
   type RewardProgram,
   type RewardTriggerType,
@@ -360,6 +361,16 @@ function ReportsSection({ programs, actor }: { programs: RewardProgram[]; actor:
   const fetchStats = useServerFn(getRewardProgramStats);
   const fetchLedger = useServerFn(searchRewardLedger);
   const reverseFn = useServerFn(reverseReward);
+  const decideFn = useServerFn(decidePendingReward);
+  const qcDecide = useQueryClient();
+  const decide = useMutation({
+    mutationFn: (v: { ledger_id: string; approve: boolean }) => decideFn({ data: v }),
+    onSuccess: (_r, v) => {
+      qcDecide.invalidateQueries({ queryKey: ["rewards"] });
+      toast.success(v.approve ? "Bonus approved & credited" : "Bonus rejected");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const range = {
     from: from ? new Date(from).toISOString() : null,
@@ -503,9 +514,26 @@ function ReportsSection({ programs, actor }: { programs: RewardProgram[]; actor:
                 >
                   <Undo2 size={13} /> Reverse
                 </button>
+              ) : r.status === "pending_approval" ? (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => decide.mutate({ ledger_id: r.id, approve: true })}
+                    disabled={decide.isPending}
+                    className="h-8 px-2.5 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-semibold"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => decide.mutate({ ledger_id: r.id, approve: false })}
+                    disabled={decide.isPending}
+                    className="h-8 px-2.5 rounded-[10px] border border-destructive/40 text-destructive text-[12px] font-semibold"
+                  >
+                    Reject
+                  </button>
+                </div>
               ) : (
                 <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Reversed
+                  {r.status === "rejected" ? "Rejected" : "Reversed"}
                 </span>
               )}
             </div>
