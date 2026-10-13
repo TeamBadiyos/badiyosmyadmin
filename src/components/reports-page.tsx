@@ -31,6 +31,7 @@ import {
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
+import { getWeeklyExpertReport } from "@/lib/experts.functions";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
 
@@ -366,6 +367,40 @@ function BookingsTab({ range }: { range: ReportRange }) {
 }
 
 // ============ Experts ============
+function lastWeekIst() {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+  const today = f.format(new Date());
+  const t = new Date(`${today}T12:00:00+05:30`);
+  const dow = (t.getUTCDay() + 6) % 7;
+  const mon = new Date(t.getTime() - (dow + 7) * 86400000);
+  const sun = new Date(mon.getTime() + 6 * 86400000);
+  return { from: f.format(mon), to: f.format(sun) };
+}
+function WeeklyPdfButton() {
+  const fetchFn = useServerFn(getWeeklyExpertReport);
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const { from, to } = lastWeekIst();
+          const res = await fetchFn({ data: { from, to } });
+          const { downloadWeeklyExpertPdf } = await import("@/lib/weekly-expert-pdf");
+          await downloadWeeklyExpertPdf(from, to, res.rows, res.batchStatus);
+        } catch (e) {
+          window.alert(e instanceof Error ? e.message : "Download failed");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="h-8 px-3 rounded-[10px] text-[12px] font-bold bg-primary text-primary-foreground disabled:opacity-50"
+    >
+      {busy ? "Preparing…" : "Download last week PDF"}
+    </button>
+  );
+}
 function ExpertsTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getExpertPerformance);
   const [sort, setSort] = useState<"completed" | "earnings">("completed");
@@ -383,7 +418,8 @@ function ExpertsTab({ range }: { range: ReportRange }) {
     <Card>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h3 className="text-[15px] font-bold text-foreground">Expert performance</h3>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
+          <WeeklyPdfButton />
           {(["completed", "earnings"] as const).map((k) => (
             <button
               key={k}
