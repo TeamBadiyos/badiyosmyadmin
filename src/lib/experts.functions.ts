@@ -762,3 +762,126 @@ export const getExpertWorkReport = createServerFn({ method: "POST" })
       bonuses,
     };
   });
+
+// ============ Weekly expert work & payout report (PDF source) ============
+export type WeeklyExpertReportRow = {
+  expertId: string;
+  name: string;
+  phone: string | null;
+  orders: number;
+  minutes: number;
+  extensionMinutes: number;
+  workPay: number;
+  bonus: number;
+  gross: number;
+  tds: number | null;
+  net: number | null;
+};
+
+export const getWeeklyExpertReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string }) => {
+    const re = /^\d{4}-\d{2}-\d{2}$/;
+    if (!re.test(input?.from) || !re.test(input?.to) || input.from > input.to) throw new Error("Invalid dates");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ rows: WeeklyExpertReportRow[]; batchStatus: string | null }> => {
+    await requireStaff(context.supabase, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = context.supabase;
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+    const lo = new Date(`${data.from}T00:00:00+05:30`);
+    lo.setDate(lo.getDate() - 1);
+    const startTs = new Date(`${data.from}T00:00:00+05:30`).toISOString();
+    const endD = new Date(`${data.to}T00:00:00+05:30`);
+    endD.setDate(endD.getDate() + 1);
+    const endTs = endD.toISOString();
+
+    const { data: bk, error } = await sb
+      .from("bookings")
+      .select("id, assigned_expert_id, service_duration_minutes, scheduled_date, started_at, created_at, snapshot_expert_payout")
+      .eq("status", "completed").eq("is_training", false).is("deleted_at", null)
+      .not("assigned_expert_id", "is", null)
+      .or(`scheduled_date.gte.${data.from},started_at.gte.${lo.toISOString()},created_at.gte.${lo.toISOString()}`)
+      .limit(10000);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = ((bk ?? []) as any[]).filter((b) => {
+      const d = b.scheduled_date || fmt.format(new Date(b.started_at || b.created_at));
+      return d >= data.from && d <= data.to;
+    });
+    const ids = list.map((b) => b.id);
+    const expertIds = [...new Set(list.map((b) => b.assigned_expert_id as string))];
+
+    const extMin = new Map<string, number>();
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data: ex } = await sb.from("booking_extensions").select("booking_id, extra_minutes, approval_status")
+        .in("booking_id", ids.slice(i, i + 300)).in("approval_status", ["accepted", "approved"]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const e of (ex ?? []) as any[]) extMin.set(e.booking_id, (extMin.get(e.booking_id) ?? 0) + Number(e.extra_minutes || 0));
+    }
+
+    // Ledger: booking/extension payouts per booking, bonuses in period.
+    const { data: led, error: lErr } = await sb.from("wallet_ledger")
+      .select("owner_id, owner_type, type, amount, reason, created_at")
+      .eq("owner_type", "expert")
+      .gte("created_at", new Date(new Date(startTs).getTime() - 14 * 86400000).toISOString())
+      .limit(20000);
+    if (lErr) throw new Error(lErr.message);
+    const payByBooking = new Map<string, number>();
+    const bonusBy = new Map<string, number>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const l of (led ?? []) as any[]) {
+      const amt = Number(l.amount || 0) * (l.type === "debit" ? -1 : 1);
+      const m = /^(?:Booking payout|Extension payout[^:]*):\s*([0-9a-f-]{36})/i.exec(l.reason ?? "");
+      if (m) payByBooking.set(m[1], (payByBooking.get(m[1]) ?? 0) + amt);
+      else if (l.type === "credit" && l.created_at >= startTs && l.created_at < endTs && /reward:|bonus|incentive/i.test(l.reason ?? "")) {
+        bonusBy.set(l.owner_id, (bonusBy.get(l.owner_id) ?? 0) + amt);
+        if (!expertIds.includes(l.owner_id)) expertIds.push(l.owner_id);
+      }
+    }
+
+    const { data: ex } = expertIds.length
+      ? await sb.from("experts").select("id, name, phone").in("id", expertIds)
+      : { data: [] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const info = new Map<string, any>(((ex ?? []) as any[]).map((e) => [e.id, e]));
+
+    // Matching payout batch (exact period) for TDS / net.
+    const { data: batch } = await sb.from("payout_batches").select("id, status")
+      .eq("batch_type", "expert").eq("week_start", data.from).eq("week_end", data.to)
+      .neq("status", "discarded").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const tdsBy = new Map<string, { tds: number; net: number }>();
+    if (batch) {
+      const { data: items } = await sb.from("payout_batch_items").select("owner_id, tds_amount, net_amount, removed").eq("batch_id", batch.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const it of (items ?? []) as any[]) if (!it.removed) tdsBy.set(it.owner_id, { tds: Number(it.tds_amount || 0), net: Number(it.net_amount || 0) });
+    }
+
+    const acc = new Map<string, WeeklyExpertReportRow>();
+    const row = (id: string) => {
+      let r = acc.get(id);
+      if (!r) {
+        const e = info.get(id);
+        r = { expertId: id, name: e?.name ?? "Unknown", phone: e?.phone ?? null, orders: 0, minutes: 0, extensionMinutes: 0, workPay: 0, bonus: 0, gross: 0, tds: null, net: null };
+        acc.set(id, r);
+      }
+      return r;
+    };
+    for (const b of list) {
+      const r = row(b.assigned_expert_id);
+      const ext = extMin.get(b.id) ?? 0;
+      r.orders += 1;
+      r.minutes += Number(b.service_duration_minutes || 0) + ext;
+      r.extensionMinutes += ext;
+      r.workPay += payByBooking.has(b.id) ? payByBooking.get(b.id)! : Number(b.snapshot_expert_payout || 0);
+    }
+    for (const [id, amt] of bonusBy) row(id).bonus += amt;
+    for (const r of acc.values()) {
+      r.gross = r.workPay + r.bonus;
+      const t = tdsBy.get(r.expertId);
+      if (t) { r.tds = t.tds; r.net = t.net; }
+    }
+    const rows = [...acc.values()].sort((a, b) => b.minutes - a.minutes || b.gross - a.gross);
+    return { rows, batchStatus: batch?.status ?? null };
+  });
