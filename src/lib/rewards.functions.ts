@@ -249,6 +249,22 @@ export const reverseReward = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const decidePendingReward = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ledger_id: string; approve: boolean }) => {
+    if (!input?.ledger_id) throw new Error("ledger_id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("staff_decide_pending_reward", {
+      _ledger_id: data.ledger_id,
+      _approve: !!data.approve,
+      _reason: null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export type RewardPreviewRow = {
   expert_id: string;
   expert_name: string | null;
