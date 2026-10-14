@@ -44,6 +44,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
 import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
+import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
@@ -143,6 +144,7 @@ const NAV_ITEMS = [
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "rewards", label: "Rewards", icon: Award },
   { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
+  { key: "event-offers", label: "Event Offers", icon: Gift },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "settlements", label: "Settlement", icon: Landmark },
   { key: "reports", label: "Reports", icon: BarChart3 },
@@ -200,7 +202,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["offers", "referrals", "rewards", "waitlist", "interest-leads", "insurance", "lucky-draw"],
+    keys: ["offers", "event-offers", "referrals", "rewards", "waitlist", "interest-leads", "insurance", "lucky-draw"],
   },
   {
     id: "finance",
@@ -227,7 +229,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "catalogue" && k !== "referrals" && k !== "rewards",
+    (k) => k !== "roles" && k !== "event-offers" && k !== "catalogue" && k !== "referrals" && k !== "rewards",
   ),
   area_partner: ["dashboard", "bookings", "experts", "reports"],
 };
@@ -677,6 +679,8 @@ function Shell() {
           <DispatchAlertsPage />
         ) : active === "services" ? (
           <ServicesPage />
+        ) : active === "event-offers" ? (
+          role === "super_admin" ? <EventOffersPage /> : null
         ) : active === "offers" ? (
           <OffersPage />
         ) : active === "courier" || active === "courier-orders" ? (
