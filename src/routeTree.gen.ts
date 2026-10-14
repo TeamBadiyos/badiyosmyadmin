@@ -30,6 +30,8 @@ import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/s
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
 import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
 import { Route as ApiPublicHooksSyncRazorpaySettlementsRouteImport } from './routes/api/public/hooks/sync-razorpay-settlements'
+import { Route as ApiPublicOffersCreatePaymentRouteImport } from './routes/api/public/offers/create-payment'
+import { Route as ApiPublicOffersVerifyPaymentRouteImport } from './routes/api/public/offers/verify-payment'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -139,6 +141,18 @@ const ApiPublicHooksSyncRazorpaySettlementsRoute =
     path: '/api/public/hooks/sync-razorpay-settlements',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicOffersCreatePaymentRoute =
+  ApiPublicOffersCreatePaymentRouteImport.update({
+    id: '/api/public/offers/create-payment',
+    path: '/api/public/offers/create-payment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicOffersVerifyPaymentRoute =
+  ApiPublicOffersVerifyPaymentRouteImport.update({
+    id: '/api/public/offers/verify-payment',
+    path: '/api/public/offers/verify-payment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -161,6 +175,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
+  '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
+  '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -183,6 +199,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
+  '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
+  '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -207,6 +225,8 @@ export interface FileRoutesById {
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
+  '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
+  '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -231,6 +251,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
     | '/api/public/hooks/sync-razorpay-settlements'
+    | '/api/public/offers/create-payment'
+    | '/api/public/offers/verify-payment'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -253,6 +275,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
     | '/api/public/hooks/sync-razorpay-settlements'
+    | '/api/public/offers/create-payment'
+    | '/api/public/offers/verify-payment'
   id:
     | '__root__'
     | '/'
@@ -276,6 +300,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
     | '/api/public/hooks/sync-razorpay-settlements'
+    | '/api/public/offers/create-payment'
+    | '/api/public/offers/verify-payment'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -298,6 +324,8 @@ export interface RootRouteChildren {
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
   ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
   ApiPublicHooksSyncRazorpaySettlementsRoute: typeof ApiPublicHooksSyncRazorpaySettlementsRoute
+  ApiPublicOffersCreatePaymentRoute: typeof ApiPublicOffersCreatePaymentRoute
+  ApiPublicOffersVerifyPaymentRoute: typeof ApiPublicOffersVerifyPaymentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -449,6 +477,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncRazorpaySettlementsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/offers/create-payment': {
+      id: '/api/public/offers/create-payment'
+      path: '/api/public/offers/create-payment'
+      fullPath: '/api/public/offers/create-payment'
+      preLoaderRoute: typeof ApiPublicOffersCreatePaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/offers/verify-payment': {
+      id: '/api/public/offers/verify-payment'
+      path: '/api/public/offers/verify-payment'
+      fullPath: '/api/public/offers/verify-payment'
+      preLoaderRoute: typeof ApiPublicOffersVerifyPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -496,6 +538,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksExpireStaleBookingsRoute,
   ApiPublicHooksSyncRazorpaySettlementsRoute:
     ApiPublicHooksSyncRazorpaySettlementsRoute,
+  ApiPublicOffersCreatePaymentRoute: ApiPublicOffersCreatePaymentRoute,
+  ApiPublicOffersVerifyPaymentRoute: ApiPublicOffersVerifyPaymentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
