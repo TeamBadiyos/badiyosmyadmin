@@ -333,7 +333,7 @@ export function ExpertFormModal({
             <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3">
               KYC documents
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <KycUpload label="Aadhaar" doc={aadhaar} onUploaded={(d) => setAadhaar(d)} onError={(m) => setFormError(m)} />
               <KycUpload label="PAN" doc={pan} onUploaded={(d) => setPan(d)} onError={(m) => setFormError(m)} />
               <KycUpload label="Address proof" doc={addressProof} onUploaded={(d) => setAddressProof(d)} onError={(m) => setFormError(m)} />

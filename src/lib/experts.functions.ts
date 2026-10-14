@@ -467,7 +467,7 @@ export const getExpert = createServerFn({ method: "POST" })
       kycAadhaarPath: e.kyc_aadhaar_url ?? null,
       kycPanPath: e.kyc_pan_url ?? null,
       kycAddressProofPath: e.kyc_address_proof_url ?? null,
-      kycBankProofPath: (e as any).kyc_bank_proof_url ?? null,
+      kycBankProofPath: e.kyc_bank_proof_url ?? null,
       kycRejectionReason: e.kyc_rejection_reason ?? null,
       securityDepositStatus: e.security_deposit_status as ExpertDetails["securityDepositStatus"],
       createdAt: e.created_at,
