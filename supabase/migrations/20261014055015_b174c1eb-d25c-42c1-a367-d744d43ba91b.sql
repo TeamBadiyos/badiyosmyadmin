@@ -1,0 +1,1 @@
+ALTER TABLE public.experts ADD COLUMN IF NOT EXISTS kyc_bank_proof_url text;
