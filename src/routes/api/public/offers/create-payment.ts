@@ -1,19 +1,14 @@
 // create-offer-payment: holds one unit of stock and creates a Razorpay order.
 // Caller must send the customer's Supabase JWT (Authorization: Bearer ...).
 import { createFileRoute } from "@tanstack/react-router";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (status: number, body: unknown) => Response.json(body, { status, headers: CORS });
+import { corsHeaders, preflight } from "@/lib/offer-cors";
 
 export const Route = createFileRoute("/api/public/offers/create-payment")({
   server: {
     handlers: {
-      OPTIONS: async () => new Response(null, { headers: CORS }),
+      OPTIONS: async ({ request }) => preflight(request),
       POST: async ({ request }) => {
+        const json = (status: number, body: unknown) => Response.json(body, { status, headers: corsHeaders(request) });
         const { userClient, rz, razorpayKeyId } = await import("@/lib/event-offers.server");
         const sb = userClient(request);
         if (!sb) return json(401, { ok: false, error: "NOT_AUTHENTICATED" });
