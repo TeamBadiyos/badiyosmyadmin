@@ -136,6 +136,7 @@ export type ExpertDetails = ExpertRow & {
   kycAadhaarPath: string | null;
   kycPanPath: string | null;
   kycAddressProofPath: string | null;
+  kycBankProofPath: string | null;
   kycRejectionReason: string | null;
   securityDepositStatus: "pending" | "collected" | "adjusted";
   referredByExpertId: string | null;
@@ -466,6 +467,7 @@ export const getExpert = createServerFn({ method: "POST" })
       kycAadhaarPath: e.kyc_aadhaar_url ?? null,
       kycPanPath: e.kyc_pan_url ?? null,
       kycAddressProofPath: e.kyc_address_proof_url ?? null,
+      kycBankProofPath: (e as any).kyc_bank_proof_url ?? null,
       kycRejectionReason: e.kyc_rejection_reason ?? null,
       securityDepositStatus: e.security_deposit_status as ExpertDetails["securityDepositStatus"],
       createdAt: e.created_at,
@@ -489,6 +491,7 @@ export type UpsertExpertInput = {
   kyc_aadhaar_url?: string | null;
   kyc_pan_url?: string | null;
   kyc_address_proof_url?: string | null;
+  kyc_bank_proof_url?: string | null;
   referred_by_expert_id?: string | null;
 };
 

@@ -83,6 +83,7 @@ export function ExpertFormModal({
   const [aadhaar, setAadhaar] = useState<UploadedDoc>(newDoc(null));
   const [pan, setPan] = useState<UploadedDoc>(newDoc(null));
   const [addressProof, setAddressProof] = useState<UploadedDoc>(newDoc(null));
+  const [bankProof, setBankProof] = useState<UploadedDoc>(newDoc(null));
   const [bankAcc, setBankAcc] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
   const [bankHolder, setBankHolder] = useState("");
@@ -124,6 +125,7 @@ export function ExpertFormModal({
       setAadhaar(newDoc(existing.kycAadhaarPath));
       setPan(newDoc(existing.kycPanPath));
       setAddressProof(newDoc(existing.kycAddressProofPath));
+      setBankProof(newDoc(existing.kycBankProofPath));
       setBankAcc(existing.bankAccountNumber ?? "");
       setBankIfsc(existing.bankIfsc ?? "");
       setBankHolder(existing.bankAccountHolderName ?? "");
@@ -185,6 +187,7 @@ export function ExpertFormModal({
           kyc_aadhaar_url: aadhaar.path,
           kyc_pan_url: pan.path,
           kyc_address_proof_url: addressProof.path,
+          kyc_bank_proof_url: bankProof.path,
           referred_by_expert_id: referredBy || null,
         },
       });
@@ -334,6 +337,7 @@ export function ExpertFormModal({
               <KycUpload label="Aadhaar" doc={aadhaar} onUploaded={(d) => setAadhaar(d)} onError={(m) => setFormError(m)} />
               <KycUpload label="PAN" doc={pan} onUploaded={(d) => setPan(d)} onError={(m) => setFormError(m)} />
               <KycUpload label="Address proof" doc={addressProof} onUploaded={(d) => setAddressProof(d)} onError={(m) => setFormError(m)} />
+              <KycUpload label="Bank proof" doc={bankProof} onUploaded={(d) => setBankProof(d)} onError={(m) => setFormError(m)} />
             </div>
           </section>
 
