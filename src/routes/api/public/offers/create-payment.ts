@@ -24,17 +24,21 @@ export const Route = createFileRoute("/api/public/offers/create-payment")({
         const res = data as { ok: boolean; error?: string; id?: string; amount?: number; already_paid?: boolean; razorpay_order_id?: string | null };
         if (!res.ok || res.already_paid) return json(200, res);
 
+        // DB amount is rupees; Razorpay needs paise.
+        const amountRupees = Number(res.amount ?? 0);
+        const amountPaise = Math.round(amountRupees * 100);
         let orderId = res.razorpay_order_id ?? null;
         if (!orderId) {
           const order = await rz("/orders", {
-            amount: res.amount, currency: "INR", receipt: `evt_${res.id!.slice(0, 30)}`,
+            amount: amountPaise, currency: "INR", receipt: `evt_${res.id!.slice(0, 30)}`,
             notes: { purpose: "event_offer", redemption_id: res.id!, offer_id: body.offer_id },
           });
           orderId = order.id as string;
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           await supabaseAdmin.rpc("system_set_offer_order" as never, { _redemption_id: res.id, _order_id: orderId } as never);
         }
-        return json(200, { ok: true, redemption_id: res.id, razorpay_order_id: orderId, amount: res.amount, currency: "INR", key_id: razorpayKeyId() });
+        // amount = paise (pass straight to Razorpay Checkout); amount_rupees for display.
+        return json(200, { ok: true, redemption_id: res.id, razorpay_order_id: orderId, amount: amountPaise, amount_rupees: amountRupees, currency: "INR", key_id: razorpayKeyId() });
       },
     },
   },

@@ -54,8 +54,9 @@ export async function markOfferPaid(orderId: string, paymentId: string) {
     return { ok: false, error: "PAYMENT_NOT_CAPTURED" };
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // pay.amount is paise; the DB function converts/compares against rupees.
   const { data, error } = await supabaseAdmin.rpc("system_mark_offer_paid" as never, {
-    _razorpay_order_id: orderId, _payment_id: paymentId, _amount: pay.amount,
+    _razorpay_order_id: orderId, _payment_id: paymentId, _amount_paise: pay.amount,
   } as never);
   if (error) return { ok: false, error: error.message };
   return data as { ok: boolean; id?: string; status?: string; error?: string };
@@ -71,8 +72,9 @@ export async function refundRedemption(redemptionId: string) {
   if (!row.razorpay_payment_id || !["paid", "pending", "confirmed"].includes(row.status)) {
     return { ok: false, error: "NOT_REFUNDABLE" };
   }
+  // row.amount is rupees; Razorpay refund API needs paise.
   const refund = await rz(`/payments/${row.razorpay_payment_id}/refund`, {
-    amount: row.amount, speed: "normal", notes: { purpose: "event_offer", redemption_id: row.id },
+    amount: Math.round(Number(row.amount) * 100), speed: "normal", notes: { purpose: "event_offer", redemption_id: row.id },
   });
   await supabaseAdmin.rpc("system_mark_offer_refunded" as never, { _redemption_id: row.id, _refund_id: refund.id } as never);
   return { ok: true, refund_id: refund.id as string };
