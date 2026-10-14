@@ -3840,6 +3840,7 @@ export type Database = {
           joining_date: string | null
           kyc_aadhaar_url: string | null
           kyc_address_proof_url: string | null
+          kyc_bank_proof_url: string | null
           kyc_pan_url: string | null
           kyc_rejection_reason: string | null
           kyc_status: string
@@ -3885,6 +3886,7 @@ export type Database = {
           joining_date?: string | null
           kyc_aadhaar_url?: string | null
           kyc_address_proof_url?: string | null
+          kyc_bank_proof_url?: string | null
           kyc_pan_url?: string | null
           kyc_rejection_reason?: string | null
           kyc_status?: string
@@ -3930,6 +3932,7 @@ export type Database = {
           joining_date?: string | null
           kyc_aadhaar_url?: string | null
           kyc_address_proof_url?: string | null
+          kyc_bank_proof_url?: string | null
           kyc_pan_url?: string | null
           kyc_rejection_reason?: string | null
           kyc_status?: string
