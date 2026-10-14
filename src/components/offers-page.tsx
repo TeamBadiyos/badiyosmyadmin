@@ -1615,3 +1615,68 @@ function Modal({
     </div>
   );
 }
+
+const DEEP_LINK_TABS: { value: string; label: string }[] = [
+  { value: "offers", label: "Offers tab" },
+  { value: "home", label: "Home" },
+  { value: "bookings", label: "My bookings" },
+  { value: "refer-earn", label: "Refer & Earn" },
+  { value: "wallet", label: "Wallet / Coins" },
+];
+
+function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const fetchList = useServerFn(listCoupons);
+  const { data: coupons = [] } = useQuery({
+    queryKey: ["offers", "coupons"],
+    queryFn: () => fetchList(),
+  });
+  const isOffer = value.startsWith("offer:");
+  const isTab = !value || DEEP_LINK_TABS.some((t) => t.value === value);
+  const mode = isOffer ? "__offer" : isTab ? value || "offers" : "__custom";
+  return (
+    <div className="space-y-2">
+      <select
+        className={inputCls}
+        value={mode}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__offer") onChange("offer:");
+          else if (v === "__custom") onChange("custom");
+          else onChange(v);
+        }}
+      >
+        {DEEP_LINK_TABS.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+        <option value="__offer">Specific offer / coupon</option>
+        <option value="__custom">Custom link</option>
+      </select>
+      {mode === "__offer" && (
+        <select
+          className={inputCls}
+          value={value.slice(6)}
+          onChange={(e) => onChange(`offer:${e.target.value}`)}
+        >
+          <option value="">Select coupon…</option>
+          {(coupons as { id: string; code: string; title: string; is_active: boolean }[])
+            .filter((c) => c.is_active)
+            .map((c) => (
+              <option key={c.id} value={c.code}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+        </select>
+      )}
+      {mode === "__custom" && (
+        <input
+          className={inputCls}
+          placeholder="route name"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
