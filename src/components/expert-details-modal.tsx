@@ -368,10 +368,11 @@ export function ExpertDetailsModal({
                   <Badge className={KYC_STYLES[data.kycStatus]}>{data.kycStatus}</Badge>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                   <DocLink label="Aadhaar" path={data.kycAadhaarPath} onOpen={openDoc} />
                   <DocLink label="PAN" path={data.kycPanPath} onOpen={openDoc} />
                   <DocLink label="Address proof" path={data.kycAddressProofPath} onOpen={openDoc} />
+                  <DocLink label="Bank proof" path={data.kycBankProofPath} onOpen={openDoc} />
                 </div>
 
                 {data.kycStatus === "rejected" && data.kycRejectionReason && (
