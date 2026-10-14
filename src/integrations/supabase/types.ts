@@ -8873,6 +8873,10 @@ export type Database = {
         }
         Returns: string
       }
+      campaign_audience_match: {
+        Args: { _audience: string; _targets: string[]; _uid: string }
+        Returns: boolean
+      }
       check_booking_capacity: { Args: { _booking_id: string }; Returns: Json }
       check_serviceability: {
         Args: { _lat: number; _lng: number; _segment_id?: string }
@@ -9429,6 +9433,7 @@ export type Database = {
         }
         Returns: Json
       }
+      customer_completed_orders: { Args: { _user_id: string }; Returns: number }
       customer_delete_account: { Args: never; Returns: undefined }
       customer_delete_address: {
         Args: { p_address_id: string }

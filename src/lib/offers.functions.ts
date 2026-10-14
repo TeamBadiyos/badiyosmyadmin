@@ -241,7 +241,7 @@ export type CouponInput = {
   valid_until?: string | null;
   total_usage_limit?: number | null;
   per_user_limit?: number | null;
-  audience: "all" | "targeted" | "referral_reward";
+  audience: "all" | "targeted" | "referral_reward" | "new_customers" | "existing_customers";
   applicable_category_ids?: string[] | null;
   show_in_list?: boolean;
 

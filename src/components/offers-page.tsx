@@ -34,7 +34,7 @@ import {
 } from "@/lib/offers.functions";
 
 type Tab = "coupons" | "milestones" | "campaigns";
-type Audience = "all" | "targeted" | "referral_reward";
+type Audience = "all" | "targeted" | "referral_reward" | "new_customers" | "existing_customers";
 
 /** Coupons don't apply to delivery categories yet. */
 function isComingSoonCategory(name: string) {
@@ -177,6 +177,8 @@ function fmtDate(v: string | null) {
 
 function audienceLabel(c: { audience: string; target_user_ids?: string[] | null }) {
   if (c.audience === "all") return "All customers";
+  if (c.audience === "new_customers") return "New customers (0 orders)";
+  if (c.audience === "existing_customers") return "Existing customers (1+ orders)";
   if (c.audience === "specific_users") {
     const n = c.target_user_ids?.length ?? 0;
     return `${n} customer${n === 1 ? "" : "s"} selected`;
@@ -359,6 +361,8 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
                 <p className="text-[12px] text-muted-foreground truncate">
                   {c.title}
                   {c.audience === "referral_reward" ? " · referral reward only" : ""}
+                  {c.audience === "new_customers" ? " · new customers (0 orders)" : ""}
+                  {c.audience === "existing_customers" ? " · existing customers (1+ orders)" : ""}
                 </p>
                 {(!c.show_in_list || c.audience === "targeted") && (
                   <span className="flex flex-wrap gap-1 mt-1">
@@ -455,7 +459,8 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
     valid_until: coupon?.valid_until ? coupon.valid_until.slice(0, 10) : "",
     total_usage_limit: coupon?.total_usage_limit != null ? String(coupon.total_usage_limit) : "",
     per_user_limit: String(coupon?.per_user_limit ?? 1),
-    audience: (coupon?.audience === "referral_reward" || coupon?.audience === "targeted"
+    audience: (coupon?.audience &&
+    ["referral_reward", "targeted", "new_customers", "existing_customers"].includes(coupon.audience)
       ? coupon.audience
       : "all") as Audience,
     show_in_list: coupon?.show_in_list ?? true,
@@ -606,6 +611,8 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
             onChange={(e) => setForm({ ...form, audience: e.target.value as Audience })}
           >
             <option value="all">All customers</option>
+            <option value="new_customers">New customers (0 orders)</option>
+            <option value="existing_customers">Existing customers (1+ orders)</option>
             <option value="targeted">Chosen customers (targeted)</option>
             <option value="referral_reward">Referral reward</option>
           </select>
@@ -1261,12 +1268,10 @@ function CampaignModal({
               onChange={(e) => setForm({ ...form, image_url: e.target.value })}
             />
           </Field>
-          <Field label="Deep link (optional)">
-            <input
-              className={inputCls}
-              placeholder="offers"
+          <Field label="Opens in app (tap par kya khulega)">
+            <DeepLinkPicker
               value={form.deep_link ?? ""}
-              onChange={(e) => setForm({ ...form, deep_link: e.target.value })}
+              onChange={(v) => setForm({ ...form, deep_link: v })}
             />
           </Field>
           <Field label="Audience">
@@ -1276,6 +1281,10 @@ function CampaignModal({
               onChange={(e) => setForm({ ...form, audience: e.target.value })}
             >
               {!locked && <option value="all">All customers</option>}
+              {!locked && <option value="new_customers">New customers (0 orders)</option>}
+              {!locked && (
+                <option value="existing_customers">Existing customers (1+ orders)</option>
+              )}
               {(locked ? cities.filter((c) => c === city) : cities).map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -1603,6 +1612,71 @@ function Modal({
         </div>
         {children}
       </div>
+    </div>
+  );
+}
+
+const DEEP_LINK_TABS: { value: string; label: string }[] = [
+  { value: "offers", label: "Offers tab" },
+  { value: "home", label: "Home" },
+  { value: "bookings", label: "My bookings" },
+  { value: "refer-earn", label: "Refer & Earn" },
+  { value: "wallet", label: "Wallet / Coins" },
+];
+
+function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const fetchList = useServerFn(listCoupons);
+  const { data: coupons = [] } = useQuery({
+    queryKey: ["offers", "coupons"],
+    queryFn: () => fetchList(),
+  });
+  const isOffer = value.startsWith("offer:");
+  const isTab = !value || DEEP_LINK_TABS.some((t) => t.value === value);
+  const mode = isOffer ? "__offer" : isTab ? value || "offers" : "__custom";
+  return (
+    <div className="space-y-2">
+      <select
+        className={inputCls}
+        value={mode}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__offer") onChange("offer:");
+          else if (v === "__custom") onChange("custom");
+          else onChange(v);
+        }}
+      >
+        {DEEP_LINK_TABS.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+        <option value="__offer">Specific offer / coupon</option>
+        <option value="__custom">Custom link</option>
+      </select>
+      {mode === "__offer" && (
+        <select
+          className={inputCls}
+          value={value.slice(6)}
+          onChange={(e) => onChange(`offer:${e.target.value}`)}
+        >
+          <option value="">Select coupon…</option>
+          {(coupons as { id: string; code: string; title: string; is_active: boolean }[])
+            .filter((c) => c.is_active)
+            .map((c) => (
+              <option key={c.id} value={c.code}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+        </select>
+      )}
+      {mode === "__custom" && (
+        <input
+          className={inputCls}
+          placeholder="route name"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
     </div>
   );
 }
