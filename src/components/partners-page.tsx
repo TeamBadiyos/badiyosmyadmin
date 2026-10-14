@@ -383,6 +383,9 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
             </>
           )}
           {batch.status === "approved" && isAdmin && (
+            <button className={btnGhost} onClick={() => { const r = ask("Reason for deleting this approved batch?"); if (r && window.confirm("Delete this batch? Its orders will be available for a new batch.")) run.mutate({ kind: "deleteBatch", id: batchId, reason: r }); }}><Trash2 className="h-4 w-4" /> Delete batch</button>
+          )}
+          {batch.status === "approved" && isAdmin && (
             <button className={btnPrimary} onClick={() => {
               const d = window.prompt("Payment date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
               if (!d) return;
