@@ -311,7 +311,7 @@ function PayoutsTab({ isAdmin }: { isAdmin: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const batches = (q.data ?? []) as any[];
+  const batches = ((q.data ?? []) as any[]).filter((b) => b.status !== "deleted");
   return (
     <div className="space-y-3">
       {isAdmin && (
