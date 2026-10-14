@@ -41,7 +41,8 @@ export const processOfferRefunds = createServerFn({ method: "POST" })
 
 /* ---------------------------------------------------------------- screen reads */
 
-export type EventOfferRow = Record<string, unknown> & {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EventOfferRow = Record<string, any> & {
   id: string; title: string; price: number; is_active: boolean; starts_at: string; ends_at: string;
   total_stock: number | null; payment_hold_minutes: number; unredeemed_refund_policy: string; pin_set: boolean;
   counts: { confirmed: number; pending: number; undone: number; paid: number; used: number };
