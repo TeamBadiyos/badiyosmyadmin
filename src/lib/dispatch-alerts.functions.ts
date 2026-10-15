@@ -11,6 +11,7 @@ export type DispatchConfig = {
   aisensy_template_name: string | null;
   ops_alert_whatsapp_numbers: string[];
   almost_available_window_minutes: number;
+  accept_timeouts?: { store: number | null; food: number | null };
 };
 
 export const getDispatchConfigs = createServerFn({ method: "GET" })
@@ -23,7 +24,9 @@ export const getDispatchConfigs = createServerFn({ method: "GET" })
       )
       .order("city", { ascending: true });
     if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as DispatchConfig[];
+    const { data: ss } = await context.supabase.from("service_settings").select("service_key, default_accept_timeout_minutes").in("service_key", ["store", "food"]);
+    const t = (k: string) => ((ss ?? []) as Array<{ service_key: string; default_accept_timeout_minutes: number }>).find((r) => r.service_key === k)?.default_accept_timeout_minutes ?? null;
+    return ((data ?? []) as unknown as DispatchConfig[]).map((c) => ({ ...c, accept_timeouts: { store: t("store"), food: t("food") } }));
   });
 
 export const updateDispatchConfig = createServerFn({ method: "POST" })

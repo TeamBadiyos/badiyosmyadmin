@@ -11,13 +11,14 @@ import {
 } from "@/lib/dispatch-alerts.functions";
 
 type SvcKey = "maid" | "wash" | "store" | "food" | "parcel";
-const SVCS: Array<[SvcKey, string]> = [["maid", "Maid"], ["wash", "Wash"], ["store", "Store"], ["food", "Food"], ["parcel", "Parcel"]];
+const SVCS: Array<[SvcKey, string]> = [["maid", "Clean Home"], ["wash", "Clean Auto"], ["store", "Store"], ["food", "Food"], ["parcel", "Parcel"]]
+const DEFAULTS: Record<SvcKey, number> = { maid: 10, wash: 10, store: 3, food: 3, parcel: 5 };;
 
 function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }) {
   const save = useServerFn(updateDispatchConfig);
   const fallback = Math.round(cfg.no_accept_alert_threshold_seconds / 60).toString();
   const [perSvc, setPerSvc] = useState<Record<SvcKey, string>>(() =>
-    Object.fromEntries(SVCS.map(([k]) => [k, String(cfg.no_accept_minutes?.[k] ?? fallback)])) as Record<SvcKey, string>,
+    Object.fromEntries(SVCS.map(([k]) => [k, String(cfg.no_accept_minutes?.[k] ?? DEFAULTS[k] ?? fallback)])) as Record<SvcKey, string>,
   );
   const [windowMin, setWindowMin] = useState(cfg.almost_available_window_minutes.toString());
   const [template, setTemplate] = useState(cfg.aisensy_template_name ?? "");
@@ -32,6 +33,10 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
       const v = parseInt(perSvc[k], 10);
       if (!v || v < 1 || v > 60) { toast.error(`${label}: wait limit must be 1–60 minutes`); return; }
       mins[k] = v;
+    }
+    for (const k of ["store", "food"] as const) {
+      const t = cfg.accept_timeouts?.[k];
+      if (t != null && (mins[k] ?? 0) >= t) { toast.error(`${k === "store" ? "Store" : "Food"}: alert limit must be lower than the ${k === "store" ? "merchant" : "restaurant"} accept timeout (${t} min)`); return; }
     }
     if (!win || win < 1 || win > 120) {
       toast.error("Almost-available window must be 1–120 minutes");
@@ -74,7 +79,12 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
               <span className="text-[11px] font-bold uppercase text-muted-foreground">{label}</span>
               <input type="number" min={1} max={60} value={perSvc[k]}
                 onChange={(e) => setPerSvc((p) => ({ ...p, [k]: e.target.value }))}
-                className="mt-1 w-full rounded-[10px] border border-border bg-background px-3 py-2 text-[13px] text-foreground" />
+                className={`mt-1 w-full rounded-[10px] border bg-background px-3 py-2 text-[13px] text-foreground ${(k === "store" || k === "food") && cfg.accept_timeouts?.[k] != null && Number(perSvc[k]) >= (cfg.accept_timeouts?.[k] ?? 0) ? "border-destructive" : "border-border"}`} />
+              {(k === "store" || k === "food") && cfg.accept_timeouts?.[k] != null && (
+                <span className={`mt-0.5 block text-[10px] ${Number(perSvc[k]) >= (cfg.accept_timeouts?.[k] ?? 0) ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                  Must be under auto-reject ({cfg.accept_timeouts?.[k]} min)
+                </span>
+              )}
             </label>
           ))}
         </div>

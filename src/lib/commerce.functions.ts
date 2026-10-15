@@ -179,6 +179,10 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
     }
 
     const nowMs = now.getTime();
+    const { data: cfgRow } = await db.from("dispatch_config").select("no_accept_minutes").order("city").limit(1).maybeSingle();
+    const lim = (cfgRow?.no_accept_minutes ?? {}) as Record<string, number>;
+    const { data: svcRows } = await db.from("merchants").select("id, service_type").in("id", uniq(rows.map((r) => r.merchant_id)));
+    const isFood = new Set(((svcRows ?? []) as any[]).filter((m) => m.service_type === "food").map((m) => m.id as string));
     const orders: CommerceOrder[] = rows.map((r) => {
       const co = r.courier_order_id ? courierMap.get(r.courier_order_id) : null;
       const pickedUpAt = r.picked_up_at ?? co?.picked_up_at ?? null;
@@ -190,7 +194,7 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
       else if (r.status === "ready") riderState = "searching";
 
       const alerts: CommerceAlert[] = [];
-      if (r.status === "pending" && minsSince(r.created_at, nowMs) >= MERCHANT_ACCEPT_MIN)
+      if (r.status === "pending" && minsSince(r.created_at, nowMs) >= (Number(lim[isFood.has(r.merchant_id) ? "food" : "store"]) || MERCHANT_ACCEPT_MIN))
         alerts.push("merchant_slow");
       if (r.status !== "completed" && riderState === "searching") {
         const since = co?.search_started_at ?? r.ready_at;
