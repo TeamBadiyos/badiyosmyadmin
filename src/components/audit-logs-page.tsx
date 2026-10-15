@@ -2,7 +2,7 @@ import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ScrollText, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAuditLogs,
@@ -69,11 +69,6 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-        <ScrollText size={16} className="text-primary" />
-        Read-only, append-only history of staff actions.
-      </div>
-
       <div className="bg-card border border-border rounded-[18px] p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
         <FilterField label="Actor">
           <select
@@ -104,12 +99,12 @@ export function AuditLogsPage() {
             <option value="">All actions</option>
             {options?.actions.map((a) => (
               <option key={a} value={a}>
-                {a}
+                {verbOf(a)} ({a})
               </option>
             ))}
           </select>
         </FilterField>
-        <FilterField label="Target Table">
+        <FilterField label="Area">
           <select
             value={targetTable}
             onChange={(e) => {
@@ -118,10 +113,10 @@ export function AuditLogsPage() {
             }}
             className="w-full h-[42px] px-3 rounded-[14px] border border-border bg-background text-[13px]"
           >
-            <option value="">All tables</option>
+            <option value="">All areas</option>
             {options?.tables.map((t) => (
               <option key={t} value={t}>
-                {t}
+                {areaName(t)}
               </option>
             ))}
           </select>
@@ -151,13 +146,11 @@ export function AuditLogsPage() {
       </div>
 
       <div className="bg-card border border-border rounded-[18px] overflow-hidden">
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.4fr)_180px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)_minmax(0,3fr)_180px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span></span>
           <span>Actor</span>
-          <span>Action</span>
-          <span>Target Table</span>
-          <span>Target ID</span>
-          <span>Timestamp</span>
+          <span>What</span>
+          <span>When</span>
         </div>
 
         {isLoading && (
@@ -170,8 +163,8 @@ export function AuditLogsPage() {
           <p className="text-[13px] text-muted-foreground text-center py-10">No entries.</p>
         )}
 
-        {rows.map((row) => (
-          <AuditRow key={row.id} row={row} />
+        {groupRows(rows).map((g) => (
+          <AuditRow key={g[0].id} group={g} />
         ))}
       </div>
 
@@ -200,33 +193,96 @@ export function AuditLogsPage() {
   );
 }
 
-function AuditRow({ row }: { row: AuditLogRow }) {
+const AREA: Record<string, string> = {
+  service_flags: "service", service_hours: "hours", merchants: "merchant", experts: "Expert", users: "customer",
+  coupons: "coupon", tax_settings: "tax setting", fee_rules: "fee", zones: "zone", staff_users: "staff member",
+  bookings: "booking", merchant_orders: "order", courier_orders: "parcel order", merchant_settlements: "settlement",
+  segments: "service", support_tickets: "support chat", reward_programs: "reward program", products: "product",
+};
+function areaName(t: string | null) {
+  if (!t) return "record";
+  return AREA[t] ?? t.replace(/_/g, " ").replace(/s$/, "");
+}
+function verbOf(action: string) {
+  const a = action.toLowerCase();
+  const pick = [
+    ["delete", "deleted"], ["remove", "removed"], ["reject", "rejected"], ["approve", "approved"],
+    ["suspend", "suspended"], ["create", "created"], ["insert", "added"], ["add", "added"],
+    ["assign", "assigned"], ["refund", "refunded"], ["paid", "marked paid"], ["pay", "paid"],
+    ["toggle", "switched"], ["status", "changed status of"], ["hours", "changed hours of"],
+    ["update", "changed"], ["set", "changed"], ["edit", "edited"],
+  ] as const;
+  for (const [k, v] of pick) if (a.includes(k)) return v;
+  return a.replace(/[_.]/g, " ");
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function nameOf(row: AuditLogRow): string | null {
+  const st = (row.afterState ?? row.beforeState ?? {}) as Record<string, unknown>;
+  for (const k of ["name", "business_name", "store_name", "label", "title", "full_name", "code", "key", "service_key"]) {
+    const v = st[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+function describe(g: AuditLogRow[]) {
+  const r = g[0];
+  const actor = r.actorName ?? "System";
+  const n = nameOf(r);
+  const area = areaName(r.targetTable);
+  const verb = verbOf(r.action);
+  if (g.length > 1) {
+    const plural = area.endsWith("s") ? area : area + "s";
+    return `${actor} ${verb} ${g.length} ${plural}${n ? ` (incl. ${n})` : ""}`;
+  }
+  return `${actor} ${verb} ${area}${n ? ` ${n}` : ""}`;
+}
+function groupRows(rows: AuditLogRow[]): AuditLogRow[][] {
+  const out: AuditLogRow[][] = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    const head = last?.[0];
+    if (
+      head && head.actorId === r.actorId && head.action === r.action && head.targetTable === r.targetTable &&
+      Math.abs(new Date(last[last.length - 1].createdAt).getTime() - new Date(r.createdAt).getTime()) <= 60_000
+    ) last.push(r);
+    else out.push([r]);
+  }
+  return out;
+}
+
+function AuditRow({ group }: { group: AuditLogRow[] }) {
   const [open, setOpen] = useState(false);
+  const row = group[0];
   return (
     <div className="border-b border-border last:border-b-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full grid grid-cols-[32px_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.4fr)_180px] gap-4 items-center px-6 py-3 text-[14px] text-left hover:bg-muted/40 transition-colors"
+        className="w-full grid grid-cols-[32px_minmax(0,1fr)_minmax(0,3fr)_180px] gap-4 items-center px-6 py-3 text-[14px] text-left hover:bg-muted/40 transition-colors"
       >
         <span className="text-muted-foreground">
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </span>
         <span className="font-semibold text-foreground truncate">
-          {row.actorName ?? <span className="text-muted-foreground font-normal">system</span>}
+          {row.actorName ?? <span className="text-muted-foreground font-normal">System</span>}
         </span>
-        <span className="text-foreground truncate font-mono text-[13px]">{row.action}</span>
-        <span className="text-muted-foreground truncate">{row.targetTable ?? "—"}</span>
-        <span className="text-muted-foreground truncate font-mono text-[12px]">
-          {row.targetId ?? "—"}
-        </span>
+        <span className="text-foreground truncate">{describe(group)}</span>
         <span className="text-muted-foreground text-[13px]">
           {new Date(row.createdAt).toLocaleString()}
         </span>
       </button>
       {open && (
-        <div className="px-6 pb-4 pt-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <JsonPanel title="Before" value={row.beforeState} />
-          <JsonPanel title="After" value={row.afterState} />
+        <div className="px-6 pb-4 pt-1 space-y-4">
+          {group.map((r) => (
+            <div key={r.id} className="space-y-2">
+              <div className="text-[12px] text-muted-foreground font-mono break-all">
+                {r.action} · {r.targetTable ?? "—"} · {r.targetId ?? "—"} · {new Date(r.createdAt).toLocaleTimeString()}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <JsonPanel title="Before" value={r.beforeState} />
+                <JsonPanel title="After" value={r.afterState} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
