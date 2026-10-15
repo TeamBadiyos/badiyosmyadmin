@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { catalogImageUrl } from "@/lib/catalog-images";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 import {
   type Svc,
@@ -30,8 +31,8 @@ import { cancelStoreOrderWithRefund, reassignStoreRider } from "@/lib/commerce.f
 
 const inr = (n: unknown) => `₹${Number(n ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const dt = (s?: string | null) => (s ? new Date(s).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—");
-const imgUrl = (p?: string | null, fallback?: string | null) =>
-  p ? supabase.storage.from("catalog-images").getPublicUrl(p).data.publicUrl : fallback || null;
+const imgUrl = (p?: string | null, fallback?: string | null) => catalogImageUrl(p) ?? catalogImageUrl(fallback);
+const SizeHint = ({ text }: { text: string }) => <p className="text-xs text-muted-foreground">{text} · JPG/PNG/WebP · max 10 MB</p>;
 const move = <T,>(arr: T[], i: number, d: -1 | 1) => {
   const j = i + d; if (j < 0 || j >= arr.length) return arr;
   const c = [...arr]; [c[i], c[j]] = [c[j], c[i]]; return c;
@@ -381,7 +382,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
             <div key={s.id} className="rounded-2xl border bg-card overflow-hidden flex flex-col">
               <button onClick={() => setSel(s.id)} className="text-left flex-1">
                 <div className="h-32 bg-muted">
-                  {s.photo ? <img src={s.photo} alt={s.store_name} className="h-full w-full object-cover" /> : null}
+                  {s.photo ? <img src={imgUrl(s.photo)!} alt={s.store_name} className="h-full w-full object-cover" /> : null}
                 </div>
                 <div className="p-4 space-y-1">
                   <div className="flex items-start justify-between gap-2">
@@ -519,7 +520,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
       {s && (
         <>
           <div className="flex flex-wrap items-center gap-3">
-            {s.shop_photo_url ? <img src={s.shop_photo_url} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="h-14 w-14 rounded-xl bg-muted" />}
+            {s.shop_photo_url ? <img src={imgUrl(s.shop_photo_url)!} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="h-14 w-14 rounded-xl bg-muted" />}
             <div className="min-w-0">
               <h2 className="text-lg font-bold truncate">{s.store_name}</h2>
               <p className="text-xs text-muted-foreground">{(r.data?.storeTypes ?? []).find((x: any) => x.id === s.store_category_id)?.name ?? (service === "food" ? "Restaurant" : "Store type not set")} · {s.status === "suspended" ? "Suspended" : s.status}</p>
@@ -770,6 +771,7 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
                 const f = e.target.files?.[0]; if (!f) return; setBusy(true);
                 try { setImg(await uploadImage(f, storeId)); } catch (er) { toast.error(errMsg(er)); } finally { setBusy(false); }
               }} /></label>
+            <SizeHint text="Square 800×800 px recommended" />
           </div>
           {lines(vars, setVars, "Variants (e.g. Half / Full)", true)}
           {lines(adds, setAdds, "Add-ons")}
@@ -946,6 +948,7 @@ function CategoryEditor({ c, service, folder, onClose, onSave }: { c: any; servi
                 const f = e.target.files?.[0]; if (!f) return; setBusy(true);
                 try { setImg(await uploadImage(f, folder ?? `_categories/${service}`)); } catch (er) { toast.error(errMsg(er)); } finally { setBusy(false); }
               }} /></label>
+            <SizeHint text="Square 512×512 px recommended" />
           </div>
           <div className="flex items-center justify-between"><Label>Active</Label><Switch checked={active} onCheckedChange={setActive} /></div>
         </div>
