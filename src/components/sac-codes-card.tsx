@@ -5,9 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 const CODES: [string, string][] = [
-  ["maid", "Clean Home (maid)"],
-  ["wash", "Clean Auto (wash)"],
-  ["store_items", "Store items (HSN)"],
+  ["maid", "Clean Home"],
+  ["wash", "Clean Auto"],
   ["food_9_5", "Food — Sec 9(5)"],
   ["store_delivery", "Store delivery"],
   ["food_delivery", "Food delivery"],

@@ -64,7 +64,7 @@ export function DashboardKpis({ role }: { role: StaffRole | null }) {
 
 const SERIES = [
   { key: "maid", label: "Maid", color: "var(--svc-maid)" },
-  { key: "wash", label: "Car/Bike Wash", color: "var(--svc-wash)" },
+  { key: "wash", label: "Clean Auto", color: "var(--svc-wash)" },
   { key: "store", label: "Store", color: "var(--svc-store)" },
   { key: "food", label: "Food", color: "var(--svc-food)" },
   { key: "parcel", label: "Parcel", color: "var(--svc-parcel)" },
