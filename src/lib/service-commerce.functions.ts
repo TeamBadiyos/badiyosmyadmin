@@ -155,8 +155,12 @@ export const getStoreDetail = createServerFn({ method: "POST" })
     const categories = ((cats.data ?? []) as any[])
       .map((c) => ({ ...c, store_order: so.get(c.id) ?? 1000 + (c.sort_order ?? 0) }))
       .sort((a, b) => a.store_order - b.store_order);
+    const types = data.service === "store"
+      ? await db.from("store_categories").select("id, name, is_active").order("sort_order")
+      : { data: [] };
     return {
       store: m.data,
+      storeTypes: ((types as any).data ?? []) as { id: string; name: string; is_active: boolean }[],
       categories,
       products: ((prods.data ?? []) as any[]).map((p) => ({ ...p, variants: vm.get(p.id) ?? [], addons: am.get(p.id) ?? [] })),
       staff: [
@@ -170,8 +174,9 @@ export const getStoreDetail = createServerFn({ method: "POST" })
 type StoreAct =
   | { kind: "open"; value: boolean }
   | { kind: "offer"; text: string | null }
-  | { kind: "approve" }
+  | { kind: "approve"; reason: string }
   | { kind: "suspend"; reason: string }
+  | { kind: "storeType"; storeCategoryId: string | null }
   | { kind: "commercials"; commission_pct: number; instant_settlement_fee_pct: number; accept_timeout_minutes: number | null }
   | { kind: "reorderCategories"; ids: string[] }
   | { kind: "reorderProducts"; categoryId: string | null; ids: string[] }
@@ -193,13 +198,23 @@ export const storeAction = createServerFn({ method: "POST" })
         if (t && t.length > 60) throw new Error("Offer line can be at most 60 characters.");
         chk(await (db.rpc as any)("set_offer_text", { _store_id: sid, _text: t })); break;
       }
-      case "approve": chk(await (db.rpc as any)("staff_decide_merchant", { _merchant_id: sid, _decision: "approved", _notes: null })); break;
+      case "approve":
       case "suspend": {
         const reason = String(a.reason ?? "").trim();
         if (!reason) throw new Error("Reason required");
-        const b = await db.from("merchants").select("status").eq("id", sid).maybeSingle();
-        chk(await db.from("merchants").update({ status: "suspended" }).eq("id", sid));
-        await audit(context, "merchant_suspended", "merchants", sid, b.data, { status: "suspended", reason });
+        chk(await (db.rpc as any)("staff_set_merchant_status", {
+          _merchant_id: sid, _status: a.kind === "approve" ? "approved" : "suspended", _reason: reason,
+        }));
+        break;
+      }
+      case "storeType": {
+        const b = await db.from("merchants").select("store_category_id").eq("id", sid).maybeSingle();
+        if (a.storeCategoryId) {
+          const c = await db.from("store_categories").select("id").eq("id", a.storeCategoryId).maybeSingle();
+          if (!c.data) throw new Error("Store type not found");
+        }
+        chk(await db.from("merchants").update({ store_category_id: a.storeCategoryId || null } as any).eq("id", sid));
+        await audit(context, "merchant_store_type_updated", "merchants", sid, b.data, { store_category_id: a.storeCategoryId || null });
         break;
       }
       case "commercials": {
