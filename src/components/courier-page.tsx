@@ -1,4 +1,5 @@
 import { TripLeftBehind } from "@/components/left-behind";
+import { FilterBar, FilterField, filterInputCls, filterSelectCls, countLabel } from "@/components/section-chrome";
 import { StopProofs } from "@/components/drop-proofs";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1712,16 +1713,16 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   const typeVal = multiStop ? "multi" : business === "any" ? "business" : business ? business : "";
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
+    <div className="space-y-6">
+      <FilterBar count={countLabel(rows.length, "order")}>
+        <FilterField label="Search"><input
           placeholder="Search code, customer, phone"
-          className={`${inputCls} max-w-[260px]`}
+          className={`${filterInputCls} min-w-[230px]`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className={`${inputCls} max-w-[200px]`}
+        /></FilterField>
+        <FilterField label="Status"><select
+          className={`${filterSelectCls}`}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -1731,9 +1732,9 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
               {s}
             </option>
           ))}
-        </select>
-        <select
-          className={`${inputCls} max-w-[220px]`}
+        </select></FilterField>
+        <FilterField label="Type"><select
+          className={`${filterSelectCls}`}
           value={typeVal}
           onChange={(e) => {
             const v = e.target.value;
@@ -1749,31 +1750,30 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
               {`Business · ${b.business_name}`}
             </option>
           ))}
-        </select>
-        <select className={`${inputCls} max-w-[160px]`} value={range} onChange={(e) => setRange(e.target.value as typeof range)}>
+        </select></FilterField>
+        <FilterField label="Date"><select className={`${filterSelectCls}`} value={range} onChange={(e) => setRange(e.target.value as typeof range)}>
           <option value="all">All dates</option>
           <option value="today">Today</option>
           <option value="yesterday">Yesterday</option>
           <option value="7d">Last 7 days</option>
           <option value="30d">Last 30 days</option>
           <option value="custom">Custom range</option>
-        </select>
+        </select></FilterField>
         {range === "custom" ? (
           <>
-            <input type="date" className={`${inputCls} max-w-[150px]`} value={from} onChange={(e) => setFrom(e.target.value)} />
-            <input type="date" className={`${inputCls} max-w-[150px]`} value={to} onChange={(e) => setTo(e.target.value)} />
+            <FilterField label="From"><input type="date" className={filterInputCls} value={from} onChange={(e) => setFrom(e.target.value)} /></FilterField>
+            <FilterField label="To"><input type="date" className={filterInputCls} value={to} onChange={(e) => setTo(e.target.value)} /></FilterField>
           </>
         ) : null}
-        <span className="ml-auto text-[12px] text-muted-foreground">{rows.length} orders</span>
-      </div>
+      </FilterBar>
 
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">No courier orders found.</p>
       ) : (
-        <div className="overflow-x-auto rounded-[16px] border border-border bg-card">
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+        <div className="overflow-x-auto rounded-[18px] border border-border bg-card">
+          <table className="w-full text-[13px]">
+            <thead className="bg-muted/40">
+              <tr className="border-b border-border text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 {th("code", "Code")}
                 {th("customer", "Customer")}
                 {th("rider", "Rider")}
