@@ -138,7 +138,7 @@ const NAV_ITEMS = [
   { key: "wash-slots", label: "Slots", icon: ListChecks },
   { key: "wash-team", label: "Team", icon: UserCog },
   { key: "wash-settings", label: "Settings", icon: Settings },
-  { key: "courier-riders", label: "Riders & Capacity", icon: Users },
+  { key: "courier-riders", label: "Riders", icon: Users },
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "training-orders", label: "Training Orders", icon: GraduationCap },
