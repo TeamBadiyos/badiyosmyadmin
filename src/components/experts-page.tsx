@@ -53,19 +53,19 @@ export function ExpertsPage({
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
 
-  const [zoneId, setZoneId] = useUrlState("zone", "");
-  const [kycStatus, setKycStatus] = useUrlState("kyc", "");
-  const [level, setLevel] = useUrlState("level", "");
+  const [zoneId, setZoneId] = useUrlState<string>("zone", "");
+  const [kycStatus, setKycStatus] = useUrlState<string>("kyc", "");
+  const [level, setLevel] = useUrlState<string>("level", "");
   const [availability, setAvailability] = useState<string>(
     initialOnlineOnly ? "online_free" : "",
   );
-  const [mode, setMode] = useUrlState("mode", "");
+  const [mode, setMode] = useUrlState<string>("mode", "");
   const [skillF, setSkillF] = useUrlState<"" | "maid" | "wash" | "rider">("skill", "");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [page, setPage] = useUrlState("page", 1);
-  const [pageSize, setPageSize] = useUrlState("size", 25);
+  const [page, setPage] = useUrlState<number>("page", 1);
+  const [pageSize, setPageSize] = useUrlState<number>("size", 25);
   const effSkill = skill ?? (skillF || undefined);
-  const [statusF, setStatusF] = useUrlState("status", skill ? "active" : "");
+  const [statusF, setStatusF] = useUrlState<string>("status", skill ? "active" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
