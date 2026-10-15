@@ -25,7 +25,7 @@ import { LiveStoresView } from "@/components/live-stores-view";
 import { StoreCategoriesPage } from "@/components/store-categories-page";
 import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
-import { HomepageBuilderPage } from "@/components/homepage-builder-page";
+import { BannersPage } from "@/components/banners-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { CommissionTab } from "@/components/commission-tab";
 import { ReferralsPage } from "@/components/referrals-page";
@@ -163,7 +163,7 @@ const NAV_ITEMS = [
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
-  { key: "homepage", label: "Homepage", icon: LayoutTemplate },
+  { key: "homepage", label: "Banners", icon: LayoutTemplate },
   { key: "wallets", label: "Payouts", icon: Wallet },
   { key: "partners", label: "Partners", icon: Handshake },
   { key: "referrals", label: "Referrals", icon: Gift },
@@ -726,7 +726,7 @@ function Shell() {
         ) : active === "task-types" ? (
           <TaskTypesPage />
         ) : active === "homepage" ? (
-          <HomepageBuilderPage />
+          <BannersPage />
         ) : active === "partners" ? (
           <PartnersPage role={role} />
         ) : active === "wallets" ? (
