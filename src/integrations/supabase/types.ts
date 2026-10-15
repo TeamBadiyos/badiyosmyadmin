@@ -210,6 +210,54 @@ export type Database = {
         }
         Relationships: []
       }
+      app_banners: {
+        Row: {
+          app_tab: string
+          city_id: string | null
+          created_at: string
+          display_order: number
+          ends_at: string | null
+          id: string
+          image_path: string
+          is_active: boolean
+          link_target: string | null
+          link_type: string
+          starts_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          app_tab?: string
+          city_id?: string | null
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_path: string
+          is_active?: boolean
+          link_target?: string | null
+          link_type?: string
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          app_tab?: string
+          city_id?: string | null
+          created_at?: string
+          display_order?: number
+          ends_at?: string | null
+          id?: string
+          image_path?: string
+          is_active?: boolean
+          link_target?: string | null
+          link_type?: string
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           current_version: string
@@ -9979,6 +10027,10 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
       }
+      app_list_banners: {
+        Args: { _city_id: string; _tab: string }
+        Returns: Json
+      }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       award_referral_milestones: { Args: { _user_id: string }; Returns: number }
       booking_capacity_group: {
@@ -11920,6 +11972,7 @@ export type Database = {
         Args: { _approve: boolean; _ledger_id: string; _reason?: string }
         Returns: boolean
       }
+      staff_delete_banner: { Args: { _id: string }; Returns: undefined }
       staff_delete_coupon: { Args: { _id: string }; Returns: undefined }
       staff_delete_customer_address: {
         Args: { _address_id: string }
@@ -12093,6 +12146,10 @@ export type Database = {
         Args: { _doc_types: string[]; _merchant_id: string; _notes: string }
         Returns: undefined
       }
+      staff_move_banner: {
+        Args: { _dir: number; _id: string }
+        Returns: undefined
+      }
       staff_notify_summary: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -12193,6 +12250,7 @@ export type Database = {
         Args: { _orders: Json }
         Returns: undefined
       }
+      staff_require_banner_staff: { Args: never; Returns: undefined }
       staff_require_super_admin: { Args: never; Returns: undefined }
       staff_reschedule_booking: {
         Args: {
@@ -12281,6 +12339,7 @@ export type Database = {
         Args: { _period_start?: string }
         Returns: number
       }
+      staff_save_banner: { Args: { _p: Json }; Returns: string }
       staff_save_capacity_message: {
         Args: { _payload: Json }
         Returns: undefined
@@ -12368,6 +12427,10 @@ export type Database = {
           _morning: number
           _service_key: string
         }
+        Returns: undefined
+      }
+      staff_set_banner_active: {
+        Args: { _active: boolean; _id: string }
         Returns: undefined
       }
       staff_set_booking_location: {
