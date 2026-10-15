@@ -250,7 +250,7 @@ export function CleanTaxCallout({ onOpenTax }: { onOpenTax: () => void }) {
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-muted px-4 py-3 text-[13px]">
       <div className="space-y-0.5 text-foreground">
-        <p><span className="font-semibold">Maid GST:</span> {maid ? (maid.is_active ? `${maid.rate_pct}% on` : "off (awaiting CA)") : "—"}</p>
+        <p><span className="font-semibold">Clean Home GST:</span> {maid ? (maid.is_active ? `${maid.rate_pct}% on` : "off (awaiting CA)") : "—"}</p>
         <p><span className="font-semibold">Wash GST:</span> {wash ? (wash.is_active ? `${wash.rate_pct}% on` : "off") : "—"}</p>
       </div>
       <button type="button" onClick={onOpenTax} className="rounded-[10px] border border-border bg-card px-3 py-1.5 text-[12px] font-semibold text-primary hover:bg-muted">
