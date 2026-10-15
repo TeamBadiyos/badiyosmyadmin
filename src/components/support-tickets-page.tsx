@@ -2,12 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCircle2, LifeBuoy, RefreshCw, RotateCcw, Search, Send, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, LifeBuoy, MessageSquareText, Phone, Search, Send, StickyNote, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  addTicketNote,
+  assignSupportTicket,
   getTicketContact,
+  listSupportMeta,
   listSupportTickets,
   listTicketMessages,
+  markTicketSeenByStaff,
   sendTicketMessage,
   updateSupportTicket,
   type SupportTicket,
@@ -16,21 +20,12 @@ import {
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
-const STATUS_STYLES: Record<TicketStatus, string> = {
-  open: "bg-amber-50 text-amber-700",
-  in_progress: "bg-indigo-50 text-indigo-700",
-  answered: "bg-sky-50 text-sky-700",
-  resolved: "bg-emerald-50 text-emerald-700",
-};
-
 function time(ts: string) {
-  return new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
 }
-
 function fmt(ts: string) {
   return new Date(ts).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 }
-
 function dayLabel(ts: string) {
   const d = new Date(ts);
   const today = new Date();
@@ -41,9 +36,17 @@ function dayLabel(ts: string) {
   if (same(d, yest)) return "Yesterday";
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
 }
-
+function listTime(ts: string) {
+  const l = dayLabel(ts);
+  return l === "Today" ? time(ts) : l;
+}
 function money(n: number) {
   return `₹${Number(n || 0).toLocaleString("en-IN")}`;
+}
+const APP_LABEL: Record<string, string> = { customer: "Customer", partner: "Expert", merchant: "Merchant" };
+
+function Ticks({ seen }: { seen: boolean }) {
+  return seen ? <CheckCheck size={14} className="inline text-sky-500" /> : <Check size={14} className="inline opacity-70" />;
 }
 
 export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
@@ -51,24 +54,14 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
   const queryClient = useQueryClient();
   const fetchTickets = useServerFn(listSupportTickets);
 
-  const [status, setStatus] = useState("");
+  const [chip, setChip] = useState<"open" | "resolved" | "all">("open");
   const [source, setSource] = useState("");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const filters = useMemo(
-    () => ({ status: status || null, source: source || null }),
-    [status, source],
-  );
-
-  const {
-    data: tickets = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["support-tickets", filters],
-    queryFn: () => fetchTickets({ data: filters }),
+  const { data: tickets = [], isLoading, isError } = useQuery({
+    queryKey: ["support-tickets", source],
+    queryFn: () => fetchTickets({ data: { source: source || null } }),
     staleTime: 10_000,
     enabled: canManage,
   });
@@ -76,164 +69,130 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
   useEffect(() => {
     const channel = supabase
       .channel("support-tickets-live")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "support_tickets" },
-        () => {
-          toast.info("New support ticket received");
-          queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
-        },
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_tickets" }, () => {
+        toast.info("New support chat");
+        queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "support_tickets" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["support-tickets"] }),
       )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "support_tickets" },
-        () => queryClient.invalidateQueries({ queryKey: ["support-tickets"] }),
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "support_ticket_messages" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
-          queryClient.invalidateQueries({ queryKey: ["ticket-messages"] });
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_ticket_messages" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-messages"] });
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
+  const openCount = tickets.filter((t) => t.status !== "resolved").length;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return tickets;
-    return tickets.filter((t) =>
-      [t.userName, t.userPhone, t.subject, t.message, t.lastMessagePreview]
+    return tickets.filter((t) => {
+      if (chip === "open" && t.status === "resolved") return false;
+      if (chip === "resolved" && t.status !== "resolved") return false;
+      if (!q) return true;
+      return [t.userName, t.userPhone, t.subject, t.message, t.lastMessagePreview]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q)),
-    );
-  }, [tickets, search]);
-
+        .some((v) => String(v).toLowerCase().includes(q));
+    });
+  }, [tickets, search, chip]);
 
   if (!canManage) {
-    return (
-      <p className="text-[14px] text-muted-foreground">
-        You do not have access to support tickets.
-      </p>
-    );
+    return <p className="text-[14px] text-muted-foreground">You do not have access to support chats.</p>;
   }
 
   const active = tickets.find((t) => t.id === activeId) ?? null;
-  const openCount = tickets.filter((t) => t.status !== "resolved").length;
+  const chipCls = (on: boolean) =>
+    `h-8 px-3 rounded-full text-[12px] font-bold border ${on ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:bg-muted/40"}`;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground">
-          Chat with customers, partners and merchants. {openCount} open.
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="h-[40px] px-4 rounded-[14px] border border-border text-[13px] font-bold inline-flex items-center gap-2 hover:bg-muted/40"
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </button>
-      </div>
-
-      <div className={`grid grid-cols-1 ${active ? "lg:grid-cols-[320px_minmax(0,1fr)_300px]" : ""} gap-4 lg:h-[calc(100vh-190px)] lg:min-h-[560px]`}>
-        {/* LEFT — ticket list */}
-        <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden max-h-[420px] lg:max-h-none">
-          <div className="p-3 space-y-2 border-b border-border">
-            <div className="relative">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, phone, message"
-                className="w-full h-10 pl-9 pr-3 rounded-[12px] border border-border bg-card text-[13px]"
-              />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="h-9 px-2 rounded-[10px] border border-border bg-card text-[12px] flex-1"
-              >
-                <option value="">All statuses</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In progress</option>
-                <option value="answered">Answered</option>
-                <option value="resolved">Resolved</option>
-              </select>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className="h-9 px-2 rounded-[10px] border border-border bg-card text-[12px] flex-1"
-              >
-                <option value="">All apps</option>
-                <option value="customer">Customer</option>
-                <option value="partner">Partner</option>
-                <option value="merchant">Merchant</option>
-              </select>
-            </div>
+    <div className={`grid grid-cols-1 ${active ? "lg:grid-cols-[340px_minmax(0,1fr)_280px]" : "lg:grid-cols-[340px_minmax(0,1fr)]"} gap-4 lg:h-[calc(100vh-150px)] lg:min-h-[560px]`}>
+      {/* LEFT — chat list */}
+      <div className={`bg-card border border-border rounded-[18px] flex-col overflow-hidden ${active ? "hidden lg:flex" : "flex"} max-h-[calc(100vh-150px)]`}>
+        <div className="p-3 space-y-2 border-b border-border">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, phone, message"
+              className="w-full h-10 pl-9 pr-3 rounded-[12px] border border-border bg-card text-[13px]"
+            />
           </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {isLoading && (
-              <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>
-            )}
-            {isError && (
-              <p className="text-[13px] text-destructive py-10 text-center">
-                Failed to load tickets.
-              </p>
-            )}
-            {!isLoading && !isError && filtered.length === 0 && (
-              <div className="py-16 text-center">
-                <LifeBuoy size={26} className="mx-auto text-muted-foreground mb-2" />
-                <p className="text-[13px] text-muted-foreground">No tickets.</p>
-              </div>
-            )}
-            {filtered.map((t) => (
+          <div className="flex items-center gap-1.5">
+            <button className={chipCls(chip === "open")} onClick={() => setChip("open")}>Open ({openCount})</button>
+            <button className={chipCls(chip === "resolved")} onClick={() => setChip("resolved")}>Resolved</button>
+            <button className={chipCls(chip === "all")} onClick={() => setChip("all")}>All</button>
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="ml-auto h-8 px-2 rounded-[10px] border border-border bg-card text-[12px]"
+            >
+              <option value="">All apps</option>
+              <option value="customer">Customer</option>
+              <option value="partner">Expert</option>
+              <option value="merchant">Merchant</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {isLoading && <p className="text-[13px] text-muted-foreground py-10 text-center">Loading…</p>}
+          {isError && <p className="text-[13px] text-destructive py-10 text-center">Failed to load chats.</p>}
+          {!isLoading && !isError && filtered.length === 0 && (
+            <div className="py-16 text-center">
+              <LifeBuoy size={26} className="mx-auto text-muted-foreground mb-2" />
+              <p className="text-[13px] text-muted-foreground">No chats.</p>
+            </div>
+          )}
+          {filtered.map((t) => {
+            const unread = t.unread > 0;
+            const initial = (t.userName ?? "?").trim().charAt(0).toUpperCase();
+            return (
               <button
                 key={t.id}
                 onClick={() => setActiveId(t.id)}
-                className={`w-full text-left px-4 py-3 border-b border-border hover:bg-muted/40 transition ${
-                  t.id === activeId ? "bg-muted/60" : ""
-                }`}
+                className={`w-full text-left px-3 py-3 border-b border-border hover:bg-muted/40 flex gap-3 ${t.id === activeId ? "bg-muted/60" : ""}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[14px] font-bold text-foreground truncate">
-                    {t.userName ?? "Unknown user"}
-                  </p>
-                  <span className="text-[11px] text-muted-foreground shrink-0">
-                    {t.lastMessageAt ? time(t.lastMessageAt) : ""}
+                <span className="w-10 h-10 shrink-0 rounded-full bg-primary-tint text-primary font-bold flex items-center justify-center">{initial}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className={`text-[14px] truncate ${unread ? "font-extrabold" : "font-semibold"} text-foreground`}>{t.userName ?? "Unknown user"}</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-muted text-muted-foreground shrink-0">{APP_LABEL[t.source] ?? t.source}</span>
+                    <span className={`ml-auto text-[11px] shrink-0 ${unread ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                      {t.lastMessageAt ? listTime(t.lastMessageAt) : ""}
+                    </span>
                   </span>
-                </div>
-                <p className="text-[12px] text-muted-foreground truncate">
-                  {t.lastMessageFrom === "staff" ? "You: " : ""}
-                  {t.lastMessagePreview}
-                </p>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_STYLES[t.status]}`}
-                  >
-                    {t.status.replace(/_/g, " ")}
+                  <span className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-[12px] truncate flex-1 ${unread ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                      {t.lastMessageFrom === "staff" && (<><Ticks seen={t.lastMessageSeen} /> You: </>)}
+                      {t.lastMessagePreview}
+                    </span>
+                    {unread && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center">{t.unread}</span>
+                    )}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-muted-foreground">
-                    {t.source}
-                  </span>
-                </div>
+                </span>
               </button>
-            ))}
+            );
+          })}
+        </div>
+      </div>
+
+      {active ? (
+        <>
+          <ChatWindow key={active.id} ticket={active} onClose={() => setActiveId(null)} />
+          <div className="hidden lg:block min-h-0"><ContactPanel ticket={active} /></div>
+        </>
+      ) : (
+        <div className="hidden lg:flex bg-card border border-border rounded-[18px] items-center justify-center text-center">
+          <div>
+            <MessageSquareText size={30} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-[13px] text-muted-foreground">Select a chat to start replying.</p>
           </div>
         </div>
-
-        {active && <ChatWindow key={active.id} ticket={active} onClose={() => setActiveId(null)} />}
-        {active && <ContactPanel ticket={active} />}
-      </div>
+      )}
     </div>
   );
 }
@@ -242,27 +201,48 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
   const queryClient = useQueryClient();
   const fetchMessages = useServerFn(listTicketMessages);
   const sendFn = useServerFn(sendTicketMessage);
+  const noteFn = useServerFn(addTicketNote);
   const updateFn = useServerFn(updateSupportTicket);
+  const seenFn = useServerFn(markTicketSeenByStaff);
+  const assignFn = useServerFn(assignSupportTicket);
+  const metaFn = useServerFn(listSupportMeta);
   const [draft, setDraft] = useState("");
-  const [note, setNote] = useState(ticket.internalNote ?? "");
-  const [showNote, setShowNote] = useState(false);
+  const [noteMode, setNoteMode] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: messages = [] } = useQuery({
     queryKey: ["ticket-messages", ticket.id],
     queryFn: () => fetchMessages({ data: { ticketId: ticket.id } }),
     staleTime: 5_000,
   });
+  const { data: meta } = useQuery({ queryKey: ["support-meta"], queryFn: () => metaFn(), staleTime: 300_000 });
+
+  const unseen = messages.some((m) => m.senderType !== "staff" && !m.seenAt);
+  useEffect(() => {
+    if (!unseen && ticket.unread === 0) return;
+    seenFn({ data: { ticketId: ticket.id } })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["support-tickets"] }))
+      .catch(() => undefined);
+  }, [ticket.id, unseen, ticket.unread, seenFn, queryClient]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, ticket.id]);
 
+  useEffect(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [draft]);
+
   const resolved = ticket.status === "resolved";
-  const [outcome, setOutcome] = useState<string>("no_fault");
 
   const send = useMutation({
-    mutationFn: (body: string) => sendFn({ data: { ticketId: ticket.id, body } }),
+    mutationFn: (body: string) =>
+      noteMode ? noteFn({ data: { ticketId: ticket.id, body } }) : sendFn({ data: { ticketId: ticket.id, body } }),
     onSuccess: () => {
       setDraft("");
       queryClient.invalidateQueries({ queryKey: ["ticket-messages", ticket.id] });
@@ -273,124 +253,81 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
 
   const setStatus = useMutation({
     mutationFn: (status: TicketStatus) =>
-      updateFn({
-        data: {
-          ticketId: ticket.id,
-          status,
-          note: note || null,
-          resolution: status === "resolved" ? note || null : null,
-          resolutionOutcome: status === "resolved" ? outcome : null,
-        },
-      }),
+      updateFn({ data: { ticketId: ticket.id, status, resolutionOutcome: status === "resolved" ? "no_fault" : null } }),
     onSuccess: (_d, status) => {
-      toast.success(status === "resolved" ? "Ticket resolved and chat closed" : "Ticket updated");
+      toast.success(status === "resolved" ? "Chat resolved" : "Chat reopened");
       queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  // Merge the original ticket message as the first bubble when it isn't already a message row
+  const assign = useMutation({
+    mutationFn: (staffId: string | null) => assignFn({ data: { ticketId: ticket.id, staffId } }),
+    onSuccess: () => {
+      toast.success("Assigned");
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   const thread = useMemo(() => {
     const first = messages[0];
     const hasOriginal = first && first.body.trim() === ticket.message.trim();
     const base = hasOriginal
       ? []
-      : [
-          {
-            id: `origin-${ticket.id}`,
-            senderType: "customer" as const,
-            body: ticket.message,
-            createdAt: ticket.createdAt,
-          },
-        ];
+      : [{ id: `origin-${ticket.id}`, senderType: "customer" as const, body: ticket.message, createdAt: ticket.createdAt, isInternal: false, seenAt: ticket.createdAt, attachmentUrl: null }];
     return [...base, ...messages];
   }, [messages, ticket]);
 
+  const submit = () => {
+    if (draft.trim() && !send.isPending) send.mutate(draft.trim());
+  };
+
   return (
-    <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden">
-      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-[15px] font-bold text-foreground truncate">
+    <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden min-h-[520px] lg:min-h-0">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-3 flex-wrap">
+        <button onClick={onClose} aria-label="Back to chats" className="lg:hidden h-9 w-9 rounded-full hover:bg-muted/40 flex items-center justify-center">
+          <ArrowLeft size={18} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold text-foreground truncate flex items-center gap-2">
             {ticket.userName ?? "Unknown user"}
-            {ticket.userPhone && (
-              <span className="ml-2 font-mono text-[12px] text-muted-foreground">
-                {ticket.userPhone}
-              </span>
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-muted text-muted-foreground">{APP_LABEL[ticket.source] ?? ticket.source}</span>
+            {ticket.bookingId && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-primary-tint text-primary">#{ticket.bookingId.slice(0, 8)}</span>
             )}
           </p>
-          <p className="text-[12px] text-muted-foreground truncate">
-            {ticket.subject ?? "Support request"} · {fmt(ticket.createdAt)}
-          </p>
+          <p className="text-[12px] text-muted-foreground truncate">{ticket.subject ?? "Support request"} · {fmt(ticket.createdAt)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNote((v) => !v)}
-            className="h-9 px-3 rounded-[12px] border border-border text-[12px] font-bold hover:bg-muted/40"
-          >
-            Internal note
-          </button>
-          {!resolved ? (
-            <>
-              <button
-                disabled={setStatus.isPending || ticket.status === "in_progress"}
-                onClick={() => setStatus.mutate("in_progress")}
-                className="h-9 px-3 rounded-[12px] border border-border text-[12px] font-bold disabled:opacity-40 hover:bg-muted/40"
-              >
-                In progress
-              </button>
-              <select
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-                title="Outcome recorded when you resolve this ticket"
-                className="h-9 px-2 rounded-[12px] border border-border bg-card text-[12px] font-semibold"
-              >
-                <option value="no_fault">No one at fault</option>
-                <option value="expert_fault">Expert at fault</option>
-                <option value="customer_fault">Customer at fault</option>
-                <option value="platform_issue">Platform issue</option>
-                <option value="other">Other</option>
-              </select>
-              <button
-                disabled={setStatus.isPending}
-                onClick={() => setStatus.mutate("resolved")}
-                className="h-9 px-3 rounded-[12px] bg-primary text-white text-[12px] font-bold inline-flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <CheckCircle2 size={15} />
-                Mark resolved
-              </button>
-            </>
-          ) : (
-            <button
-              disabled={setStatus.isPending}
-              onClick={() => setStatus.mutate("open")}
-              className="h-9 px-3 rounded-[12px] border border-border text-[12px] font-bold inline-flex items-center gap-1.5 disabled:opacity-40 hover:bg-muted/40"
-            >
-              <RotateCcw size={15} />
-              Reopen
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            aria-label="Close preview"
-            title="Close preview"
-            className="h-9 w-9 rounded-[12px] border border-border inline-flex items-center justify-center hover:bg-muted/40"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        {ticket.userPhone && (
+          <a href={`tel:${ticket.userPhone}`} title={`Call ${ticket.userPhone}`} className="h-9 w-9 rounded-full border border-border inline-flex items-center justify-center hover:bg-muted/40">
+            <Phone size={15} />
+          </a>
+        )}
+        <select
+          value={ticket.assignedStaffId ?? ""}
+          onChange={(e) => assign.mutate(e.target.value || null)}
+          className="h-9 px-2 rounded-[10px] border border-border bg-card text-[12px] max-w-[140px]"
+          title="Assigned to"
+        >
+          <option value="">Unassigned</option>
+          {(meta?.staff ?? []).map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <select
+          value={resolved ? "resolved" : "open"}
+          disabled={setStatus.isPending}
+          onChange={(e) => setStatus.mutate(e.target.value as TicketStatus)}
+          className={`h-9 px-2 rounded-[10px] border text-[12px] font-bold ${resolved ? "border-border bg-muted text-muted-foreground" : "border-primary/40 bg-primary-tint text-primary"}`}
+        >
+          <option value="open">Open</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <button onClick={onClose} aria-label="Close chat" className="hidden lg:inline-flex h-9 w-9 rounded-full border border-border items-center justify-center hover:bg-muted/40">
+          <X size={16} />
+        </button>
       </div>
-
-      {showNote && (
-        <div className="px-5 py-3 border-b border-border bg-muted/30">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder="Internal note — customer ko nahi dikhta"
-            className="w-full px-3 py-2 rounded-[12px] border border-border bg-card text-[13px]"
-          />
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2 bg-muted/20">
         {thread.map((m, i) => {
@@ -401,27 +338,30 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
             <div key={m.id}>
               {showDay && (
                 <div className="flex justify-center my-3">
-                  <span className="px-3 py-1 rounded-full bg-card border border-border text-[11px] font-bold text-muted-foreground">
-                    {dayLabel(m.createdAt)}
-                  </span>
+                  <span className="px-3 py-1 rounded-full bg-card border border-border text-[11px] font-bold text-muted-foreground">{dayLabel(m.createdAt)}</span>
                 </div>
               )}
-              <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[76%] px-3.5 py-2 rounded-[16px] ${
-                    mine
-                      ? "bg-primary text-white rounded-br-[4px]"
-                      : "bg-card border border-border text-foreground rounded-bl-[4px]"
-                  }`}
-                >
-                  <p className="text-[14px] whitespace-pre-wrap break-words">{m.body}</p>
-                  <p
-                    className={`text-[10px] mt-1 text-right ${mine ? "text-white/70" : "text-muted-foreground"}`}
-                  >
-                    {time(m.createdAt)}
-                  </p>
+              {m.isInternal ? (
+                <div className="flex justify-center">
+                  <div className="max-w-[80%] px-3.5 py-2 rounded-[12px] bg-warning/15 border border-warning/40 text-foreground">
+                    <p className="text-[10px] font-bold uppercase text-warning-foreground/80 flex items-center gap-1"><StickyNote size={11} /> Internal note · only staff see this</p>
+                    <p className="text-[13px] whitespace-pre-wrap break-words">{m.body}</p>
+                    <p className="text-[10px] mt-1 text-right text-muted-foreground">{time(m.createdAt)}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[76%] px-3.5 py-2 rounded-[16px] ${mine ? "bg-primary text-primary-foreground rounded-br-[4px]" : "bg-card border border-border text-foreground rounded-bl-[4px]"}`}>
+                    {m.attachmentUrl && (
+                      <a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img src={m.attachmentUrl} alt="Attachment" className="rounded-[10px] mb-1 max-h-60" /></a>
+                    )}
+                    <p className="text-[14px] whitespace-pre-wrap break-words">{m.body}</p>
+                    <p className={`text-[10px] mt-1 text-right ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+                      {time(m.createdAt)} {mine && <Ticks seen={!!m.seenAt} />}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -430,39 +370,56 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
 
       {resolved ? (
         <div className="px-5 py-4 border-t border-border bg-muted/40 text-center">
-          <p className="text-[13px] text-muted-foreground">
-            Ticket resolved{ticket.resolvedAt ? ` — ${fmt(ticket.resolvedAt)}` : ""}. Chat closed.
-          </p>
+          <p className="text-[13px] text-muted-foreground">Resolved{ticket.resolvedAt ? ` — ${fmt(ticket.resolvedAt)}` : ""}. Set status to Open to reply.</p>
         </div>
       ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (draft.trim() && !send.isPending) send.mutate(draft.trim());
-          }}
-          className="px-4 py-3 border-t border-border flex items-end gap-2"
-        >
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (draft.trim() && !send.isPending) send.mutate(draft.trim());
-              }
-            }}
-            rows={1}
-            placeholder="Type a reply…  (Enter to send)"
-            className="flex-1 px-4 py-3 rounded-[14px] border border-border bg-card text-[14px] resize-none max-h-32"
-          />
-          <button
-            type="submit"
-            disabled={!draft.trim() || send.isPending}
-            className="h-[46px] w-[46px] rounded-full bg-primary text-white flex items-center justify-center disabled:opacity-40"
+        <div className="border-t border-border relative">
+          {showReplies && (
+            <div className="absolute bottom-full left-3 mb-2 w-[320px] max-h-64 overflow-y-auto bg-card border border-border rounded-[14px] shadow-lg z-10">
+              {(meta?.replies ?? []).map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => { setDraft(r.body); setNoteMode(false); setShowReplies(false); taRef.current?.focus(); }}
+                  className="w-full text-left px-3 py-2 hover:bg-muted/40 border-b border-border last:border-0"
+                >
+                  <p className="text-[12px] font-bold text-foreground">{r.title}</p>
+                  <p className="text-[12px] text-muted-foreground line-clamp-2">{r.body}</p>
+                </button>
+              ))}
+              {(meta?.replies ?? []).length === 0 && <p className="p-3 text-[12px] text-muted-foreground">No quick replies.</p>}
+            </div>
+          )}
+          <form
+            onSubmit={(e) => { e.preventDefault(); submit(); }}
+            className={`px-3 py-3 flex items-end gap-2 ${noteMode ? "bg-warning/10" : ""}`}
           >
-            <Send size={18} />
-          </button>
-        </form>
+            <button type="button" title="Quick replies" onClick={() => setShowReplies((v) => !v)} className="h-[42px] w-[42px] rounded-full hover:bg-muted/50 flex items-center justify-center text-muted-foreground">
+              <MessageSquareText size={18} />
+            </button>
+            <button
+              type="button"
+              title={noteMode ? "Writing internal note" : "Write internal note"}
+              onClick={() => setNoteMode((v) => !v)}
+              className={`h-[42px] w-[42px] rounded-full flex items-center justify-center ${noteMode ? "bg-warning/30 text-foreground" : "hover:bg-muted/50 text-muted-foreground"}`}
+            >
+              <StickyNote size={18} />
+            </button>
+            <textarea
+              ref={taRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+              }}
+              rows={1}
+              placeholder={noteMode ? "Internal note — only staff see this" : "Type a message"}
+              className="flex-1 px-4 py-2.5 rounded-[20px] border border-border bg-card text-[14px] resize-none"
+            />
+            <button type="submit" disabled={!draft.trim() || send.isPending} className="h-[42px] w-[42px] rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40">
+              <Send size={17} />
+            </button>
+          </form>
+        </div>
       )}
     </div>
   );
