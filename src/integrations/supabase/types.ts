@@ -9688,6 +9688,10 @@ export type Database = {
         }
         Returns: string
       }
+      calculate_order_bill: {
+        Args: { _address_id: string; _items: Json; _store_id: string }
+        Returns: Json
+      }
       campaign_audience_match: {
         Args: { _audience: string; _targets: string[]; _uid: string }
         Returns: boolean
@@ -10549,6 +10553,7 @@ export type Database = {
         Returns: undefined
       }
       merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
+      merchant_fy_gross: { Args: { _merchant_id: string }; Returns: number }
       merchant_get_order_rider: { Args: { _order_id: string }; Returns: Json }
       merchant_get_pickup_otp: { Args: { _order_id: string }; Returns: Json }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
@@ -10693,6 +10698,23 @@ export type Database = {
       offers_caller_city: { Args: { _uid?: string }; Returns: string }
       offers_caller_role: { Args: { _uid?: string }; Returns: string }
       offers_require_writer: { Args: never; Returns: string }
+      order_bill_compute: {
+        Args: {
+          _commission_amount: number
+          _delivery_fee: number
+          _gst_platform: number
+          _item_total: number
+          _platform_fee: number
+          _rider_share_pct: number
+          _service: string
+          _tds_applies: boolean
+        }
+        Returns: Json
+      }
+      order_bill_core: {
+        Args: { _items: Json; _lat: number; _lng: number; _merchant_id: string }
+        Returns: Json
+      }
       pan_key: { Args: never; Returns: string }
       partner_assert_draft: { Args: { _batch_id: string }; Returns: undefined }
       partner_decide_extension: {
@@ -12264,6 +12286,7 @@ export type Database = {
         Args: { _payment_id: string; _rzp_order_id: string }
         Returns: boolean
       }
+      tax_rate: { Args: { _key: string }; Returns: number }
       training_create_booking: {
         Args: {
           _actor: string
