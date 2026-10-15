@@ -154,7 +154,7 @@ export function NotifyStatsCard({ services, reason, title }: { services: string[
         <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
       </div>
       <p className="mt-0.5 text-[12px] text-muted-foreground">Last 7 days · reason "{reason}"</p>
-      {q.isError ? <p className="mt-2 text-[12px] text-destructive">Could not load (only super admin can read notify-me records).</p> : null}
+      {q.isError ? <p className="mt-2 text-[12px] text-destructive">Could not load (only super admin or ops manager can read notify-me records).</p> : null}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead><tr className="text-left text-muted-foreground"><th className="py-1.5 pr-3">Service</th><th className="py-1.5 pr-3">Attempted</th><th className="py-1.5 pr-3">Notified</th><th className="py-1.5">Converted</th></tr></thead>
