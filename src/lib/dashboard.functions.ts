@@ -12,6 +12,8 @@ export type DashboardStats = {
   onlineNow: number;
   /** Online, not-busy Experts who are NOT delivery riders (Clean capacity). */
   freeMaids: number;
+  /** Online, not-busy Experts with an approved Car/Bike Wash skill. */
+  freeWashers: number;
   // breakdown (used for tooltips / drilldowns)
   todayBookings: number;
   todayOrders: number;
@@ -321,6 +323,15 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       riderIds = new Set(((ps ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id));
     }
     const freeMaids = freeIds.filter((id) => !riderIds.has(id)).length;
+    let freeWashers = 0;
+    if (freeIds.length) {
+      const { data: washCat } = await db.from("service_categories").select("id").eq("slug", "car-bike-wash").limit(1);
+      const wid = (washCat?.[0] as { id: string } | undefined)?.id;
+      if (wid) {
+        const { data: ws } = await db.from("partner_skills").select("expert_id").eq("status", "approved").eq("service_category_id", wid).in("expert_id", freeIds);
+        freeWashers = new Set(((ws ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id)).size;
+      }
+    }
 
     // Offers & campaigns (not segment-scoped)
     const [redemptionsRes, activeCampaignsRes, awardsRes] = await Promise.all([
@@ -407,6 +418,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const discountToday = bookingDiscountToday + courierDiscountToday;
 
     return {
+      freeWashers,
       grossToday: bookingGross + orderGross + offlineRevenue + courierGross,
       todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
       gstCollectedToday: bookingGst + courierGst,
