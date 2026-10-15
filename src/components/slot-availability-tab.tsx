@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { listSlotOverrides, setSlotFull, setInstantBooking, getSlotCapacity, setDailyCapacity, setCapacitySetting } from "@/lib/booking-settings.functions";
+import { listSlotOverrides, setSlotFull, setInstantBooking, getSlotCapacity, setDailyCapacity, setCapacitySetting, setWeekdayCapacity, type CapGroup } from "@/lib/booking-settings.functions";
 
 function istDate(offsetDays = 0) {
   const d = new Date(Date.now() + 5.5 * 3600000 + offsetDays * 86400000);
@@ -21,7 +21,11 @@ function ddmmyyyy(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
-export function SlotAvailabilityTab() {
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = {}) {
+  const isWash = group === "wash";
+  const who = isWash ? "washers" : "maids";
   const [date, setDate] = useState(istDate());
   const qc = useQueryClient();
   const listFn = useServerFn(listSlotOverrides);
@@ -43,11 +47,11 @@ export function SlotAvailabilityTab() {
   const capFn = useServerFn(getSlotCapacity);
   const dayCapFn = useServerFn(setDailyCapacity);
   const setFn = useServerFn(setCapacitySetting);
-  const cq = useQuery({ queryKey: ["slot-overrides", "cap", date], queryFn: () => capFn({ data: { date } }) });
+  const cq = useQuery({ queryKey: ["slot-overrides", "cap", group, date], queryFn: () => capFn({ data: { date, group } }) });
   const [dayInput, setDayInput] = useState("");
   const [defInput, setDefInput] = useState("");
   const capMut = useMutation({
-    mutationFn: (capacity: number | null) => dayCapFn({ data: { date, capacity } }),
+    mutationFn: (capacity: number | null) => dayCapFn({ data: { date, capacity, group } }),
     onSuccess: () => { toast.success("Maid count saved"); setDayInput(""); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -57,6 +61,13 @@ export function SlotAvailabilityTab() {
     onError: (e: Error) => toast.error(e.message),
   });
   const cap = cq.data;
+  const wkFn = useServerFn(setWeekdayCapacity);
+  const [wkInput, setWkInput] = useState<Record<number, string>>({});
+  const wkMut = useMutation({
+    mutationFn: (v: { weekday: number; capacity: number | null }) => wkFn({ data: { ...v, group } }),
+    onSuccess: (_r, v) => { toast.success("Weekday count saved"); setWkInput((x) => ({ ...x, [v.weekday]: "" })); refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const d = q.data;
   const step = d?.step ?? 30;
@@ -66,7 +77,7 @@ export function SlotAvailabilityTab() {
 
   return (
     <div className="space-y-4">
-      <section className="flex flex-wrap items-start justify-between gap-3 rounded-[16px] border border-border bg-card px-4 py-4">
+      {!isWash && <section className="flex flex-wrap items-start justify-between gap-3 rounded-[16px] border border-border bg-card px-4 py-4">
         <div className="min-w-0 max-w-xl">
           <h3 className="text-[15px] font-bold text-foreground">Book Now (Instant) bookings</h3>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -81,7 +92,7 @@ export function SlotAvailabilityTab() {
         >
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${d?.instantOn ? "left-[22px]" : "left-0.5"}`} />
         </button>
-      </section>
+      </section>}
 
       <section className="space-y-3 rounded-[16px] border border-border bg-card px-4 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -122,7 +133,7 @@ export function SlotAvailabilityTab() {
             </div>
           </div>
           <div className="rounded-[12px] border border-border p-3">
-            <p className="text-[12px] font-semibold text-muted-foreground">Maids on {ddmmyyyy(date)}</p>
+            <p className="text-[12px] font-semibold text-muted-foreground">{isWash ? "Washers" : "Maids"} on {ddmmyyyy(date)}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <input type="number" min={0} max={500} placeholder={String(cap?.capacity ?? "")} value={dayInput} onChange={(e) => setDayInput(e.target.value)}
                 className="h-9 w-20 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
@@ -137,6 +148,37 @@ export function SlotAvailabilityTab() {
               {cap ? (cap.dayCap != null ? `Set for this day: ${cap.dayCap}` : `Using expected count: ${cap.capacity}`) : ""}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-[16px] border border-border bg-card px-4 py-4">
+        <div>
+          <h3 className="text-[15px] font-bold text-foreground">{isWash ? "Wash" : "Maid"} capacity by weekday</h3>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Used when no count is set for a specific date. A date-specific count always wins. Empty = expected count ({cap?.defaultCap ?? "–"}).
+            {isWash ? " Wash capacity is separate — maid bookings never use it." : " Maid capacity is separate — wash bookings never use it."}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          {WEEKDAYS.map((w, i) => {
+            const cur = cap?.weekday?.[i];
+            return (
+              <div key={w} className="rounded-[12px] border border-border p-2">
+                <p className="text-[12px] font-semibold text-muted-foreground">{w} · {cur ?? "default"}</p>
+                <div className="mt-1 flex gap-1">
+                  <input type="number" min={0} max={500} value={wkInput[i] ?? ""} placeholder={cur != null ? String(cur) : ""}
+                    onChange={(e) => setWkInput((x) => ({ ...x, [i]: e.target.value }))}
+                    className="h-8 w-14 rounded-[8px] border border-border bg-card px-2 text-[12px] text-foreground" />
+                  <button type="button" disabled={!wkInput[i] || wkMut.isPending || !d?.canEdit} onClick={() => wkMut.mutate({ weekday: i, capacity: Number(wkInput[i]) })}
+                    className="h-8 rounded-[8px] bg-primary px-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50">Save</button>
+                  {cur != null ? (
+                    <button type="button" disabled={wkMut.isPending || !d?.canEdit} onClick={() => wkMut.mutate({ weekday: i, capacity: null })}
+                      className="h-8 rounded-[8px] border border-border px-2 text-[11px] font-semibold text-foreground" aria-label={`Clear ${w}`}>×</button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -169,7 +211,7 @@ export function SlotAvailabilityTab() {
                     {manualFull ? "Fully Booked" : autoFull ? "Auto Full" : "Open"}
                   </span>
                 </div>
-                <p className="mt-1 text-[12px] text-muted-foreground">{count} booking{count === 1 ? "" : "s"} start here · {busy} / {cap?.capacity ?? "–"} maids busy</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{count} booking{count === 1 ? "" : "s"} start here · {busy} / {cap?.capacity ?? "–"} {who} busy</p>
                 {cap ? (
                   <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
                     <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Capacity</p><p className="font-bold text-foreground">{cap.capacity}</p></div>
@@ -178,7 +220,7 @@ export function SlotAvailabilityTab() {
                     <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Used</p><p className="font-bold text-foreground">{cap.capacity > 0 ? Math.min(100, Math.round((busy / cap.capacity) * 100)) : 0}%</p></div>
                   </div>
                 ) : null}
-                {d?.canEdit ? (
+                {d?.canEdit && !isWash ? (
                   <button type="button" disabled={slotMut.isPending}
                     onClick={() => slotMut.mutate({ hour: Math.floor(h / 60), minute: h % 60, full: !manualFull })}
                     className={`mt-2 h-9 w-full rounded-[10px] text-[12px] font-bold disabled:opacity-50 ${full ? "border border-border text-foreground" : "bg-destructive text-destructive-foreground"}`}>
