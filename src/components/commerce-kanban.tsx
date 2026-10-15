@@ -348,7 +348,6 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
     const channel = supabase
       .channel("commerce-board")
       .on("postgres_changes", { event: "*", schema: "public", table: "merchant_orders" }, inv)
-      .on("postgres_changes", { event: "*", schema: "public", table: "offline_sales" }, inv)
       .on("postgres_changes", { event: "*", schema: "public", table: "courier_orders" }, inv)
       .subscribe();
     return () => {
@@ -396,8 +395,6 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
   }, [muted, pendingCount, alertCount]);
   useEffect(() => () => stopBeep(audioRef), []);
 
-  const offline = data?.offlineToday;
-
   return (
     <section className="bg-card border border-border rounded-[18px] p-4 sm:p-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-4">
@@ -438,14 +435,6 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
         </button>
       </div>
 
-      <div className="mb-4 rounded-[12px] border border-border bg-background px-4 py-2.5 flex items-center gap-2 text-[12px]">
-        <Store size={14} className="text-primary shrink-0" />
-        <span className="text-muted-foreground">Offline POS today:</span>
-        <span className="font-bold text-foreground">{offline ? `${offline.count} sales` : "—"}</span>
-        <span className="text-muted-foreground">·</span>
-        <span className="font-bold text-foreground">{offline ? inr.format(offline.revenue) : "—"}</span>
-      </div>
-
       <div className="grid gap-4 grid-cols-[repeat(5,minmax(78vw,1fr))] sm:grid-cols-[repeat(5,minmax(220px,1fr))] overflow-x-auto overscroll-x-contain board-swipe -mx-4 sm:-mx-6 px-4 sm:px-6 pb-2">
         {COLUMNS.map((col) => {
           const items = grouped.get(col.key) ?? [];
@@ -474,23 +463,3 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
   );
 }
 
-/** Today's offline POS sales line (moved from the Dashboard to the Store section). */
-export function OfflinePosToday() {
-  const fetchPipeline = useServerFn(listCommercePipeline);
-  const { data } = useQuery({
-    queryKey: ["commerce", "board", "offline-pos"],
-    queryFn: () => fetchPipeline({ data: { segmentId: null, training: false, service: "store" } }),
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  });
-  const offline = data?.offlineToday;
-  return (
-    <div className="mb-4 rounded-[12px] border border-border bg-background px-4 py-2.5 flex items-center gap-2 text-[12px]">
-      <Store size={14} className="text-primary shrink-0" />
-      <span className="text-muted-foreground">Offline POS today:</span>
-      <span className="font-bold text-foreground">{offline ? `${offline.count} sales` : "—"}</span>
-      <span className="text-muted-foreground">·</span>
-      <span className="font-bold text-foreground">{offline ? inr.format(offline.revenue) : "—"}</span>
-    </div>
-  );
-}

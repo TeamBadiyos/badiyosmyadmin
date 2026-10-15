@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { PipelineKanban } from "@/components/pipeline-kanban";
-import { OfflinePosToday } from "@/components/commerce-kanban";
 import { ServiceCommerceModule } from "@/components/service-commerce-module";
 
 import { ZonesPage } from "@/components/zones-page";
@@ -769,10 +768,7 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <div>
-            <OfflinePosToday />
-            <ServiceCommerceModule service="store" role={role ?? ""} />
-          </div>
+          <ServiceCommerceModule service="store" role={role ?? ""} />
         ) : active === "food-orders" ? (
           <ServiceCommerceModule service="food" role={role ?? ""} />
         ) : active === "tax-settings" ? (

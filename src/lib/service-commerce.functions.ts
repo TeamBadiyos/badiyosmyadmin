@@ -494,7 +494,7 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
     const t = Math.round(Number(data.default_accept_timeout_minutes));
     if (!(t >= 1 && t <= 120)) throw new Error("Accept timeout must be 1–120 minutes");
     patch.default_accept_timeout_minutes = t;
-    if (svc === "food") {
+    if (svc === "food" || svc === "store") {
       const a = Number(data.delivery_min_fare), b = Number(data.delivery_per_km), c = Number(data.rider_share_pct);
       if (!(a >= 0) || !(b >= 0) || !(c >= 0 && c <= 100)) throw new Error("Check the values");
       Object.assign(patch, { delivery_min_fare: a, delivery_per_km: b, rider_share_pct: c });

@@ -42,7 +42,6 @@ export type CommerceOrder = {
 
 export type CommercePipeline = {
   orders: CommerceOrder[];
-  offlineToday: { count: number; revenue: number };
   canManage: boolean;
 };
 
@@ -103,7 +102,7 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
       merchantIds = (ms ?? []).map((m: any) => m.id as string);
       if (merchantIds!.length === 0) {
-        return { orders: [], offlineToday: { count: 0, revenue: 0 }, canManage };
+        return { orders: [], canManage };
       }
     }
 
@@ -127,22 +126,15 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
       .gte("created_at", startOfDay)
       .order("created_at", { ascending: false })
       .limit(200);
-    let offlineQ = db
-      .from("offline_sales")
-      .select("total_amount")
-      .gte("created_at", startOfDay)
-      .limit(1000);
 
     if (merchantIds) {
       openQ = openQ.in("merchant_id", merchantIds);
       doneQ = doneQ.in("merchant_id", merchantIds);
-      offlineQ = offlineQ.in("merchant_id", merchantIds);
     }
 
-    const [openRes, doneRes, offlineRes] = await Promise.all([openQ, doneQ, offlineQ]);
+    const [openRes, doneRes] = await Promise.all([openQ, doneQ]);
     if (openRes.error) throw new Error(openRes.error.message);
     if (doneRes.error) throw new Error(doneRes.error.message);
-    if (offlineRes.error) throw new Error(offlineRes.error.message);
 
     const rows: any[] = [...(openRes.data ?? []), ...(doneRes.data ?? [])];
     const uniq = (xs: unknown[]) =>
@@ -250,13 +242,8 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
       };
     });
 
-    const offlineRows = offlineRes.data ?? [];
     return {
       orders,
-      offlineToday: {
-        count: offlineRows.length,
-        revenue: offlineRows.reduce((s: number, r: any) => s + Number(r.total_amount ?? 0), 0),
-      },
       canManage,
     };
   });
