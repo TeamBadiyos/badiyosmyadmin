@@ -26,6 +26,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
+import { Route as ApiPublicBannersRouteImport } from './routes/api/public/banners'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
 import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/api/public/hooks/expire-stale-bookings'
@@ -120,6 +121,11 @@ const MyadminLoginRoute = MyadminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => MyadminRoute,
 } as any)
+const ApiPublicBannersRoute = ApiPublicBannersRouteImport.update({
+  id: '/api/public/banners',
+  path: '/api/public/banners',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicServiceImageRoute = ApiPublicServiceImageRouteImport.update({
   id: '/api/public/service-image',
   path: '/api/public/service-image',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
   '/api/public/hooks/expire-stale-bookings': typeof ApiPublicHooksExpireStaleBookingsRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
+    | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
+    | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/_authenticated/dashboard'
     | '/myadmin/login'
+    | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
     | '/api/public/hooks/expire-stale-bookings'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  ApiPublicBannersRoute: typeof ApiPublicBannersRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
   ApiPublicHooksExpireStaleBookingsRoute: typeof ApiPublicHooksExpireStaleBookingsRoute
@@ -477,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyadminLoginRouteImport
       parentRoute: typeof MyadminRoute
     }
+    '/api/public/banners': {
+      id: '/api/public/banners'
+      path: '/api/public/banners'
+      fullPath: '/api/public/banners'
+      preLoaderRoute: typeof ApiPublicBannersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/service-image': {
       id: '/api/public/service-image'
       path: '/api/public/service-image'
@@ -574,6 +594,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  ApiPublicBannersRoute: ApiPublicBannersRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
   ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,
   ApiPublicHooksExpireStaleBookingsRoute:
