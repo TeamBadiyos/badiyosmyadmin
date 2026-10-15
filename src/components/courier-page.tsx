@@ -54,6 +54,7 @@ import {
 import { LiveTrackingMap } from "@/components/live-tracking-map";
 import { ShareLocation } from "@/components/share-location";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
+import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 import { ParcelGstNote, RidersCapacityPanel, ServiceHoursPanel } from "@/components/ops-panels";
@@ -1964,7 +1965,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
         </>
       ) : null}
       {section === "rates" ? (<div className="space-y-4"><ParcelGstNote /><RatesTab canWrite={canWrite} /></div>) : null}
-      {section === "riders" ? <RidersCapacityPanel /> : null}
+      {section === "riders" ? <div className="space-y-6"><RidersCapacityPanel /><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
       {section === "settings" ? (
         <div className="space-y-5">
           <ServiceHoursPanel serviceKey="courier" title="Courier timings" />
