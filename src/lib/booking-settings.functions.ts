@@ -218,61 +218,51 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
     const sb = (context as Ctx).supabase;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anySb = sb as any;
-    const [cfg, day, cap, busy, wk] = await Promise.all([
-      sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "default_slot_capacity", "slot_capacity_mode"]),
-      sb.from("service_daily_capacity").select("capacity").eq("service_key", data.group).eq("cap_date", data.date).maybeSingle(),
-      sb.rpc("slot_capacity_for", { _service_key: data.group, _date: data.date }),
-      anySb.rpc("slot_busy_by_half", { _service_key: data.group, _date: data.date }),
-      anySb.from("slot_capacity_weekday").select("weekday, capacity").eq("service_key", data.group),
+    const defKey = data.group === "wash" ? "wash_default_slot_capacity" : "default_slot_capacity";
+    const [cfg, sum] = await Promise.all([
+      sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "slot_capacity_mode", defKey, `${data.group}_band_morning_end`, `${data.group}_band_day_end`]),
+      anySb.rpc("staff_slot_band_summary", { _service_key: data.group, _date: data.date }),
     ]);
-    if (cap.error) throw new Error(cap.error.message);
-    if (busy.error) throw new Error(busy.error.message);
+    if (sum.error) throw new Error(sum.error.message);
     const c: Record<string, string> = {};
-    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
-    const busyMap: Record<number, number> = {};
-    for (const r of (busy.data ?? []) as Array<{ start_min: number; busy: number }>) busyMap[r.start_min] = r.busy;
-    const weekday: Record<number, number> = {};
-    for (const r of (wk.data ?? []) as Array<{ weekday: number; capacity: number }>) weekday[r.weekday] = r.capacity;
+    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = String(r.value).replace(/"/g, "");
+    const s = sum.data as { bands: Band[]; default_cap: number; morning_end: number; day_end: number };
     return {
       enabled: c["slot_capacity_enabled"] === "1",
       mode: (c["slot_capacity_mode"] === "live" ? "live" : "manual") as "live" | "manual",
-      defaultCap: Number(c["default_slot_capacity"] ?? 5),
-      dayCap: (day.data as { capacity: number } | null)?.capacity ?? null,
-      capacity: Number(cap.data ?? 0),
-      busy: busyMap,
-      weekday,
+      defaultCap: Number(c[defKey] ?? 5),
+      morningEnd: Number(s.morning_end),
+      dayEnd: Number(s.day_end),
+      bands: s.bands,
     };
   });
 
-export const setDailyCapacity = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; capacity: number | null; group?: CapGroup }) => ({ ...i, group: grp(i.group) }))
-  .handler(async ({ data, context }) => {
-    const { error } = await (context as Ctx).supabase.rpc("staff_set_daily_capacity", { _date: data.date, _capacity: data.capacity, _service_key: data.group } as never);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
+export type Band = { band: "morning" | "day" | "evening"; start_min: number; end_min: number; capacity: number; booked: number; full: boolean; override: number | null };
 
-export const setWeekdayCapacity = createServerFn({ method: "POST" })
+export const setBandCapacity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { weekday: number; capacity: number | null; group?: CapGroup }) => {
-    if (!Number.isInteger(i.weekday) || i.weekday < 0 || i.weekday > 6) throw new Error("Invalid weekday");
-    if (i.capacity != null && (!Number.isInteger(i.capacity) || i.capacity < 0 || i.capacity > 500)) throw new Error("Count must be 0–500");
+  .inputValidator((i: { date: string; group?: CapGroup; morning: number | null; day: number | null; evening: number | null }) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
+    for (const v of [i.morning, i.day, i.evening]) if (v != null && (!Number.isInteger(v) || v < 0 || v > 500)) throw new Error("Count must be 0–500");
     return { ...i, group: grp(i.group) };
   })
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_weekday_capacity", { _service_key: data.group, _weekday: data.weekday, _capacity: data.capacity });
+    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_band_capacity", { _service_key: data.group, _date: data.date, _morning: data.morning, _day: data.day, _evening: data.evening });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
+export type CapKey = "slot_capacity_enabled" | "default_slot_capacity" | "wash_default_slot_capacity" | "slot_capacity_mode"
+  | "clean_band_morning_end" | "clean_band_day_end" | "wash_band_morning_end" | "wash_band_day_end";
+
 export const setCapacitySetting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { key: "slot_capacity_enabled" | "default_slot_capacity" | "slot_capacity_mode"; value: string }) => {
+  .inputValidator((i: { key: CapKey; value: string }) => {
     if (i.key === "slot_capacity_enabled" && !["0", "1"].includes(i.value)) throw new Error("Invalid");
     if (i.key === "slot_capacity_mode" && !["manual", "live"].includes(i.value)) throw new Error("Invalid");
-    if (i.key === "default_slot_capacity") { const n = Number(i.value); if (!Number.isInteger(n) || n < 0 || n > 500) throw new Error("Maid count must be 0–500"); }
+    if (i.key.endsWith("default_slot_capacity")) { const n = Number(i.value); if (!Number.isInteger(n) || n < 0 || n > 500) throw new Error("Count must be 0–500"); }
+    if (i.key.includes("_band_")) { const n = Number(i.value); if (!Number.isInteger(n) || n < 0 || n > 1440) throw new Error("Invalid time"); }
     return i;
   })
   .handler(async ({ data, context }) => {
