@@ -955,7 +955,7 @@ function BoardCard({
           {booking.customerName}
         </p>
         <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-          #{booking.id.slice(0, 6)}
+          {booking.bookingNumber ?? `#${booking.id.slice(0, 6)}`}
         </span>
       </div>
 

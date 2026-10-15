@@ -318,7 +318,7 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
             {ticket.userName ?? "Unknown user"}
             <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-muted text-muted-foreground">{APP_LABEL[ticket.source] ?? ticket.source}</span>
             {ticket.bookingId && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-primary-tint text-primary">#{ticket.bookingId.slice(0, 8)}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-primary-tint text-primary">{ticket.bookingNumber ?? `#${ticket.bookingId.slice(0, 8)}`}</span>
             )}
           </p>
           <p className="text-[12px] text-muted-foreground truncate">{ticket.subject ?? "Support request"} · {fmt(ticket.createdAt)}</p>

@@ -310,6 +310,7 @@ export type PipelineStatus =
 
 export type PipelineBooking = {
   id: string;
+  bookingNumber: string | null;
   status: PipelineStatus;
   customerName: string;
   serviceLabel: string | null;
@@ -423,7 +424,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at, staff_note, service_category_id";
+      "id, booking_number, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at, staff_note, service_category_id";
     let openQ = db
       .from("bookings")
       .select(cols).eq("is_training", data.training)
@@ -550,6 +551,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
 
     return rows.map((r) => ({
       id: r.id as string,
+      bookingNumber: (r.booking_number as string | null) ?? null,
       // `on_the_way` / `arrived` are journey steps after assignment — they stay
       // in the "Expert Assigned" column and surface as badges on the card.
       status: (r.status === "on_the_way" || r.status === "arrived"

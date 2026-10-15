@@ -1,5 +1,7 @@
-// Builds the commission tax invoice PDF from get_settlement_invoice() output.
-// Browser-only; reusable by the Merchant App with the same RPC payload.
+// Merchant commission tax invoice on the shared branded template (data from get_settlement_invoice()).
+import { type BrandedDoc, placeOfSupply, roundOff, renderBrandedPdf, browserAssets } from "@/lib/branded-pdf";
+import logo from "@/assets/badiyos-wordmark-white.png.asset.json";
+
 export type CommissionInvoice = {
   invoice_no: string | null; date: string; period_from: string; period_to: string; type: string;
   company: Record<string, string>;
@@ -9,50 +11,48 @@ export type CommissionInvoice = {
   tcs: number; tds: number; adjustments: number; instant_fee: number; instant_fee_gst?: number; instant_fee_gst_rate?: number; sac_instant_fee?: string | null; net: number;
 };
 
-const r = (n: number) => "Rs " + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const fmtDate = (d: string) => new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+export function commissionInvoiceDoc(inv: CommissionInvoice, sac = "998599"): BrandedDoc {
+  const fee = Number(inv.instant_fee || 0), feeGst = Number(inv.instant_fee_gst || 0), feeRate = Number(inv.instant_fee_gst_rate ?? 18);
+  const lines = [{ desc: `Commission on orders (${fmtDate(inv.period_from)} – ${fmtDate(inv.period_to)})`, sac, taxable: Number(inv.commission), gst_pct: Number(inv.gst_rate), gst: Number(inv.commission_gst), amount: r2(Number(inv.commission) + Number(inv.commission_gst)) }];
+  if (fee > 0) lines.push({ desc: "Instant settlement fee", sac: inv.sac_instant_fee || "", taxable: fee, gst_pct: feeRate, gst: feeGst, amount: r2(fee + feeGst) });
+  const taxable = Number(inv.commission) + fee;
+  const totals = [{ label: "Taxable value", value: taxable }];
+  if (inv.intra_state) {
+    const fc = r2(feeGst / 2);
+    totals.push({ label: "CGST", value: r2(Number(inv.cgst) + fc) }, { label: "SGST", value: r2(Number(inv.sgst) + (feeGst - fc)) });
+  } else totals.push({ label: "IGST", value: r2(Number(inv.igst) + feeGst) });
+  const grand = r2(Number(inv.commission) + Number(inv.commission_gst) + fee + feeGst);
+  totals.push({ label: "Round off", value: roundOff(grand, totals.reduce((s, t) => s + t.value, 0)) });
+  const m = inv.merchant;
+  return {
+    title: "TAX INVOICE", number: inv.invoice_no ?? "—", company: inv.company,
+    meta: [["Invoice date", fmtDate(inv.date)], ["Place of supply", placeOfSupply({ ...inv.company, state: m.state || inv.company.state })], ["Settlement", inv.type === "instant" ? "Instant" : "Scheduled"]],
+    paid: true,
+    billTo: { title: "Bill to (merchant)", lines: [m.name || "—", m.address || "", `GSTIN ${m.gstin || "Unregistered"}${m.pan ? `  ·  PAN ${m.pan}` : ""}`].filter(Boolean) },
+    chip: { label: "Commission", color: "#00B97A" },
+    lines, totals, grandLabel: "TOTAL (recovered from settlement)", grand,
+    after: {
+      title: "Settlement summary (for information, not part of taxable value)",
+      rows: [
+        { label: "Gross order value", value: inv.gross }, { label: "Less commission", value: -inv.commission }, { label: "Less GST on commission", value: -inv.commission_gst },
+        { label: "Less TCS (Sec 52)", value: -inv.tcs }, { label: "Less TDS (Sec 194-O)", value: -inv.tds }, { label: "Adjustments", value: inv.adjustments },
+        { label: "Less instant settlement fee", value: -fee }, { label: "Less GST on instant fee", value: -feeGst },
+      ],
+      final: { label: "Net paid to merchant", value: inv.net },
+    },
+    qrUrl: `https://www.badiyos.com/support?invoice=${encodeURIComponent(inv.invoice_no ?? "")}`,
+    footerNote: `Computer-generated invoice. Commission SAC ${sac}.`,
+    filename: `${(inv.invoice_no ?? "invoice").replace(/\//g, "-")}.pdf`,
+  };
+}
 
 export async function downloadCommissionInvoicePdf(inv: CommissionInvoice, sac = "998599") {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  let y = 18;
-  doc.setFontSize(16); doc.text("TAX INVOICE — Commission", 14, y);
-  doc.setFontSize(10);
-  doc.text(`Invoice no: ${inv.invoice_no ?? "—"}`, 140, y - 4); doc.text(`Date: ${inv.date}`, 140, y + 1);
-  y += 10;
-  const c = inv.company;
-  doc.setFont("helvetica", "bold"); doc.text("From", 14, y); doc.text("To", 110, y); doc.setFont("helvetica", "normal");
-  const left = [c.legal_name || "—", c.address || "", `State: ${c.state || "—"}`, `GSTIN: ${c.gstin || "—"}`, `PAN: ${c.pan || "—"}`];
-  const right = [inv.merchant.name || "—", inv.merchant.address || "", `State: ${inv.merchant.state || "—"}`, `GSTIN: ${inv.merchant.gstin || "Unregistered"}`, `PAN: ${inv.merchant.pan || "—"}`];
-  for (let i = 0; i < 5; i++) {
-    doc.text(doc.splitTextToSize(left[i], 90)[0] ?? "", 14, y + 6 + i * 5);
-    doc.text(doc.splitTextToSize(right[i], 90)[0] ?? "", 110, y + 6 + i * 5);
-  }
-  y += 36;
-  doc.text(`Settlement period: ${inv.period_from} to ${inv.period_to} (${inv.type})`, 14, y); y += 8;
-  const rows: [string, number][] = [["Commission on orders (taxable value)", inv.commission]];
-  if (inv.intra_state) {
-    rows.push([`CGST @ ${inv.gst_rate / 2}%`, inv.cgst], [`SGST @ ${inv.gst_rate / 2}%`, inv.sgst]);
-  } else rows.push([`IGST @ ${inv.gst_rate}%`, inv.igst]);
-  const fee = Number(inv.instant_fee || 0), feeGst = Number(inv.instant_fee_gst || 0), feeRate = Number(inv.instant_fee_gst_rate ?? 18);
-  if (fee > 0) {
-    rows.push([`Instant settlement fee${inv.sac_instant_fee ? ` — SAC ${inv.sac_instant_fee}` : ""}`, fee]);
-    if (inv.intra_state) {
-      const half = Math.round((feeGst / 2) * 100) / 100;
-      rows.push([`CGST on instant fee @ ${feeRate / 2}%`, half], [`SGST on instant fee @ ${feeRate / 2}%`, Math.round((feeGst - half) * 100) / 100]);
-    } else rows.push([`IGST on instant fee @ ${feeRate}%`, feeGst]);
-  }
-  rows.push(["Invoice total", inv.commission + inv.commission_gst + fee + feeGst]);
-  doc.setFont("helvetica", "bold"); doc.text("Description", 14, y); doc.text("Amount", 180, y, { align: "right" }); doc.setFont("helvetica", "normal");
-  doc.line(14, y + 2, 196, y + 2); y += 8;
-  for (const [k, v] of rows) { doc.text(k, 14, y); doc.text(r(v), 180, y, { align: "right" }); y += 6; }
-  y += 6;
-  doc.setFont("helvetica", "bold"); doc.text("Settlement summary (for information, not part of taxable value)", 14, y); doc.setFont("helvetica", "normal"); y += 7;
-  const s: [string, number][] = [
-    ["Gross order value", inv.gross], ["Less commission", -inv.commission], ["Less GST on commission", -inv.commission_gst],
-    ["Less TCS (Sec 52)", -inv.tcs], ["Less TDS (Sec 194-O)", -inv.tds], ["Adjustments", inv.adjustments],
-    ["Instant settlement fee", -inv.instant_fee], ["Less GST on instant fee", -(inv.instant_fee_gst || 0)], ["Net paid to merchant", inv.net],
-  ];
-  for (const [k, v] of s) { doc.text(k, 14, y); doc.text(r(v), 180, y, { align: "right" }); y += 6; }
-  doc.setFontSize(8); doc.text(`Computer-generated invoice. SAC ${sac}.`, 14, 285);
-  doc.save(`${(inv.invoice_no ?? "invoice").replace(/\//g, "-")}.pdf`);
+  const d = commissionInvoiceDoc(inv, sac);
+  await renderBrandedPdf(doc, d, await browserAssets(logo.url));
+  doc.save(d.filename);
 }

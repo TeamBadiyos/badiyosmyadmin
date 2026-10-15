@@ -39,6 +39,7 @@ export type BookingExtension = {
 
 export type BookingRow = {
   id: string;
+  bookingNumber: string | null;
   customerName: string;
   serviceLabel: string | null;
   scheduledDate: string | null;
@@ -108,7 +109,7 @@ export const listBookings = createServerFn({ method: "POST" })
       .from("bookings")
       .select(
         sel(
-          "id, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes, rating, review_text",
+          "id, booking_number, service_label, scheduled_date, scheduled_time_slot, status, razorpay_payment_id, refund_status, created_at, zone_id, assigned_expert_id, user_id, deleted_at, started_at, service_end_at, service_duration_minutes, rating, review_text",
         ),
         { count: "exact" },
       ).eq("is_training", false)
@@ -163,7 +164,15 @@ export const listBookings = createServerFn({ method: "POST" })
     // Search by customer or expert name / phone: resolve matching ids first,
     // then filter bookings on user_id / assigned_expert_id.
     const search = (data.search ?? "").trim();
-    if (search) {
+    const bnum = /^(ch|ca)-?\d+$/i.test(search) ? search.toUpperCase().replace(/^(CH|CA)-?/, "$1-") : null;
+    const hex = search.replace(/-/g, "").toLowerCase();
+    const idPrefix = /^[0-9a-f]{6,32}$/.test(hex) && !bnum ? hex : null;
+    if (bnum) {
+      q = q.ilike("booking_number", `${bnum}%`);
+    } else if (idPrefix) {
+      const fmt = (h: string) => `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+      q = q.gte("id", fmt(idPrefix.padEnd(32, "0"))).lte("id", fmt(idPrefix.padEnd(32, "f")));
+    } else if (search) {
       const like = `%${search.replace(/[%_,()]/g, " ")}%`;
       const [matchUsers, matchExperts] = await Promise.all([
         context.supabase
@@ -271,6 +280,7 @@ export const listBookings = createServerFn({ method: "POST" })
           : "unpaid";
       return {
         id: r.id,
+        bookingNumber: (r as { booking_number?: string | null }).booking_number ?? null,
         customerName: userMap.get(r.user_id) ?? "—",
         serviceLabel: r.service_label ?? null,
         scheduledDate: r.scheduled_date ?? null,
@@ -331,6 +341,7 @@ export const listZoneOptions = createServerFn({ method: "GET" })
 
 export type BookingDetails = {
   id: string;
+  bookingNumber: string | null;
   status: BookingStatus;
   serviceLabel: string | null;
   serviceDurationMinutes: number | null;
@@ -385,7 +396,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
+      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -442,6 +453,7 @@ async function loadBookingDetails(
 
   return {
     id: b.id,
+    bookingNumber: (b as { booking_number?: string | null }).booking_number ?? null,
     status: b.status as BookingStatus,
     serviceLabel: b.service_label ?? null,
     serviceDurationMinutes: b.service_duration_minutes ?? null,
