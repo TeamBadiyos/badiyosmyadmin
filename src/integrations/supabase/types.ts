@@ -8131,6 +8131,30 @@ export type Database = {
           },
         ]
       }
+      slot_capacity_weekday: {
+        Row: {
+          capacity: number
+          service_key: string
+          updated_at: string
+          updated_by: string | null
+          weekday: number
+        }
+        Insert: {
+          capacity: number
+          service_key: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday: number
+        }
+        Update: {
+          capacity?: number
+          service_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday?: number
+        }
+        Relationships: []
+      }
       sponsored_slots: {
         Row: {
           category_id: string | null
@@ -9514,6 +9538,10 @@ export type Database = {
       }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       award_referral_milestones: { Args: { _user_id: string }; Returns: number }
+      booking_capacity_group: {
+        Args: { _category_id: string; _label: string }
+        Returns: string
+      }
       booking_dispatch_refund_job: { Args: never; Returns: undefined }
       booking_dispatch_release_due: { Args: never; Returns: number }
       booking_expert_mode_ok: {
@@ -10623,6 +10651,7 @@ export type Database = {
         Args: { _roles: string[]; _uid: string }
         Returns: boolean
       }
+      is_delivery_rider: { Args: { _expert_id: string }; Returns: boolean }
       is_internal_tester: { Args: never; Returns: boolean }
       is_offer_finance_user: { Args: never; Returns: boolean }
       is_public_product_image: {
@@ -11012,6 +11041,7 @@ export type Database = {
         Args: { _date: string; _slot: string }
         Returns: string
       }
+      rider_pool_stats: { Args: never; Returns: Json }
       run_expert_referral_reward_job: { Args: never; Returns: number }
       run_reward_period_jobs: {
         Args: { _force_period_start?: string }
@@ -11970,6 +12000,10 @@ export type Database = {
       staff_set_vehicle_archived: {
         Args: { _archived: boolean; _id: string }
         Returns: boolean
+      }
+      staff_set_weekday_capacity: {
+        Args: { _capacity: number; _service_key: string; _weekday: number }
+        Returns: undefined
       }
       staff_soft_delete_booking: {
         Args: { _booking_id: string; _reason: string }
