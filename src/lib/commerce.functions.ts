@@ -76,9 +76,10 @@ const minsSince = (iso: string | null, now: number) =>
 
 export const listCommercePipeline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { segmentId?: string | null; training?: boolean }) => ({
+  .inputValidator((input?: { segmentId?: string | null; training?: boolean; service?: "store" | "food" | null }) => ({
     segmentId: input?.segmentId ?? null,
     training: !!input?.training,
+    service: input?.service ?? null,
   }))
   .handler(async ({ data, context }): Promise<CommercePipeline> => {
     const db = context.supabase;
@@ -93,11 +94,12 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
     ).toISOString();
 
     let merchantIds: string[] | null = null;
-    if (data.segmentId) {
-      const { data: ms, error } = await db
-        .from("merchants")
-        .select("id")
-        .eq("segment_id", data.segmentId);
+    if (data.segmentId || data.service) {
+      let mq = db.from("merchants").select("id");
+      if (data.segmentId) mq = mq.eq("segment_id", data.segmentId);
+      if (data.service === "food") mq = mq.eq("service_type", "food");
+      if (data.service === "store") mq = mq.or("service_type.is.null,service_type.neq.food");
+      const { data: ms, error } = await mq;
       if (error) throw new Error(error.message);
       merchantIds = (ms ?? []).map((m: any) => m.id as string);
       if (merchantIds!.length === 0) {
