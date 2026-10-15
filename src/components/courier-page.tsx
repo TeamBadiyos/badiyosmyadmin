@@ -1939,7 +1939,6 @@ function ZoneMappingTab({ canWrite }: { canWrite: boolean }) {
 
 export function CourierPage({ section = "orders" }: { section?: CourierSection }) {
   const fetchAccess = useServerFn(getCourierAccess);
-  const [typeTab, setTypeTab] = useState<TypeTab>("vehicles");
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["courier", "access"],
@@ -1966,31 +1965,13 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       ) : null}
 
       {section === "types" ? (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { key: "vehicles", label: "Vehicle Types" },
-              { key: "types", label: "Courier Types" },
-            ] as const).map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setTypeTab(item.key)}
-                className={`rounded-[10px] px-3.5 py-2 text-[12px] font-semibold ${
-                  typeTab === item.key
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          {typeTab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
-          {typeTab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
-        </>
+        <div className="space-y-8">
+          <section><h2 className="mb-3 text-[15px] font-bold text-foreground">Vehicles</h2><VehicleTypesTab canWrite={canWrite} /></section>
+          <section><h2 className="mb-3 text-[15px] font-bold text-foreground">Parcel types</h2><CourierTypesTab canWrite={canWrite} /></section>
+        </div>
       ) : null}
       {section === "rates" ? (<RatesTab canWrite={canWrite} />) : null}
-      {section === "riders" ? <div className="space-y-6"><RidersCapacityPanel /><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
+      {section === "riders" ? <div className="space-y-6"><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
       {section === "settings" ? (
         <div className="space-y-5">
           <ServiceHoursPanel serviceKey="courier" title="Courier timings" />

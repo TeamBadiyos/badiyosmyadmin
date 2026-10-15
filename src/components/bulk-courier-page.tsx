@@ -649,12 +649,12 @@ function WalletTab({ biz, canWrite, ledger, topups, onChanged }: { biz: Business
 
 /* --------------------------------- page --------------------------------- */
 
-type BTab = "pricing" | "dispatch" | "businesses" | "seals";
+type BTab = "plans" | "businesses" | "seals";
 
 export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean }) {
   const fetchAccess = useServerFn(getBulkAccess);
   const { data: access } = useQuery({ queryKey: ["bulk", "access"], queryFn: () => fetchAccess(), retry: false });
-  const [tab, setTab] = useState<BTab>("pricing");
+  const [tab, setTab] = useState<BTab>("businesses");
   const canWrite = !!access?.canWrite;
   const canOperate = !!access?.canOperate;
   return (
@@ -664,8 +664,8 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
           Read-only — only a super admin can change plans, modules, delivery status or wallet. You can still dispatch now and manage pickup points.
         </div>
       ) : null}
-      <Tabs value={tab} onChange={setTab} items={[{ key: "pricing", label: "Pricing Plans" }, { key: "dispatch", label: "Dispatch Plans" }, { key: "businesses", label: "Businesses" }, { key: "seals", label: "Seal Stickers" }] as const} />
-      {tab === "pricing" ? <PricingPlansTab canWrite={canWrite} /> : tab === "dispatch" ? <DispatchPlansTab canWrite={canWrite} /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <div className="space-y-3">{access ? <ProofGlobalsCard canEdit={canOperate} /> : null}<BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} /></div>}
+      <Tabs value={tab} onChange={setTab} items={[{ key: "businesses", label: "Businesses" }, { key: "plans", label: "Plans" }, { key: "seals", label: "Stickers" }] as const} />
+      {tab === "plans" ? <div className="space-y-8"><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Pricing plans</h2><PricingPlansTab canWrite={canWrite} /></section><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Dispatch plans</h2><DispatchPlansTab canWrite={canWrite} /></section></div> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <div className="space-y-3">{access ? <ProofGlobalsCard canEdit={canOperate} /> : null}<BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} /></div>}
     </div>
   );
 }
