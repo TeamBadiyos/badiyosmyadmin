@@ -62,7 +62,7 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="text-[12px] font-semibold text-muted-foreground">
-            No-accept alert threshold (minutes)
+            No-accept wait limit (minutes) — also turns Dashboard cards red
           </span>
           <input
             type="number"
