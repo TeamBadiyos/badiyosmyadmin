@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { RefreshCw, UserMinus } from "lucide-react";
+import { UserMinus } from "lucide-react";
 import {
   listDeletionRequests,
   updateDeletionRequest,
@@ -42,11 +42,12 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
   const [status, setStatus] = useState("");
   const [accountType, setAccountType] = useState("");
 
-  const { data: requests = [], isLoading, isError, refetch } = useQuery({
+  const { data: requests = [], isLoading, isError } = useQuery({
     queryKey: ["deletion-requests", status, accountType],
     queryFn: () =>
       fetchRequests({ data: { status: status || null, accountType: accountType || null } }),
     staleTime: 10_000,
+    refetchInterval: 20_000,
     enabled: canManage,
   });
 
@@ -62,19 +63,6 @@ export function DeletionRequestsPage({ role }: { role: StaffRole | null }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground">
-          Deletion requests submitted from badiyos.com/delete-account. {pending} pending.
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="h-[44px] px-4 rounded-[14px] border border-border text-[13px] font-bold inline-flex items-center gap-2 hover:bg-muted/40"
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </button>
-      </div>
-
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">

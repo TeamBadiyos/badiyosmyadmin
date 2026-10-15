@@ -8,6 +8,7 @@ import { listZoneOptions } from "@/lib/bookings.functions";
 import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
+import { DataTablePagination, EmptyState } from "@/components/ui/data-table";
 import {
   useSortFilter,
   SortFilterHeader,
@@ -58,6 +59,11 @@ export function ExpertsPage({
     initialOnlineOnly ? "online_free" : "",
   );
   const [mode, setMode] = useState("");
+  const [skillF, setSkillF] = useState<"" | "maid" | "wash" | "rider">("");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const effSkill = skill ?? (skillF || undefined);
   const [statusF, setStatusF] = useState(skill ? "active" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -93,14 +99,14 @@ export function ExpertsPage({
   });
 
   const { data: skillIds } = useQuery({
-    queryKey: ["experts", "skill-ids", skill],
-    enabled: !!skill,
+    queryKey: ["experts", "skill-ids", effSkill],
+    enabled: !!effSkill,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("partner_skills")
         .select("expert_id, service_category_id, service_categories(slug)").eq("status", "approved");
       if (error) throw new Error(error.message);
-      if (skill === "rider") {
+      if (effSkill === "rider") {
         const { data: v } = await supabase.from("courier_vehicle_types").select("required_skill").eq("is_active", true);
         const req = new Set(((v ?? []) as Array<{ required_skill: string | null }>).map((x) => x.required_skill).filter(Boolean));
         return new Set(((data ?? []) as Array<{ expert_id: string; service_category_id: string }>).filter((r) => req.has(r.service_category_id)).map((r) => r.expert_id));
@@ -109,7 +115,7 @@ export function ExpertsPage({
       const ids = new Set<string>();
       for (const r of (data ?? []) as unknown as Array<{ expert_id: string; service_category_id: string; service_categories: { slug: string } | null }>) {
         const slug = r.service_categories?.slug ?? "";
-        if (skill === "wash" ? slug === "car-bike-wash" : CLEAN_SLUGS.has(slug)) ids.add(r.expert_id);
+        if (effSkill === "wash" ? slug === "car-bike-wash" : CLEAN_SLUGS.has(slug)) ids.add(r.expert_id);
       }
       return ids;
     },
@@ -154,14 +160,14 @@ export function ExpertsPage({
   const [riderStatus, setRiderStatus] = useState("");
   const [riderSearch, setRiderSearch] = useState("");
   const expertsFiltered = (
-    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw
+    availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : availability === "offline" ? expertsRaw.filter((e) => !e.isOnline) : expertsRaw
   ).filter((e) => !mode || e.mode === mode)
-   .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false))
+   .filter((e) => !effSkill || (skillIds ? skillIds.has(e.id) : false))
    .filter((e) => !statusF || (statusF === "active" ? e.status === "active" : e.status !== "active"))
    .filter((e) => !isRider || !riderStatus || riderState(e) === riderStatus)
    .filter((e) => {
      const q = riderSearch.trim().toLowerCase();
-     return !isRider || !q || e.name.toLowerCase().includes(q) || (e.phone ?? "").includes(q);
+     return !q || e.name.toLowerCase().includes(q) || (e.phone ?? "").includes(q);
    })
    .sort((a, b) => rank(a) - rank(b));
 
@@ -187,7 +193,13 @@ export function ExpertsPage({
     },
     { key: "status", label: "Status", value: (e: ExpertRow) => e.status },
   ]);
-  const experts = sf.rows;
+  const allRows = sf.rows;
+  const filterSig = [zoneId, kycStatus, level, availability, mode, statusF, skillF, riderSearch, allRows.length].join("|");
+  useEffect(() => setPage(1), [filterSig]);
+  const experts = isRider ? allRows : allRows.slice((page - 1) * pageSize, page * pageSize);
+  const moreCount = [zoneId, kycStatus, level, mode].filter(Boolean).length;
+  const hasFilters = !!(riderSearch || skillF || availability || moreCount || statusF !== (skill ? "active" : ""));
+  const clearFilters = () => { setRiderSearch(""); setSkillF(""); setAvailability(""); setZoneId(""); setKycStatus(""); setLevel(""); setMode(""); setStatusF(skill ? "active" : ""); };
   const hr = workHourRanges();
 
   return (
@@ -218,7 +230,60 @@ export function ExpertsPage({
         )}
       </div>
       ) : (
-      <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+      <div className="bg-card border border-border rounded-[18px] p-4 space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Search</label>
+          <input
+            placeholder="Name or phone"
+            value={riderSearch}
+            onChange={(e) => setRiderSearch(e.target.value)}
+            className="h-10 w-[220px] rounded-[12px] border border-border bg-card px-3 text-[13px] text-foreground"
+          />
+        </div>
+        {!skill && (
+          <Filter label="Skill" value={skillF} onChange={(v) => setSkillF(v as typeof skillF)}>
+            <option value="">All skills</option>
+            <option value="maid">Maid</option>
+            <option value="wash">Washer</option>
+            <option value="rider">Rider</option>
+          </Filter>
+        )}
+        <Filter label="Status" value={statusF} onChange={setStatusF}>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="">All statuses</option>
+        </Filter>
+        <Filter label="Online" value={availability} onChange={setAvailability}>
+          <option value="">Online & offline</option>
+          <option value="online">Online</option>
+          <option value="online_free">Online & free</option>
+          <option value="offline">Offline</option>
+        </Filter>
+        <button
+          onClick={() => setMoreOpen((v) => !v)}
+          className="h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold hover:bg-muted"
+        >
+          More filters{moreCount ? ` (${moreCount})` : ""}
+        </button>
+        {hasFilters && (
+          <button onClick={clearFilters} className="h-10 text-[12px] font-semibold text-primary hover:underline">Clear filters</button>
+        )}
+        <span className="ml-auto self-center text-[12px] text-muted-foreground">
+          {isLoading ? "Loading…" : `${allRows.length} of ${expertsRaw.length}`}
+        </span>
+        {canManage && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+          >
+            <Plus size={16} />
+            Add Expert
+          </button>
+        )}
+      </div>
+      {moreOpen && (
+      <div className="flex flex-wrap items-end gap-3 pt-3 border-t border-border">
         {showZoneFilter && (
           <Filter label="Zone" value={zoneId} onChange={setZoneId}>
             <option value="">All zones</option>
@@ -227,38 +292,21 @@ export function ExpertsPage({
             ))}
           </Filter>
         )}
-        <Filter label="KYC status" value={kycStatus} onChange={setKycStatus}>
-          <option value="">All KYC</option>
+        <Filter label="KYC" value={kycStatus} onChange={setKycStatus}>
+          <option value="">All KYC statuses</option>
           {KYC_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </Filter>
         <Filter label="Level" value={level} onChange={setLevel}>
           <option value="">All levels</option>
           {LEVELS.map((s) => <option key={s} value={s}>{s}</option>)}
         </Filter>
-        <Filter label="Availability" value={availability} onChange={setAvailability}>
-          <option value="">All experts</option>
-          <option value="online">Online only</option>
-          <option value="online_free">Online & free</option>
-        </Filter>
-        <Filter label="Status" value={statusF} onChange={setStatusF}>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="">All statuses</option>
-        </Filter>
         <Filter label="Mode" value={mode} onChange={setMode}>
           <option value="">All modes</option>
           <option value="TRAINING">Training</option>
           <option value="LIVE">Live</option>
         </Filter>
-        {canManage && (
-          <button
-            onClick={() => setAddOpen(true)}
-            className="ml-auto h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2 hover:opacity-95"
-          >
-            <Plus size={16} />
-            Add Expert
-          </button>
-        )}
+      </div>
+      )}
       </div>
       )}
 
@@ -311,7 +359,7 @@ export function ExpertsPage({
           <p className="text-[13px] text-destructive text-center py-10">Failed to load experts.</p>
         )}
         {!isLoading && !isError && experts.length === 0 && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">No experts yet.</p>
+          <EmptyState text="No experts found." onClear={hasFilters ? clearFilters : undefined} />
         )}
 
         {experts.map((e) => (
@@ -321,6 +369,9 @@ export function ExpertsPage({
             onOpen={() => setDetailsId(e.id)}
           />
         ))}
+        {allRows.length > 0 && (
+          <DataTablePagination page={page} pageSize={pageSize} total={allRows.length} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1); }} />
+        )}
       </div>
       )}
 
@@ -440,19 +491,14 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       <span className="text-right font-semibold text-foreground">{fmtHrs(expert.lastWeekMinutes)}</span>
       <span className="text-right font-semibold text-foreground">{fmtHrs(expert.monthMinutes)}</span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
-      <span className="flex items-center gap-1.5 flex-wrap">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}>
-          {expert.status}
+      <span>
+        <span
+          title={expert.isOnline ? (expert.isBusy ? "Online — on a job" : "Online") : "Offline"}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${expert.isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+          {expert.status === "active" ? "Active" : "Inactive"}
         </span>
-        {expert.isOnline && (
-          <span
-            title={expert.isBusy ? "Online — on a job" : "Online — free"}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${expert.isBusy ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${expert.isBusy ? "bg-amber-500" : "bg-emerald-500"}`} />
-            {expert.isBusy ? "busy" : "live"}
-          </span>
-        )}
       </span>
     </button>
   );
