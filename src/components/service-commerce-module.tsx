@@ -434,17 +434,22 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
 }
 
 function CommercialsPane({ s, act }: { s: any; act: any }) {
-  const [c, setC] = useState(String(s.commission_pct ?? 10));
+  const [c, setC] = useState(s.commission_pct == null ? "" : String(s.commission_pct));
   const [f, setF] = useState(String(s.instant_settlement_fee_pct ?? 1));
   const [t, setT] = useState(s.accept_timeout_minutes == null ? "" : String(s.accept_timeout_minutes));
+  const [g, setG] = useState(s.gstin ?? "");
+  const [p, setP] = useState(s.pan ?? "");
   return (
     <div className="rounded-lg border bg-card p-4 grid sm:grid-cols-3 gap-4 max-w-2xl">
-      <div><Label>Commission %</Label><Input type="number" value={c} onChange={(e) => setC(e.target.value)} /></div>
+      <div><Label>Commission %</Label><Input type="number" placeholder="Default (Store Settings)" value={c} onChange={(e) => setC(e.target.value)} />
+        <p className="text-[11px] text-muted-foreground mt-1">{c.trim() === "" ? "Not set — uses the Store Settings default." : "Set for this merchant."}</p></div>
       <div><Label>Instant settlement fee %</Label><Input type="number" value={f} onChange={(e) => setF(e.target.value)} /></div>
       <div><Label>Accept timeout (min)</Label><Input type="number" placeholder="Service default" value={t} onChange={(e) => setT(e.target.value)} /></div>
+      <div><Label>GSTIN</Label><Input value={g} onChange={(e) => setG(e.target.value.toUpperCase())} maxLength={15} /></div>
+      <div><Label>PAN</Label><Input value={p} onChange={(e) => setP(e.target.value.toUpperCase())} maxLength={10} /></div>
       <div className="sm:col-span-3 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">Every change is saved in the audit log.</p>
-        <Button onClick={() => act.mutate({ kind: "commercials", commission_pct: Number(c), instant_settlement_fee_pct: Number(f), accept_timeout_minutes: t.trim() === "" ? null : Number(t) })}>Save</Button>
+        <Button onClick={() => act.mutate({ kind: "commercials", commission_pct: c.trim() === "" ? null : Number(c), instant_settlement_fee_pct: Number(f), accept_timeout_minutes: t.trim() === "" ? null : Number(t), gstin: g, pan: p })}>Save</Button>
       </div>
     </div>
   );
