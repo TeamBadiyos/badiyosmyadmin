@@ -11,6 +11,8 @@ import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { usePageTabLabel } from "@/lib/page-tab";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
+import { TrainingAddressTab } from "@/components/training-address-tab";
+import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
 import { DashboardOverview } from "@/components/dashboard-overview";
@@ -768,12 +770,14 @@ function Shell() {
           <div className="space-y-8">
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training orders</h2><TrainingOrdersPage /></section>
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Skill approvals</h2><SkillApprovalsPage role={role} /></section>
+            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training address</h2><TrainingAddressTab /></section>
           </div>
         ) : active === "maid-settings" || active === "wash-settings" ? (
           <div className="space-y-6 max-w-4xl">
             <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
             <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
             <BookingTimingsTab />
+            <CapacityMessagesPage />
           </div>
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
