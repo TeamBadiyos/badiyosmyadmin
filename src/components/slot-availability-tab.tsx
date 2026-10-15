@@ -170,6 +170,14 @@ export function SlotAvailabilityTab() {
                   </span>
                 </div>
                 <p className="mt-1 text-[12px] text-muted-foreground">{count} booking{count === 1 ? "" : "s"} start here · {busy} / {cap?.capacity ?? "–"} maids busy</p>
+                {cap ? (
+                  <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
+                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Capacity</p><p className="font-bold text-foreground">{cap.capacity}</p></div>
+                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Booked</p><p className="font-bold text-foreground">{busy}</p></div>
+                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Available</p><p className="font-bold text-foreground">{Math.max(0, cap.capacity - busy)}</p></div>
+                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Used</p><p className="font-bold text-foreground">{cap.capacity > 0 ? Math.min(100, Math.round((busy / cap.capacity) * 100)) : 0}%</p></div>
+                  </div>
+                ) : null}
                 {d?.canEdit ? (
                   <button type="button" disabled={slotMut.isPending}
                     onClick={() => slotMut.mutate({ hour: Math.floor(h / 60), minute: h % 60, full: !manualFull })}
