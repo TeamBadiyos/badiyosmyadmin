@@ -74,7 +74,7 @@ export function CustomerInvoicesPage({ isSuperAdmin }: { isSuperAdmin: boolean }
         <>
           <p className="text-[12px] text-muted-foreground">{countLabel(inv.length, "invoice")} · Total {inr(totals.t)} · GST {inr(totals.g)}</p>
           <div className="overflow-x-auto">
-            <table className={tableCls}>
+            <table className={`w-full text-[13px] ${tableCls.table}`}>
               <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Service</th><th>Order</th><th className="text-right">Taxable</th><th className="text-right">GST</th><th className="text-right">Total</th><th /></tr></thead>
               <tbody>
                 {inv.map((i) => (
@@ -94,7 +94,7 @@ export function CustomerInvoicesPage({ isSuperAdmin }: { isSuperAdmin: boolean }
         </>
       ) : (
         <div className="overflow-x-auto">
-          <table className={tableCls}>
+          <table className={`w-full text-[13px] ${tableCls.table}`}>
             <thead><tr><th>Credit note</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Service</th><th>Reason</th><th className="text-right">GST</th><th className="text-right">Total</th><th /></tr></thead>
             <tbody>
               {cns.map((c) => (
@@ -156,7 +156,7 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
       {tab === "wallets" ? (
         <>
           <FilterBar><FilterField label="Search"><input className={filterInputCls} placeholder="Name or phone" value={q} onChange={(e) => setQ(e.target.value)} /></FilterField></FilterBar>
-          <table className={tableCls}>
+          <table className={`w-full text-[13px] ${tableCls.table}`}>
             <thead><tr><th>Customer</th><th>Phone</th><th className="text-right">Cash</th><th className="text-right">Bonus</th><th>Last change</th></tr></thead>
             <tbody>
               {(data.data?.wallets ?? []).map((w) => (
@@ -171,7 +171,7 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
           </table>
         </>
       ) : (
-        <table className={tableCls}>
+        <table className={`w-full text-[13px] ${tableCls.table}`}>
           <thead><tr><th>Name</th><th>Min top-up</th><th>Bonus</th><th>Valid</th><th>Dates</th><th>Status</th></tr></thead>
           <tbody>
             {(data.data?.rules ?? []).map((r) => (
@@ -179,7 +179,7 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
                 <td className="font-semibold">{r.name}</td><td>{inr(r.min_topup)}</td>
                 <td>{r.bonus_type === "flat" ? inr(r.bonus_value) : `${r.bonus_value}%${r.max_bonus ? ` (max ${inr(r.max_bonus)})` : ""}`}</td>
                 <td>{r.validity_days} days</td><td>{r.starts_at ?? "—"} → {r.ends_at ?? "—"}</td>
-                <td><StatusPill tone={r.is_active ? "success" : "muted"}>{r.is_active ? "Active" : "Off"}</StatusPill></td>
+                <td><StatusPill status={r.is_active ? "active" : "inactive"} label={r.is_active ? "Active" : "Off"} /></td>
               </tr>
             ))}
             {!data.data?.rules?.length && <tr><td colSpan={6} className="text-center text-muted-foreground py-6">No bonus rules.</td></tr>}

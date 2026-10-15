@@ -9,7 +9,7 @@ function header(doc: any, title: string, no: string, date: string, company: Reco
   doc.setFontSize(10);
   doc.text(`No: ${no}`, 140, 14); doc.text(`Date: ${date}`, 140, 19);
   let y = 28;
-  doc.setFont(undefined, "bold"); doc.text(company.legal_name || "Badiyos", 14, y); doc.setFont(undefined, "normal");
+  doc.setFont("helvetica", "bold"); doc.text(company.legal_name || "Badiyos", 14, y); doc.setFont("helvetica", "normal");
   for (const l of [company.address, company.state && `State: ${company.state}`, company.gstin && `GSTIN: ${company.gstin}`, company.pan && `PAN: ${company.pan}`].filter(Boolean) as string[]) {
     y += 5; doc.text(doc.splitTextToSize(l, 120), 14, y);
   }
@@ -23,9 +23,9 @@ export async function downloadCustomerInvoicePdf(inv: CustomerInvoice) {
   doc.text(`Bill to: ${inv.customer_name ?? "Customer"}${inv.customer_phone ? " · " + inv.customer_phone : ""}`, 14, y);
   y += 5; doc.text(`Service: ${SERVICE[inv.service] ?? inv.service} · Order ${inv.ref_code ?? ""}`, 14, y);
   y += 9;
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.text("Description", 14, y); doc.text("SAC", 95, y); doc.text("Taxable", 120, y); doc.text("GST %", 150, y); doc.text("GST", 175, y);
-  doc.setFont(undefined, "normal"); y += 2; doc.line(14, y, 196, y); y += 5;
+  doc.setFont("helvetica", "normal"); y += 2; doc.line(14, y, 196, y); y += 5;
   for (const l of inv.lines ?? []) {
     doc.text(String(l.desc), 14, y); doc.text(String(l.sac || "-"), 95, y); doc.text(r(l.taxable), 120, y); doc.text(`${l.gst_pct}%`, 150, y); doc.text(r(l.gst), 175, y); y += 6;
   }
@@ -34,7 +34,7 @@ export async function downloadCustomerInvoicePdf(inv: CustomerInvoice) {
   if (Number(inv.igst) > 0) rows.push(["IGST", inv.igst]);
   if (Number(inv.discount) > 0) rows.push(["Discount", -inv.discount]);
   for (const [k, v] of rows) { doc.text(k, 130, y); doc.text(r(v), 175, y); y += 6; }
-  doc.setFont(undefined, "bold"); doc.text("Total", 130, y); doc.text(r(inv.total), 175, y); doc.setFont(undefined, "normal");
+  doc.setFont("helvetica", "bold"); doc.text("Total", 130, y); doc.text(r(inv.total), 175, y); doc.setFont("helvetica", "normal");
   doc.setFontSize(8); doc.text("Computer-generated invoice. No signature required.", 14, 285);
   doc.save(`${inv.invoice_no.replace(/\//g, "-")}.pdf`);
 }
@@ -50,6 +50,6 @@ export async function downloadCreditNotePdf(cn: CreditNote, company: Record<stri
     if (k === "IGST" && !Number(v)) continue;
     doc.text(k, 130, y); doc.text(r(v), 175, y); y += 6;
   }
-  doc.setFont(undefined, "bold"); doc.text("Total credit", 130, y); doc.text(r(cn.total), 175, y);
+  doc.setFont("helvetica", "bold"); doc.text("Total credit", 130, y); doc.text(r(cn.total), 175, y);
   doc.save(`${cn.credit_note_no.replace(/\//g, "-")}.pdf`);
 }
