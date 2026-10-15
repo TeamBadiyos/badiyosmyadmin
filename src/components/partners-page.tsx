@@ -1,3 +1,4 @@
+import { FilterBar, FilterField, filterSelectCls, countLabel } from "@/components/section-chrome";
 import { DateInput } from "@/components/date-input";
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,14 +50,10 @@ export function PartnersPage({ role }: { role: string | null }) {
   const [tab, setTab] = useState<"partners" | "payouts" | "settings">("partners");
   return (
     <div className="space-y-4">
-      <div>
-        
-        <p className="text-sm text-muted-foreground">Growth Partners, Zone Franchise and City Master. Commission is worked out only when you generate a payout.</p>
-      </div>
       <div className="flex gap-2 overflow-x-auto">
         {(["partners", "payouts", "settings"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-            {t === "partners" ? "Partners" : t === "payouts" ? "Payouts" : "Settings & Switches"}
+            {t === "partners" ? "Partners" : t === "payouts" ? "Payouts" : "Settings"}
           </button>
         ))}
       </div>
@@ -85,22 +82,26 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <select className={`${input} w-auto`} value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
+      <FilterBar count={countLabel(rows.length, "partner")}>
+        <FilterField label="Program">
+        <select className={filterSelectCls} value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
           <option value="all">All programs</option>
           {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select className={`${input} w-auto`} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        </FilterField>
+        <FilterField label="Status">
+        <select className={filterSelectCls} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+        </FilterField>
         {isAdmin && (
-          <button className={`${btnPrimary} ml-auto`} onClick={() => setEditing({ program: "growth", status: "active", fee_collected_at: new Date().toISOString().slice(0, 10), agreement_start: new Date().toISOString().slice(0, 10) })}>
+          <button className={btnPrimary} onClick={() => setEditing({ program: "growth", status: "active", fee_collected_at: new Date().toISOString().slice(0, 10), agreement_start: new Date().toISOString().slice(0, 10) })}>
             <Plus className="h-4 w-4" /> Add partner
           </button>
         )}
-      </div>
+      </FilterBar>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
