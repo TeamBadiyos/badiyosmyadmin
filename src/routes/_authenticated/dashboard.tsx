@@ -605,34 +605,20 @@ function Shell() {
         </div>
       </header>
 
-      {/* Hub sub-tabs */}
-      {activeGroup && activeGroup.items.length > 1 && (
-        <div className="sticky top-16 z-10 bg-card border-b border-border px-2 sm:px-8">
-          <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {activeGroup.items.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.key === active;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    setActive(item.key);
-                    setNavNonce((n) => n + 1);
-                  }}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-3 text-[13px] font-semibold whitespace-nowrap border-b-2 transition-colors ${
-                    isActive
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Icon size={15} strokeWidth={isActive ? 2.25 : 2} />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Hub sub-tabs (shared strip) + slot for page-owned tabs, both directly under the top bar */}
+      <div className="sticky top-16 z-10">
+        {activeGroup && activeGroup.items.length > 1 && (
+          <TabStrip
+            items={activeGroup.items.map((i) => ({ key: i.key, label: i.label, icon: i.icon }))}
+            active={active}
+            onChange={(k) => {
+              setActive(k as NavKey);
+              setNavNonce((n) => n + 1);
+            }}
+          />
+        )}
+        <div id={SECTION_TABS_SLOT_ID} />
+      </div>
 
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
