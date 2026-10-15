@@ -223,6 +223,36 @@ export const setCategoryActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const deleteCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { count } = await context.supabase
+      .from("services").select("id", { count: "exact", head: true }).eq("category_id", data.id);
+    if ((count ?? 0) > 0) throw new Error("Delete the options inside this category first.");
+    const { error } = await context.supabase.from("service_categories").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setPriceOptionActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; active: boolean }) => {
+    if (!input?.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await requireCatalogueStaff(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("service_price_options").update({ is_active: data.active }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const setSegmentActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string; active: boolean }) => {
