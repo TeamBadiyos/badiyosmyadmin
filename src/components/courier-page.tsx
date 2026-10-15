@@ -1664,9 +1664,17 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
 
   const rows = data ?? [];
 
+  const typeVal = multiStop ? "multi" : business === "any" ? "business" : business ? business : "";
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          placeholder="Search code, customer, phone"
+          className={`${inputCls} max-w-[260px]`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <select
           className={`${inputCls} max-w-[200px]`}
           value={status}
@@ -1679,66 +1687,92 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
             </option>
           ))}
         </select>
-        <input
-          placeholder="Search order code"
-          className={`${inputCls} max-w-[240px]`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label className="flex items-center gap-2 rounded-[10px] border border-border px-3 text-[12px] font-semibold text-foreground">
-          <input type="checkbox" checked={multiStop} onChange={(e) => setMultiStop(e.target.checked)} />
-          Multi-stop
-        </label>
         <select
           className={`${inputCls} max-w-[220px]`}
-          value={business}
-          onChange={(e) => setBusiness(e.target.value)}
+          value={typeVal}
+          onChange={(e) => {
+            const v = e.target.value;
+            setMultiStop(v === "multi");
+            setBusiness(v === "business" ? "any" : v === "" || v === "multi" ? "" : v);
+          }}
         >
-          <option value="">All orders</option>
-          <option value="any">Business trips only</option>
+          <option value="">All types</option>
+          <option value="multi">Multi-stop</option>
+          <option value="business">Business (all)</option>
           {(bizList ?? []).map((b) => (
             <option key={b.merchant_id} value={b.merchant_id}>
-              {b.business_name}
+              {`Business · ${b.business_name}`}
             </option>
           ))}
         </select>
+        <span className="ml-auto text-[12px] text-muted-foreground">{rows.length} orders</span>
       </div>
 
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">No courier orders found.</p>
-      ) : null}
-
-      {rows.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => setSelected(o)}
-          className="block w-full rounded-[16px] border border-border bg-card p-4 text-left hover:bg-muted/40"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[14px] font-bold text-foreground">{o.order_code}</span>
-              <Pill tone="info">{o.status}</Pill>
-              {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
-              {o.pickup_count > 1 || o.drop_count > 1 ? (
-                <Pill tone="off">{`${o.pickup_count}P · ${o.drop_count}D`}</Pill>
-              ) : null}
-              {o.returnPaymentPending ? <Pill tone="warn">Return payment pending</Pill> : null}
-              {o.businessName ? <Pill tone="ok">{`Business · ${o.businessName}`}</Pill> : null}
-            </div>
-            <OrderPaymentSummary
-              className="shrink-0 text-right"
-              paid={String(o.payment_status ?? "").toLowerCase() === "paid" ? o.total_amount : 0}
-              base={o.base_amount}
-              coupon={o.discount_amount}
-              gst={o.gst_amount}
-            />
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            {o.customerName ?? "Customer"} · {o.riderName ?? "No rider"} ·{" "}
-            {new Date(o.created_at).toLocaleString()}
-          </p>
-        </button>
-      ))}
+      ) : (
+        <div className="overflow-x-auto rounded-[16px] border border-border bg-card">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2.5">Code</th>
+                <th className="px-3 py-2.5">Customer</th>
+                <th className="px-3 py-2.5">Rider</th>
+                <th className="px-3 py-2.5">Stops</th>
+                <th className="px-3 py-2.5 text-right">Amount</th>
+                <th className="px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5">Placed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((o) => {
+                const cancelled = String(o.status).toLowerCase().includes("cancel");
+                const refunded = (o.refund_status ?? "none") !== "none";
+                return (
+                  <tr
+                    key={o.id}
+                    onClick={() => setSelected(o)}
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40"
+                  >
+                    <td className="px-3 py-2.5 font-bold text-foreground">
+                      {o.order_code}
+                      {o.businessName ? <div className="text-[11px] font-normal text-muted-foreground">{o.businessName}</div> : null}
+                    </td>
+                    <td className="px-3 py-2.5 text-foreground">{o.customerName ?? "Customer"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{o.riderName ?? "No rider"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{`${o.pickup_count}P · ${o.drop_count}D`}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      {cancelled && !refunded ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : cancelled ? (
+                        <span className="text-muted-foreground">Refund {o.refund_status}</span>
+                      ) : (
+                        <OrderPaymentSummary
+                          className="text-right"
+                          paid={String(o.payment_status ?? "").toLowerCase() === "paid" ? o.total_amount : 0}
+                          base={o.base_amount}
+                          coupon={o.discount_amount}
+                          gst={o.gst_amount}
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        <Pill tone={toneFor(o.status)}>{o.status}</Pill>
+                        {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+                        {o.returnPaymentPending ? <Pill tone="warn">Return pending</Pill> : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                      {new Date(o.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected ? (
         <OrderDetail
