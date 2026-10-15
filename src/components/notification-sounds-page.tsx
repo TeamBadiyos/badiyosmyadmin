@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Upload, Play, Pause, Volume2, Clock } from "lucide-react";
+import { Upload, Play, Pause, Clock, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listNotificationSounds,
@@ -99,73 +100,42 @@ function SoundRow({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <Volume2 size={15} className="text-muted-foreground" />
-          <span className="text-[14px] font-semibold text-foreground">{row.label}</span>
-          {!row.is_active && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              Inactive
-            </span>
-          )}
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+    <tr className="border-b border-border last:border-0">
+      <td className="p-3 font-semibold text-foreground">{row.label}</td>
+      <td className="p-3">
+        <div className="flex flex-wrap gap-1.5">
           {(row.applies_to ?? []).map((a) => (
-            <span
-              key={a}
-              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold capitalize text-primary"
-            >
-              {a}
-            </span>
+            <span key={a} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold capitalize text-primary">{a}</span>
           ))}
-          <span className="text-[11px] text-muted-foreground">{row.event_key}</span>
         </div>
-        <p className="mt-1 truncate text-[12px] text-muted-foreground">
-          {row.audio_url ? row.audio_url : "No audio uploaded yet"}
-        </p>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={togglePlay}
-          disabled={!row.audio_url}
-          className="inline-flex h-9 items-center gap-1.5 rounded-[8px] border border-border px-3 text-[13px] font-semibold text-foreground disabled:opacity-40"
-        >
+      </td>
+      <td className="p-3">
+        <button type="button" onClick={togglePlay} disabled={!row.audio_url} aria-label="Play" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border disabled:opacity-40">
           {playing ? <Pause size={14} /> : <Play size={14} />}
-          {playing ? "Stop" : "Preview"}
         </button>
+      </td>
+      <td className="p-3">
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${!row.is_active ? "bg-muted text-muted-foreground" : row.audio_url ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}>
+          {!row.is_active ? "Disabled" : row.audio_url ? "Uploaded" : "Missing"}
+        </span>
+      </td>
+      <td className="p-3 text-right">
         {canEdit && (
           <>
-            <input
-              ref={fileRef}
-              type="file"
-              accept={ACCEPT}
-              className="hidden"
-              onChange={(e) => void handleFile(e.target.files?.[0])}
-            />
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-primary px-3 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              <Upload size={14} />
-              {busy ? "Working…" : row.audio_url ? "Replace" : "Upload"}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void toggleActive()}
-              className="h-9 rounded-[8px] border border-border px-3 text-[13px] font-semibold text-muted-foreground disabled:opacity-50"
-            >
-              {row.is_active ? "Disable" : "Enable"}
-            </button>
+            <input ref={fileRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button disabled={busy} aria-label="More" className="h-8 w-8 rounded-[8px] hover:bg-muted inline-flex items-center justify-center"><MoreHorizontal size={16} /></button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => fileRef.current?.click()}><Upload size={14} className="mr-2" />{row.audio_url ? "Replace" : "Upload"}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void toggleActive()}>{row.is_active ? "Disable" : "Enable"}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
@@ -227,18 +197,17 @@ export function NotificationSoundsPage({ role }: { role: StaffRole | null }) {
 
   return (
     <div className="mx-auto w-full max-w-[900px]">
-      
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        Custom alert audio played across the Partner and Customer apps. Max 2MB per file.
-      </p>
-
-      <div className="mt-6 space-y-3">
+      <p className="text-[13px] text-muted-foreground">Max 2 MB per file.</p>
+      <div className="mt-3 rounded-[14px] border border-border bg-card overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <thead><tr className="text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/40">
+            <th className="p-3">Sound</th><th className="p-3">Used in</th><th className="p-3">Play</th><th className="p-3">Status</th><th className="p-3"></th>
+          </tr></thead>
+          <tbody>
         {isLoading ? (
-          <p className="text-[13px] text-muted-foreground">Loading…</p>
+          <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Loading…</td></tr>
         ) : error ? (
-          <p className="text-[13px] text-destructive">
-            {error instanceof Error ? error.message : "Failed to load"}
-          </p>
+          <tr><td colSpan={5} className="p-6 text-center text-destructive">{error instanceof Error ? error.message : "Failed to load"}</td></tr>
         ) : (
           (data ?? []).map((row) => (
             <SoundRow
@@ -249,6 +218,8 @@ export function NotificationSoundsPage({ role }: { role: StaffRole | null }) {
             />
           ))
         )}
+          </tbody>
+        </table>
       </div>
 
       <ExtensionRequests />
