@@ -89,7 +89,7 @@ export function DashboardOverview({ onNavigate }: { onNavigate: (key: string) =>
               <div className="mt-3 space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-muted-foreground">GMV</span><span className="font-semibold">{inr(v.gmv)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Badiyos earning</span><span className="font-semibold">{inr(v.earning)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">{s.key === "maid" || s.key === "wash" ? "Slot utilisation" : "Riders busy"}</span><span className="font-semibold">{v.utilisation == null ? "—" : `${v.utilisation}%`}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground flex items-center gap-1">{s.key === "maid" || s.key === "wash" ? "Slot utilisation" : <>Riders busy <span className="rounded bg-primary/10 px-1.5 text-[10px] font-semibold uppercase text-primary">Live</span></>}</span><span className="font-semibold">{v.utilisation == null ? "—" : `${v.utilisation}%`}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Notify me</span><span className="font-semibold">{n.tried ?? 0} / {n.notified ?? 0} / {n.converted ?? 0}</span></div>
               </div>
             </button>

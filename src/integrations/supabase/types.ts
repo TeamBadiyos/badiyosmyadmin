@@ -5029,6 +5029,7 @@ export type Database = {
           refund_next_attempt_at: string | null
           refund_reason: string | null
           refund_status: string | null
+          refunded_at: string | null
           reject_reason: string | null
           rider_share_amount: number
           source: string
@@ -5091,6 +5092,7 @@ export type Database = {
           refund_next_attempt_at?: string | null
           refund_reason?: string | null
           refund_status?: string | null
+          refunded_at?: string | null
           reject_reason?: string | null
           rider_share_amount?: number
           source?: string
@@ -5153,6 +5155,7 @@ export type Database = {
           refund_next_attempt_at?: string | null
           refund_reason?: string | null
           refund_status?: string | null
+          refunded_at?: string | null
           reject_reason?: string | null
           rider_share_amount?: number
           source?: string

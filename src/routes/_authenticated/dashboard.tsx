@@ -205,13 +205,13 @@ const NAV_GROUPS = [
   },
   {
     id: "clean",
-    label: "Clean · Maid / Home Care",
+    label: "Clean Home",
     icon: Boxes,
     keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "skills", "training-orders", "task-types", "maid-settings"],
   },
   {
     id: "wash",
-    label: "Clean · Car & Bike Wash",
+    label: "Clean Auto",
     icon: Boxes,
     keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-settings"],
   },
