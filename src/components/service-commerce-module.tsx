@@ -506,7 +506,7 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
       <div className="rounded-lg border bg-card p-4 space-y-1 text-sm">
         <Row k="Owner" v={s.owner_name || "—"} /><Row k="Phone" v={s.phone || "—"} /><Row k="City" v={s.city || "—"} />
         <Row k="Address" v={<span className="text-right max-w-[60%] inline-block">{s.address || "—"}</span>} />
-        <Row k="GSTIN" v={s.gstin || "—"} /><Row k="Approval" v={<Badge variant="outline">{s.status}</Badge>} />
+        <Row k="GSTIN" v={s.gstin || "—"} /><Row k="PAN" v={s.pan || "—"} /><Row k="Bank" v={s.bank_account_number ? `${s.bank_account_holder_name || "—"} · ••••${String(s.bank_account_number).slice(-4)}` : <span className="text-destructive font-semibold">Bank details pending</span>} /><Row k="Approval" v={<Badge variant="outline">{s.status}</Badge>} />
         <Row k="Rating" v={Number(s.rating_count) >= 3 ? `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` : ""} />
       </div>
       <div className="rounded-lg border bg-card p-4 space-y-4">
