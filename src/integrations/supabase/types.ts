@@ -12069,6 +12069,10 @@ export type Database = {
         }
         Returns: Json
       }
+      staff_set_service_visible: {
+        Args: { _active: boolean; _flag_id: string }
+        Returns: Json
+      }
       staff_set_slot_full: {
         Args: {
           _date: string
