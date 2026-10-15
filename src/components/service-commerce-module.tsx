@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
+import { ClipboardList, Store as StoreIcon, CheckCircle2, Tags, Megaphone, Settings } from "lucide-react";
 import { ServiceHoursPanel } from "@/components/ops-panels";
 import { StoreSettingsPage } from "@/components/store-settings-page";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -72,22 +74,18 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
   const appr = useQuery({ queryKey: ["svc", service, "approvals"], queryFn: () => approvalsFn({ data: { service } }) });
   const pending = (appr.data?.stores ?? []).reduce((a: number, s: any) => a + s.products.length, 0);
 
-  const tabs: { k: Tab; label: string }[] = [
-    { k: "orders", label: "Orders" }, { k: "stores", label: L.stores }, { k: "approvals", label: "Approvals" },
-    { k: "categories", label: "Categories" }, { k: "sponsored", label: "Sponsored" }, { k: "settings", label: "Settings" },
+  const tabs: { k: Tab; label: string; icon: any }[] = [
+    { k: "orders", label: "Orders", icon: ClipboardList }, { k: "stores", label: L.stores, icon: StoreIcon }, { k: "approvals", label: "Approvals", icon: CheckCircle2 },
+    { k: "categories", label: "Categories", icon: Tags }, { k: "sponsored", label: "Sponsored", icon: Megaphone }, { k: "settings", label: "Settings", icon: Settings },
   ];
   useReportPageTab(tabs.find((t) => t.k === tab)?.label ?? null);
   return (
-    <div className="space-y-4" key={service}>
-      <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)}
-            className={`px-3 py-2 text-sm font-semibold border-b-2 whitespace-nowrap ${tab === t.k ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-            {t.label}
-            {t.k === "approvals" && pending > 0 && <Badge className="ml-1.5 h-5 px-1.5">{pending}</Badge>}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-6" key={service}>
+      <SectionTabs
+        items={tabs.map((t) => ({ key: t.k, label: t.label, icon: t.icon, badge: t.k === "approvals" ? pending : undefined }))}
+        active={tab}
+        onChange={setTab}
+      />
       {tab === "orders" && <OrdersTab service={service} />}
       {tab === "stores" && <StoresTab service={service} role={role} />}
       {tab === "approvals" && <ApprovalsTab service={service} />}
@@ -152,54 +150,59 @@ function OrdersTab({ service }: { service: Svc }) {
     });
   }, [r.data, status, store, sort]);
   const H = ({ k, l, right }: { k: OSort; l: string; right?: boolean }) => (
-    <th className={`p-3 font-semibold ${right ? "text-right" : "text-left"}`}>
-      <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => setSort((s) => ({ k, asc: s.k === k ? !s.asc : true }))}>
+    <th className={`${tableCls.th} ${right ? "text-right" : ""}`}>
+      <button className="inline-flex items-center gap-1 uppercase hover:text-foreground" onClick={() => setSort((s) => ({ k, asc: s.k === k ? !s.asc : true }))}>
         {l}{sort.k === k ? (sort.asc ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : null}
       </button>
     </th>
   );
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
-          <Input className="pl-8 w-64" placeholder="Customer, order no or phone" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-          {ORDER_STATUS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
-        </select>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm max-w-48" value={store} onChange={(e) => setStore(e.target.value)}>
-          <option value="">All {L.stores.toLowerCase()}</option>
-          {(stores.data ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
-        </select>
-        <Input type="date" className="w-40" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" />
-        <Input type="date" className="w-40" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" />
-        <span className="text-sm text-muted-foreground ml-auto">{rows.length} orders</span>
-      </div>
-      <div className="rounded-xl border bg-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground border-b"><tr>
+    <div className="space-y-6">
+      <FilterBar count={countLabel(rows.length, "order")}>
+        <FilterField label="Search">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input className={`${filterInputCls} pl-8 min-w-[230px]`} placeholder="Customer, order no or phone" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+        </FilterField>
+        <FilterField label="Status">
+          <select className={filterSelectCls} value={status} onChange={(e) => setStatus(e.target.value)}>
+            {ORDER_STATUS.map((s) => <option key={s.v} value={s.v}>{s.v ? s.l : "All statuses"}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label={L.store}>
+          <select className={`${filterSelectCls} max-w-56`} value={store} onChange={(e) => setStore(e.target.value)}>
+            <option value="">All {L.stores.toLowerCase()}</option>
+            {(stores.data ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label="From"><input type="date" className={filterInputCls} value={from} onChange={(e) => setFrom(e.target.value)} /></FilterField>
+        <FilterField label="To"><input type="date" className={filterInputCls} value={to} onChange={(e) => setTo(e.target.value)} /></FilterField>
+      </FilterBar>
+      <div className={tableCls.wrap}><div className={tableCls.scroll}>
+        <table className={tableCls.table}>
+          <thead className={tableCls.thead}><tr>
             <H k="customer" l="Customer" /><H k="store" l={L.store} /><H k="items" l="Items" right /><H k="amount" l="Amount" right />
             <H k="status" l="Status" /><H k="rider" l="Rider" /><H k="placed" l="Placed" />
           </tr></thead>
           <tbody>
-            {r.isLoading && <tr><td colSpan={7} className="p-4 text-muted-foreground">Loading…</td></tr>}
+            {r.isLoading && <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</td></tr>}
             {r.error && <tr><td colSpan={7} className="p-4 text-destructive">{errMsg(r.error)}</td></tr>}
-            {r.data && rows.length === 0 && <tr><td colSpan={7} className="p-4 text-muted-foreground">No orders.</td></tr>}
+            {r.data && rows.length === 0 && <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No orders.</td></tr>}
             {rows.map((o: any) => (
-              <tr key={o.id} onClick={() => setOpenId(o.id)} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
-                <td className="p-3"><p className="font-semibold">{o.customer_name || "Customer"}</p><p className="text-xs text-muted-foreground">{o.order_number}</p></td>
-                <td className="p-3">{o.store_name}</td>
-                <td className="p-3 text-right">{o.item_count ?? o.items_count ?? "—"}</td>
-                <td className="p-3 text-right font-semibold">{inr(o.total_payable ?? o.total_amount)}</td>
-                <td className="p-3 capitalize">{o.refund_status === "done" ? "Refunded" : String(o.status ?? "").replace("_", " ")}</td>
-                <td className="p-3">{o.rider_name || "—"}</td>
-                <td className="p-3 whitespace-nowrap text-muted-foreground">{dt(o.created_at)}</td>
+              <tr key={o.id} onClick={() => setOpenId(o.id)} className={tableCls.tr}>
+                <td className={tableCls.td}><p className="font-semibold">{o.customer_name || "Customer"}</p><p className="text-xs text-muted-foreground">{o.order_number}</p></td>
+                <td className={tableCls.td}>{o.store_name}</td>
+                <td className={`${tableCls.td} text-right`}>{o.item_count ?? o.items_count ?? "—"}</td>
+                <td className={`${tableCls.td} text-right font-semibold`}>{inr(o.total_payable ?? o.total_amount)}</td>
+                <td className={tableCls.td}><StatusPill status={o.refund_status === "done" ? "refunded" : o.status} /></td>
+                <td className={tableCls.td}>{o.rider_name || "—"}</td>
+                <td className={`${tableCls.td} whitespace-nowrap text-muted-foreground`}>{dt(o.created_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </div></div>
       {openId && <OrderDetail id={openId} service={service} storeLabel={L.store} onClose={() => setOpenId(null)} />}
     </div>
   );

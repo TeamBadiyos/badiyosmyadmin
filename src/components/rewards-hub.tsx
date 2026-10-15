@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Ticket, Gift, CalendarDays, Award } from "lucide-react";
+import { SectionTabs } from "@/components/section-chrome";
 import { useReportPageTab } from "@/lib/page-tab";
 import { CouponsTab, useOffersAccess } from "@/components/offers-page";
 import { LuckyDrawPage } from "@/components/lucky-draw-page";
@@ -13,6 +15,8 @@ const LABELS: Record<RewardsTab, string> = {
   programs: "Programs",
 };
 
+const ICONS = { coupons: Ticket, lucky: Gift, events: CalendarDays, programs: Award } as const;
+
 /** Rewards: Coupons · Lucky Draw · Events · Programs. */
 export function RewardsHub({ role, initialTab = "coupons" }: { role: string | null; initialTab?: RewardsTab }) {
   const access = useOffersAccess();
@@ -22,22 +26,8 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
   useReportPageTab(LABELS[tab]);
 
   return (
-    <div className="space-y-5">
-      {tabs.length > 1 && (
-        <div className="flex gap-1 border-b border-border">
-          {tabs.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-[14px] font-semibold transition-colors ${
-                tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {LABELS[t]}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="space-y-6">
+      <SectionTabs items={tabs.map((t) => ({ key: t, label: LABELS[t], icon: ICONS[t] }))} active={tab} onChange={setTab} />
       {tab === "coupons" && <CouponsTab canWrite={access?.canWrite ?? false} />}
       {tab === "lucky" && <LuckyDrawPage />}
       {tab === "events" && <EventOffersPage />}
