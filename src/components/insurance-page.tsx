@@ -40,6 +40,16 @@ function daysUntil(d: string | null) {
   if (!d) return null;
   return Math.round((new Date(d).getTime() - new Date(todayIST()).getTime()) / 86400_000);
 }
+/** Expiry more than 2 years in the past is likely a typo. */
+function needsDateCheck(d: string | null) {
+  const n = daysUntil(d);
+  return n !== null && n < -730;
+}
+function CheckDate({ d }: { d: string | null }) {
+  return needsDateCheck(d) ? (
+    <span className="ml-1.5 inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-50 text-amber-700">Check date</span>
+  ) : null;
+}
 function fmtDate(d: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" });
@@ -56,7 +66,7 @@ export function InsurancePage({ role }: { role: Role }) {
   const [formFor, setFormFor] = useState<VehicleRow | "new" | null>(null);
   const fetchList = useServerFn(listVehicles);
   const fetchOpts = useServerFn(getInsuranceOptions);
-  const list = useQuery({ queryKey: ["insurance", "list"], queryFn: () => fetchList(), enabled: canView });
+  const list = useQuery({ queryKey: ["insurance", "list"], queryFn: () => fetchList(), enabled: canView, refetchInterval: 30_000 });
   const opts = useQuery({ queryKey: ["insurance", "opts"], queryFn: () => fetchOpts(), enabled: canView });
 
   if (!canView) return <p className="text-[14px] text-muted-foreground">You do not have access to Insurance.</p>;
@@ -92,13 +102,7 @@ export function InsurancePage({ role }: { role: Role }) {
           ))}
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => list.refetch()}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card hover:bg-muted"
-            aria-label="Refresh"
-          >
-            <RefreshCw size={15} className={list.isFetching ? "animate-spin" : ""} />
-          </button>
+
           <button
             onClick={() => setFormFor("new")}
             className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-semibold inline-flex items-center gap-2"
@@ -198,7 +202,7 @@ function VehicleCard({ v, onOpen }: { v: VehicleRow; onOpen: (id: string) => voi
       </div>
       <p className="text-[13px]">{v.customerName}</p>
       <p className="text-[12px] text-muted-foreground">
-        Expiry {fmtDate(v.insuranceExpiry)}
+        Expiry {fmtDate(v.insuranceExpiry)}<CheckDate d={v.insuranceExpiry} />
         {d !== null && (d < 0 ? ` · ${-d}d ago` : ` · in ${d}d`)}
       </p>
       <ContactButtons v={v} />
@@ -369,7 +373,7 @@ function VehicleList({ rows, onOpen }: { rows: VehicleRow[]; onOpen: (id: string
                   </span>
                 </td>
                 <td className="p-3">{v.insurer ?? "—"}</td>
-                <td className="p-3">{fmtDate(v.insuranceExpiry)}</td>
+                <td className="p-3">{fmtDate(v.insuranceExpiry)}<CheckDate d={v.insuranceExpiry} /></td>
                 <td className="p-3">{fmtDate(v.pucExpiry)}</td>
                 <td className="p-3">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_CLS[v.status]}`}>{STATUS_LABEL[v.status]}</span>
@@ -586,7 +590,7 @@ function LeadDetail({
           {v.vehicleType === "car" ? "Car" : "Bike"} · {v.makeModel ?? "—"} · {v.insurer ?? "—"}
         </p>
         <p className="text-muted-foreground">
-          Insurance {fmtDate(v.insuranceExpiry)} · PUC {fmtDate(v.pucExpiry)}
+          Insurance {fmtDate(v.insuranceExpiry)}<CheckDate d={v.insuranceExpiry} /> · PUC {fmtDate(v.pucExpiry)}
           {v.expertName ? ` · Expert ${v.expertName}` : ""}
         </p>
         <div className="pt-2"><ContactButtons v={v} /></div>

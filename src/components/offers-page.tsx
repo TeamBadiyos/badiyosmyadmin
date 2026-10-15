@@ -1,5 +1,5 @@
 import { DateInput } from "@/components/date-input";
-import { FilterBar, FilterField, filterInputCls, countLabel } from "@/components/section-chrome";
+import { FilterBar, FilterField, filterInputCls, countLabel, tableCls, StatusPill } from "@/components/section-chrome";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,6 +26,7 @@ import {
   searchCampaignCustomers,
   saveCampaign,
   sendCampaign,
+  sendCampaignTest,
   type CouponRow,
   type MilestoneRow,
   type CampaignRow,
@@ -1113,82 +1114,124 @@ export function CampaignsTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [failFor, setFailFor] = useState<CampaignRow | null>(null);
+  const [testFor, setTestFor] = useState<CampaignRow | null>(null);
+  const save = useServerFn(saveCampaign);
+  const dupMut = useMutation({
+    mutationFn: (c: CampaignRow) =>
+      save({
+        data: {
+          id: null,
+          title: `${c.title} (copy)`,
+          body: c.body,
+          image_url: c.image_url,
+          deep_link: c.deep_link,
+          audience: c.audience,
+          show_in_offers: c.show_in_offers,
+          target_user_ids: c.target_user_ids,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Campaign duplicated as a draft");
+      qc.invalidateQueries({ queryKey: ["offers", "campaigns"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-[13px] text-muted-foreground">
-          {role === "ops_manager"
-            ? `You can send campaigns to ${city ?? "your assigned city"} only.`
-            : "Scheduling is not enabled yet — campaigns are sent immediately."}
-        </p>
-        {canWrite && (
-          <button className={primaryBtn} onClick={() => setEditing("new")}>
-            <Plus size={16} /> New campaign
-          </button>
-        )}
-      </div>
-
-      <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
-        <div className="min-w-[860px]">
-          <div className="grid grid-cols-[minmax(0,1.4fr)_140px_120px_150px_170px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Campaign</span>
-            <span>Audience</span>
-            <span>Status</span>
-            <span>Sent</span>
-            <span className="text-right">Actions</span>
-          </div>
-          {isLoading && (
-            <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
-          )}
-          {!isLoading && data.length === 0 && (
-            <p className="text-[13px] text-muted-foreground text-center py-10">
-              No campaigns yet.
-            </p>
-          )}
-          {data.map((c) => (
-            <div
-              key={c.id}
-              className="grid grid-cols-[minmax(0,1.4fr)_140px_120px_150px_170px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]"
-            >
-              <button className="text-left min-w-0" onClick={() => setDetail(c)}>
-                <p className="font-bold truncate">{c.title}</p>
-                <p className="text-[12px] text-muted-foreground truncate">{c.body}</p>
+      <FilterBar
+        count={
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-muted-foreground">{countLabel(data.length, "campaign")}</span>
+            {canWrite && (
+              <button className={primaryBtn} onClick={() => setEditing("new")}>
+                <Plus size={16} /> New campaign
               </button>
-              <span className="text-[13px]">{audienceLabel(c)}</span>
-              <span>
-                <span
-                  className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
-                    c.status === "sent"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {c.status}
-                </span>
-              </span>
-              <span className="text-[12px] text-muted-foreground">
-                {c.status === "sent"
-                  ? `${c.delivered} delivered · ${c.failed} failed`
-                  : "—"}
-              </span>
-              <div className="flex justify-end gap-2">
-                {canWrite && c.status !== "sent" && (
-                  <>
-                    <button className={ghostBtn} onClick={() => setEditing(c)}>
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      className={primaryBtn}
-                      disabled={sendMut.isPending}
-                      onClick={() => setConfirmSend(c)}
-                    >
-                      <Send size={14} /> Send now
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+            )}
+          </div>
+        }
+      >
+        <p className="text-[12px] text-muted-foreground">
+          {role === "ops_manager" ? `Only ${city ?? "your city"}.` : "Sent immediately."}
+        </p>
+      </FilterBar>
+
+      <div className={tableCls.wrap}>
+        <div className={tableCls.scroll}>
+          <table className={`${tableCls.table} min-w-[920px]`}>
+            <thead className={tableCls.thead}>
+              <tr>
+                <th className={tableCls.th}>Campaign</th>
+                <th className={tableCls.th}>Channel</th>
+                <th className={tableCls.th}>Audience</th>
+                <th className={tableCls.th}>Sent on</th>
+                <th className={`${tableCls.th} text-right`}>Delivered</th>
+                <th className={`${tableCls.th} text-right`}>Failed</th>
+                <th className={tableCls.th}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
+              )}
+              {!isLoading && data.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No campaigns yet.</td></tr>
+              )}
+              {data.map((c) => {
+                const total = c.delivered + c.failed;
+                const pct = total ? Math.round((c.failed / total) * 100) : 0;
+                const sent = c.status === "sent";
+                return (
+                  <tr key={c.id} className={tableCls.tr} onClick={() => setDetail(c)}>
+                    <td className={`${tableCls.td} max-w-[360px]`}>
+                      <p className="font-bold truncate">{c.title}</p>
+                      <p className="text-[12px] text-muted-foreground truncate">{c.body}</p>
+                    </td>
+                    <td className={tableCls.td}><StatusPill status="confirmed" label="Push" /></td>
+                    <td className={tableCls.td}>{audienceLabel(c)}</td>
+                    <td className={tableCls.td}>
+                      {sent ? fmtDate(c.sent_at) : <StatusPill status="pending" label="Draft" />}
+                    </td>
+                    <td className={`${tableCls.td} text-right font-semibold`}>{sent ? c.delivered : "—"}</td>
+                    <td className={`${tableCls.td} text-right`}>
+                      {sent && c.failed > 0 ? (
+                        <button
+                          className="font-semibold text-destructive hover:underline"
+                          onClick={(e) => { e.stopPropagation(); setFailFor(c); }}
+                        >
+                          {c.failed} ({pct}%)
+                        </button>
+                      ) : sent ? "0" : "—"}
+                    </td>
+                    <td className={`${tableCls.td} text-right`} onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2 items-center">
+                        {canWrite && !sent && (
+                          <button className={primaryBtn} disabled={sendMut.isPending} onClick={() => setTestFor(c)}>
+                            <Send size={14} /> Send
+                          </button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] hover:bg-muted">
+                            <MoreHorizontal size={16} />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setDetail(c)}>View</DropdownMenuItem>
+                            {canWrite && !sent && (
+                              <DropdownMenuItem onClick={() => setEditing(c)}>Edit</DropdownMenuItem>
+                            )}
+                            {canWrite && (
+                              <DropdownMenuItem onClick={() => dupMut.mutate(c)}>Duplicate</DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1198,6 +1241,13 @@ export function CampaignsTab({
           role={role}
           city={city}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {testFor && (
+        <TestSendModal
+          campaign={testFor}
+          onClose={() => setTestFor(null)}
+          onContinue={() => { setConfirmSend(testFor); setTestFor(null); }}
         />
       )}
       {confirmSend && (
@@ -1212,7 +1262,98 @@ export function CampaignsTab({
         />
       )}
       {detail && <DeliveriesModal campaign={detail} onClose={() => setDetail(null)} />}
+      {failFor && <FailureBreakdownModal campaign={failFor} onClose={() => setFailFor(null)} />}
     </div>
+  );
+}
+
+function failureReason(err: string | null): string {
+  const e = (err ?? "").toLowerCase();
+  if (!e) return "Unknown";
+  if (e.includes("not installed") || e.includes("no registered")) return "App not installed / no registered device";
+  if (e.includes("stale") || e.includes("unregistered") || e.includes("not_found") || e.includes("invalid_argument"))
+    return "Invalid / expired push token";
+  if (e.includes("unsubscrib")) return "Unsubscribed";
+  if (e.includes("template")) return "WhatsApp template error";
+  if (e.includes("not configured") || e.includes("service account") || e.includes("auth failed")) return "Push service setup error";
+  return "Other push error";
+}
+
+function FailureBreakdownModal({ campaign, onClose }: { campaign: CampaignRow; onClose: () => void }) {
+  const fetchRows = useServerFn(listCampaignDeliveries);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["offers", "deliveries", campaign.id],
+    queryFn: () => fetchRows({ data: { campaignId: campaign.id } }),
+  });
+  const failed = data.filter((d) => d.status === "failed");
+  const groups = Object.entries(
+    failed.reduce<Record<string, number>>((acc, d) => {
+      const k = failureReason(d.error);
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
+  return (
+    <Modal title={`${campaign.title} · why it failed`} onClose={onClose}>
+      {isLoading ? (
+        <p className="text-[13px] text-muted-foreground py-6">Loading…</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {groups.map(([reason, n]) => (
+            <div key={reason} className="py-3 flex items-center justify-between text-[14px]">
+              <span>{reason}</span>
+              <span className="font-bold">
+                {n} <span className="text-muted-foreground font-normal">({Math.round((n / failed.length) * 100)}%)</span>
+              </span>
+            </div>
+          ))}
+          {groups.length === 0 && <p className="py-6 text-[13px] text-muted-foreground">No failures.</p>}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function TestSendModal({
+  campaign,
+  onClose,
+  onContinue,
+}: {
+  campaign: CampaignRow;
+  onClose: () => void;
+  onContinue: () => void;
+}) {
+  const test = useServerFn(sendCampaignTest);
+  const [phone, setPhone] = useState(() => {
+    try { return window.localStorage.getItem("cc_test_phone") ?? ""; } catch { return ""; }
+  });
+  const [sent, setSent] = useState(false);
+  const mut = useMutation({
+    mutationFn: () => test({ data: { id: campaign.id, phone } }),
+    onSuccess: (r) => {
+      try { window.localStorage.setItem("cc_test_phone", phone); } catch { /* ignore */ }
+      setSent(true);
+      toast.success(`Test sent to ${r.devices} device${r.devices === 1 ? "" : "s"}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <Modal title="Send test to me" onClose={onClose}>
+      <div className="space-y-3">
+        <Field label="Your phone (customer app login)">
+          <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" />
+        </Field>
+        <p className="text-[12px] text-muted-foreground">Only this phone gets it, marked [TEST]. Check it looks right, then continue.</p>
+      </div>
+      <div className="flex justify-end gap-2 pt-5">
+        <button className={ghostBtn} disabled={mut.isPending || !phone} onClick={() => mut.mutate()}>
+          <Send size={14} /> {sent ? "Send test again" : "Send test"}
+        </button>
+        <button className={primaryBtn} onClick={onContinue}>
+          {sent ? "Looks good — continue" : "Skip test"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

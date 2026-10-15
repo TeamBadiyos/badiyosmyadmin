@@ -146,8 +146,8 @@ const NAV_ITEMS = [
   { key: "live-stores", label: "Live Stores", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
   { key: "users", label: "Customers", icon: Users },
-  { key: "waitlist", label: "Waitlist", icon: ListChecks },
-  { key: "interest-leads", label: "Business Leads", icon: Sprout },
+  { key: "waitlist", label: "Demand", icon: ListChecks },
+  { key: "interest-leads", label: "Leads", icon: Sprout },
   { key: "insurance", label: "Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
@@ -157,7 +157,7 @@ const NAV_ITEMS = [
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
-  { key: "homepage", label: "Homepage Builder", icon: LayoutTemplate },
+  { key: "homepage", label: "Homepage", icon: LayoutTemplate },
   { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
   { key: "partners", label: "Partner Program", icon: Handshake },
   { key: "referrals", label: "Referrals", icon: Gift },
@@ -249,7 +249,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["referrals", "campaigns", "waitlist", "interest-leads", "homepage", "insurance"],
+    keys: ["campaigns", "referrals", "waitlist", "interest-leads", "insurance", "homepage"],
   },
   {
     id: "finance",
@@ -377,7 +377,9 @@ function Shell() {
   );
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
+    items: visibleItems
+      .filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key))
+      .sort((a, b) => (g.id === "growth" ? (g.keys as ReadonlyArray<string>).indexOf(a.key) - (g.keys as ReadonlyArray<string>).indexOf(b.key) : 0)),
     isActive: (g.keys as ReadonlyArray<string>).includes(active),
   })).filter((g) => g.items.length > 0);
 

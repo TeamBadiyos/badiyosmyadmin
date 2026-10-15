@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, X, Save, Undo2 } from "lucide-react";
+import { Check, X, Save, Undo2, Settings2 } from "lucide-react";
 import { MilestonesTab, useOffersAccess } from "@/components/offers-page";
+import { FilterBar, FilterField, filterSelectCls, countLabel } from "@/components/section-chrome";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   getReferralConfig,
   updateReferralConfig,
@@ -30,32 +32,48 @@ export function ReferralsPage() {
   });
 
   const access = useOffersAccess();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
-    <div className="space-y-6">
-      <ConfigCard />
+    <div className="space-y-4">
+      <FilterBar
+        count={
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-muted-foreground">{countLabel(data.length, "referral")}</span>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="h-10 px-4 rounded-[12px] border border-border bg-card text-[13px] font-semibold inline-flex items-center gap-2 hover:bg-muted"
+            >
+              <Settings2 size={15} /> Settings
+            </button>
+          </div>
+        }
+      >
+        <FilterField label="Status">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className={filterSelectCls}>
+            <option value="">All statuses</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </FilterField>
+      </FilterBar>
 
-      <div className="space-y-2">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Referral milestones</p>
-        <MilestonesTab canWrite={access?.canWrite ?? false} />
-      </div>
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
-          Filter status
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
-        >
-          <option value="">All statuses</option>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-[640px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Referral settings</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6 pt-4">
+            <ConfigCard />
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Milestones</p>
+              <MilestonesTab canWrite={access?.canWrite ?? false} />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
 <div className="min-w-[820px]">

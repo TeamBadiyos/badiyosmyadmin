@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { RefreshCw, MapPin, BellRing } from "lucide-react";
+import { MapPin, BellRing } from "lucide-react";
+import { FilterBar, FilterField, filterSelectCls, countLabel } from "@/components/section-chrome";
+import { getInterestLeads } from "@/lib/interest-leads.functions";
 import { toast } from "sonner";
 import { getWaitlistOverview, notifyWaitlistArea } from "@/lib/waitlist.functions";
 
@@ -14,12 +16,54 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
   const fetchOverview = useServerFn(getWaitlistOverview);
   const notifyArea = useServerFn(notifyWaitlistArea);
 
-  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+  const fetchLeads = useServerFn(getInterestLeads);
+  const { data: raw, isLoading, isError, refetch } = useQuery({
     queryKey: ["waitlist", "overview", segmentId],
     queryFn: () => fetchOverview({ data: { segmentId: segmentId || null } }),
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
     enabled: canView,
   });
+  const { data: leads } = useQuery({
+    queryKey: ["interest-leads"],
+    queryFn: () => fetchLeads(),
+    refetchInterval: 30_000,
+    enabled: canView && !segmentId,
+  });
+
+  // Merge website "City requests" into the same city list.
+  const data = (() => {
+    if (!raw) return raw;
+    const cityLeads = segmentId ? [] : (leads?.city ?? []);
+    if (!cityLeads.length) return raw;
+    const groups = raw.groups.map((g) => ({ ...g, segments: [...g.segments] }));
+    const byCity = new Map<string, { n: number; latest: string }>();
+    for (const l of cityLeads) {
+      const k = (l.city || "Unknown city").trim();
+      const cur = byCity.get(k.toLowerCase());
+      byCity.set(k.toLowerCase(), {
+        n: (cur?.n ?? 0) + 1,
+        latest: !cur || l.created_at > cur.latest ? l.created_at : cur.latest,
+      });
+      if (!cur) byCity.set(`__name_${k.toLowerCase()}`, { n: 0, latest: k });
+    }
+    for (const [k, v] of byCity) {
+      if (k.startsWith("__name_")) continue;
+      const name = byCity.get(`__name_${k}`)!.latest;
+      const g = groups.find((x) => x.city.toLowerCase() === k);
+      const seg = { id: "__city_request", name: "Website city request", count: v.n };
+      if (g) {
+        g.segments.push(seg);
+        g.count += v.n;
+        g.waiting += v.n;
+        if (v.latest > g.latestAt) g.latestAt = v.latest;
+      } else {
+        groups.push({ key: `city-${k}`, city: name, area: "Website request", segments: [seg], count: v.n, waiting: v.n, notified: 0, latestAt: v.latest, websiteOnly: true } as typeof groups[number]);
+      }
+    }
+    groups.sort((x, y) => y.count - x.count);
+    return { ...raw, groups, total: raw.total + cityLeads.length };
+  })();
 
   if (!canView) {
     return (
@@ -30,80 +74,47 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground max-w-[520px]">
-          Demand signals from customers in areas we don&apos;t serve yet. Use this to
-          prioritise which zone to launch next.
-        </p>
-        <div className="flex items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Segment
-            </label>
-            <select
-              value={segmentId}
-              onChange={(e) => setSegmentId(e.target.value)}
-              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[180px]"
-            >
-              <option value="">All segments</option>
-              {(data?.segments ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+    <div className="space-y-4">
+      <div className="grid gap-3 grid-cols-3">
+        {[
+          { l: "Total", v: data?.total ?? 0 },
+          { l: "Waiting", v: (data?.total ?? 0) - (data?.totalNotified ?? 0) },
+          { l: "Notified", v: data?.totalNotified ?? 0 },
+        ].map((c) => (
+          <div key={c.l} className="rounded-[14px] border border-border bg-card px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{c.l}</p>
+            <p className="text-[22px] font-bold leading-tight">{c.v}</p>
           </div>
-          <button
-            onClick={() => refetch()}
-            className="h-10 px-4 rounded-[12px] border border-border bg-card text-[13px] font-semibold inline-flex items-center gap-2 hover:bg-muted"
-          >
-            <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} />
-            Refresh
-          </button>
-        </div>
+        ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-[16px] border border-border bg-card p-5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Total requests
-          </p>
-          <p className="text-[28px] font-bold leading-tight">{data?.total ?? 0}</p>
-        </div>
-        <div className="rounded-[16px] border border-border bg-card p-5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Still waiting
-          </p>
-          <p className="text-[28px] font-bold leading-tight">
-            {(data?.total ?? 0) - (data?.totalNotified ?? 0)}
-          </p>
-        </div>
-        <div className="rounded-[16px] border border-border bg-card p-5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Already notified
-          </p>
-          <p className="text-[28px] font-bold leading-tight">{data?.totalNotified ?? 0}</p>
-        </div>
-      </div>
-      <p className="text-[12px] text-muted-foreground">
-        Waiting customers are notified automatically the moment an expert comes online or
-        finishes a job nearby. You can also notify an area manually below.
-      </p>
+      <FilterBar count={<span className="text-[13px] text-muted-foreground">{countLabel(data?.groups.length ?? 0, "area")}</span>}>
+        <FilterField label="Service">
+          <select value={segmentId} onChange={(e) => setSegmentId(e.target.value)} className={filterSelectCls}>
+            <option value="">All services</option>
+            {(raw?.segments ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </FilterField>
+        <p className="text-[12px] text-muted-foreground self-end pb-2">Waiting customers are notified automatically when an Expert is free nearby.</p>
+      </FilterBar>
 
       {isLoading ? (
         <p className="text-[14px] text-muted-foreground">Loading waitlist…</p>
       ) : isError ? (
         <p className="text-[14px] text-red-600">Could not load waitlist requests.</p>
       ) : (data?.groups.length ?? 0) === 0 ? (
-        <p className="text-[14px] text-muted-foreground">No waitlist requests yet.</p>
+        <p className="text-[14px] text-muted-foreground">No demand requests yet.</p>
       ) : (
         <div className="rounded-[16px] border border-border bg-card overflow-x-auto">
           <table className="w-full min-w-[760px] text-[13px]">
             <thead className="bg-muted">
               <tr className="text-left text-muted-foreground">
                 <th className="px-5 py-3 font-semibold">City / Area</th>
-                <th className="px-5 py-3 font-semibold">Segments</th>
+                <th className="px-5 py-3 font-semibold">Service</th>
                 <th className="px-5 py-3 font-semibold text-right">Requests</th>
                 <th className="px-5 py-3 font-semibold text-right">Waiting / Notified</th>
                 <th className="px-5 py-3 font-semibold text-right">Latest</th>
@@ -144,7 +155,7 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <button
-                      disabled={g.waiting === 0 || notifyingKey === g.key}
+                      disabled={g.waiting === 0 || notifyingKey === g.key || (g as { websiteOnly?: boolean }).websiteOnly}
                       onClick={async () => {
                         setNotifyingKey(g.key);
                         try {
