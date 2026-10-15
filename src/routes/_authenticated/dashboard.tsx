@@ -752,12 +752,7 @@ function Shell() {
         ) : active === "maid-slots" ? (
           <SlotAvailabilityTab />
         ) : active === "wash-slots" ? (
-          <div className="space-y-4">
-            <div className="rounded-[12px] border border-warning/30 bg-warning/10 px-4 py-3 text-[12px] font-semibold text-foreground">
-              Wash does not have its own slot capacity yet — slots below are the shared Clean slots (same Expert pool).
-            </div>
-            <SlotAvailabilityTab />
-          </div>
+          <SlotAvailabilityTab group="wash" />
         ) : active === "clean-experts" ? (
           <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} />
         ) : active === "maid-settings" || active === "wash-settings" ? (
