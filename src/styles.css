@@ -17,12 +17,12 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--card-foreground);
   --color-primary: var(--primary);
-  --color-svc-maid: #00b97a;
-  --color-svc-wash: #222831;
-  --color-svc-store: #7c3aed;
-  --color-svc-food: #dc2626;
-  --color-svc-parcel: #2563eb;
-  --color-svc-foreground: #ffffff;
+  --color-svc-maid: var(--svc-maid);
+  --color-svc-wash: var(--svc-wash);
+  --color-svc-store: var(--svc-store);
+  --color-svc-food: var(--svc-food);
+  --color-svc-parcel: var(--svc-parcel);
+  --color-svc-foreground: var(--svc-foreground);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-tint: var(--primary-tint);
   --color-secondary: var(--secondary);
@@ -45,6 +45,12 @@
 }
 
 :root {
+  --svc-maid: #00b97a;
+  --svc-wash: #222831;
+  --svc-store: #7c3aed;
+  --svc-food: #dc2626;
+  --svc-parcel: #2563eb;
+  --svc-foreground: #ffffff;
   --background: #f8fafa;
   --foreground: #222831;
   --card: #ffffff;
