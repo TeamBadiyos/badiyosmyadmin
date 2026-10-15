@@ -5748,7 +5748,7 @@ export type Database = {
           bank_ifsc?: string | null
           city?: string | null
           commission_mode?: string
-          commission_pct?: number
+          commission_pct: number
           commission_type?: string
           commission_value?: number
           country?: string | null
@@ -10640,6 +10640,10 @@ export type Database = {
       get_offer_remaining: { Args: { p_offer_id: string }; Returns: number }
       get_ops_flag: { Args: { _key: string }; Returns: boolean }
       get_ops_num: { Args: { _default: number; _key: string }; Returns: number }
+      get_settlement_invoice: {
+        Args: { _settlement_id: string }
+        Returns: Json
+      }
       has_login_pin: { Args: { p_phone: string }; Returns: boolean }
       haversine_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
@@ -10716,6 +10720,10 @@ export type Database = {
       merchant_decide_order: {
         Args: { _decision: string; _order_id: string; _reason?: string }
         Returns: undefined
+      }
+      merchant_effective_commission_pct: {
+        Args: { _merchant_id: string }
+        Returns: number
       }
       merchant_ensure_draft: { Args: { _phone: string }; Returns: string }
       merchant_fy_gross: { Args: { _merchant_id: string }; Returns: number }
@@ -11163,6 +11171,10 @@ export type Database = {
         Args: { _alert_id: string; _notes?: string }
         Returns: undefined
       }
+      staff_approve_settlement: {
+        Args: { _settlement_id: string }
+        Returns: undefined
+      }
       staff_archive_reward_program: {
         Args: { _archived?: boolean; _id: string }
         Returns: undefined
@@ -11372,6 +11384,10 @@ export type Database = {
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
         Returns: string
+      }
+      staff_dashboard_overview: {
+        Args: { _from: string; _to: string }
+        Returns: Json
       }
       staff_decide_merchant: {
         Args: { _decision: string; _merchant_id: string; _notes?: string }
@@ -11659,6 +11675,10 @@ export type Database = {
         Args: { _reason: string; _receiver_id: string }
         Returns: Json
       }
+      staff_retry_store_refund: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
       staff_reverse_referral_reward: {
         Args: { _reason: string; _txn_id: string }
         Returns: undefined
@@ -11733,6 +11753,7 @@ export type Database = {
         Args: { _payload: Json }
         Returns: undefined
       }
+      staff_save_company_profile: { Args: { _p: Json }; Returns: undefined }
       staff_seal_assign_batch: {
         Args: {
           _batch_id: string
@@ -11907,6 +11928,10 @@ export type Database = {
         Args: { _merchant_id: string; _reason: string; _status: string }
         Returns: undefined
       }
+      staff_set_merchant_tax_ids: {
+        Args: { _gstin: string; _merchant_id: string; _pan: string }
+        Returns: undefined
+      }
       staff_set_milestone_active: {
         Args: { _active: boolean; _id: string }
         Returns: undefined
@@ -12023,6 +12048,7 @@ export type Database = {
       }
       staff_store_reassign: { Args: { _order_id: string }; Returns: Json }
       staff_sync_notifications: { Args: never; Returns: undefined }
+      staff_tax_report: { Args: { _month: string }; Returns: Json }
       staff_tds_report: {
         Args: { _fy_start_year: number }
         Returns: {
