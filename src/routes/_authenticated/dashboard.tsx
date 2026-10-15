@@ -47,8 +47,8 @@ import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
-import { StoreFoodLiveBoard, ServiceHoursPanel, NotifyStatsCard, CleanTaxCallout } from "@/components/ops-panels";
-import { SlotAvailabilityTab } from "@/components/slot-availability-tab";
+import { StoreFoodLiveBoard, ServiceHoursPanel } from "@/components/ops-panels";
+import { SlotAvailabilityTab, CleanCapacitySettings } from "@/components/slot-availability-tab";
 import { BookingTimingsTab } from "@/components/booking-timings-tab";
 import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
 import { getStaffAlerts } from "@/lib/alerts.functions";
@@ -128,13 +128,15 @@ const NAV_ITEMS = [
   { key: "bookings", label: "All Bookings", icon: CalendarCheck },
   { key: "live-board", label: "Store & Food Live Board", icon: Activity },
   { key: "maid-bookings", label: "Bookings", icon: CalendarCheck },
-  { key: "maid-catalogue", label: "Services & Pricing", icon: BookOpen },
-  { key: "maid-slots", label: "Slots & Capacity", icon: ListChecks },
-  { key: "clean-experts", label: "Experts", icon: UserCog },
+  { key: "maid-catalogue", label: "Services", icon: BookOpen },
+  { key: "maid-slots", label: "Slots", icon: ListChecks },
+  { key: "clean-experts", label: "Team", icon: UserCog },
+  { key: "clean-training", label: "Training", icon: GraduationCap },
   { key: "maid-settings", label: "Settings", icon: Settings },
   { key: "wash-bookings", label: "Bookings", icon: CalendarCheck },
-  { key: "wash-catalogue", label: "Services & Pricing", icon: BookOpen },
-  { key: "wash-slots", label: "Slots & Capacity", icon: ListChecks },
+  { key: "wash-catalogue", label: "Services", icon: BookOpen },
+  { key: "wash-slots", label: "Slots", icon: ListChecks },
+  { key: "wash-team", label: "Team", icon: UserCog },
   { key: "wash-settings", label: "Settings", icon: Settings },
   { key: "courier-riders", label: "Riders & Capacity", icon: Users },
   { key: "zones", label: "Zones", icon: Map },
@@ -205,13 +207,13 @@ const NAV_GROUPS = [
     id: "clean",
     label: "Clean Home",
     icon: Boxes,
-    keys: ["maid-bookings", "catalogue", "maid-catalogue", "maid-slots", "clean-experts", "skills", "training-orders", "task-types", "maid-settings"],
+    keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "clean-training", "maid-settings"],
   },
   {
     id: "wash",
     label: "Clean Auto",
     icon: Boxes,
-    keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-settings"],
+    keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-team", "wash-settings"],
   },
   {
     id: "store",
@@ -257,13 +259,16 @@ const NAV_GROUPS = [
   },
   {
     id: "settings",
-    label: "Platform Settings",
+    label: "Settings",
     icon: Settings,
     keys: ["services", "tax-settings", "fees", "company-profile", "roles", "zones", "audit", "notification-sounds", "legal"],
   },
 ] as const;
 
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
+
+// Reachable (old links, notifications) but never listed in the sidebar.
+const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders"];
 
 const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   courier: "courier-orders",
@@ -276,7 +281,7 @@ const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
     (k) => k !== "roles" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
   ),
-  area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "reports"],
+  area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "wash-team", "reports"],
 };
 
 function Shell() {
@@ -367,7 +372,7 @@ function Shell() {
 
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
   const topLevelItems = visibleItems.filter(
-    (n) => !GROUPED_KEYS.includes(n.key) && n.key !== "courier",
+    (n) => !GROUPED_KEYS.includes(n.key) && !HIDDEN_KEYS.includes(n.key),
   );
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
@@ -461,19 +466,12 @@ function Shell() {
 
           {groups.map((group) => {
             const GroupIcon = group.icon;
-            const open = !!openGroups[group.id];
             return (
               <div key={group.id}>
                 <button
                   title={group.label}
                   onClick={() => {
-                    if (mini) {
-                      toggleCollapsed();
-                      setOpenGroups((p) => ({ ...p, [group.id]: true }));
-                      return;
-                    }
-                    setOpenGroups((p) => ({ ...p, [group.id]: !p[group.id] }));
-                    if (!open && group.items[0]) {
+                    if (group.items[0]) {
                       setActive(group.items[0].key);
                       setNavNonce((n) => n + 1);
                       setMobileOpen(false);
@@ -481,7 +479,7 @@ function Shell() {
                   }}
                   aria-expanded={open}
                   className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
-                    group.isActive && !open
+                    group.isActive
                       ? "border-primary bg-primary-tint text-foreground font-semibold"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
@@ -492,21 +490,17 @@ function Shell() {
                     className={group.isActive ? "text-primary" : ""}
                   />
                   <span className={`flex-1 text-left ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
-                  {!open &&
-                    (group.keys as readonly string[]).includes("support") &&
+                  {(group.keys as readonly string[]).includes("support") &&
                     openTickets > 0 && (
                       <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
                     )}
 
 
 
-                  <ChevronDown
-                    size={16}
-                    className={`${mini ? "lg:hidden" : ""} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                  />
+
                 </button>
 
-                {open && !mini &&
+                {false &&
                   group.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = item.key === active;
@@ -755,17 +749,23 @@ function Shell() {
         ) : active === "wash-catalogue" ? (
           <ServiceCataloguePage kind="wash" />
         ) : active === "maid-slots" ? (
-          <SlotAvailabilityTab />
+          <SlotAvailabilityTab group="clean" />
         ) : active === "wash-slots" ? (
           <SlotAvailabilityTab group="wash" />
         ) : active === "clean-experts" ? (
-          <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} />
+          <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} skill="maid" />
+        ) : active === "wash-team" ? (
+          <ExpertsPage key={`wexperts-${navNonce}`} role={role} initialOnlineOnly={false} skill="wash" />
+        ) : active === "clean-training" ? (
+          <div className="space-y-8">
+            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training orders</h2><TrainingOrdersPage /></section>
+            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Skill approvals</h2><SkillApprovalsPage role={role} /></section>
+          </div>
         ) : active === "maid-settings" || active === "wash-settings" ? (
-          <div className="space-y-5">
-            <CleanTaxCallout onOpenTax={() => setActive("tax-settings")} />
-            <ServiceHoursPanel serviceKey="clean" title="Clean opening hours" />
+          <div className="space-y-6 max-w-4xl">
+            <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
+            <ServiceHoursPanel serviceKey="clean" title="Opening hours" />
             <BookingTimingsTab />
-            <NotifyStatsCard services={["clean"]} reason="slots_full" title="Notify-Me (slots full)" />
           </div>
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
