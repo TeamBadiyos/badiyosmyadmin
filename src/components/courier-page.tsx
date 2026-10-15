@@ -725,19 +725,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 />
               </Field>
             ))}
-            <Field label="Segment">
-              <select
-                className={inputCls}
-                disabled={!!draft.id}
-                value={draft.segment}
-                onChange={(e) =>
-                  setDraft({ ...draft, segment: e.target.value as "regular" | "corporate", noLimitPickups: false, noLimitDrops: false })
-                }
-              >
-                <option value="regular">Regular</option>
-                <option value="corporate">Corporate</option>
-              </select>
-            </Field>
           </div>
           <div className="mt-4 rounded-[12px] border border-border p-3">
             <h4 className="text-[13px] font-bold text-foreground">Multi-stop charges</h4>
