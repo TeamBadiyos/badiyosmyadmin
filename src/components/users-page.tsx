@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPin,
+  MoreHorizontal,
   Pencil,
   RotateCcw,
   Trash2,
@@ -29,11 +30,9 @@ import {
   useDeleteAddress,
   type AddressRow,
 } from "@/components/customer-address-editor";
-import {
-  useSortFilter,
-  SortFilterHeader,
-  SortFilterReset,
-} from "@/components/table-sort-filter";
+import { FilterBar, FilterField, filterInputCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
+import { DataTablePagination, EmptyState, SortHeader, maskEmail, useDebounced } from "@/components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const PAGE_SIZE = 25;
 
@@ -48,14 +47,17 @@ function fmtDate(iso: string | null) {
 
 export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) => void }) {
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
+  const query = useDebounced(search.trim(), 300);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [sort, setSort] = useState<"recent" | "oldest" | "spend" | "bookings">("recent");
   const [selected, setSelected] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<CustomerRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<CustomerRow | null>(null);
   const [testRow, setTestRow] = useState<CustomerRow | null>(null);
+
+  useEffect(() => setPage(1), [query]);
 
   const queryClient = useQueryClient();
   const fetchCustomers = useServerFn(listCustomers);
@@ -84,109 +86,50 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
   });
 
   const filters = useMemo(
-    () => ({ search: query || null, page, pageSize: PAGE_SIZE, includeDeleted, sort }),
-    [query, page, includeDeleted, sort],
+    () => ({ search: query || null, page, pageSize, includeDeleted, sort }),
+    [query, page, pageSize, includeDeleted, sort],
   );
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["customers", "list", filters],
     queryFn: () => fetchCustomers({ data: filters }),
     staleTime: 20_000,
+    placeholderData: (prev) => prev,
   });
 
-  const pageRows = data?.rows ?? [];
+  const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = !!query || includeDeleted;
+  const clearFilters = () => { setSearch(""); setIncludeDeleted(false); setPage(1); };
 
-  const sf = useSortFilter(pageRows, [
-    { key: "name", label: "Name", value: (r: CustomerRow) => r.full_name ?? "—" },
-    { key: "phone", label: "Phone", value: (r: CustomerRow) => r.phone ?? "—", filterable: false },
-    { key: "email", label: "Email", value: (r: CustomerRow) => r.email ?? "—", filterable: false },
-    {
-      key: "location",
-      label: "Location",
-      value: (r: CustomerRow) => [r.area, r.city].filter(Boolean).join(", ") || "—",
-    },
-    {
-      key: "bookings",
-      label: "Bookings",
-      type: "number",
-      value: (r: CustomerRow) => r.bookings_count,
-      filterable: false,
-    },
-    {
-      key: "spend",
-      label: "Spend",
-      type: "number",
-      value: (r: CustomerRow) => r.total_spend,
-      filterable: false,
-    },
-    {
-      key: "referrals",
-      label: "Referrals",
-      type: "number",
-      value: (r: CustomerRow) => r.successful_referrals,
-      filterable: false,
-    },
-    {
-      key: "joined",
-      label: "Joined",
-      value: (r: CustomerRow) => r.created_at ?? "",
-      display: (r: CustomerRow) => fmtDate(r.created_at),
-      filterable: false,
-    },
-  ]);
-  const rows = sf.rows;
+  const sortHeader = (key: "joined" | "spend" | "bookings", label: string, align: "left" | "right" = "left") => {
+    const dir: "asc" | "desc" | null =
+      key === "joined" ? (sort === "recent" ? "desc" : sort === "oldest" ? "asc" : null) : sort === key ? "desc" : null;
+    return (
+      <SortHeader
+        label={label}
+        align={align}
+        dir={dir}
+        onClick={() => {
+          setPage(1);
+          if (key === "joined") setSort(sort === "recent" ? "oldest" : "recent");
+          else setSort(sort === key ? "recent" : key);
+        }}
+      />
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
-        <form
-          className="flex flex-col gap-1"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setQuery(search.trim());
-            setPage(1);
-          }}
-        >
-          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Search
-          </label>
-          <div className="flex gap-2">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, phone or email"
-              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[240px]"
-            />
-            <button
-              type="submit"
-              className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-semibold"
-            >
-              Search
-            </button>
-          </div>
-        </form>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Sort
-          </label>
-          <select
-            value={sort}
-            onChange={(e) => {
-              setSort(e.target.value as typeof sort);
-              setPage(1);
-            }}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
-          >
-            <option value="recent">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="spend">Highest spend (all customers)</option>
-            <option value="bookings">Most bookings (all customers)</option>
-          </select>
-        </div>
-
+      <FilterBar count={isLoading ? "Loading…" : countLabel(total, "customer")}>
+        <FilterField label="Search">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Name, phone or email"
+            className={`${filterInputCls} min-w-[240px]`}
+          />
+        </FilterField>
         <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] border border-border text-[13px] font-semibold text-muted-foreground cursor-pointer select-none">
           <input
             type="checkbox"
@@ -199,72 +142,51 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
           />
           Include deleted
         </label>
+        {hasFilters && (
+          <button onClick={clearFilters} className="h-10 text-[12px] font-semibold text-primary hover:underline">Clear filters</button>
+        )}
+      </FilterBar>
 
-        <div className="ml-auto text-[12px] text-muted-foreground self-center">
-          {isLoading ? "Loading…" : `${total} user${total === 1 ? "" : "s"}`}
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <SortFilterReset api={sf} />
-      </div>
-
-      <div className="bg-card border border-border rounded-[18px] overflow-visible">
-        <div className="overflow-x-auto overflow-y-visible">
-          <table className="w-full text-[13px]">
-            <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className={tableCls.wrap}>
+        <div className={tableCls.scroll}>
+          <table className={tableCls.table}>
+            <thead className={tableCls.thead}>
               <tr>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("name")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("phone")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("email")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("location")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("bookings")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("spend")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("referrals")} /></th>
-                <th className="text-left px-4 py-3"><SortFilterHeader {...sf.headerProps("joined")} /></th>
+                <th className={tableCls.th}>Name</th>
+                <th className={tableCls.th}>Phone</th>
+                <th className={tableCls.th}>Email</th>
+                <th className={tableCls.th}>Location</th>
+                <th className={tableCls.th}>{sortHeader("bookings", "Bookings")}</th>
+                <th className={tableCls.th}>{sortHeader("spend", "Spend")}</th>
+                <th className={tableCls.th}>Referrals</th>
+                <th className={tableCls.th}>{sortHeader("joined", "Joined")}</th>
                 {isSuperAdmin && <th className="text-right px-4 py-3">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr>
-                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
-                    Loading…
-                  </td>
-                </tr>
+                <tr><td colSpan={9} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
               )}
               {isError && !isLoading && (
-                <tr>
-                  <td colSpan={9} className="text-center py-10 text-destructive">
-                    Failed to load users.
-                  </td>
-                </tr>
+                <tr><td colSpan={9} className="text-center py-10 text-destructive">Failed to load customers.</td></tr>
               )}
               {!isLoading && !isError && rows.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="text-center py-10 text-muted-foreground">
-                    No users found.
-                  </td>
-                </tr>
+                <tr><td colSpan={9}><EmptyState text="No customers found." onClear={hasFilters ? clearFilters : undefined} /></td></tr>
               )}
               {rows.map((r: CustomerRow) => (
                 <tr
                   key={r.id}
                   onClick={() => setSelected(r.id)}
-                  className={`border-t border-border hover:bg-muted/40 cursor-pointer ${r.deleted_at ? "opacity-60" : ""}`}
+                  className={`${tableCls.tr} ${r.deleted_at ? "opacity-60" : ""}`}
                 >
                   <td className="px-4 py-3 font-semibold text-foreground">
                     <div className="flex items-center gap-2">
                       <span>{r.full_name ?? "—"}</span>
-                      {r.deleted_at && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-50 text-red-700">
-                          Deleted
-                        </span>
-                      )}
+                      {r.deleted_at && <StatusPill status="rejected" label="Deleted" />}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{r.phone ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{r.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{maskEmail(r.email)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {[r.area, r.city].filter(Boolean).join(", ") || "—"}
                   </td>
@@ -273,60 +195,40 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                   <td className="px-4 py-3 text-muted-foreground">
                     {r.successful_referrals} · {r.total_coins_earned} coins
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                    {fmtDate(r.created_at)}
-                  </td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(r.created_at)}</td>
                   {isSuperAdmin && (
                     <td className="px-4 py-3">
-                      <div
-                        className="flex items-center justify-end gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setEditRow(r)}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted"
-                          aria-label="Edit user"
-                          title="Edit"
+                          className="h-8 px-3 inline-flex items-center gap-1 rounded-[10px] border border-border hover:bg-muted text-[12px] font-semibold"
                         >
-                          <Pencil size={14} />
+                          <Pencil size={13} /> Edit
                         </button>
-                        {r.deleted_at ? (
-                          <button
-                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: false })}
-                            disabled={deletedMutation.isPending}
-                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-emerald-700"
-                            aria-label="Restore user"
-                            title="Restore"
-                          >
-                            <RotateCcw size={14} />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => deletedMutation.mutate({ userId: r.id, deleted: true })}
-                            disabled={deletedMutation.isPending}
-                            className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-amber-700"
-                            aria-label="Deactivate user"
-                            title="Deactivate (soft delete)"
-                          >
-                            <UserX size={14} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setTestRow(r)}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted text-primary"
-                          aria-label="Send test notification"
-                          title="Send test notification"
-                        >
-                          <BellRing size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteRow(r)}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-red-50 text-destructive"
-                          aria-label="Delete user forever"
-                          title="Delete forever"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] border border-border hover:bg-muted" aria-label="More actions">
+                              <MoreHorizontal size={14} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {r.deleted_at ? (
+                              <DropdownMenuItem onClick={() => deletedMutation.mutate({ userId: r.id, deleted: false })}>
+                                <RotateCcw size={14} /> Restore
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => deletedMutation.mutate({ userId: r.id, deleted: true })}>
+                                <UserX size={14} /> Deactivate
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => setTestRow(r)}>
+                              <BellRing size={14} /> Send test notification
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteRow(r)}>
+                              <Trash2 size={14} /> Delete forever
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   )}
@@ -335,30 +237,13 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
             </tbody>
           </table>
         </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border text-[12px] text-muted-foreground">
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || isLoading}
-              className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border disabled:opacity-40 hover:bg-muted"
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || isLoading}
-              className="h-9 w-9 inline-flex items-center justify-center rounded-[12px] border border-border disabled:opacity-40 hover:bg-muted"
-              aria-label="Next page"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <DataTablePagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPage={setPage}
+          onPageSize={(n) => { setPageSize(n); setPage(1); }}
+        />
       </div>
 
       {selected && (
