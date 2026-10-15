@@ -412,14 +412,14 @@ function Shell() {
   }
 
   return (
-    <div className={`min-h-screen w-full bg-background transition-[padding] duration-200 ${collapsed ? "lg:pl-[68px]" : "lg:pl-[240px]"}`}>
+    <div className={`min-h-screen w-full bg-background transition-[padding] duration-200 ${collapsed ? "lg:pl-[68px]" : "lg:pl-[184px]"}`}>
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[240px] ${collapsed ? "lg:w-[68px]" : ""} bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[184px] ${collapsed ? "lg:w-[68px]" : ""} bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className={`h-16 flex items-center justify-between border-b border-border ${mini ? "lg:justify-center lg:px-2 px-6" : "px-6"}`}>
+        <div className={`h-16 flex items-center justify-between border-b border-border ${mini ? "lg:justify-center lg:px-2 px-4" : "px-4"}`}>
           <img src={badiyoLogo.url} alt="Badiyos" className={`h-7 w-auto ${mini ? "lg:hidden" : ""}`} />
           <button
             onClick={toggleCollapsed}
@@ -449,7 +449,7 @@ function Shell() {
                   setActive(item.key);
                   setMobileOpen(false);
                 }}
-                className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-4 pr-3 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                   isActive
                     ? "border-primary bg-primary-tint text-foreground font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -478,7 +478,7 @@ function Shell() {
                       setMobileOpen(false);
                     }
                   }}
-                  className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
+                  className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-4 pr-3 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                     group.isActive
                       ? "border-primary bg-primary-tint text-foreground font-semibold"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
