@@ -76,11 +76,12 @@ function Bottom({ left, action, onAction }: { left: React.ReactNode; action?: st
 
 export function CompactBookingCard({ b, col, now, onOpen }: { b: PipelineBooking; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(b.broadcastStartedAt ?? b.createdAt, now);
+  const service = b.serviceLabel ?? (b.serviceDurationMinutes ? `${b.serviceDurationMinutes} min` : "Service");
+  const expert = b.assignedExpertName?.trim() || "Not assigned";
   const third =
-    col === "confirmed" ? dayTime(b.scheduledDate, b.scheduledTimeSlot)
-    : col === "accepted" ? <span className={wait >= 10 ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
-    : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)}`
-    : `Expert: ${first(b.assignedExpertName)}`;
+    col === "accepted" ? <span className={wait >= 10 ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
+    : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)} · ${expert}`
+    : `Expert: ${expert}`;
   const status =
     col === "in_progress" ? "In progress"
     : b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}`
@@ -90,7 +91,7 @@ export function CompactBookingCard({ b, col, now, onOpen }: { b: PipelineBooking
   return (
     <Shell onOpen={onOpen} flag={flag}>
       <Top name={b.customerName} onOpen={onOpen} />
-      <p className={line}>{b.serviceLabel ?? (b.serviceDurationMinutes ? `${b.serviceDurationMinutes} min` : "Service")}</p>
+      <p className={line}>{dayTime(b.scheduledDate, b.scheduledTimeSlot)} : {service}</p>
       <p className={line}>{third}</p>
       <Bottom left={status} action={col === "accepted" ? "Assign" : undefined} onAction={onOpen} />
     </Shell>
