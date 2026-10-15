@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   getBookingTimingSettings,
