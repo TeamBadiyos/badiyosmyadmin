@@ -152,7 +152,7 @@ const NAV_ITEMS = [
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
-  { key: "emergency", label: "Emergency Alerts", icon: Siren },
+  { key: "emergency", label: "SOS", icon: Siren },
   { key: "unassigned-trips", label: "Unassigned Trips", icon: Truck },
   { key: "catalogue", label: "Service Catalogue", icon: BookOpen },
   { key: "store-categories", label: "Categories", icon: Store },
@@ -170,10 +170,10 @@ const NAV_ITEMS = [
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
-  { key: "support", label: "Support Tickets", icon: LifeBuoy },
+  { key: "support", label: "Support", icon: LifeBuoy },
   { key: "deletion-requests", label: "Deletions", icon: UserMinus },
   { key: "audit", label: "Audit Logs", icon: ScrollText },
-  { key: "dispatch-alerts", label: "Dispatch Alerts", icon: BellRing },
+  { key: "dispatch-alerts", label: "Alerts", icon: BellRing },
   { key: "courier", label: "Courier", icon: PackageCheck },
   { key: "courier-orders", label: "Orders", icon: PackageCheck },
   { key: "courier-rates", label: "Rates", icon: IndianRupee },
@@ -201,7 +201,7 @@ const NAV_GROUPS = [
     id: "live-ops",
     label: "Live Ops",
     icon: Activity,
-    keys: ["support", "emergency", "unassigned-trips", "dispatch-alerts", "suggestions"],
+    keys: ["support", "emergency", "suggestions"],
   },
   {
     id: "clean",
@@ -261,7 +261,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["services", "tax-settings", "fees", "company-profile", "roles", "zones", "audit", "notification-sounds", "legal"],
+    keys: ["services", "tax-settings", "fees", "company-profile", "roles", "zones", "audit", "dispatch-alerts", "notification-sounds", "legal"],
   },
 ] as const;
 
@@ -367,7 +367,20 @@ function Shell() {
     refetchInterval: 60_000,
     staleTime: 20_000,
   });
-  const openTickets = alerts?.openTickets ?? 0;
+  const { data: liveOpsBadge = 0 } = useQuery({
+    queryKey: ["staff", "live-ops-badge"],
+    queryFn: async () => {
+      const [m, e] = await Promise.all([
+        supabase.from("support_ticket_messages").select("id", { count: "exact", head: true }).neq("sender_type", "staff").is("seen_at", null),
+        supabase.from("emergency_alerts").select("id", { count: "exact", head: true }).not("status", "in", "(acknowledged,resolved)"),
+      ]);
+      return (m.count ?? 0) + (e.count ?? 0);
+    },
+    refetchInterval: 30_000,
+    enabled: !!role,
+  });
+  void alerts;
+  const openTickets = liveOpsBadge;
 
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
 
@@ -494,7 +507,9 @@ function Shell() {
                   <span className={`flex-1 text-left ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
                   {(group.keys as readonly string[]).includes("support") &&
                     openTickets > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-destructive" aria-hidden />
+                      <span className={`min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center ${mini ? "lg:hidden" : ""}`}>
+                        {openTickets > 99 ? "99+" : openTickets}
+                      </span>
                     )}
 
 
@@ -626,11 +641,14 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
-          (role === "super_admin" || role === "ops_manager") ? (
-            <DashboardOverview role={role} onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
-          ) : (
-            <PipelineKanban role={role} unified />
-          )
+          <div className="space-y-4">
+            <UnassignedTripsPage role={role} compact />
+            {(role === "super_admin" || role === "ops_manager") ? (
+              <DashboardOverview role={role} onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
+            ) : (
+              <PipelineKanban role={role} unified />
+            )}
+          </div>
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (

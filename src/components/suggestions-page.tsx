@@ -1,6 +1,8 @@
 import { DateInput } from "@/components/date-input";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Archive, LayoutGrid, List, Phone, Plus, RefreshCw, Settings2 } from "lucide-react";
@@ -58,7 +60,8 @@ export function SuggestionsPage() {
   const qc = useQueryClient();
   const fetchList = useServerFn(listSuggestions);
   const fetchStatuses = useServerFn(listSuggestionStatuses);
-  const [view, setView] = useState<"board" | "list" | "statuses">("board");
+  const [view, setView] = useState<"board" | "list" | "statuses">("list");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [f, setF] = useState({ status: "", category: "", source: "", priority: "", from: "", to: "", q: "" });
   const [openId, setOpenId] = useState<string | null>(null);
@@ -96,74 +99,88 @@ export function SuggestionsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat label="New" value={counts?.new} />
-        <Stat label="Pending (not closed)" value={counts?.pending} />
-        <Stat label="Closed this month" value={counts?.finalThisMonth} />
-      </div>
-
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-lg border border-border p-0.5 bg-card">
-          {(
-            [
-              ["board", "Board", LayoutGrid],
-              ["list", "List", List],
-              ["statuses", "Statuses", Settings2],
-            ] as const
-          ).map(([k, label, Icon]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setView(k)}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] ${view === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Icon className="h-4 w-4" /> {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void qc.invalidateQueries({ queryKey: ["suggestions"] })}>
-            <RefreshCw className={`h-4 w-4 ${listQ.isFetching ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-          {canEdit && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> Add suggestion
-            </Button>
-          )}
-        </div>
-      </div>
-
       {view === "statuses" ? (
-        <SuggestionStatusesTab />
+        <div className="space-y-3">
+          <Button variant="outline" size="sm" onClick={() => setView("list")}>← Back to suggestions</Button>
+          <SuggestionStatusesTab />
+        </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input placeholder="Search text, name, phone" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} className="h-9 w-56" />
-            <select className={selectCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
-              <option value="">All statuses</option>
-              {statuses.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
-            <select className={selectCls} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
-              <option value="">All categories</option>
-              {SUGGESTION_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
-            </select>
-            <select className={selectCls} value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}>
-              <option value="">All sources</option>
-              {SUGGESTION_SOURCES.map((c) => <option key={c} value={c}>{SOURCE_LABEL[c]}</option>)}
-            </select>
-            <select className={selectCls} value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>
-              <option value="">All priorities</option>
-              {SUGGESTION_PRIORITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <DateInput  className={selectCls} value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} aria-label="From date" />
-            <DateInput  className={selectCls} value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} aria-label="To date" />
-            <label className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Show archived
-            </label>
-            {filtersOn && (
-              <Button variant="ghost" size="sm" onClick={() => setF({ status: "", category: "", source: "", priority: "", from: "", to: "", q: "" })}>
-                Reset
+          <div className="rounded-[16px] border border-border bg-card p-3 space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Search</span>
+                <Input placeholder="Search text, name, phone" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} className="h-9 w-56" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Status</span>
+                <select className={selectCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+                  <option value="">All statuses</option>
+                  {statuses.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Category</span>
+                <select className={selectCls} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
+                  <option value="">All categories</option>
+                  {SUGGESTION_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
+                </select>
+              </label>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setMoreOpen((v) => !v)}>
+                {moreOpen ? "Fewer filters" : "More filters"}
               </Button>
+              {filtersOn && (
+                <button className="text-[12px] font-semibold text-primary hover:underline h-9" onClick={() => setF({ status: "", category: "", source: "", priority: "", from: "", to: "", q: "" })}>
+                  Clear filters
+                </button>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                <div className="inline-flex rounded-lg border border-border p-0.5 bg-card">
+                  {([["list", "List", List], ["board", "Board", LayoutGrid]] as const).map(([k, label, Icon]) => (
+                    <button key={k} type="button" onClick={() => setView(k)} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] ${view === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                      <Icon className="h-4 w-4" /> {label}
+                    </button>
+                  ))}
+                </div>
+                {canEdit && (
+                  <Button size="sm" onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Add suggestion</Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" aria-label="More options"><MoreHorizontal className="h-4 w-4" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setView("statuses")}><Settings2 className="h-4 w-4 mr-2" /> Manage statuses</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Hide archived" : "Show archived"}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            {moreOpen && (
+              <div className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Source</span>
+                  <select className={selectCls} value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}>
+                    <option value="">All sources</option>
+                    {SUGGESTION_SOURCES.map((c) => <option key={c} value={c}>{SOURCE_LABEL[c]}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Priority</span>
+                  <select className={selectCls} value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>
+                    <option value="">All priorities</option>
+                    {SUGGESTION_PRIORITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 w-40">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">From</span>
+                  <DateInput className={selectCls} value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} aria-label="From date" />
+                </label>
+                <label className="flex flex-col gap-1 w-40">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">To</span>
+                  <DateInput className={selectCls} value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} aria-label="To date" />
+                </label>
+              </div>
             )}
           </div>
 

@@ -78,6 +78,7 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
   const fetchAlerts = useServerFn(listEmergencyAlerts);
   const ackAlert = useServerFn(acknowledgeEmergencyAlert);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [chip, setChip] = useState<"open" | "ack" | "all">("open");
 
   const canAck = role === "super_admin" || role === "ops_manager";
 
@@ -105,6 +106,8 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
   }, [queryClient]);
 
   const alerts = useMemo(() => data ?? [], [data]);
+  const isAck = (a: EmergencyAlert) => a.status === "acknowledged" || a.status === "resolved";
+  const shown = alerts.filter((a) => (chip === "all" ? true : chip === "ack" ? isAck(a) : !isAck(a)));
   const openCount = alerts.filter((a) => a.status !== "acknowledged" && a.status !== "resolved").length;
 
   const [muted, setMuted] = useState<boolean>(() => {
@@ -139,13 +142,19 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
   });
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-2 text-[14px] font-semibold text-foreground">
-            <AlertTriangle size={18} className={openCount > 0 ? "text-destructive" : "text-muted-foreground"} />
-            {openCount} unacknowledged
-          </span>
+    <div className="w-full space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          {([["open", `Unacknowledged (${openCount})`], ["ack", "Acknowledged"], ["all", "All"]] as const).map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setChip(k)}
+              className={`h-8 px-3 rounded-full text-[12px] font-bold border ${chip === k ? (k === "open" && openCount > 0 ? "bg-destructive text-destructive-foreground border-destructive" : "bg-primary text-primary-foreground border-primary") : "bg-card border-border text-muted-foreground hover:bg-muted/40"}`}
+            >
+              {l}
+            </button>
+          ))}
         </div>
         <button
           type="button"
@@ -160,12 +169,12 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
 
       {isError && <p className="text-[14px] text-destructive">Failed to load alerts.</p>}
       {isLoading && !data && <p className="text-[14px] text-muted-foreground">Loading…</p>}
-      {!isLoading && alerts.length === 0 && (
-        <p className="text-[15px] text-muted-foreground">No SOS alerts yet.</p>
+      {!isLoading && shown.length === 0 && (
+        <p className="text-[14px] text-muted-foreground py-8 text-center">{chip === "open" ? "No unacknowledged SOS. All clear." : "No SOS alerts."}</p>
       )}
 
       <div className="space-y-3">
-        {alerts.map((a: EmergencyAlert) => {
+        {shown.map((a: EmergencyAlert) => {
           const isOpen = a.status !== "acknowledged" && a.status !== "resolved";
           const hasCoords = a.latitude !== null && a.longitude !== null;
           return (
