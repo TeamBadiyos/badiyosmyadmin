@@ -99,3 +99,24 @@ export const tableCls = {
 };
 
 export const countLabel = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+const PILL: Record<string, string> = {
+  confirmed: "bg-blue-50 text-blue-700", placed: "bg-blue-50 text-blue-700", pending: "bg-blue-50 text-blue-700",
+  accepted: "bg-primary-tint text-primary", active: "bg-primary-tint text-primary", live: "bg-primary-tint text-primary",
+  expert_assigned: "bg-amber-50 text-amber-700", on_the_way: "bg-amber-50 text-amber-700", arrived: "bg-amber-50 text-amber-700",
+  preparing: "bg-amber-50 text-amber-700", ready: "bg-amber-50 text-amber-700", picked_up: "bg-amber-50 text-amber-700", paused: "bg-amber-50 text-amber-700", refunded: "bg-amber-50 text-amber-700",
+  in_progress: "bg-indigo-50 text-indigo-700",
+  completed: "bg-emerald-50 text-emerald-700", delivered: "bg-emerald-50 text-emerald-700", paid: "bg-emerald-50 text-emerald-700",
+  cancelled: "bg-muted text-muted-foreground", expired: "bg-muted text-muted-foreground",
+  rejected: "bg-red-50 text-red-700", failed: "bg-red-50 text-red-700",
+};
+
+/** Status pill identical to Clean → Bookings. */
+export function StatusPill({ status, label }: { status?: string | null; label?: string }) {
+  const s = String(status ?? "").toLowerCase();
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${PILL[s] ?? "bg-muted text-muted-foreground"}`}>
+      {label ?? (s.replace(/_/g, " ") || "—")}
+    </span>
+  );
+}

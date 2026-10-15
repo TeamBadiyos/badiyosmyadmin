@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
+import { ClipboardList, Store as StoreIcon, CheckCircle2, Tags, Megaphone, Settings } from "lucide-react";
 import { ServiceHoursPanel } from "@/components/ops-panels";
 import { StoreSettingsPage } from "@/components/store-settings-page";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
