@@ -3602,6 +3602,7 @@ export type Database = {
           ref_type: string
           service: string
           sgst: number
+          status: string
           taxable_value: number
           total: number
           user_id: string | null
@@ -3624,6 +3625,7 @@ export type Database = {
           ref_type: string
           service: string
           sgst?: number
+          status?: string
           taxable_value?: number
           total?: number
           user_id?: string | null
@@ -3646,6 +3648,7 @@ export type Database = {
           ref_type?: string
           service?: string
           sgst?: number
+          status?: string
           taxable_value?: number
           total?: number
           user_id?: string | null
@@ -11017,6 +11020,7 @@ export type Database = {
         }
         Returns: Json
       }
+      fin_company_complete: { Args: never; Returns: boolean }
       fin_company_snapshot: { Args: never; Returns: Json }
       fin_delete_expense: { Args: { _id: string }; Returns: undefined }
       fin_fy: { Args: { _d: string }; Returns: string }
@@ -11042,6 +11046,11 @@ export type Database = {
         Returns: string
       }
       fin_overview: { Args: { _from: string; _to: string }; Returns: Json }
+      fin_paid_date: {
+        Args: { _ref_id: string; _ref_type: string }
+        Returns: string
+      }
+      fin_sac: { Args: { _k: string }; Returns: string }
       fin_save_expense: { Args: { _id: string; _p: Json }; Returns: string }
       fin_save_expense_category: {
         Args: { _active: boolean; _name: string }
@@ -12505,6 +12514,7 @@ export type Database = {
         Args: { _id: string; _is_active: boolean }
         Returns: undefined
       }
+      staff_set_sac_codes: { Args: { _codes: Json }; Returns: undefined }
       staff_set_service_focus: {
         Args: {
           _live_service_key: string
