@@ -24,6 +24,7 @@ import {
 } from "@/lib/wallets.functions";
 import { downloadPayoutPdf, downloadPayoutCsv } from "@/lib/payout-pdf";
 import { CommissionTab } from "@/components/commission-tab";
+import { PartnersPage } from "@/components/partners-page";
 import {
   useSortFilter,
   SortFilterHeader,
