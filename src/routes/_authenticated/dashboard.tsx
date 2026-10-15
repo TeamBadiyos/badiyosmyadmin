@@ -12,6 +12,8 @@ import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
 import { GraduationCap } from "lucide-react";
+import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
+import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { DiscountBreakdownModal } from "@/components/discount-breakdown-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
@@ -184,6 +186,12 @@ const NAV_ITEMS = [
   { key: "services", label: "Service Status", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax Settings", icon: Percent },
   { key: "fees", label: "Charges & Fees", icon: IndianRupee },
+  { key: "fin-settlements", label: "Merchant Settlements", icon: Landmark },
+  { key: "fin-instant", label: "Instant — Pay today", icon: Landmark },
+  { key: "fin-refunds", label: "Refunds", icon: Receipt },
+  { key: "fin-invoices", label: "Commission Invoices", icon: Receipt },
+  { key: "fin-tax", label: "Tax Reports", icon: Percent },
+  { key: "company-profile", label: "Company Profile", icon: Settings },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -247,13 +255,13 @@ const NAV_GROUPS = [
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "merchant-billing", "settlements", "reports"],
+    keys: ["fin-settlements", "fin-instant", "fin-refunds", "fin-invoices", "fin-tax", "wallets", "merchant-billing", "settlements", "reports"],
   },
   {
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal"],
+    keys: ["services", "tax-settings", "fees", "company-profile", "roles", "zones", "audit", "notification-sounds", "legal"],
   },
 ] as const;
 
@@ -638,6 +646,10 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
+          <>
+          {(role === "super_admin" || role === "ops_manager") && (
+            <DashboardOverview onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
+          )}
           <DashboardHome
             role={role}
             onGoBookings={gotoBookings}
@@ -774,6 +786,12 @@ function Shell() {
           <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "audit" ? (
           <AuditLogsPage />
+        ) : active.startsWith("fin-") || active === "company-profile" ? (
+          <FinanceHub
+            tab={(active === "company-profile" ? "company" : active.slice(4)) as FinanceTab}
+            canEdit={role === "super_admin" || role === "ops_manager"}
+            isSuperAdmin={role === "super_admin"}
+          />
         ) : active === "settlements" ? (
           <SettlementsPage />
         ) : active === "reports" ? (
