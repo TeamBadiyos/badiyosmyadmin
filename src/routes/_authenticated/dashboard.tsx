@@ -646,7 +646,7 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
-          <>
+          <div>
           {(role === "super_admin" || role === "ops_manager") && (
             <DashboardOverview onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
           )}
@@ -656,7 +656,7 @@ function Shell() {
             onGoExperts={gotoExperts}
             onOpenBooking={(id) => setSelectedBookingId(id)}
           />
-          </>
+          </div>
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
