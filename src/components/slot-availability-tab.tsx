@@ -141,10 +141,10 @@ function BandBookings({ group, date, band, onClose }: { group: CapGroup; date: s
     queryKey: ["band-bookings", group, date],
     queryFn: async () => {
       const { data, error } = await supabase.from("bookings")
-        .select("id, booking_number, scheduled_time_slot, status, service_label, service_category_id, service_categories(slug)")
+        .select("id, scheduled_time_slot, status, service_label, service_category_id, service_categories(slug)")
         .eq("scheduled_date", date).neq("status", "cancelled");
       if (error) throw new Error(error.message);
-      return (data ?? []) as unknown as Array<{ id: string; booking_number: string | null; scheduled_time_slot: string | null; status: string; service_label: string | null; service_categories: { slug: string } | null }>;
+      return (data ?? []) as unknown as Array<{ id: string; scheduled_time_slot: string | null; status: string; service_label: string | null; service_categories: { slug: string } | null }>;
     },
   });
   const rows = (q.data ?? []).filter((r) => {
@@ -166,7 +166,7 @@ function BandBookings({ group, date, band, onClose }: { group: CapGroup; date: s
           {rows.map((r) => (
             <div key={r.id} className="rounded-[12px] border border-border p-3">
               <p className="text-[14px] font-semibold text-foreground truncate">{r.service_label ?? "Booking"}</p>
-              <p className="text-[12px] text-muted-foreground truncate">{r.booking_number ?? r.id.slice(0, 8)} · {r.scheduled_time_slot} · {r.status}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{r.id.slice(0, 8)} · {r.scheduled_time_slot} · {r.status}</p>
             </div>
           ))}
           {!q.isLoading && rows.length === 0 && <p className="text-[13px] text-muted-foreground">No bookings.</p>}
