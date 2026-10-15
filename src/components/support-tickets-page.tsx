@@ -13,6 +13,7 @@ import {
   listTicketMessages,
   markTicketSeenByStaff,
   sendTicketMessage,
+  sendTicketAttachment,
   updateSupportTicket,
   type SupportTicket,
   type TicketStatus,
