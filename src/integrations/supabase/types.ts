@@ -605,6 +605,7 @@ export type Database = {
           no_expert_alert_sent: boolean
           on_the_way_at: string | null
           onway_alert_sent: boolean
+          paid_at: string | null
           partner_payout_batch_id: string | null
           price: number
           price_option_id: string | null
@@ -674,6 +675,7 @@ export type Database = {
           no_expert_alert_sent?: boolean
           on_the_way_at?: string | null
           onway_alert_sent?: boolean
+          paid_at?: string | null
           partner_payout_batch_id?: string | null
           price: number
           price_option_id?: string | null
@@ -743,6 +745,7 @@ export type Database = {
           no_expert_alert_sent?: boolean
           on_the_way_at?: string | null
           onway_alert_sent?: boolean
+          paid_at?: string | null
           partner_payout_batch_id?: string | null
           price?: number
           price_option_id?: string | null
@@ -3645,6 +3648,7 @@ export type Database = {
           invoice_date: string
           invoice_no: string
           lines: Json
+          merchant_goods: Json | null
           ref_code: string | null
           ref_id: string
           ref_type: string
@@ -3668,6 +3672,7 @@ export type Database = {
           invoice_date?: string
           invoice_no: string
           lines?: Json
+          merchant_goods?: Json | null
           ref_code?: string | null
           ref_id: string
           ref_type: string
@@ -3691,6 +3696,7 @@ export type Database = {
           invoice_date?: string
           invoice_no?: string
           lines?: Json
+          merchant_goods?: Json | null
           ref_code?: string | null
           ref_id?: string
           ref_type?: string
@@ -10394,6 +10400,7 @@ export type Database = {
           no_expert_alert_sent: boolean
           on_the_way_at: string | null
           onway_alert_sent: boolean
+          paid_at: string | null
           partner_payout_batch_id: string | null
           price: number
           price_option_id: string | null
