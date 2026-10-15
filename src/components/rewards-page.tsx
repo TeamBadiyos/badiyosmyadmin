@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Pencil, Trash2, Undo2, PlayCircle, Search, X, Archive, ArchiveRestore, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   listRewardTriggerTypes,
   listRewardPrograms,
@@ -117,60 +118,65 @@ export function RewardsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex gap-1 p-1 bg-muted rounded-[14px]">
-          {(["programs", "reports"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`h-9 px-4 rounded-[10px] text-[13px] font-semibold capitalize ${
-                tab === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {t}
+        <div className="flex gap-2 flex-wrap">
+          {tab === "reports" ? (
+            <button onClick={() => setTab("programs")} className="h-9 px-4 rounded-full text-[13px] font-semibold border border-border bg-card inline-flex items-center gap-2">
+              <X size={14} /> Back to programs
             </button>
-          ))}
+          ) : (
+            <>
+              {ACTORS.map((a) => {
+                const on = !showArchived && actor === a.key;
+                return (
+                  <button key={a.key} onClick={() => { setActor(a.key); setShowArchived(false); }} className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
+              on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+            }`}>
+                    {a.label}
+                  </button>
+                );
+              })}
+              {(() => {
+                const on = showArchived;
+                return (
+                  <button onClick={() => setShowArchived(true)} className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
+              on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+            }`}>
+                    <Archive size={14} /> Archived
+                  </button>
+                );
+              })()}
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => runJobs.mutate()}
-            disabled={runJobs.isPending}
-            className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] inline-flex items-center gap-2 hover:bg-muted disabled:opacity-60"
-          >
-            <PlayCircle size={16} /> Run periodic evaluation
-          </button>
+          {tab === "programs" && (
+            <button
+              onClick={() => setTab("reports")}
+              className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px] inline-flex items-center gap-2 hover:bg-muted"
+            >
+              Reports
+            </button>
+          )}
           <button
             onClick={() => setEditing("new")}
             className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-semibold text-[13px] inline-flex items-center gap-2"
           >
             <Plus size={16} /> New Program
           </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button aria-label="More actions" className="h-10 w-10 rounded-[12px] border border-border inline-flex items-center justify-center hover:bg-muted">
+                <MoreHorizontal size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={runJobs.isPending} onClick={() => runJobs.mutate()}>
+                <PlayCircle size={14} /> Run periodic evaluation now
+              </DropdownMenuItem>
+              <p className="px-2 py-1 text-[11px] text-muted-foreground">Runs automatically every day at 00:01</p>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {ACTORS.map((a) => (
-          <button
-            key={a.key}
-            onClick={() => setActor(a.key)}
-            className={`h-9 px-4 rounded-full text-[13px] font-semibold border ${
-              actor === a.key
-                ? "border-primary bg-primary-tint text-foreground"
-                : "border-border text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {a.label}
-          </button>
-        ))}
-        <button
-          onClick={() => setShowArchived((v) => !v)}
-          className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
-            showArchived
-              ? "border-primary bg-primary-tint text-foreground"
-              : "border-border text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          <Archive size={14} /> Archived
-        </button>
       </div>
 
       {tab === "programs" ? (

@@ -22,7 +22,6 @@ import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
-import { RewardsPage } from "@/components/rewards-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
@@ -44,8 +43,6 @@ import { DeletionRequestsPage } from "@/components/deletion-requests-page";
 import { NotificationBell } from "@/components/notification-bell";
 import { DispatchAlertsPage } from "@/components/dispatch-alerts-page";
 import { ServicesPage } from "@/components/services-page";
-import { OffersPage } from "@/components/offers-page";
-import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
 import { StoreFoodLiveBoard, ServiceHoursPanel } from "@/components/ops-panels";
 import { SlotAvailabilityTab, CleanCapacitySettings } from "@/components/slot-availability-tab";
@@ -107,7 +104,8 @@ import {
   Percent,
 } from "lucide-react";
 import { SuggestionsPage } from "@/components/suggestions-page";
-import { LuckyDrawPage } from "@/components/lucky-draw-page";
+import { RewardsHub } from "@/components/rewards-hub";
+import { CampaignsPage } from "@/components/offers-page";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -163,7 +161,8 @@ const NAV_ITEMS = [
   { key: "partners", label: "Partner Program", icon: Handshake },
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "rewards", label: "Rewards", icon: Award },
-  { key: "offers", label: "Offers & Campaigns", icon: Megaphone },
+  { key: "offers", label: "Coupons", icon: Megaphone },
+  { key: "campaigns", label: "Campaigns", icon: Megaphone },
   { key: "event-offers", label: "Event Offers", icon: Gift },
   { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
   { key: "settlements", label: "Settlement", icon: Landmark },
@@ -237,7 +236,7 @@ const NAV_GROUPS = [
     id: "rewards",
     label: "Rewards",
     icon: Award,
-    keys: ["rewards", "offers", "event-offers", "lucky-draw"],
+    keys: ["offers"],
   },
   {
     id: "people",
@@ -249,7 +248,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["referrals", "waitlist", "interest-leads", "homepage", "insurance"],
+    keys: ["referrals", "campaigns", "waitlist", "interest-leads", "homepage", "insurance"],
   },
   {
     id: "finance",
@@ -268,7 +267,7 @@ const NAV_GROUPS = [
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
 
 // Reachable (old links, notifications) but never listed in the sidebar.
-const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board", "merchants", "live-stores", "store-categories", "store-settings"];
+const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board", "merchants", "live-stores", "store-categories", "store-settings", "rewards", "event-offers", "lucky-draw"];
 
 const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   courier: "courier-orders",
@@ -673,7 +672,7 @@ function Shell() {
         ) : active === "insurance" ? (
           <InsurancePage role={role} />
         ) : active === "lucky-draw" ? (
-          <LuckyDrawPage />
+          <RewardsHub key={`rw-l-${navNonce}`} role={role} initialTab="lucky" />
         ) : active === "suggestions" ? (
           <SuggestionsPage />
         ) : active === "interest-leads" ? (
@@ -702,7 +701,9 @@ function Shell() {
         ) : active === "referrals" ? (
           <ReferralsPage />
         ) : active === "rewards" ? (
-          <RewardsPage />
+          <RewardsHub key={`rw-p-${navNonce}`} role={role} initialTab="programs" />
+        ) : active === "campaigns" ? (
+          <CampaignsPage />
         ) : active === "roles" ? (
           <RolesPage />
         ) : active === "legal" ? (
@@ -722,9 +723,9 @@ function Shell() {
             }
           />
         ) : active === "event-offers" ? (
-          role === "super_admin" ? <EventOffersPage /> : null
+          <RewardsHub key={`rw-e-${navNonce}`} role={role} initialTab="events" />
         ) : active === "offers" ? (
-          <OffersPage />
+          <RewardsHub key={`rw-c-${navNonce}`} role={role} />
         ) : active === "courier" || active === "courier-orders" ? (
           <CourierPage section="orders" />
         ) : active === "courier-rates" ? (

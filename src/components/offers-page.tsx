@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Pause, Play, Send, X, Trash2 } from "lucide-react";
+import { Plus, Pencil, Pause, Play, Send, X, Trash2, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   getOffersAccess,
   listCoupons,
@@ -265,7 +266,7 @@ function useOfferCategories() {
   });
 }
 
-function CouponsTab({ canWrite }: { canWrite: boolean }) {
+export function CouponsTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CouponRow | "new" | null>(null);
   const [detail, setDetail] = useState<CouponRow | null>(null);
@@ -305,25 +306,47 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [chip, setChip] = useState<"active" | "paused" | "expired" | "all">("active");
+  const isExpired = (c: CouponRow) => !!c.valid_until && new Date(c.valid_until).getTime() < Date.now();
+  const stateOf = (c: CouponRow) => (isExpired(c) ? "expired" : c.is_active ? "active" : "paused");
+  const counts = useMemo(() => {
+    const m = { active: 0, paused: 0, expired: 0, all: data.length };
+    data.forEach((c) => { m[stateOf(c)]++; });
+    return m;
+  }, [data]);
   const rows = useMemo(
     () =>
       data.filter((c) =>
-        search.trim()
+        (chip === "all" || stateOf(c) === chip) &&
+        (search.trim()
           ? `${c.code} ${c.title}`.toLowerCase().includes(search.trim().toLowerCase())
-          : true,
+          : true),
       ),
-    [data, search],
+    [data, search, chip],
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 justify-between">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search code or title"
-          className={`${inputCls} max-w-[280px]`}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {(["active", "paused", "expired", "all"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setChip(k)}
+              className={`h-9 px-4 rounded-full text-[13px] font-semibold border capitalize ${
+                chip === k ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {k} ({counts[k]})
+            </button>
+          ))}
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search code or title"
+            className={`${inputCls} max-w-[240px]`}
+          />
+        </div>
         {canWrite && (
           <button className={primaryBtn} onClick={() => setEditing("new")}>
             <Plus size={16} /> New coupon
@@ -393,38 +416,48 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
               <span>
                 <span
                   className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
-                    c.is_active
+                    stateOf(c) === "active"
                       ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      : stateOf(c) === "expired"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {c.is_active ? "Active" : "Paused"}
+                  {stateOf(c) === "expired" ? "Expired" : c.is_active ? "Active" : "Paused"}
                 </span>
               </span>
               <div className="flex justify-end gap-2">
                 {canWrite && (
                   <>
                     <button className={ghostBtn} onClick={() => setEditing(c)}>
-                      <Pencil size={14} />
+                      <Pencil size={14} /> Edit
                     </button>
-                    <button
-                      className={ghostBtn}
-                      disabled={toggleMut.isPending}
-                      onClick={() => toggleMut.mutate({ id: c.id, active: !c.is_active })}
-                    >
-                      {c.is_active ? <Pause size={14} /> : <Play size={14} />}
-                    </button>
-                    <button
-                      className={`${ghostBtn} text-destructive`}
-                      title="Delete coupon"
-                      disabled={deleteMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Delete coupon ${c.code}? This cannot be undone.`))
-                          deleteMut.mutate(c.id);
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className={ghostBtn} aria-label="More actions">
+                          <MoreHorizontal size={14} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          disabled={toggleMut.isPending}
+                          onClick={() => toggleMut.mutate({ id: c.id, active: !c.is_active })}
+                        >
+                          {c.is_active ? <Pause size={14} /> : <Play size={14} />}
+                          {c.is_active ? "Pause" : "Resume"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          disabled={deleteMut.isPending}
+                          onClick={() => {
+                            if (window.confirm(`Delete coupon ${c.code}? This cannot be undone.`))
+                              deleteMut.mutate(c.id);
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 )}
               </div>
@@ -764,7 +797,7 @@ function RedemptionsModal({ coupon, onClose }: { coupon: CouponRow; onClose: () 
 
 /* -------------------------------------------------------------- milestones */
 
-function MilestonesTab({ canWrite }: { canWrite: boolean }) {
+export function MilestonesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<MilestoneRow | "new" | null>(null);
   const [detail, setDetail] = useState<MilestoneRow | null>(null);
@@ -1043,7 +1076,7 @@ function MilestoneAwardsModal({
 
 /* --------------------------------------------------------------- campaigns */
 
-function CampaignsTab({
+export function CampaignsTab({
   canWrite,
   role,
   city,
@@ -1679,4 +1712,15 @@ function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: stri
       )}
     </div>
   );
+}
+
+export function useOffersAccess() {
+  const fetchAccess = useServerFn(getOffersAccess);
+  return useQuery({ queryKey: ["offers", "access"], queryFn: () => fetchAccess(), staleTime: 60_000 }).data;
+}
+
+/** Growth → Campaigns. */
+export function CampaignsPage() {
+  const access = useOffersAccess();
+  return <CampaignsTab canWrite={access?.canWrite ?? false} role={access?.role ?? null} city={access?.city ?? null} />;
 }
