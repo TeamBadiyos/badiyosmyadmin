@@ -57,7 +57,7 @@ import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
-import { RidersCapacityPanel, ServiceHoursPanel } from "@/components/ops-panels";
+import { NotifyStatsCard, ServiceHoursPanel } from "@/components/ops-panels";
 
 /* --------------------------------- shared -------------------------------- */
 
@@ -85,6 +85,20 @@ export function Modal({
           >
             <X size={16} />
           </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function SidePanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-secondary/40" onClick={onClose}>
+      <div className="h-full w-full max-w-xl overflow-y-auto border-l border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h3 className="text-[16px] font-bold text-foreground">{title}</h3>
+          <button onClick={onClose} className="rounded-[10px] p-1.5 text-muted-foreground hover:bg-muted"><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -496,54 +510,53 @@ function CourierSettingsCard({ canEdit }: { canEdit: boolean }) {
   const save = useServerFn(saveCourierSetting);
   const { data } = useQuery({ queryKey: ["courier", "settings"], queryFn: () => fetchSettings() });
   const [vals, setVals] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const changed = (data ?? []).filter((st) => vals[st.key] != null && vals[st.key] !== String(st.value));
   return (
     <div className="rounded-[16px] border border-border bg-card p-4">
-      <h4 className="text-[13px] font-bold text-foreground">Courier settings</h4>
+      <h4 className="text-[13px] font-bold text-foreground">Wait times</h4>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {(data ?? []).map((st) => {
-          const v = vals[st.key] ?? String(st.value);
-          return (
-            <Field key={st.key} label={st.label}>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  disabled={!canEdit}
-                  className={inputCls}
-                  value={v}
-                  onChange={(e) => setVals({ ...vals, [st.key]: e.target.value })}
-                />
-                {canEdit ? (
-                  <button
-                    disabled={busy === st.key || v === String(st.value)}
-                    onClick={async () => {
-                      setBusy(st.key);
-                      try {
-                        await save({ data: { key: st.key, value: Number(v) } });
-                        toast.success("Setting saved");
-                        qc.invalidateQueries({ queryKey: ["courier", "settings"] });
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : "Save failed");
-                      } finally {
-                        setBusy(null);
-                      }
-                    }}
-                    className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                ) : null}
-              </div>
-              {st.isDefault ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">Using default</p>
-              ) : null}
-            </Field>
-          );
-        })}
+        {(data ?? []).map((st) => (
+          <Field key={st.key} label={st.label} hint={st.isDefault ? "Using default" : undefined}>
+            <input type="number" min={1} max={120} disabled={!canEdit} className={inputCls}
+              value={vals[st.key] ?? String(st.value)}
+              onChange={(e) => setVals({ ...vals, [st.key]: e.target.value })} />
+          </Field>
+        ))}
       </div>
+      {canEdit ? (
+        <div className="mt-3 flex justify-end">
+          <button
+            disabled={busy || changed.length === 0}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                for (const st of changed) await save({ data: { key: st.key, value: Number(vals[st.key]) } });
+                toast.success("Saved");
+                setVals({});
+                qc.invalidateQueries({ queryKey: ["courier", "settings"] });
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="rounded-[10px] bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[15px] font-bold text-foreground">{title}</h2>
+      {children}
+    </section>
   );
 }
 
@@ -683,7 +696,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
       </div>
 
       {draft ? (
-        <Modal title={draft.id ? "Edit rate" : "New rate"} onClose={() => setDraft(null)}>
+        <SidePanel title={draft.id ? "Edit rate" : "New rate"} onClose={() => setDraft(null)}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="City">
               <input
@@ -783,7 +796,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
               Save
             </button>
           </div>
-        </Modal>
+        </SidePanel>
       ) : null}
     </div>
   );
@@ -1653,7 +1666,48 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "orders"] });
 
-  const rows = data ?? [];
+  const [range, setRange] = useState<"all" | "today" | "yesterday" | "7d" | "30d" | "custom">("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [sortKey, setSortKey] = useState<"code" | "customer" | "rider" | "stops" | "amount" | "status" | "placed">("placed");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const rows = useMemo(() => {
+    const day = 86_400_000;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    let lo = -Infinity, hi = Infinity;
+    if (range === "today") lo = start.getTime();
+    else if (range === "yesterday") { lo = start.getTime() - day; hi = start.getTime(); }
+    else if (range === "7d") lo = start.getTime() - 6 * day;
+    else if (range === "30d") lo = start.getTime() - 29 * day;
+    else if (range === "custom") {
+      if (from) lo = new Date(from + "T00:00:00").getTime();
+      if (to) hi = new Date(to + "T00:00:00").getTime() + day;
+    }
+    const val = (o: CourierOrderRow): string | number => {
+      switch (sortKey) {
+        case "code": return o.order_code ?? "";
+        case "customer": return (o.customerName ?? "").toLowerCase();
+        case "rider": return (o.riderName ?? "").toLowerCase();
+        case "stops": return (o.pickup_count ?? 0) + (o.drop_count ?? 0);
+        case "amount": return Number(o.total_amount ?? 0);
+        case "status": return String(o.status);
+        default: return new Date(o.created_at).getTime();
+      }
+    };
+    return (data ?? [])
+      .filter((o) => { const t = new Date(o.created_at).getTime(); return t >= lo && t < hi; })
+      .sort((a, b) => { const x = val(a), y = val(b); const c = x < y ? -1 : x > y ? 1 : 0; return sortDir === "asc" ? c : -c; });
+  }, [data, range, from, to, sortKey, sortDir]);
+  const th = (k: typeof sortKey, label: string, right = false) => (
+    <th className={`px-3 py-2.5 ${right ? "text-right" : ""}`}>
+      <button
+        onClick={() => { if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc"); else { setSortKey(k); setSortDir(k === "placed" || k === "amount" ? "desc" : "asc"); } }}
+        className="inline-flex items-center gap-1 uppercase hover:text-foreground"
+      >
+        {label}{sortKey === k ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+      </button>
+    </th>
+  );
 
   const typeVal = multiStop ? "multi" : business === "any" ? "business" : business ? business : "";
 
@@ -1696,6 +1750,20 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
             </option>
           ))}
         </select>
+        <select className={`${inputCls} max-w-[160px]`} value={range} onChange={(e) => setRange(e.target.value as typeof range)}>
+          <option value="all">All dates</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="custom">Custom range</option>
+        </select>
+        {range === "custom" ? (
+          <>
+            <input type="date" className={`${inputCls} max-w-[150px]`} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input type="date" className={`${inputCls} max-w-[150px]`} value={to} onChange={(e) => setTo(e.target.value)} />
+          </>
+        ) : null}
         <span className="ml-auto text-[12px] text-muted-foreground">{rows.length} orders</span>
       </div>
 
@@ -1706,13 +1774,13 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2.5">Code</th>
-                <th className="px-3 py-2.5">Customer</th>
-                <th className="px-3 py-2.5">Rider</th>
-                <th className="px-3 py-2.5">Stops</th>
-                <th className="px-3 py-2.5 text-right">Amount</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5">Placed</th>
+                {th("code", "Code")}
+                {th("customer", "Customer")}
+                {th("rider", "Rider")}
+                {th("stops", "Stops")}
+                {th("amount", "Amount", true)}
+                {th("status", "Status")}
+                {th("placed", "Placed")}
               </tr>
             </thead>
             <tbody>
@@ -1973,11 +2041,20 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       {section === "rates" ? (<RatesTab canWrite={canWrite} />) : null}
       {section === "riders" ? <div className="space-y-6"><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
       {section === "settings" ? (
-        <div className="space-y-5">
-          <ServiceHoursPanel serviceKey="courier" title="Courier timings" />
-          <CourierSettingsCard canEdit={canWrite} />
-          <CancelFeeCard />
-          <ZoneMappingTab canWrite={canWrite} />
+        <div className="space-y-8">
+          <SettingsSection title="Operating hours & holidays">
+            <ServiceHoursPanel serviceKey="courier" title="Parcel timings" />
+          </SettingsSection>
+          <SettingsSection title="Operational rules">
+            <CourierSettingsCard canEdit={canWrite} />
+            <CancelFeeCard />
+          </SettingsSection>
+          <SettingsSection title="Service area">
+            <ZoneMappingTab canWrite={canWrite} />
+          </SettingsSection>
+          <SettingsSection title="Notify-Me (last 7 days)">
+            <NotifyStatsCard services={["parcel"]} reason="riders_busy" title="Customers who asked to be notified" />
+          </SettingsSection>
         </div>
       ) : null}
       {section === "orders" ? <OrdersTab canWrite={canWrite} /> : null}
