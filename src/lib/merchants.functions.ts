@@ -1050,3 +1050,19 @@ export const getStoreAnalytics = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return r as StoreAnalytics;
   });
+
+export const deleteRejectedMerchant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { merchantId: string; reason: string }) => {
+    if (!input?.merchantId) throw new Error("Store is required");
+    if (!input.reason?.trim()) throw new Error("A reason is required to delete a store");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await (context.supabase.rpc as any)("staff_delete_rejected_merchant", {
+      _merchant_id: data.merchantId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

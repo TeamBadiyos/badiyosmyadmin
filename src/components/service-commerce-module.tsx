@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, MapPin, MessageCircle, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
-import { decideMerchant, setMerchantCommission, getStoreCommissionSettings } from "@/lib/merchants.functions";
+import { decideMerchant, setMerchantCommission, getStoreCommissionSettings, deleteRejectedMerchant } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -295,11 +295,11 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
 
 /* ================= Stores ================= */
 
-type SChip = "live" | "pending" | "draft" | "closed" | "suspended";
+type SChip = "live" | "pending" | "draft" | "closed" | "suspended" | "rejected";
 const chipOf = (s: any): SChip | null =>
-  s.status === "pending_review" ? "pending" : s.status === "draft" ? "draft" : s.status === "suspended" ? "suspended"
+  s.status === "pending_review" ? "pending" : s.status === "draft" ? "draft" : s.status === "suspended" ? "suspended" : s.status === "rejected" ? "rejected"
     : s.status === "approved" ? (s.is_open ? "live" : "closed") : null;
-const CHIP_LABEL: Record<SChip, string> = { live: "Live", pending: "Pending review", draft: "Draft", closed: "Closed", suspended: "Suspended" };
+const CHIP_LABEL: Record<SChip, string> = { live: "Live", pending: "Pending review", draft: "Draft", closed: "Closed", suspended: "Suspended", rejected: "Rejected" };
 const todayHours = (h: any): string => {
   if (!h) return "Hours not set";
   if (typeof h === "string") return h;
@@ -327,6 +327,14 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
   const [commission, setCommission] = useState("");
   const [rejectFor, setRejectFor] = useState<any | null>(null);
   const [queryFor, setQueryFor] = useState<any | null>(null);
+  const [deleteFor, setDeleteFor] = useState<any | null>(null);
+  const [delReason, setDelReason] = useState("");
+  const delFn = useServerFn(deleteRejectedMerchant);
+  const del = useMutation({
+    mutationFn: () => delFn({ data: { merchantId: deleteFor.id, reason: delReason } }),
+    onSuccess: () => { toast.success(`${L.store} deleted — the merchant can apply again from the start`); setDeleteFor(null); setDelReason(""); qc.invalidateQueries({ queryKey: ["svc", service] }); qc.invalidateQueries({ queryKey: ["merchants"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
   const canManage = role === "super_admin" || role === "ops_manager";
   const defPct = Number(def.data?.defaultPct ?? 10);
   const approve = useMutation({
@@ -390,10 +398,31 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectFor(s)}>Reject</Button>
                 </div>
               )}
+              {c === "rejected" && canManage && (
+                <div className="px-4 pb-4 flex gap-2">
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteFor(s)}>Delete</Button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+      {deleteFor && (
+        <Dialog open onOpenChange={(v) => !v && setDeleteFor(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Delete {deleteFor.store_name || "store"}</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">The store is removed and the merchant can sign up again with the same phone and start from step 1.</p>
+            <div className="space-y-1">
+              <Label>Reason</Label>
+              <Input value={delReason} onChange={(e) => setDelReason(e.target.value)} placeholder="Why delete?" />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteFor(null)}>Cancel</Button>
+              <Button variant="destructive" disabled={!delReason.trim() || del.isPending} onClick={() => del.mutate()}>{del.isPending ? "Deleting…" : "Delete"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {approveFor && (
         <Dialog open onOpenChange={(v) => !v && setApproveFor(null)}>
           <DialogContent className="max-w-sm">
