@@ -435,7 +435,7 @@ export function BookingDetailsModal({
               Booking
             </p>
             <h2 className="text-[18px] font-bold text-foreground truncate">
-              #{bookingId.slice(0, 8)}
+              {data?.bookingNumber ?? `#${bookingId.slice(0, 8)}`}
             </h2>
           </div>
           <button
