@@ -205,7 +205,7 @@ export function ProductEditDialog({
             <div><span className={label}>Low stock alert at</span><input type="number" min={0} className={input} value={f.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} /></div>
             <div><span className={label}>GST %</span><input type="number" min={0} className={input} value={f.gstRate} onChange={(e) => set("gstRate", e.target.value)} /></div>
             <div className="col-span-2"><span className={label}>HSN / SAC code</span><input className={input} value={f.hsnSacCode} onChange={(e) => set("hsnSacCode", e.target.value)} /></div>
-            <label className="col-span-2 flex items-center gap-2 text-[13px] font-semibold text-foreground">
+            <label className="hidden col-span-2 items-center gap-2 text-[13px] font-semibold text-foreground">
               <input type="checkbox" checked={f.isMrp} onChange={(e) => set("isMrp", e.target.checked)} className="h-4 w-4" />
               MRP item (packaged / branded) — uses the store's MRP commission when split commission is on
             </label>
