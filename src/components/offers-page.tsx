@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Pause, Play, Send, X, Trash2 } from "lucide-react";
+import { Plus, Pencil, Pause, Play, Send, X, Trash2, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   getOffersAccess,
   listCoupons,
@@ -265,7 +266,7 @@ function useOfferCategories() {
   });
 }
 
-function CouponsTab({ canWrite }: { canWrite: boolean }) {
+export function CouponsTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CouponRow | "new" | null>(null);
   const [detail, setDetail] = useState<CouponRow | null>(null);
@@ -796,7 +797,7 @@ function RedemptionsModal({ coupon, onClose }: { coupon: CouponRow; onClose: () 
 
 /* -------------------------------------------------------------- milestones */
 
-function MilestonesTab({ canWrite }: { canWrite: boolean }) {
+export function MilestonesTab({ canWrite }: { canWrite: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<MilestoneRow | "new" | null>(null);
   const [detail, setDetail] = useState<MilestoneRow | null>(null);
@@ -1075,7 +1076,7 @@ function MilestoneAwardsModal({
 
 /* --------------------------------------------------------------- campaigns */
 
-function CampaignsTab({
+export function CampaignsTab({
   canWrite,
   role,
   city,
