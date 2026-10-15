@@ -32,6 +32,8 @@ import { Route as ApiPublicHooksExpireStaleBookingsRouteImport } from './routes/
 import { Route as ApiPublicHooksSyncRazorpaySettlementsRouteImport } from './routes/api/public/hooks/sync-razorpay-settlements'
 import { Route as ApiPublicOffersCreatePaymentRouteImport } from './routes/api/public/offers/create-payment'
 import { Route as ApiPublicOffersVerifyPaymentRouteImport } from './routes/api/public/offers/verify-payment'
+import { Route as ApiPublicWalletCreateTopupRouteImport } from './routes/api/public/wallet/create-topup'
+import { Route as ApiPublicWalletVerifyTopupRouteImport } from './routes/api/public/wallet/verify-topup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -153,6 +155,18 @@ const ApiPublicOffersVerifyPaymentRoute =
     path: '/api/public/offers/verify-payment',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWalletCreateTopupRoute =
+  ApiPublicWalletCreateTopupRouteImport.update({
+    id: '/api/public/wallet/create-topup',
+    path: '/api/public/wallet/create-topup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWalletVerifyTopupRoute =
+  ApiPublicWalletVerifyTopupRouteImport.update({
+    id: '/api/public/wallet/verify-topup',
+    path: '/api/public/wallet/verify-topup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -177,6 +191,8 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
   '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
   '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
+  '/api/public/wallet/create-topup': typeof ApiPublicWalletCreateTopupRoute
+  '/api/public/wallet/verify-topup': typeof ApiPublicWalletVerifyTopupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -201,6 +217,8 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
   '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
   '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
+  '/api/public/wallet/create-topup': typeof ApiPublicWalletCreateTopupRoute
+  '/api/public/wallet/verify-topup': typeof ApiPublicWalletVerifyTopupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -227,6 +245,8 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-razorpay-settlements': typeof ApiPublicHooksSyncRazorpaySettlementsRoute
   '/api/public/offers/create-payment': typeof ApiPublicOffersCreatePaymentRoute
   '/api/public/offers/verify-payment': typeof ApiPublicOffersVerifyPaymentRoute
+  '/api/public/wallet/create-topup': typeof ApiPublicWalletCreateTopupRoute
+  '/api/public/wallet/verify-topup': typeof ApiPublicWalletVerifyTopupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -253,6 +273,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-razorpay-settlements'
     | '/api/public/offers/create-payment'
     | '/api/public/offers/verify-payment'
+    | '/api/public/wallet/create-topup'
+    | '/api/public/wallet/verify-topup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,6 +299,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-razorpay-settlements'
     | '/api/public/offers/create-payment'
     | '/api/public/offers/verify-payment'
+    | '/api/public/wallet/create-topup'
+    | '/api/public/wallet/verify-topup'
   id:
     | '__root__'
     | '/'
@@ -302,6 +326,8 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-razorpay-settlements'
     | '/api/public/offers/create-payment'
     | '/api/public/offers/verify-payment'
+    | '/api/public/wallet/create-topup'
+    | '/api/public/wallet/verify-topup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -326,6 +352,8 @@ export interface RootRouteChildren {
   ApiPublicHooksSyncRazorpaySettlementsRoute: typeof ApiPublicHooksSyncRazorpaySettlementsRoute
   ApiPublicOffersCreatePaymentRoute: typeof ApiPublicOffersCreatePaymentRoute
   ApiPublicOffersVerifyPaymentRoute: typeof ApiPublicOffersVerifyPaymentRoute
+  ApiPublicWalletCreateTopupRoute: typeof ApiPublicWalletCreateTopupRoute
+  ApiPublicWalletVerifyTopupRoute: typeof ApiPublicWalletVerifyTopupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -491,6 +519,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOffersVerifyPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/wallet/create-topup': {
+      id: '/api/public/wallet/create-topup'
+      path: '/api/public/wallet/create-topup'
+      fullPath: '/api/public/wallet/create-topup'
+      preLoaderRoute: typeof ApiPublicWalletCreateTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/wallet/verify-topup': {
+      id: '/api/public/wallet/verify-topup'
+      path: '/api/public/wallet/verify-topup'
+      fullPath: '/api/public/wallet/verify-topup'
+      preLoaderRoute: typeof ApiPublicWalletVerifyTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -540,6 +582,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksSyncRazorpaySettlementsRoute,
   ApiPublicOffersCreatePaymentRoute: ApiPublicOffersCreatePaymentRoute,
   ApiPublicOffersVerifyPaymentRoute: ApiPublicOffersVerifyPaymentRoute,
+  ApiPublicWalletCreateTopupRoute: ApiPublicWalletCreateTopupRoute,
+  ApiPublicWalletVerifyTopupRoute: ApiPublicWalletVerifyTopupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
