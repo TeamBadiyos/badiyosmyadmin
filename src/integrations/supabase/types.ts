@@ -577,6 +577,7 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          booking_number: string | null
           broadcast_started_at: string | null
           cancellation_fee: number | null
           cancellation_reason: string | null
@@ -647,6 +648,7 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          booking_number?: string | null
           broadcast_started_at?: string | null
           cancellation_fee?: number | null
           cancellation_reason?: string | null
@@ -717,6 +719,7 @@ export type Database = {
           assigned_expert_id?: string | null
           booking_lat?: number | null
           booking_lng?: number | null
+          booking_number?: string | null
           broadcast_started_at?: string | null
           cancellation_fee?: number | null
           cancellation_reason?: string | null
@@ -10375,6 +10378,7 @@ export type Database = {
           assigned_expert_id: string | null
           booking_lat: number | null
           booking_lng: number | null
+          booking_number: string | null
           broadcast_started_at: string | null
           cancellation_fee: number | null
           cancellation_reason: string | null
