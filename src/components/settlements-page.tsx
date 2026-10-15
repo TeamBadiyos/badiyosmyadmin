@@ -80,7 +80,7 @@ export function SettlementsPage() {
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead className="text-muted-foreground text-left border-b border-border">
-            <tr>{["Settled on", "Settlement ID", "Gross", "Fees", "GST", "Refunds", "Net to bank", "UTR", "Bank tally", ""].map((h) => <th key={h} className="p-3 font-semibold">{h}</th>)}</tr>
+            <tr>{["Date", "Payments", "Gross", "Razorpay fee", "GST on fee", "Refunds", "Received in bank", "UTR", "Tally", ""].map((h) => <th key={h} className="p-3 font-semibold">{h}</th>)}</tr>
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
@@ -89,8 +89,8 @@ export function SettlementsPage() {
               <Fragment key={r.id}>
                 <tr className="border-b border-border">
                   <td className="p-3 whitespace-nowrap">{fmt(r.settled_at)}</td>
-                  <td className="p-3 font-mono text-[12px]">{r.id}</td>
-                  <td className="p-3">{inr.format(r.gross_amount)}{r.has_items ? <span className="block text-[11px] text-muted-foreground">{r.payments_count} payments</span> : <span className="block text-[11px] text-muted-foreground">sync for breakdown</span>}</td>
+                  <td className="p-3" title={r.id}>{r.has_items ? r.payments_count : "—"}</td>
+                  <td className="p-3">{inr.format(r.gross_amount)}</td>
                   <td className="p-3 text-destructive">{inr.format(r.fees - r.tax)}</td>
                   <td className="p-3 text-destructive">{inr.format(r.tax)}</td>
                   <td className="p-3 text-destructive">{inr.format(r.refunds)}</td>

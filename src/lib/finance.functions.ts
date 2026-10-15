@@ -44,7 +44,7 @@ export const getSettlementDetail = createServerFn({ method: "GET" })
 
 export const financeAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { kind: "generate" | "approve" | "paid" | "retryRefund"; id?: string; reference?: string; runDate?: string }) => i)
+  .inputValidator((i: { kind: "generate" | "approve" | "paid" | "retryRefund"; id?: string; refundKind?: string; reference?: string; runDate?: string }) => i)
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     if (data.kind === "generate") {
@@ -55,21 +55,15 @@ export const financeAction = createServerFn({ method: "POST" })
       if (!data.reference?.trim()) throw new Error("Payment reference is required");
       chk(await rpc(db, "staff_mark_settlement_paid", { _settlement_id: data.id, _reference: data.reference.trim() })); return { ok: true };
     }
-    chk(await rpc(db, "staff_retry_store_refund", { _order_id: data.id })); return { ok: true };
+    chk(await rpc(db, "staff_retry_refund", { _kind: data.refundKind ?? "merchant", _id: data.id })); return { ok: true };
   });
 
 export const listRefunds = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { status: string }) => ({ status: String(i.status) }))
   .handler(async ({ data, context }) => {
-    const db = context.supabase as any;
-    const r = await db.from("merchant_orders").select("id, order_number, merchant_id, refund_status, refund_amount, refund_reason, refund_attempts, refund_id, created_at, updated_at")
-      .eq("refund_status", data.status).order("created_at", { ascending: false }).limit(300);
-    chk(r);
-    const ids = [...new Set((r.data ?? []).map((x: any) => x.merchant_id))];
-    const m = ids.length ? await db.from("merchants").select("id, store_name, service_type").in("id", ids) : { data: [] };
-    const mm = new Map((m.data ?? []).map((x: any) => [x.id, x]));
-    return (r.data ?? []).map((x: any) => ({ ...x, store_name: (mm.get(x.merchant_id) as any)?.store_name ?? "—", service: (mm.get(x.merchant_id) as any)?.service_type === "food" ? "Food" : "Store" }));
+    const r = await rpc(context.supabase, "staff_list_refunds_all", { _status: data.status }); chk(r);
+    return (r.data ?? []) as any[];
   });
 
 export const getSettlementInvoice = createServerFn({ method: "GET" })
