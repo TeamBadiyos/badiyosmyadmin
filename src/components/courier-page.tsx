@@ -150,7 +150,7 @@ function Toggle({
   );
 }
 
-export type CourierSection = "orders" | "rates" | "types" | "settings" | "bulk";
+export type CourierSection = "orders" | "rates" | "types" | "settings" | "bulk" | "riders";
 type TypeTab = "vehicles" | "types";
 
 /* ----------------------------- 2. Vehicle types --------------------------- */

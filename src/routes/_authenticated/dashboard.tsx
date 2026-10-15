@@ -47,6 +47,9 @@ import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
+import { StoreFoodLiveBoard, ServiceHoursPanel, NotifyStatsCard, CleanTaxCallout } from "@/components/ops-panels";
+import { SlotAvailabilityTab } from "@/components/slot-availability-tab";
+import { BookingTimingsTab } from "@/components/booking-timings-tab";
 import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
@@ -122,11 +125,22 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { key: "bookings", label: "Bookings", icon: CalendarCheck },
+  { key: "bookings", label: "All Bookings", icon: CalendarCheck },
+  { key: "live-board", label: "Store & Food Live Board", icon: Activity },
+  { key: "maid-bookings", label: "Bookings", icon: CalendarCheck },
+  { key: "maid-catalogue", label: "Services & Pricing", icon: BookOpen },
+  { key: "maid-slots", label: "Slots & Capacity", icon: ListChecks },
+  { key: "clean-experts", label: "Experts", icon: UserCog },
+  { key: "maid-settings", label: "Settings", icon: Settings },
+  { key: "wash-bookings", label: "Bookings", icon: CalendarCheck },
+  { key: "wash-catalogue", label: "Services & Pricing", icon: BookOpen },
+  { key: "wash-slots", label: "Slots & Capacity", icon: ListChecks },
+  { key: "wash-settings", label: "Settings", icon: Settings },
+  { key: "courier-riders", label: "Riders & Capacity", icon: Users },
   { key: "zones", label: "Zones", icon: Map },
   { key: "experts", label: "Experts", icon: UserCog },
   { key: "training-orders", label: "Training Orders", icon: GraduationCap },
-  { key: "skills", label: "Skill Approvals", icon: BadgeCheck },
+  { key: "skills", label: "Training & Skill Approvals", icon: BadgeCheck },
   { key: "merchants", label: "Merchants", icon: Store },
   { key: "live-stores", label: "Live Stores", icon: Store },
   { key: "merchant-billing", label: "Merchant Billing", icon: Receipt },
@@ -161,8 +175,8 @@ const NAV_ITEMS = [
   { key: "courier", label: "Courier", icon: PackageCheck },
   { key: "courier-orders", label: "Orders", icon: PackageCheck },
   { key: "courier-rates", label: "Rates", icon: IndianRupee },
-  { key: "courier-types", label: "Parcel", icon: Boxes },
-  { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
+  { key: "courier-types", label: "Parcel Types", icon: Boxes },
+  { key: "courier-bulk", label: "Bulk / Business Delivery", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Manage Store", icon: Receipt },
   { key: "food-orders", label: "Manage Food", icon: UtensilsCrossed },
@@ -179,13 +193,19 @@ const NAV_GROUPS = [
     id: "live-ops",
     label: "Live Ops",
     icon: Activity,
-    keys: ["emergency", "support", "unassigned-trips", "dispatch-alerts", "suggestions"],
+    keys: ["live-board", "bookings", "emergency", "support", "unassigned-trips", "dispatch-alerts", "suggestions"],
   },
   {
     id: "clean",
-    label: "Clean",
+    label: "Clean · Maid / Home Care",
     icon: Boxes,
-    keys: ["bookings", "catalogue", "task-types", "training-orders", "skills"],
+    keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "skills", "training-orders", "task-types", "maid-settings"],
+  },
+  {
+    id: "wash",
+    label: "Clean · Car & Bike Wash",
+    icon: Boxes,
+    keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-settings"],
   },
   {
     id: "store",
@@ -203,7 +223,7 @@ const NAV_GROUPS = [
     id: "courier",
     label: "Parcel",
     icon: PackageCheck,
-    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-settings"],
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-riders", "courier-settings"],
   },
   {
     id: "rewards",
@@ -248,9 +268,9 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "event-offers" && k !== "catalogue" && k !== "referrals" && k !== "rewards",
+    (k) => k !== "roles" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
   ),
-  area_partner: ["dashboard", "bookings", "experts", "reports"],
+  area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "reports"],
 };
 
 function Shell() {
@@ -697,7 +717,11 @@ function Shell() {
         ) : active === "dispatch-alerts" ? (
           <DispatchAlertsPage />
         ) : active === "services" ? (
-          <ServicesPage />
+          <ServicesPage
+            onEditHours={(k) =>
+              setActive(k === "clean" ? "maid-settings" : k === "courier" ? "courier-settings" : k === "food" ? "food-orders" : "store-orders")
+            }
+          />
         ) : active === "event-offers" ? (
           role === "super_admin" ? <EventOffersPage /> : null
         ) : active === "offers" ? (
@@ -710,6 +734,39 @@ function Shell() {
           <CourierPage section="types" />
         ) : active === "courier-bulk" ? (
           <CourierPage section="bulk" />
+        ) : active === "courier-riders" ? (
+          <CourierPage section="riders" />
+        ) : active === "live-board" ? (
+          <StoreFoodLiveBoard />
+        ) : active === "maid-bookings" || active === "wash-bookings" ? (
+          <BookingsPage
+            key={`${active}-${navNonce}`}
+            role={role}
+            cleanKind={active === "wash-bookings" ? "wash" : "maid"}
+            onSelect={(id) => setSelectedBookingId(id)}
+          />
+        ) : active === "maid-catalogue" ? (
+          <ServiceCataloguePage kind="maid" />
+        ) : active === "wash-catalogue" ? (
+          <ServiceCataloguePage kind="wash" />
+        ) : active === "maid-slots" ? (
+          <SlotAvailabilityTab />
+        ) : active === "wash-slots" ? (
+          <div className="space-y-4">
+            <div className="rounded-[12px] border border-warning/30 bg-warning/10 px-4 py-3 text-[12px] font-semibold text-foreground">
+              Wash does not have its own slot capacity yet — slots below are the shared Clean slots (same Expert pool).
+            </div>
+            <SlotAvailabilityTab />
+          </div>
+        ) : active === "clean-experts" ? (
+          <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} />
+        ) : active === "maid-settings" || active === "wash-settings" ? (
+          <div className="space-y-5">
+            <CleanTaxCallout onOpenTax={() => setActive("tax-settings")} />
+            <ServiceHoursPanel serviceKey="clean" title="Clean opening hours" />
+            <BookingTimingsTab />
+            <NotifyStatsCard services={["clean"]} reason="slots_full" title="Notify-Me (slots full)" />
+          </div>
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
