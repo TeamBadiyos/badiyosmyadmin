@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Check, CheckCheck, LifeBuoy, MessageSquareText, Phone, Search, Send, StickyNote, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, LifeBuoy, ImagePlus, MessageSquareText, Phone, Search, Send, StickyNote, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   addTicketNote,
@@ -201,6 +201,29 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
   const queryClient = useQueryClient();
   const fetchMessages = useServerFn(listTicketMessages);
   const sendFn = useServerFn(sendTicketMessage);
+  const attachFn = useServerFn(sendTicketAttachment);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadImage = async (file: File) => {
+    if (!["image/jpeg", "image/png"].includes(file.type)) { toast.error("Only JPG or PNG images"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be 5 MB or smaller"); return; }
+    setUploading(true);
+    try {
+      const ext = file.type === "image/png" ? "png" : "jpg";
+      const path = `${ticket.id}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("support-attachments").upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      await attachFn({ data: { ticketId: ticket.id, path, body: draft.trim() } });
+      setDraft("");
+      queryClient.invalidateQueries({ queryKey: ["ticket-messages", ticket.id] });
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
   const noteFn = useServerFn(addTicketNote);
   const updateFn = useServerFn(updateSupportTicket);
   const seenFn = useServerFn(markTicketSeenByStaff);
@@ -403,6 +426,13 @@ function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () =>
               className={`h-[42px] w-[42px] rounded-full flex items-center justify-center ${noteMode ? "bg-warning/30 text-foreground" : "hover:bg-muted/50 text-muted-foreground"}`}
             >
               <StickyNote size={18} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); }} />
+            <button type="button" title="Send photo (JPG/PNG, max 5 MB)" disabled={uploading || noteMode}
+              onClick={() => fileRef.current?.click()}
+              className="h-[42px] w-[42px] rounded-full hover:bg-muted/50 flex items-center justify-center text-muted-foreground disabled:opacity-40">
+              <ImagePlus size={18} />
             </button>
             <textarea
               ref={taRef}

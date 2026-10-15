@@ -217,6 +217,13 @@ export const listTicketMessages = createServerFn({ method: "POST" })
       .eq("ticket_id", data.ticketId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
+    // Private chat photos: stored as "<ticketId>/<file>" paths, shown via short-lived signed links.
+    const paths = (rows ?? []).map((r) => r.attachment_url).filter((u): u is string => !!u && !/^https?:/.test(u));
+    const signed: Record<string, string> = {};
+    if (paths.length) {
+      const { data: urls } = await context.supabase.storage.from("support-attachments").createSignedUrls(paths, 3600);
+      for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+    }
     return ((rows ?? []) as Array<{
       id: string;
       sender_type: string;
@@ -232,7 +239,7 @@ export const listTicketMessages = createServerFn({ method: "POST" })
       createdAt: m.created_at,
       isInternal: !!m.is_internal,
       seenAt: m.seen_at,
-      attachmentUrl: m.attachment_url,
+      attachmentUrl: m.attachment_url ? (signed[m.attachment_url] ?? (/^https?:/.test(m.attachment_url) ? m.attachment_url : null)) : null,
     }));
   });
 
@@ -247,6 +254,22 @@ export const sendTicketMessage = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_send_support_message", {
       _ticket_id: data.ticketId,
       _body: data.body.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const sendTicketAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ticketId: string; path: string; body?: string }) => {
+    if (!input?.ticketId || !input.path) throw new Error("ticketId and path required");
+    if (!input.path.startsWith(`${input.ticketId}/`)) throw new Error("Invalid attachment path");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_send_support_attachment", {
+      _ticket_id: data.ticketId, _path: data.path, _body: data.body ?? "",
     });
     if (error) throw new Error(error.message);
     return { ok: true };
