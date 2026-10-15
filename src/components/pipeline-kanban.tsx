@@ -539,12 +539,12 @@ export function PipelineKanban({
                   {!isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
                   {items.map((b) => (
                     <Strip key={b.id} svc={svcOfBooking(b)}>
-                      <CompactBookingCard b={b} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
+                      <CompactBookingCard b={b} svc={svcOfBooking(b) === "wash" ? "wash" : "maid"} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
                     </Strip>
                   ))}
                   {comm.map(({ o, svc }) => (
                     <Strip key={o.id} svc={svc}>
-                      <CompactCommerceCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
+                      <CompactCommerceCard o={o} svc={svc === "food" ? "food" : "store"} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
                     </Strip>
                   ))}
                   {courierItems.map((o) => (
