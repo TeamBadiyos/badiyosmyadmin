@@ -241,15 +241,28 @@ function TaxTab() {
     ["TCS (total)", s.tcs], ["TDS 194-O (total)", s.tds],
   ];
   const m = (d?.merchants ?? []) as any[];
+  const r = d?.refunds ?? {};
+  const rl = (r.lines ?? []) as any[];
+  const f2 = (v: any) => Number(v || 0).toFixed(2);
+  const rLines: [string, number][] = [
+    ["Food GST 9(5) collected", r.food_gst_9_5], ["Store delivery GST", r.store_delivery_gst], ["Food delivery GST", r.food_delivery_gst],
+    ["Parcel delivery GST", r.parcel_delivery_gst], ["Commission GST", r.commission_gst], ["Platform fee GST", r.platform_fee_gst],
+    ["TCS (total)", r.tcs], ["TDS 194-O (total)", r.tds],
+  ];
+  const cnHead = ["Order", "Merchant", "Service", "GSTIN", "PAN", "Paid on", "Refunded on", "Refund amount", "Taxable value", "Food GST", "Delivery GST", "Platform fee GST", "Commission GST", "TCS", "TDS"];
+  const cnRows = rl.map((x) => [x.order_number, x.merchant, x.service, x.gstin ?? "", x.pan ?? "", String(x.paid_at ?? "").slice(0, 10), String(x.refunded_at ?? "").slice(0, 10), f2(x.refund_amount), f2(x.taxable_value), f2(x.gst_items), f2(x.gst_delivery), f2(x.gst_platform), f2(x.commission_gst), f2(x.tcs), f2(x.tds)]);
+  const cnSection = (cols: (x: any) => any[], head: string[]) => [[], ["Refunds / credit notes"], head, ...rl.map(cols)];
   const exp = (kind: "summary" | "tcs" | "tds") => {
-    if (kind === "summary") csvDownload(`tax-summary-${month}.csv`, [["Head", "Amount"], ...lines.map(([k, v]) => [k, Number(v || 0).toFixed(2)])]);
-    if (kind === "tcs") csvDownload(`tcs-gstr8-${month}.csv`, [["Merchant", "GSTIN", "Service", "Orders", "Taxable value", "TCS"], ...m.map((x) => [x.name, x.gstin ?? "", x.service, x.orders, Number(x.taxable_value || 0).toFixed(2), Number(x.tcs || 0).toFixed(2)])]);
-    if (kind === "tds") csvDownload(`tds-194o-${month}.csv`, [["Merchant", "PAN", "Service", "Orders", "Gross value", "TDS"], ...m.map((x) => [x.name, x.pan ?? "", x.service, x.orders, Number(x.taxable_value || 0).toFixed(2), Number(x.tds || 0).toFixed(2)])]);
+    if (kind === "summary") csvDownload(`tax-summary-${month}.csv`, [["Head", "Amount"], ...lines.map(([k, v]) => [k, f2(v)]), [], ["Refunds / credit notes"], ["Head", "Amount"], ...rLines.map(([k, v]) => [k, f2(v)]), [], cnHead, ...cnRows]);
+    if (kind === "tcs") csvDownload(`tcs-gstr8-${month}.csv`, [["Merchant", "GSTIN", "Service", "Orders", "Taxable value", "TCS"], ...m.map((x) => [x.name, x.gstin ?? "", x.service, x.orders, f2(x.taxable_value), f2(x.tcs)]),
+      ...cnSection((x) => [x.order_number, x.merchant, x.gstin ?? "", x.service, String(x.refunded_at ?? "").slice(0, 10), f2(x.taxable_value), f2(x.tcs)], ["Order", "Merchant", "GSTIN", "Service", "Refunded on", "Taxable value", "TCS"])]);
+    if (kind === "tds") csvDownload(`tds-194o-${month}.csv`, [["Merchant", "PAN", "Service", "Orders", "Gross value", "TDS"], ...m.map((x) => [x.name, x.pan ?? "", x.service, x.orders, f2(x.taxable_value), f2(x.tds)]),
+      ...cnSection((x) => [x.order_number, x.merchant, x.pan ?? "", x.service, String(x.refunded_at ?? "").slice(0, 10), f2(x.taxable_value), f2(x.tds)], ["Order", "Merchant", "PAN", "Service", "Refunded on", "Gross value", "TDS"])]);
   };
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Tax Reports</h1><p className="text-xs text-muted-foreground">Delivered orders of the month, read from each order's saved tax snapshot. Fully refunded orders are left out.</p></div>
+        <div><h1 className="text-2xl font-bold">Tax Reports</h1><p className="text-xs text-muted-foreground">Orders counted in the month they were paid (invoice date). Refunds appear as negative credit notes in the month the refund completed.</p></div>
         <div><Label>Month</Label><Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></div>
       </div>
       {q.isError && <p className="text-destructive text-sm">{errMsg(q.error)}</p>}
@@ -265,9 +278,21 @@ function TaxTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">GSTIN</th><th className="p-2 text-left">PAN</th><th className="p-2 text-right">Orders</th><th className="p-2 text-right">Value</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
           <tbody>
-            {!m.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No delivered orders this month."}</td></tr>}
+            {!m.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No paid orders this month."}</td></tr>}
             {m.map((x) => (
               <tr key={x.merchant_id} className="border-b last:border-0"><td className="p-2">{x.name}</td><td className="p-2 text-xs">{x.gstin ?? "—"}</td><td className="p-2 text-xs">{x.pan ?? "—"}</td><td className="p-2 text-right">{x.orders}</td><td className="p-2 text-right">{inr(x.taxable_value)}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h2 className="text-lg font-semibold">Refunds / credit notes</h2>
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Refunded on</th><th className="p-2 text-right">Refund</th><th className="p-2 text-right">GST reversed</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
+          <tbody>
+            {!rl.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
+            {rl.map((x) => (
+              <tr key={x.order_number} className="border-b last:border-0"><td className="p-2">{x.order_number}</td><td className="p-2">{x.merchant}</td><td className="p-2 text-xs">{String(x.refunded_at ?? "").slice(0, 10)}</td><td className="p-2 text-right">{inr(x.refund_amount)}</td><td className="p-2 text-right">{inr(Number(x.gst_items || 0) + Number(x.gst_delivery || 0) + Number(x.gst_platform || 0))}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
             ))}
           </tbody>
         </table>
