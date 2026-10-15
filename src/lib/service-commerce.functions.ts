@@ -537,7 +537,7 @@ export const createDraftMerchant = createServerFn({ method: "POST" })
       phone: data.phone, address: data.address, latitude: data.lat, longitude: data.lng, commission_pct: data.commissionPct };
     let r = await supabaseAdmin.from("merchants").insert(row).select("id").single();
     if (r.error && /commission_pct/.test(r.error.message) && data.commissionPct == null) {
-      const d = await supabaseAdmin.from("store_settings" as any).select("value").eq("key", "default_commission_pct").maybeSingle();
+      const d = await supabaseAdmin.from("ops_settings").select("value").eq("key", "store_default_commission_pct").maybeSingle();
       row.commission_pct = Number((d.data as any)?.value ?? 10);
       r = await supabaseAdmin.from("merchants").insert(row).select("id").single();
     }
