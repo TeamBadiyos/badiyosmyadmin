@@ -8712,27 +8712,60 @@ export type Database = {
         }
         Relationships: []
       }
-      support_ticket_messages: {
+      support_quick_replies: {
         Row: {
           body: string
           created_at: string
           id: string
-          sender_id: string | null
-          sender_type: string
-          ticket_id: string
+          sort_order: number
+          title: string
         }
         Insert: {
           body: string
           created_at?: string
           id?: string
-          sender_id?: string | null
-          sender_type: string
-          ticket_id: string
+          sort_order?: number
+          title: string
         }
         Update: {
           body?: string
           created_at?: string
           id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      support_ticket_messages: {
+        Row: {
+          attachment_url: string | null
+          body: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          seen_at: string | null
+          sender_id: string | null
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          seen_at?: string | null
+          sender_id?: string | null
+          sender_type: string
+          ticket_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          seen_at?: string | null
           sender_id?: string | null
           sender_type?: string
           ticket_id?: string
@@ -8749,6 +8782,7 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          assigned_staff_id: string | null
           booking_id: string | null
           category: string
           created_at: string
@@ -8768,6 +8802,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assigned_staff_id?: string | null
           booking_id?: string | null
           category?: string
           created_at?: string
@@ -8787,6 +8822,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assigned_staff_id?: string | null
           booking_id?: string | null
           category?: string
           created_at?: string
@@ -11170,6 +11206,10 @@ export type Database = {
         Args: { _alert_id: string; _notes?: string }
         Returns: undefined
       }
+      staff_add_support_note: {
+        Args: { _body: string; _ticket_id: string }
+        Returns: string
+      }
       staff_approve_settlement: {
         Args: { _settlement_id: string }
         Returns: undefined
@@ -11193,6 +11233,10 @@ export type Database = {
       staff_assign_partner_skill: {
         Args: { _expert_id: string; _service_category_id: string }
         Returns: string
+      }
+      staff_assign_support_ticket: {
+        Args: { _staff_id: string; _ticket_id: string }
+        Returns: undefined
       }
       staff_business_dispatch_now: {
         Args: { _merchant_id: string; _reason: string }
@@ -11564,6 +11608,10 @@ export type Database = {
       staff_mark_tds_deposited: {
         Args: { _fy_start_year: number; _owner_id: string; _owner_type: string }
         Returns: number
+      }
+      staff_mark_ticket_seen: {
+        Args: { _ticket_id: string }
+        Returns: undefined
       }
       staff_merchant_raise_query: {
         Args: { _doc_types: string[]; _merchant_id: string; _notes: string }
@@ -12466,6 +12514,10 @@ export type Database = {
       submit_store_rating: {
         Args: { p_comment?: string; p_order_id: string; p_rating: number }
         Returns: string
+      }
+      support_mark_seen_by_user: {
+        Args: { _ticket_id: string }
+        Returns: undefined
       }
       support_mark_ticket_read: {
         Args: { _ticket_id: string }
