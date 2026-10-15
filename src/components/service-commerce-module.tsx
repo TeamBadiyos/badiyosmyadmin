@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, MapPin, MessageCircle, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
-import { decideMerchant, setMerchantCommission, getStoreCommissionSettings } from "@/lib/merchants.functions";
+import { decideMerchant, setMerchantCommission, getStoreCommissionSettings, deleteRejectedMerchant } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
