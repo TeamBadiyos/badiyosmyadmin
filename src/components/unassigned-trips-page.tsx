@@ -18,7 +18,7 @@ const ago = (iso: string) => {
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
 };
 
-export function UnassignedTripsPage({ role }: { role: StaffRole | null }) {
+export function UnassignedTripsPage({ role, compact }: { role: StaffRole | null; compact?: boolean }) {
   const qc = useQueryClient();
   const fetchList = useServerFn(listUnassignedBusinessTrips);
   const reject = useServerFn(rejectBusinessTrip);
@@ -41,11 +41,19 @@ export function UnassignedTripsPage({ role }: { role: StaffRole | null }) {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
   };
   const rows = data ?? [];
+  if (compact && rows.length === 0) return null;
   return (
     <div className="space-y-3">
-      <p className="text-[13px] text-muted-foreground">Bulk Courier trips that were dispatched but no rider has taken yet.</p>
+      {compact ? (
+        <p className="flex items-center gap-2 text-[13px] font-bold text-foreground">
+          <span className="rounded-full bg-info/15 px-2 py-0.5 text-[10px] font-bold uppercase text-info">Business</span>
+          {rows.length} business trip{rows.length === 1 ? "" : "s"} to assign
+        </p>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">Bulk Courier trips that were dispatched but no rider has taken yet.</p>
+      )}
       {error ? <p className="text-[13px] text-destructive">{(error as Error).message}</p> : null}
-      <div className="overflow-x-auto rounded-[14px] border border-border bg-card">
+      <div className={`overflow-x-auto rounded-[14px] border bg-card ${compact ? "border-info/40 border-t-4" : "border-border"}`}>
         <table className="w-full">
           <thead className="bg-muted/40"><tr>{["Business", "Trip", "Drops", "Fare", "Waiting", ""].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-border">
