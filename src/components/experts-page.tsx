@@ -114,11 +114,28 @@ export function ExpertsPage({
       return ids;
     },
   });
+  const isRider = skill === "rider";
+  const { data: riderSkillIds = [] } = useQuery({
+    queryKey: ["experts", "rider-skill-ids"],
+    enabled: isRider,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: v } = await supabase.from("courier_vehicle_types").select("required_skill").eq("is_active", true);
+      return Array.from(new Set(((v ?? []) as Array<{ required_skill: string | null }>).map((x) => x.required_skill).filter((x): x is string => !!x)));
+    },
+  });
+  const [riderStatus, setRiderStatus] = useState("");
+  const [riderSearch, setRiderSearch] = useState("");
   const expertsFiltered = (
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw
   ).filter((e) => !mode || e.mode === mode)
    .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false))
    .filter((e) => !statusF || (statusF === "active" ? e.status === "active" : e.status !== "active"))
+   .filter((e) => !isRider || !riderStatus || riderState(e) === riderStatus)
+   .filter((e) => {
+     const q = riderSearch.trim().toLowerCase();
+     return !isRider || !q || e.name.toLowerCase().includes(q) || (e.phone ?? "").includes(q);
+   })
    .sort((a, b) => rank(a) - rank(b));
 
   const sf = useSortFilter(expertsFiltered, [
@@ -148,6 +165,32 @@ export function ExpertsPage({
 
   return (
     <div className="space-y-6">
+      {isRider ? (
+      <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        <input
+          placeholder="Search name or phone"
+          value={riderSearch}
+          onChange={(e) => setRiderSearch(e.target.value)}
+          className="h-10 w-[240px] rounded-[12px] border border-border bg-background px-3 text-[13px] text-foreground"
+        />
+        <Filter label="Status" value={riderStatus} onChange={setRiderStatus}>
+          <option value="">All statuses</option>
+          <option value="free">Free</option>
+          <option value="busy">Busy</option>
+          <option value="offline">Offline</option>
+          <option value="inactive">Inactive</option>
+        </Filter>
+        {canManage && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="ml-auto h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+          >
+            <Plus size={16} />
+            Add rider
+          </button>
+        )}
+      </div>
+      ) : (
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
         {showZoneFilter && (
           <Filter label="Zone" value={zoneId} onChange={setZoneId}>
@@ -190,11 +233,35 @@ export function ExpertsPage({
           </button>
         )}
       </div>
+      )}
 
       <div className="flex justify-end">
         <SortFilterReset api={sf} />
       </div>
 
+      {isRider ? (
+        <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
+          <div className="grid grid-cols-[56px_minmax(200px,2fr)_130px_minmax(120px,1fr)_100px_100px] min-w-[720px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span>Photo</span><span>Name</span><span>Phone</span><span>Zone</span><span>Status</span><span className="text-right">Wallet</span>
+          </div>
+          {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
+          {!isLoading && experts.length === 0 && <p className="text-[13px] text-muted-foreground text-center py-10">No riders found.</p>}
+          {experts.map((e) => {
+            const st = riderState(e);
+            const cls = st === "free" ? "bg-primary/10 text-primary" : st === "busy" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground";
+            return (
+              <button key={e.id} onClick={() => setDetailsId(e.id)} className="w-full grid grid-cols-[56px_minmax(200px,2fr)_130px_minmax(120px,1fr)_100px_100px] min-w-[720px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40">
+                <ExpertAvatar url={e.photoUrl} />
+                <span className="font-semibold text-foreground break-words">{e.name}</span>
+                <span className="font-mono text-[12px] text-muted-foreground">{e.phone}</span>
+                <span className="text-[12px] text-muted-foreground truncate">{e.zoneNames?.join(", ") || "Unassigned"}</span>
+                <span><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold capitalize ${cls}`}>{st}</span></span>
+                <span className="text-right text-foreground">₹{Math.round(e.walletBalance ?? 0)}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
         <div className="grid grid-cols-[56px_minmax(220px,2.5fr)_110px_minmax(90px,0.8fr)_80px_80px_90px_100px] min-w-[900px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <span>Photo</span>
@@ -227,7 +294,12 @@ export function ExpertsPage({
       </div>
 
       {addOpen && canManage && (
-        <ExpertFormModal expertId={null} onClose={() => setAddOpen(false)} />
+        <ExpertFormModal
+          expertId={null}
+          onClose={() => setAddOpen(false)}
+          presetSkillIds={isRider ? riderSkillIds : undefined}
+          title={isRider ? "Add rider" : undefined}
+        />
       )}
       {editId && canManage && (
         <ExpertFormModal expertId={editId} onClose={() => setEditId(null)} />
@@ -242,6 +314,11 @@ export function ExpertsPage({
       )}
     </div>
   );
+}
+
+function riderState(e: ExpertRow): "free" | "busy" | "offline" | "inactive" {
+  if (e.status !== "active") return "inactive";
+  return e.isBusy ? "busy" : e.isOnline ? "free" : "offline";
 }
 
 function rank(e: ExpertRow) {

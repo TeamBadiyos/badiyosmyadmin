@@ -220,6 +220,7 @@ export function ExpertFormModal({
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["experts", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["experts", "skill-ids"] });
       if (expertId) {
         queryClient.invalidateQueries({ queryKey: ["experts", "details", expertId] });
       }
