@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, X, Save, Undo2 } from "lucide-react";
+import { MilestonesTab, useOffersAccess } from "@/components/offers-page";
 import {
   getReferralConfig,
   updateReferralConfig,
@@ -28,9 +29,15 @@ export function ReferralsPage() {
     queryFn: () => fetchList({ data: { status: status || null } }),
   });
 
+  const access = useOffersAccess();
   return (
     <div className="space-y-6">
       <ConfigCard />
+
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Referral milestones</p>
+        <MilestonesTab canWrite={access?.canWrite ?? false} />
+      </div>
 
       <div className="flex items-center gap-3 flex-wrap">
         <label className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
