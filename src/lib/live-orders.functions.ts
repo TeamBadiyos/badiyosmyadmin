@@ -220,6 +220,8 @@ export type DispatchConfig = {
   broadcastTimeoutSeconds: number;
   noExpertTimeoutMinutes: number;
   noAcceptMinutes: number;
+  /** Per-service no-accept limit (Settings → Alerts). */
+  noAcceptByService: Record<string, number>;
 };
 
 export const getDispatchConfig = createServerFn({ method: "GET" })
@@ -229,7 +231,7 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("dispatch_config")
       .select(
-        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes, no_accept_alert_threshold_seconds",
+        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes, no_accept_alert_threshold_seconds, no_accept_minutes",
       )
       .limit(1)
       .maybeSingle();
@@ -241,6 +243,7 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
       broadcastTimeoutSeconds: Number(row?.broadcast_timeout_seconds ?? 90),
       noExpertTimeoutMinutes: Number(row?.no_expert_timeout_minutes ?? 30),
       noAcceptMinutes: Math.max(1, Math.round(Number(row?.no_accept_alert_threshold_seconds ?? 600) / 60)),
+      noAcceptByService: (row?.no_accept_minutes ?? {}) as Record<string, number>,
     };
   });
 

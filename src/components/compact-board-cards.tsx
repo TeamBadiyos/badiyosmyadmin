@@ -4,10 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { getDispatchConfig, type PipelineBooking, type PipelineStatus } from "@/lib/live-orders.functions";
 
 // Same no-accept limit as Settings → Alerts.
-function useWaitLimit() {
+export function useWaitLimit(svc: "maid" | "wash" | "store" | "food" | "parcel") {
   const fn = useServerFn(getDispatchConfig);
-  const q = useQuery({ queryKey: ["dispatch-config"], queryFn: () => fn(), staleTime: 5 * 60_000 });
-  return q.data?.noAcceptMinutes ?? 10;
+  const q = useQuery({ queryKey: ["dispatch-config"], queryFn: () => fn(), staleTime: 60_000 });
+  const v = q.data?.noAcceptByService?.[svc];
+  return v && v > 0 ? v : (q.data?.noAcceptMinutes ?? Number.POSITIVE_INFINITY);
 }
 import type { CommerceOrder } from "@/lib/commerce.functions";
 import type { CourierOrderRow } from "@/lib/courier.functions";
@@ -84,9 +85,9 @@ function Bottom({ left, action, onAction }: { left: React.ReactNode; action?: st
   );
 }
 
-export function CompactBookingCard({ b, col, now, onOpen }: { b: PipelineBooking; col: PipelineStatus; now: number; onOpen: () => void }) {
+export function CompactBookingCard({ b, col, now, onOpen, svc }: { b: PipelineBooking; col: PipelineStatus; now: number; onOpen: () => void; svc?: "maid" | "wash" }) {
   const wait = mins(b.broadcastStartedAt ?? b.createdAt, now);
-  const limit = useWaitLimit();
+  const limit = useWaitLimit(svc ?? "maid");
   const service = b.serviceLabel ?? (b.serviceDurationMinutes ? `${b.serviceDurationMinutes} min` : "Service");
   const expert = b.assignedExpertName?.trim() || "Not assigned";
   const third =
@@ -113,9 +114,9 @@ const COMMERCE_STATUS: Record<string, string> = {
   picked_up: "Picked up", out_for_delivery: "On the way", completed: "Delivered",
 };
 
-export function CompactCommerceCard({ o, col, now, onOpen }: { o: CommerceOrder; col: PipelineStatus; now: number; onOpen: () => void }) {
+export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceOrder; col: PipelineStatus; now: number; onOpen: () => void; svc?: "store" | "food" }) {
   const wait = mins(o.createdAt, now);
-  const limit = useWaitLimit();
+  const limit = useWaitLimit(svc ?? "store");
   const third =
     col === "accepted" ? <span className={wait >= limit ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
@@ -137,7 +138,7 @@ const COURIER_STATUS: Record<string, string> = {
 
 export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(o.created_at, now);
-  const limit = useWaitLimit();
+  const limit = useWaitLimit("parcel");
   const third =
     col === "accepted" ? <span className={wait >= limit ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
     : col === "completed" ? "✓ Delivered"

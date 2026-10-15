@@ -7,6 +7,7 @@ export type DispatchConfig = {
   city: string;
   broadcast_radius_km: number;
   no_accept_alert_threshold_seconds: number;
+  no_accept_minutes: Record<string, number> | null;
   aisensy_template_name: string | null;
   ops_alert_whatsapp_numbers: string[];
   almost_available_window_minutes: number;
@@ -18,7 +19,7 @@ export const getDispatchConfigs = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("dispatch_config")
       .select(
-        "id,city,broadcast_radius_km,no_accept_alert_threshold_seconds,aisensy_template_name,ops_alert_whatsapp_numbers,almost_available_window_minutes",
+        "id,city,broadcast_radius_km,no_accept_alert_threshold_seconds,no_accept_minutes,aisensy_template_name,ops_alert_whatsapp_numbers,almost_available_window_minutes",
       )
       .order("city", { ascending: true });
     if (error) throw new Error(error.message);
@@ -31,7 +32,7 @@ export const updateDispatchConfig = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        no_accept_alert_threshold_seconds: z.number().int().min(30).max(3600).optional(),
+        no_accept_minutes: z.record(z.enum(["maid","wash","store","food","parcel"]), z.number().int().min(1).max(60)).optional(),
         aisensy_template_name: z.string().trim().max(200).optional().nullable(),
         ops_alert_whatsapp_numbers: z.array(z.string().trim().min(8).max(20)).max(10).optional(),
         almost_available_window_minutes: z.number().int().min(1).max(120).optional(),
@@ -42,9 +43,7 @@ export const updateDispatchConfig = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_update_dispatch_config", {
       _payload: {
         id: data.id,
-        ...(data.no_accept_alert_threshold_seconds !== undefined
-          ? { no_accept_alert_threshold_seconds: data.no_accept_alert_threshold_seconds }
-          : {}),
+        ...(data.no_accept_minutes !== undefined ? { no_accept_minutes: data.no_accept_minutes } : {}),
         ...(data.aisensy_template_name !== undefined
           ? { aisensy_template_name: data.aisensy_template_name }
           : {}),

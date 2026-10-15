@@ -94,3 +94,67 @@ export function UnassignedTripsPage({ role, compact }: { role: StaffRole | null;
     </div>
   );
 }
+
+/** Business trips rendered as cards inside the Dashboard "New / To assign" column. */
+export function BusinessTripCards({ role, now, waitLimit }: { role: StaffRole | null; now: number; waitLimit: number }) {
+  const qc = useQueryClient();
+  const fetchList = useServerFn(listUnassignedBusinessTrips);
+  const reject = useServerFn(rejectBusinessTrip);
+  const fetchOrders = useServerFn(listCourierOrders);
+  const [order, setOrder] = useState<CourierOrderRow | null>(null);
+  const [rejecting, setRejecting] = useState<UnassignedTrip | null>(null);
+  const { data } = useQuery({ queryKey: ["bulk", "unassigned-trips"], queryFn: () => fetchList(), refetchInterval: 20_000 });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["bulk"] });
+    qc.invalidateQueries({ queryKey: ["courier", "orders"] });
+    qc.invalidateQueries({ queryKey: ["pipeline", "courier"] });
+  };
+  const openAssign = async (id: string) => {
+    try {
+      const r = await fetchOrders({ data: { orderId: id } });
+      if (r[0]) setOrder(r[0]); else toast.error("Courier order not found");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+  const rows = data ?? [];
+  return (
+    <>
+      {rows.map((t) => {
+        const wait = t.search_started_at ? Math.max(0, Math.floor((now - new Date(t.search_started_at).getTime()) / 60000)) : 0;
+        return (
+          <div key={t.courier_order_id} className="rounded-[12px] overflow-hidden shadow-sm">
+            <div className="bg-svc-parcel text-svc-foreground px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide">Parcel</div>
+            <div className="bg-card rounded-b-[12px] px-3 py-2.5 border border-border space-y-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[13px] font-bold text-foreground truncate">{t.business_name}</p>
+                <span className="shrink-0 rounded-full bg-info/15 px-2 py-0.5 text-[10px] font-bold uppercase text-info">Business</span>
+              </div>
+              <p className="text-[12px] text-muted-foreground truncate">{t.trip_no != null ? `Trip ${t.trip_no}` : "Trip"} · {t.drops} drop{t.drops === 1 ? "" : "s"}</p>
+              <p className="text-[12px]"><span className={wait >= waitLimit ? "text-destructive font-semibold" : "text-muted-foreground"}>⏱ {wait} min</span></p>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-[13px] font-bold text-foreground">{inr(t.total_amount)}</span>
+                <div className="flex gap-1.5">
+                  <button className={btnDanger} onClick={() => setRejecting(t)}>Reject</button>
+                  <button className={btn} onClick={() => openAssign(t.courier_order_id)}>Assign rider</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {order ? <OrderDetail order={order} canWrite={role === "super_admin"} onClose={() => setOrder(null)} onChanged={() => { setOrder(null); refresh(); }} /> : null}
+      {rejecting ? (
+        <ReasonDialog
+          title={`Reject trip ${rejecting.trip_no ?? ""} — ${rejecting.business_name}`}
+          confirmLabel="Reject trip"
+          body={<p className="rounded-[10px] bg-warning/10 p-3 text-[13px] text-foreground">Orders go back to pending and join the next slot. Wallet will be refunded.</p>}
+          onClose={() => setRejecting(null)}
+          onConfirm={async (reason) => {
+            await reject({ data: { courier_order_id: rejecting.courier_order_id, reason } });
+            toast.success("Trip rejected");
+            refresh();
+          }}
+        />
+      ) : null}
+    </>
+  );
+}

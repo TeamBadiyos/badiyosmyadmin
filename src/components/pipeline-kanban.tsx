@@ -37,7 +37,9 @@ import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 import { OrderSheet } from "@/components/commerce-kanban";
-import { CompactBookingCard, CompactCommerceCard, CompactCourierCard } from "@/components/compact-board-cards";
+import { CompactBookingCard, CompactCommerceCard, CompactCourierCard, useWaitLimit } from "@/components/compact-board-cards";
+import { BusinessTripCards } from "@/components/unassigned-trips-page";
+import { listUnassignedBusinessTrips } from "@/lib/bulk-courier.functions";
 import { listCommercePipeline, type CommerceOrder, type CommerceStatus } from "@/lib/commerce.functions";
 
 export type BoardService = "maid" | "wash" | "store" | "food" | "parcel";
@@ -456,6 +458,10 @@ export function PipelineKanban({
     return () => stopBeep(audioRef);
   }, []);
 
+  const bizFn = useServerFn(listUnassignedBusinessTrips);
+  const { data: bizTrips } = useQuery({ queryKey: ["bulk", "unassigned-trips"], queryFn: () => bizFn(), refetchInterval: 20_000, enabled: !!unified });
+  const parcelLimit = useWaitLimit("parcel");
+
   // Horizontal scroll controls shown at the top of the board.
   const boardRef = useRef<HTMLDivElement | null>(null);
   const topBarRef = useRef<HTMLDivElement | null>(null);
@@ -499,6 +505,9 @@ export function PipelineKanban({
 
   if (unified) {
     const show = (svc: BoardService) => svcFilter === "all" || svcFilter === svc;
+    const bizIds = new Set((bizTrips ?? []).map((t) => t.courier_order_id));
+    const showBiz = !training && show("parcel");
+    const bizCount = showBiz ? bizIds.size : 0;
     return (
       <section className="min-w-0">
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -525,9 +534,10 @@ export function PipelineKanban({
         <div className="grid gap-3 grid-cols-[repeat(5,minmax(240px,1fr))] overflow-x-auto overscroll-x-contain pb-2">
           {COLUMNS.map((col) => {
             const items = (grouped.get(col.key) ?? []).filter((b) => show(svcOfBooking(b)));
-            const courierItems = !training && show("parcel") ? courierGrouped.get(col.key) ?? [] : [];
+            const courierItems = (!training && show("parcel") ? courierGrouped.get(col.key) ?? [] : []).filter((o) => !bizIds.has(o.id));
             const comm = (commerceGrouped.get(col.key) ?? []).filter((x) => show(x.svc));
-            const total = items.length + courierItems.length + comm.length;
+            const isNew = col.key === "accepted";
+            const total = items.length + courierItems.length + comm.length + (isNew ? bizCount : 0);
             return (
               <div key={col.key} className="min-w-0 bg-muted/40 border border-border rounded-[14px] flex flex-col">
                 <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
@@ -537,14 +547,15 @@ export function PipelineKanban({
                 <div className="p-2.5 space-y-2.5 max-h-[560px] overflow-y-auto">
                   {isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">Loading…</p>}
                   {!isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
+                  {isNew && showBiz && <BusinessTripCards role={role} now={boardNow} waitLimit={parcelLimit} />}
                   {items.map((b) => (
                     <Strip key={b.id} svc={svcOfBooking(b)}>
-                      <CompactBookingCard b={b} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
+                      <CompactBookingCard b={b} svc={svcOfBooking(b) === "wash" ? "wash" : "maid"} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
                     </Strip>
                   ))}
                   {comm.map(({ o, svc }) => (
                     <Strip key={o.id} svc={svc}>
-                      <CompactCommerceCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
+                      <CompactCommerceCard o={o} svc={svc === "food" ? "food" : "store"} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
                     </Strip>
                   ))}
                   {courierItems.map((o) => (
