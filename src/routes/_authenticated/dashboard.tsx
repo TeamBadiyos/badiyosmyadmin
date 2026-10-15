@@ -379,7 +379,7 @@ function Shell() {
     ...g,
     items: visibleItems
       .filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key))
-      .sort((a, b) => (g.keys as ReadonlyArray<string>).indexOf(a.key) - (g.keys as ReadonlyArray<string>).indexOf(b.key)),
+      .sort((a, b) => (g.id === "growth" ? (g.keys as ReadonlyArray<string>).indexOf(a.key) - (g.keys as ReadonlyArray<string>).indexOf(b.key) : 0)),
     isActive: (g.keys as ReadonlyArray<string>).includes(active),
   })).filter((g) => g.items.length > 0);
 
