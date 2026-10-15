@@ -4883,6 +4883,21 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_invoice_counters: {
+        Row: {
+          fy: string
+          last_no: number
+        }
+        Insert: {
+          fy: string
+          last_no?: number
+        }
+        Update: {
+          fy?: string
+          last_no?: number
+        }
+        Relationships: []
+      }
       merchant_order_items: {
         Row: {
           id: string
@@ -5248,6 +5263,72 @@ export type Database = {
           },
         ]
       }
+      merchant_settlement_adjustments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string
+          reason: string
+          settlement_id: string | null
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          order_id: string
+          reason?: string
+          settlement_id?: string | null
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          reason?: string
+          settlement_id?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_settlement_adjustments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_adjustments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "store_revenue_report"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_adjustments_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_adjustments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_adjustments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_settlement_items: {
         Row: {
           created_at: string
@@ -5290,17 +5371,21 @@ export type Database = {
       }
       merchant_settlements: {
         Row: {
+          adjustment_total: number
           commission_gst_total: number
           commission_total: number
           created_at: string
           gross_amount: number
           id: string
           instant_fee: number
+          invoice_fy: string | null
+          invoice_no: string | null
           net_amount: number
           paid_at: string | null
           period_from: string | null
           period_to: string | null
           reference: string | null
+          run_date: string | null
           status: string
           store_id: string
           tcs_total: number
@@ -5309,17 +5394,21 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adjustment_total?: number
           commission_gst_total?: number
           commission_total?: number
           created_at?: string
           gross_amount?: number
           id?: string
           instant_fee?: number
+          invoice_fy?: string | null
+          invoice_no?: string | null
           net_amount?: number
           paid_at?: string | null
           period_from?: string | null
           period_to?: string | null
           reference?: string | null
+          run_date?: string | null
           status?: string
           store_id: string
           tcs_total?: number
@@ -5328,17 +5417,21 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adjustment_total?: number
           commission_gst_total?: number
           commission_total?: number
           created_at?: string
           gross_amount?: number
           id?: string
           instant_fee?: number
+          invoice_fy?: string | null
+          invoice_no?: string | null
           net_amount?: number
           paid_at?: string | null
           period_from?: string | null
           period_to?: string | null
           reference?: string | null
+          run_date?: string | null
           status?: string
           store_id?: string
           tcs_total?: number
@@ -6933,6 +7026,8 @@ export type Database = {
           low_stock_threshold: number
           merchant_id: string
           name: string
+          pending_changes: Json | null
+          pending_submitted_at: string | null
           price: number
           recommended_order: number | null
           sort_order: number
@@ -6964,6 +7059,8 @@ export type Database = {
           low_stock_threshold?: number
           merchant_id: string
           name: string
+          pending_changes?: Json | null
+          pending_submitted_at?: string | null
           price: number
           recommended_order?: number | null
           sort_order?: number
@@ -6995,6 +7092,8 @@ export type Database = {
           low_stock_threshold?: number
           merchant_id?: string
           name?: string
+          pending_changes?: Json | null
+          pending_submitted_at?: string | null
           price?: number
           recommended_order?: number | null
           sort_order?: number
@@ -10409,6 +10508,7 @@ export type Database = {
         Returns: string
       }
       generate_otp4: { Args: never; Returns: string }
+      generate_settlement_batch: { Args: { _run_date: string }; Returns: Json }
       get_assigned_expert_location: {
         Args: { _booking_id: string }
         Returns: {
@@ -10538,6 +10638,7 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: number
       }
+      merchant_access: { Args: { _store_id: string }; Returns: string }
       merchant_advance_order: {
         Args: { _new_status: string; _order_id: string }
         Returns: undefined
@@ -10562,6 +10663,10 @@ export type Database = {
         Returns: boolean
       }
       merchant_my_context: { Args: never; Returns: Json }
+      merchant_require: {
+        Args: { _allow: string[]; _store_id: string }
+        Returns: string
+      }
       merchant_set_accepting_orders: {
         Args: { _accepting: boolean }
         Returns: boolean
@@ -10606,6 +10711,7 @@ export type Database = {
         }[]
       }
       my_referral_progress: { Args: never; Returns: Json }
+      notify_capacity_available: { Args: { _service: string }; Returns: number }
       notify_courier_offer_push: {
         Args: { _expert_id: string; _offer_id: string }
         Returns: undefined
@@ -10666,6 +10772,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_mark_converted: {
+        Args: { _customer: string; _order_id: string; _service: string }
+        Returns: undefined
+      }
       notify_push_event: {
         Args: {
           _alert_type: string
@@ -10677,6 +10787,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_requests_expire: { Args: never; Returns: number }
       notify_service_waiters: {
         Args: { _service_key: string }
         Returns: number
@@ -10742,6 +10853,15 @@ export type Database = {
         Args: { _lat: number; _lng: number; _poly: Json }
         Returns: boolean
       }
+      product_upsert_core: {
+        Args: {
+          _payload: Json
+          _product_id: string
+          _store_id: string
+          _who: string
+        }
+        Returns: Json
+      }
       raise_dispatch_alert: {
         Args: { _booking_id: string; _type: string }
         Returns: boolean
@@ -10784,6 +10904,19 @@ export type Database = {
         Returns: number
       }
       release_stale_coupon_reservations: { Args: never; Returns: number }
+      reorder_products: {
+        Args: {
+          _category_id: string
+          _product_ids: string[]
+          _store_id: string
+        }
+        Returns: undefined
+      }
+      reorder_store_categories: {
+        Args: { _category_ids: string[]; _store_id: string }
+        Returns: undefined
+      }
+      request_instant_settlement: { Args: { _store_id: string }; Returns: Json }
       resolve_booking_payouts: {
         Args: { _booking_id: string }
         Returns: {
@@ -10894,6 +11027,32 @@ export type Database = {
         Args: { p_offer_id: string; p_pin: string }
         Returns: undefined
       }
+      set_offer_text: {
+        Args: { _store_id: string; _text: string }
+        Returns: undefined
+      }
+      set_product_availability: {
+        Args: { _is_available: boolean; _product_id: string }
+        Returns: undefined
+      }
+      set_recommended_products: {
+        Args: { _product_ids: string[]; _store_id: string }
+        Returns: undefined
+      }
+      set_store_open: {
+        Args: { _is_open: boolean; _store_id: string }
+        Returns: undefined
+      }
+      settlement_build: {
+        Args: {
+          _cutoff: string
+          _run_date: string
+          _store_id: string
+          _type: string
+        }
+        Returns: string
+      }
+      settlement_next_invoice: { Args: { _d: string }; Returns: string[] }
       slot_busy_by_half: {
         Args: { _date: string; _service_key: string }
         Returns: {
@@ -11305,6 +11464,10 @@ export type Database = {
         Args: { _item_id: string; _paid: boolean }
         Returns: undefined
       }
+      staff_mark_settlement_paid: {
+        Args: { _reference: string; _settlement_id: string }
+        Returns: undefined
+      }
       staff_mark_subscription_invoice_paid: {
         Args: { _invoice_id: string; _paid: boolean }
         Returns: undefined
@@ -11316,6 +11479,16 @@ export type Database = {
       staff_merchant_raise_query: {
         Args: { _doc_types: string[]; _merchant_id: string; _notes: string }
         Returns: undefined
+      }
+      staff_notify_summary: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          converted: number
+          day: string
+          notified: number
+          service_type: string
+          tried: number
+        }[]
       }
       staff_notify_waitlist_area: {
         Args: { _city?: string; _segment_id?: string }
@@ -11428,6 +11601,10 @@ export type Database = {
       staff_reverse_reward: {
         Args: { _ledger_id: string; _reason: string }
         Returns: undefined
+      }
+      staff_review_product_changes: {
+        Args: { _approve: boolean; _note?: string; _product_id: string }
+        Returns: Json
       }
       staff_reward_ledger_search: {
         Args: {
@@ -12010,6 +12187,10 @@ export type Database = {
         }
         Returns: string
       }
+      staff_upsert_product: {
+        Args: { _payload: Json; _product_id?: string; _store_id: string }
+        Returns: Json
+      }
       staff_upsert_reward_program: {
         Args: {
           _actor_type: string
@@ -12314,6 +12495,10 @@ export type Database = {
       }
       undo_event_redemption: {
         Args: { p_redemption_id: string }
+        Returns: Json
+      }
+      upsert_product: {
+        Args: { _payload: Json; _product_id?: string; _store_id: string }
         Returns: Json
       }
       verify_commission_parity: {
