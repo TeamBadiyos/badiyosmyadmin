@@ -1,3 +1,4 @@
+import { PartyAgreementCard } from "@/components/agreements";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
 import { ClipboardList, Store as StoreIcon, CheckCircle2, Tags, Megaphone, Settings } from "lucide-react";
@@ -506,7 +507,7 @@ function AddMerchantDialog({ service, defPct, onClose, onDone }: { service: Svc;
   );
 }
 
-type DTab = "profile" | "commercials" | "products" | "staff" | "settlements";
+type DTab = "profile" | "commercials" | "products" | "staff" | "settlements" | "agreement";
 
 function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId: string; role: string; onBack: () => void }) {
   const L = useLabels(service);
@@ -552,12 +553,13 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
             </div>
           </div>
           <div className="flex gap-1 border-b overflow-x-auto">
-            {([["profile", "Overview"], ["products", L.products], ["commercials", "Commercials"], ["staff", "Staff"], ["settlements", "Settlements"]] as [DTab, string][]).map(([k, l]) => (
+            {([["profile", "Overview"], ["products", L.products], ["commercials", "Commercials"], ["staff", "Staff"], ["settlements", "Settlements"], ["agreement", "Agreement"]] as [DTab, string][]).map(([k, l]) => (
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
             ))}
           </div>
           {t === "profile" && <ProfilePane s={s} act={act} storeTypes={service === "store" ? r.data?.storeTypes : undefined} />}
           {t === "commercials" && <CommercialsPane s={s} act={act} />}
+          {t === "agreement" && <PartyAgreementCard partyType="merchant" partyId={storeId} canManage={role === "super_admin" || role === "ops_manager"} />}
           {t === "products" && <ProductsPane data={r.data} act={act} service={service} storeId={storeId} />}
           {t === "staff" && (
             <div className="rounded-lg border bg-card divide-y">

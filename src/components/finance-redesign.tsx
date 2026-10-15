@@ -12,6 +12,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
 import { SettlementsTab, InvoicesTab } from "@/components/finance-hub";
 import { MerchantBillingPage } from "@/components/merchant-billing-page";
+import { SettlementsPage } from "@/components/settlements-page";
+import { PartnerFeesCollections, fetchPartnerFees } from "@/components/partner-payments";
 import {
   getFinanceOverview, listExpenses, saveExpense, deleteExpense, saveExpenseCategory,
   listSubscriptions, saveSubscription, markSubscriptionPaid, getInstantFeePct, setInstantFeePct,
@@ -47,6 +49,7 @@ export function FinanceOverview({ onNav, isSuperAdmin }: { onNav: (key: string) 
   const q = useQuery({ queryKey: ["fin-overview", from, to], queryFn: () => fetch({ data: { from, to } }), refetchInterval: 60_000 });
   const d = q.data ?? {};
   const t = d.todo ?? {};
+  const pf = useQuery({ queryKey: ["fin-partner-fees", "held"], queryFn: () => fetchPartnerFees(to, to) });
   const cards: { label: string; value: string; hint?: string; nav?: string }[] = [
     { label: "Collected", value: inr(d.collected), hint: "Razorpay settlements", nav: "settlements" },
     { label: "Owed to merchants", value: inr(d.owed_merchants), hint: "Draft + approved", nav: "fin-settlements" },
@@ -56,6 +59,7 @@ export function FinanceOverview({ onNav, isSuperAdmin }: { onNav: (key: string) 
     { label: "Other Income – Instant Settlement Fee", value: inr(d.other_income), hint: "Excludes GST on the fee", nav: "reports" },
     { label: "Expenses this month", value: inr(d.expenses_month), nav: isSuperAdmin ? "fin-expenses" : undefined },
     { label: "Customer wallet outstanding", value: inr(d.wallet_outstanding), hint: "Cash + bonus balances", nav: "fin-wallet" },
+    { label: "Partner deposits held", value: inr(pf.data?.deposits_held), hint: "Liability, not income", nav: "settlements" },
   ];
   const todo: { n: number | boolean; label: string; nav: string }[] = [
     { n: Number(t.instant_to_pay ?? 0), label: "instant settlement(s) to pay today", nav: "fin-settlements" },
@@ -94,6 +98,17 @@ export function FinanceOverview({ onNav, isSuperAdmin }: { onNav: (key: string) 
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Collections ---------------- */
+export function CollectionsPage({ onPartner }: { onPartner?: (id: string) => void }) {
+  const [chip, setChip] = useState<"razorpay" | "partner">("razorpay");
+  return (
+    <div className="space-y-4">
+      <Chips value={chip} onChange={setChip} items={[["razorpay", "Payments"], ["partner", "Partner fees"]]} />
+      {chip === "razorpay" ? <SettlementsPage /> : <PartnerFeesCollections onPartner={onPartner} />}
     </div>
   );
 }

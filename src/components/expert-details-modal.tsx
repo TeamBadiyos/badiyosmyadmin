@@ -1,3 +1,4 @@
+import { PartyAgreementCard } from "@/components/agreements";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -359,6 +360,8 @@ export function ExpertDetailsModal({
                   <Row label="IFSC" value={data.bankIfsc ?? "—"} mono />
                 </Card>
               </section>
+
+              <PartyAgreementCard partyType="expert" partyId={expertId} />
 
               <section className="bg-background border border-border rounded-[18px] p-4">
                 <div className="flex items-center justify-between mb-3">

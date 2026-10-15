@@ -1,3 +1,4 @@
+import { fetchPartnerFees } from "@/components/partner-payments";
 import { Fragment, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -253,12 +254,13 @@ export function TaxTab() {
   const fetch = useServerFn(getTaxReport);
   const q = useQuery({ queryKey: ["fin-tax", month], queryFn: () => fetch({ data: { month } }) });
   const d = q.data as any;
-  const s = d?.summary ?? {};
+  const pfq = useQuery({ queryKey: ["fin-partner-fees", month], queryFn: () => { const [y, mo] = month.split("-").map(Number); const end = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10); return fetchPartnerFees(`${month}-01`, end); } });
+  const s = { ...(d?.summary ?? {}), franchise_fee_gst: pfq.data?.fee_gst ?? 0 };
   const lines: [string, number][] = [
     ["Food GST 9(5) collected", s.food_gst_9_5], ["Store delivery GST", s.store_delivery_gst], ["Food delivery GST", s.food_delivery_gst],
     ["Parcel delivery GST", s.parcel_delivery_gst], ["Commission GST", s.commission_gst], ["Platform fee GST", s.platform_fee_gst],
     ["TCS (total)", s.tcs], ["TDS 194-O (total)", s.tds],
-    ["Clean Home GST", s.maid_gst], ["Clean Auto GST", s.wash_gst], ["Instant fee GST", s.instant_fee_gst],
+    ["Clean Home GST", s.maid_gst], ["Clean Auto GST", s.wash_gst], ["Instant fee GST", s.instant_fee_gst], ["Franchise fee GST", s.franchise_fee_gst],
     ["GST paid on expenses (input credit)", s.expense_input_gst],
   ];
   const m = (d?.merchants ?? []) as any[];

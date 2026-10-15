@@ -9,6 +9,19 @@ import { listZoneOptions } from "@/lib/bookings.functions";
 import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
+import { ExpertApplicationsPanel, useApplicationsCount } from "@/components/expert-applications";
+
+function ViewChips({ view, setView, count }: { view: string; setView: (v: string) => void; count: number }) {
+  return (
+    <div className="flex gap-1.5">
+      {([["experts", "Experts"], ["applications", "Applications"]] as const).map(([k, l]) => (
+        <button key={k} onClick={() => setView(k)} className={`h-8 px-3 rounded-full text-[12px] font-semibold border inline-flex items-center gap-1.5 ${view === k ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border"}`}>
+          {l}{k === "applications" && count > 0 && <span className="rounded-full bg-destructive text-destructive-foreground px-1.5 text-[10px]">{count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
 import { DataTablePagination, EmptyState } from "@/components/ui/data-table";
 import {
   useSortFilter,
@@ -67,6 +80,8 @@ export function ExpertsPage({
   const effSkill = skill ?? (skillF || undefined);
   const [statusF, setStatusF] = useUrlState<string>("status", skill ? "active" : "");
   const [addOpen, setAddOpen] = useState(false);
+  const [view, setView] = useUrlState<string>("view", "experts");
+  const appsCount = useApplicationsCount();
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
@@ -202,8 +217,15 @@ export function ExpertsPage({
   const hasFilters = !!(riderSearch || skillF || availability || moreCount || statusF !== (skill ? "active" : ""));
   const clearFilters = () => { setRiderSearch(""); setSkillF(""); setAvailability(""); setZoneId(""); setKycStatus(""); setLevel(""); setMode(""); setStatusF(skill ? "active" : ""); };
   const hr = workHourRanges();
+  const showAppsChip = !skill && canManage;
+
+  if (showAppsChip && view === "applications") return (
+    <div className="space-y-4"><ViewChips view={view} setView={setView} count={appsCount.data ?? 0} /><ExpertApplicationsPanel /></div>
+  );
 
   return (
+    <>
+    {showAppsChip && <div className="mb-4"><ViewChips view={view} setView={setView} count={appsCount.data ?? 0} /></div>}
     <div className="space-y-6">
       {isRider ? (
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
@@ -396,6 +418,7 @@ export function ExpertsPage({
         />
       )}
     </div>
+    </>
   );
 }
 
