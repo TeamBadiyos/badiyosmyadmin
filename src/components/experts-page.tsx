@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,9 +41,12 @@ const inr = new Intl.NumberFormat("en-IN", {
 export function ExpertsPage({
   role,
   initialOnlineOnly = false,
+  skill,
 }: {
   role: StaffRole | null;
   initialOnlineOnly?: boolean;
+  /** Team tab: only Experts with an approved maid (Home) or wash (Auto) skill. */
+  skill?: "maid" | "wash";
 }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
@@ -87,9 +91,27 @@ export function ExpertsPage({
     staleTime: 15_000,
   });
 
+  const { data: skillIds } = useQuery({
+    queryKey: ["experts", "skill-ids", skill],
+    enabled: !!skill,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("partner_skills")
+        .select("expert_id, service_category_id, service_categories(slug)").eq("status", "approved");
+      if (error) throw new Error(error.message);
+      const COURIER = "250ebe17-dfc8-4d9b-95ef-1f60a9372142";
+      const ids = new Set<string>();
+      for (const r of (data ?? []) as unknown as Array<{ expert_id: string; service_category_id: string; service_categories: { slug: string } | null }>) {
+        const isWash = r.service_categories?.slug === "car-bike-wash";
+        if (skill === "wash" ? isWash : !isWash && r.service_category_id !== COURIER) ids.add(r.expert_id);
+      }
+      return ids;
+    },
+  });
   const expertsFiltered = (
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw
-  ).filter((e) => !mode || e.mode === mode);
+  ).filter((e) => !mode || e.mode === mode)
+   .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false));
 
   const sf = useSortFilter(expertsFiltered, [
     { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
