@@ -181,7 +181,7 @@ const NAV_ITEMS = [
   { key: "courier-bulk", label: "Bulk / Business Delivery", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Store", icon: Receipt },
-  { key: "food-orders", label: "Manage Food", icon: UtensilsCrossed },
+  { key: "food-orders", label: "Food", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Service Status", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax Settings", icon: Percent },
