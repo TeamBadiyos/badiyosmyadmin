@@ -59,7 +59,7 @@ const PRICING_LABELS: Record<PricingType, string> = {
   quantity: "Quantity-based",
 };
 
-export function ServiceCataloguePage() {
+export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" | null } = {}) {
   const fetchTree = useServerFn(listCatalogueTree);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["catalogue", "tree"],
@@ -84,7 +84,12 @@ export function ServiceCataloguePage() {
 
   const segments = (data?.segments ?? []).filter((segment) => segment.slug === "clean");
   const cleanSegmentIds = useMemo(() => new Set(segments.map((segment) => segment.id)), [segments]);
-  const categories = (data?.categories ?? []).filter((category) => cleanSegmentIds.has(category.segment_id));
+  const isWash = (name: string) => /auto care/i.test(name);
+  const categories = (data?.categories ?? []).filter(
+    (category) =>
+      cleanSegmentIds.has(category.segment_id) &&
+      (kind === null || (kind === "wash" ? isWash(category.name) : !isWash(category.name))),
+  );
   const cleanCategoryIds = useMemo(() => new Set(categories.map((category) => category.id)), [categories]);
   const services = (data?.services ?? []).filter((service) => cleanCategoryIds.has(service.category_id));
   const cleanServiceIds = useMemo(() => new Set(services.map((service) => service.id)), [services]);
