@@ -6,7 +6,8 @@ import type { CourierOrderRow } from "@/lib/courier.functions";
 const inr = (n: number | null | undefined) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
 const clock = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "";
-const dayTime = (date: string | null, slot: string | null) => {
+const dayTime = (date: string | null, slot: string | null, slotType?: string | null) => {
+  if (!date && (slotType ?? "").toLowerCase() === "now") return "Now";
   const d = date ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" }) : "";
   const t = (slot ?? "").split(/\s*[-–(]/)[0].trim();
   return [d, t].filter(Boolean).join(" ") || "—";
@@ -83,15 +84,14 @@ export function CompactBookingCard({ b, col, now, onOpen }: { b: PipelineBooking
     : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)} · ${expert}`
     : `Expert: ${expert}`;
   const status =
-    col === "in_progress" ? "In progress"
-    : b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}`
-    : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}`
+    col === "completed" ? inr(b.totalAmount)
+    : col === "in_progress" ? (b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}` : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}` : "In progress")
     : inr(b.totalAmount);
   const flag = b.dispatchExhaustedAt && col === "accepted" ? "No Expert found" : null;
   return (
     <Shell onOpen={onOpen} flag={flag}>
       <Top name={b.customerName} onOpen={onOpen} />
-      <p className={line}>{dayTime(b.scheduledDate, b.scheduledTimeSlot)} : {service}</p>
+      <p className={line}>{dayTime(b.scheduledDate, b.scheduledTimeSlot, b.slotType)} : {service}</p>
       <p className={line}>{third}</p>
       <Bottom left={status} action={col === "accepted" ? "Assign" : undefined} onAction={onOpen} />
     </Shell>
