@@ -694,6 +694,25 @@ export const sendCampaign = createServerFn({ method: "POST" })
     return { sent: Number(sent ?? 0) };
   });
 
+/** Send a campaign to one customer phone only (marked [TEST]); real audience untouched. */
+export const sendCampaignTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; phone: string }) => {
+    if (!input?.id) throw new Error("id required");
+    if (!input?.phone) throw new Error("phone required");
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<{ devices: number }> => {
+    await requireOffersWriter(context.supabase, context.userId);
+    const { data: res, error } = await context.supabase.rpc("staff_send_campaign_test", {
+      _id: data.id,
+      _phone: data.phone,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    if (error) throw new Error(error.message);
+    return { devices: Number((res as { devices?: number } | null)?.devices ?? 0) };
+  });
+
 export type AudiencePreview = { total: number; reachable: number; unreachable: number };
 
 /** How many customers an audience selects, and how many can actually receive a push. */
