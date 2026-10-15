@@ -11100,6 +11100,7 @@ export type Database = {
         Args: { _id: string; _paid_via?: string }
         Returns: string
       }
+      fin_mask_phone: { Args: { _p: string }; Returns: string }
       fin_next_doc_no: {
         Args: { _d: string; _series: string }
         Returns: string
@@ -11212,6 +11213,7 @@ export type Database = {
         | { Args: { _uid: string }; Returns: boolean }
         | { Args: { _roles: string[]; _uid: string }; Returns: boolean }
       is_delivery_rider: { Args: { _expert_id: string }; Returns: boolean }
+      is_finance_staff: { Args: never; Returns: boolean }
       is_internal_tester: { Args: never; Returns: boolean }
       is_offer_finance_user: { Args: never; Returns: boolean }
       is_public_product_image: {
