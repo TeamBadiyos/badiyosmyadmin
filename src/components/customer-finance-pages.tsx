@@ -104,7 +104,7 @@ export function CustomerInvoicesPage({ isSuperAdmin }: { isSuperAdmin: boolean }
                   <td className="font-semibold">{c.credit_note_no}</td><td>{c.note_date}</td><td>{c.invoice_no}</td><td>{c.customer_name ?? "—"}</td>
                   <td>{svcLabel(c.service)}</td><td>{c.reason}</td>
                   <td className="text-right">{inr(Number(c.cgst) + Number(c.sgst) + Number(c.igst))}</td><td className="text-right font-semibold">{inr(c.total)}</td>
-                  <td><Button size="sm" variant="ghost" onClick={() => downloadCreditNotePdf(c, inv.find((i) => i.invoice_no === c.invoice_no)?.company)}><Download className="h-4 w-4" /></Button></td>
+                  <td><Button size="sm" variant="ghost" onClick={() => downloadCreditNotePdf(c, inv.find((i) => i.invoice_no === c.invoice_no)?.company, inv.find((i) => i.invoice_no === c.invoice_no)?.invoice_date)}><Download className="h-4 w-4" /></Button></td>
                 </tr>
               ))}
               {!cns.length && !data.isLoading && <tr><td colSpan={9} className="text-center text-muted-foreground py-6">No credit notes in this period.</td></tr>}
