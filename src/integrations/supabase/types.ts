@@ -5702,6 +5702,7 @@ export type Database = {
           gross_amount: number
           id: string
           instant_fee: number
+          instant_fee_gst: number
           invoice_fy: string | null
           invoice_no: string | null
           net_amount: number
@@ -5725,6 +5726,7 @@ export type Database = {
           gross_amount?: number
           id?: string
           instant_fee?: number
+          instant_fee_gst?: number
           invoice_fy?: string | null
           invoice_no?: string | null
           net_amount?: number
@@ -5748,6 +5750,7 @@ export type Database = {
           gross_amount?: number
           id?: string
           instant_fee?: number
+          instant_fee_gst?: number
           invoice_fy?: string | null
           invoice_no?: string | null
           net_amount?: number

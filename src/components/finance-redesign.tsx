@@ -53,7 +53,7 @@ export function FinanceOverview({ onNav, isSuperAdmin }: { onNav: (key: string) 
     { label: "Owed to experts / riders / partners", value: inr(d.owed_workers), hint: "Wallet balances", nav: "wallets" },
     { label: "Refunds pending", value: `${d.refunds_pending ?? 0} · ${inr(d.refunds_pending_amt)}`, nav: "fin-refunds" },
     { label: "Tax this month", value: inr(d.tax_month), hint: "Commission GST + TCS + TDS", nav: "fin-tax" },
-    { label: "Other income", value: inr(d.other_income), hint: "Instant settlement fees", nav: "reports" },
+    { label: "Other Income – Instant Settlement Fee", value: inr(d.other_income), hint: "Excludes GST on the fee", nav: "reports" },
     { label: "Expenses this month", value: inr(d.expenses_month), nav: isSuperAdmin ? "fin-expenses" : undefined },
     { label: "Customer wallet outstanding", value: inr(d.wallet_outstanding), hint: "Cash + bonus balances", nav: "fin-wallet" },
   ];
