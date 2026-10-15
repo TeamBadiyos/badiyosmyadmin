@@ -11,6 +11,7 @@ import {
   Upload,
   Layers,
   CalendarClock,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -19,6 +20,8 @@ import {
   upsertCategory,
   setCategoryActive,
   setSegmentActive,
+  deleteCategory,
+  setPriceOptionActive,
   upsertService,
   deleteService,
   upsertPriceOption,
@@ -119,6 +122,8 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
   const queryClient = useQueryClient();
   const setSegActiveFn = useServerFn(setSegmentActive);
   const setCatActiveFn = useServerFn(setCategoryActive);
+  const delCatFn = useServerFn(deleteCategory);
+  const optActiveFn = useServerFn(setPriceOptionActive);
 
   async function applyActiveToggle(
     kind: "segment" | "category",
@@ -523,6 +528,31 @@ function ServiceRow({
   );
 }
 
+function RowMenu({ items }: { items: Array<{ label: string; onClick: () => void; danger?: boolean }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button aria-label="More" onClick={() => setOpen((o) => !o)}
+        className="h-8 w-8 rounded-[10px] border border-border inline-flex items-center justify-center hover:bg-muted">
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <>
+          <button aria-label="Close menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-9 z-30 min-w-[150px] rounded-[12px] border border-border bg-card py-1 shadow-lg">
+            {items.map((it) => (
+              <button key={it.label} onClick={() => { setOpen(false); it.onClick(); }}
+                className={`block w-full whitespace-nowrap px-4 py-2 text-left text-[13px] font-medium hover:bg-muted ${it.danger ? "text-destructive" : "text-foreground"}`}>
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ActiveSwitch({
   active,
   label,
@@ -563,8 +593,8 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-[18px] w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex justify-end" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-card border-l border-border w-full max-w-xl h-full overflow-y-auto">
         <header className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
           <button onClick={onClose} aria-label="Close" className="text-muted-foreground">
