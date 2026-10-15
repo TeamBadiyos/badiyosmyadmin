@@ -334,6 +334,8 @@ export type PipelineBooking = {
   serviceEndAt?: string | null;
   /** Total accepted extension minutes (e.g. 60 for a +1 hr extension). */
   extMinutes: number;
+  /** Which Clean board the booking belongs to (car-bike-wash category = wash). */
+  serviceGroup?: "maid" | "wash";
 };
 
 /** Timing rules Live Ops needs to decide when a card is late. */
@@ -386,8 +388,9 @@ export const getBookingJourneyConfig = createServerFn({ method: "GET" })
 
 export const listPipelineBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { segmentId?: string | null }) => ({
+  .inputValidator((input?: { segmentId?: string | null; training?: boolean }) => ({
     segmentId: input?.segmentId ?? null,
+    training: !!input?.training,
   }))
   .handler(async ({ data, context }): Promise<PipelineBooking[]> => {
     await assertActiveStaff(context);
@@ -415,10 +418,10 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     // Fetch open pipeline (confirmed/accepted/expert_assigned/in_progress)
     // plus today's completed bookings.
     const cols =
-      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at, staff_note";
+      "id, status, user_id, assigned_expert_id, service_label, service_duration_minutes, price, gst_amount, total_amount, discount_amount, razorpay_payment_id, price_option_id, scheduled_date, scheduled_time_slot, slot_type, created_at, updated_at, broadcast_started_at, dispatch_exhausted_at, expert_assigned_at, on_the_way_at, arrived_at, onway_alert_sent, no_expert_alert_sent, started_at, service_end_at, staff_note, service_category_id";
     let openQ = db
       .from("bookings")
-      .select(cols).eq("is_training", false)
+      .select(cols).eq("is_training", data.training)
       .in("status", [
         "confirmed",
         "accepted",
@@ -432,7 +435,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       .limit(200);
     let completedQ = db
       .from("bookings")
-      .select(cols).eq("is_training", false)
+      .select(cols).eq("is_training", data.training)
       .eq("status", "completed")
       .is("deleted_at", null)
       // "Completed Today" = finished today (regardless of booking date).
@@ -474,6 +477,12 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     );
 
     const bookingIds = rows.map((r) => r.id as string);
+    const catIds = Array.from(new Set(rows.map((r) => (r as Record<string, unknown>)["service_category_id"] as string | null).filter((x): x is string => !!x)));
+    const washCats = new Set<string>();
+    if (catIds.length) {
+      const { data: cs } = await db.from("service_categories").select("id, slug").in("id", catIds);
+      for (const c of (cs ?? []) as Array<{ id: string; slug: string | null }>) if (c.slug === "car-bike-wash") washCats.add(c.id);
+    }
     const [usersRes, expertsRes, priceOptionsRes, extRes] = await Promise.all([
       userIds.length
         ? db.from("users").select("id, full_name").in("id", userIds)
@@ -583,6 +592,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       startedAt: ((r as Record<string, unknown>)["started_at"] as string | null) ?? null,
       serviceEndAt: ((r as Record<string, unknown>)["service_end_at"] as string | null) ?? null,
       extMinutes: extMap.get(r.id as string) ?? 0,
+      serviceGroup: washCats.has(((r as Record<string, unknown>)["service_category_id"] as string) ?? "") ? "wash" : "maid",
     }));
   });
 
