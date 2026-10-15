@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CheckCircle2, LifeBuoy, RefreshCw, RotateCcw, Search, Send } from "lucide-react";
+import { CheckCircle2, LifeBuoy, RefreshCw, RotateCcw, Search, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getTicketContact,
@@ -113,9 +113,6 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
     );
   }, [tickets, search]);
 
-  useEffect(() => {
-    if (!activeId && filtered.length) setActiveId(filtered[0]!.id);
-  }, [filtered, activeId]);
 
   if (!canManage) {
     return (
@@ -143,7 +140,7 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_300px] gap-4 lg:h-[calc(100vh-190px)] lg:min-h-[560px]">
+      <div className={`grid grid-cols-1 ${active ? "lg:grid-cols-[320px_minmax(0,1fr)_300px]" : ""} gap-4 lg:h-[calc(100vh-190px)] lg:min-h-[560px]`}>
         {/* LEFT — ticket list */}
         <div className="bg-card border border-border rounded-[18px] flex flex-col overflow-hidden max-h-[420px] lg:max-h-none">
           <div className="p-3 space-y-2 border-b border-border">
@@ -234,27 +231,14 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
           </div>
         </div>
 
-        {/* MIDDLE — chat */}
-        {active ? (
-          <ChatWindow key={active.id} ticket={active} />
-        ) : (
-          <div className="bg-card border border-border rounded-[18px] flex items-center justify-center">
-            <p className="text-[14px] text-muted-foreground">Select a conversation</p>
-          </div>
-        )}
-
-        {/* RIGHT — contact */}
-        {active ? (
-          <ContactPanel ticket={active} />
-        ) : (
-          <div className="bg-card border border-border rounded-[18px] hidden lg:block" />
-        )}
+        {active && <ChatWindow key={active.id} ticket={active} onClose={() => setActiveId(null)} />}
+        {active && <ContactPanel ticket={active} />}
       </div>
     </div>
   );
 }
 
-function ChatWindow({ ticket }: { ticket: SupportTicket }) {
+function ChatWindow({ ticket, onClose }: { ticket: SupportTicket; onClose: () => void }) {
   const queryClient = useQueryClient();
   const fetchMessages = useServerFn(listTicketMessages);
   const sendFn = useServerFn(sendTicketMessage);
@@ -385,6 +369,14 @@ function ChatWindow({ ticket }: { ticket: SupportTicket }) {
               Reopen
             </button>
           )}
+          <button
+            onClick={onClose}
+            aria-label="Close preview"
+            title="Close preview"
+            className="h-9 w-9 rounded-[12px] border border-border inline-flex items-center justify-center hover:bg-muted/40"
+          >
+            <X size={16} />
+          </button>
         </div>
       </div>
 
