@@ -604,6 +604,9 @@ function Shell() {
               );
               if (group) setOpenGroups((p) => ({ ...p, [group.id]: true }));
               if (key === "bookings" && a.targetId) setSelectedBookingId(a.targetId);
+              if ((key === "store-orders" || key === "food-orders") && a.targetId) {
+                try { sessionStorage.setItem("cc-open-order", a.targetId); } catch { /* ignore */ }
+              }
             }}
           />
 

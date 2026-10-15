@@ -113,6 +113,13 @@ function OrdersTab({ service }: { service: Svc }) {
   const [to, setTo] = useState("");
   const [sort, setSort] = useState<{ k: OSort; asc: boolean }>({ k: "placed", asc: false });
   const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => {
+    // Opened from a bell alert
+    try {
+      const id = sessionStorage.getItem("cc-open-order");
+      if (id) { sessionStorage.removeItem("cc-open-order"); setOpenId(id); }
+    } catch { /* ignore */ }
+  }, []);
   const L = useLabels(service);
   const qc = useQueryClient();
   const r = useQuery({
