@@ -19,6 +19,7 @@ import {
 } from "@/lib/experts.functions";
 
 import { listZoneOptions } from "@/lib/bookings.functions";
+import { assignPartnerSkill } from "@/lib/partner-skills.functions";
 
 const LEVELS: ExpertLevel[] = ["bronze", "silver", "gold", "diamond"];
 const STATUSES: ActiveStatus[] = ["active", "inactive"];
@@ -44,10 +45,16 @@ async function uploadTo(bucket: string, file: File, prefix: string): Promise<str
 export function ExpertFormModal({
   expertId,
   onClose,
+  presetSkillIds,
+  title,
 }: {
   expertId: string | null;
   onClose: () => void;
+  /** Skills given to a newly added Expert (e.g. Courier Delivery for riders). */
+  presetSkillIds?: string[];
+  title?: string;
 }) {
+  const assignSkill = useServerFn(assignPartnerSkill);
   const queryClient = useQueryClient();
   const fetchExpert = useServerFn(getExpert);
   const fetchExperts = useServerFn(listExperts);
@@ -203,6 +210,11 @@ export function ExpertFormModal({
           training,
         },
       });
+      if (!isEdit && presetSkillIds?.length) {
+        for (const sid of presetSkillIds) {
+          await assignSkill({ data: { expertId: res.id, serviceCategoryId: sid } });
+        }
+      }
       return res;
     },
 
