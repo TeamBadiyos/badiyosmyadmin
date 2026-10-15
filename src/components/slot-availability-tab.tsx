@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  listSlotOverrides, setInstantBooking, getSlotCapacity, setBandCapacity, setCapacitySetting,
+  listSlotOverrides, setSlotFull, setInstantBooking, getSlotCapacity, setBandCapacity, setCapacitySetting,
   type CapGroup, type CapKey, type Band,
 } from "@/lib/booking-settings.functions";
 
@@ -131,8 +131,64 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
         <p className="mt-2 text-[12px] text-muted-foreground">Empty = use the daily number.</p>
       </section>
 
+      <SlotGrid group={group} date={date} bands={cap?.bands ?? []} autoOn={!!cap?.enabled} />
+
       {openBand && <BandBookings group={group} date={date} band={openBand} onClose={() => setOpenBand(null)} />}
     </div>
+  );
+}
+
+function slotText(m: number) {
+  const h = Math.floor(m / 60), mi = m % 60;
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+function SlotGrid({ group, date, bands, autoOn }: { group: CapGroup; date: string; bands: Band[]; autoOn: boolean }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listSlotOverrides);
+  const fullFn = useServerFn(setSlotFull);
+  const q = useQuery({ queryKey: ["slot-overrides", group, date], queryFn: () => listFn({ data: { date, group } }) });
+  const mut = useMutation({
+    mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, group, ...v } }),
+    onSuccess: (_r, v) => { toast.success(v.full ? "Marked full" : "Re-opened"); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); qc.invalidateQueries({ queryKey: ["slot-cap", group] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const d = q.data;
+  const step = d?.step ?? 30;
+  const slots: number[] = [];
+  if (d) for (let m = d.first * 60; m <= d.last * 60; m += step) slots.push(m);
+  const manual = new Set((d?.full ?? []).map((f) => f.key));
+  return (
+    <section className={card}>
+      <h3 className="text-[15px] font-bold text-foreground">All slots</h3>
+      {q.isError && <p className="mt-3 text-[13px] text-destructive">{(q.error as Error).message}</p>}
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {slots.map((m) => {
+          const band = bands.find((b) => m >= b.start_min && m < b.end_min);
+          const isManual = manual.has(m);
+          const isAuto = !isManual && autoOn && !!band?.full;
+          const full = isManual || isAuto;
+          const n = (d?.counts[m] ?? 0) + (step === 60 ? d?.counts[m + 30] ?? 0 : 0);
+          return (
+            <div key={m} className={`rounded-[12px] border p-3 ${full ? "border-destructive/40 bg-destructive/10" : "border-border"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[14px] font-bold text-foreground whitespace-nowrap">{slotText(m)}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${full ? "bg-destructive text-destructive-foreground" : "bg-success/15 text-success"}`}>
+                  {isManual ? "Marked full" : isAuto ? "Auto full" : "Open"}
+                </span>
+              </div>
+              <p className="mt-1 text-[12px] text-muted-foreground">{n} booking{n === 1 ? "" : "s"}</p>
+              {d?.canEdit && (
+                <button disabled={mut.isPending} onClick={() => mut.mutate({ hour: Math.floor(m / 60), minute: m % 60, full: !isManual })}
+                  className="mt-2 text-[12px] font-semibold text-primary underline disabled:opacity-50 whitespace-nowrap">
+                  {isManual ? "Re-open" : "Mark full"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

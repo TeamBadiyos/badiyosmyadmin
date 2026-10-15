@@ -146,24 +146,25 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
 
 export const listSlotOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string }) => {
+  .inputValidator((i: { date: string; group?: "clean" | "wash" }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
-    return i;
+    return { date: i.date, group: i.group === "wash" ? "wash" : "clean" } as const;
   })
   .handler(async ({ data, context }) => {
     const role = await staffRole(context as Ctx);
     const sb = (context as Ctx).supabase;
     const [ov, bk, cfg] = await Promise.all([
-      sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", "clean").eq("slot_date", data.date).eq("status", "fully_booked"),
-      sb.from("bookings").select("scheduled_time_slot, status").eq("scheduled_date", data.date).neq("slot_type", "now"),
+      sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", data.group).eq("slot_date", data.date).eq("status", "fully_booked"),
+      sb.from("bookings").select("scheduled_time_slot, status, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"),
       sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled"]),
     ]);
     if (ov.error) throw new Error(ov.error.message);
     const c: Record<string, string> = {};
     for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
     const counts: Record<number, number> = {};
-    for (const b of (bk.data ?? []) as Array<{ scheduled_time_slot: string | null; status: string }>) {
+    for (const b of (bk.data ?? []) as unknown as Array<{ scheduled_time_slot: string | null; status: string; service_categories: { slug: string } | null }>) {
       if (["cancelled", "refunded", "rejected"].includes(b.status)) continue;
+      if ((b.service_categories?.slug === "car-bike-wash") !== (data.group === "wash")) continue;
       const m = /(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])/.exec(b.scheduled_time_slot ?? "");
       if (!m) continue;
       let h = Number(m[1]); const ap = m[3]!.toUpperCase();
@@ -185,11 +186,11 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
 
 export const setSlotFull = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; hour: number; minute?: number; full: boolean; reason?: string }) => i)
+  .inputValidator((i: { date: string; hour: number; minute?: number; full: boolean; reason?: string; group?: "clean" | "wash" }) => i)
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_slot_full", {
-      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null, _start_minute: data.minute === 30 ? 30 : 0,
+      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null, _service_key: data.group === "wash" ? "wash" : "clean", _start_minute: data.minute === 30 ? 30 : 0,
     });
     if (error) throw new Error(error.message);
     return { ok: true };

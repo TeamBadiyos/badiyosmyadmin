@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   getBookingTimingSettings,
@@ -226,10 +226,6 @@ export function BookingTimingsTab() {
             <p className="mt-0.5 text-[12px] text-muted-foreground">
               Requires experts to mark &quot;On the way&quot; and &quot;Arrived&quot; before
               starting a job.
-            </p>
-            <p className="mt-2 flex items-start gap-1.5 rounded-[10px] border border-warning/40 bg-warning/10 px-3 py-2 text-[12px] font-semibold text-foreground">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" />
-              Turn ON only after the new Expert App build is installed by all Experts.
             </p>
           </div>
           <button

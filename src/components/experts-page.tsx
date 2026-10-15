@@ -46,7 +46,7 @@ export function ExpertsPage({
   role: StaffRole | null;
   initialOnlineOnly?: boolean;
   /** Team tab: only Experts with an approved maid (Home) or wash (Auto) skill. */
-  skill?: "maid" | "wash";
+  skill?: "maid" | "wash" | "rider";
 }) {
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
@@ -58,6 +58,7 @@ export function ExpertsPage({
     initialOnlineOnly ? "online_free" : "",
   );
   const [mode, setMode] = useState("");
+  const [statusF, setStatusF] = useState(skill ? "active" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
@@ -99,6 +100,11 @@ export function ExpertsPage({
       const { data, error } = await supabase.from("partner_skills")
         .select("expert_id, service_category_id, service_categories(slug)").eq("status", "approved");
       if (error) throw new Error(error.message);
+      if (skill === "rider") {
+        const { data: v } = await supabase.from("courier_vehicle_types").select("required_skill").eq("is_active", true);
+        const req = new Set(((v ?? []) as Array<{ required_skill: string | null }>).map((x) => x.required_skill).filter(Boolean));
+        return new Set(((data ?? []) as Array<{ expert_id: string; service_category_id: string }>).filter((r) => req.has(r.service_category_id)).map((r) => r.expert_id));
+      }
       const COURIER = "250ebe17-dfc8-4d9b-95ef-1f60a9372142";
       const ids = new Set<string>();
       for (const r of (data ?? []) as unknown as Array<{ expert_id: string; service_category_id: string; service_categories: { slug: string } | null }>) {
@@ -111,7 +117,9 @@ export function ExpertsPage({
   const expertsFiltered = (
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : expertsRaw
   ).filter((e) => !mode || e.mode === mode)
-   .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false));
+   .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false))
+   .filter((e) => !statusF || (statusF === "active" ? e.status === "active" : e.status !== "active"))
+   .sort((a, b) => (skill ? Number(!!b.isBusy) - Number(!!a.isBusy) : 0));
 
   const sf = useSortFilter(expertsFiltered, [
     { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
@@ -176,6 +184,11 @@ export function ExpertsPage({
           <option value="">All experts</option>
           <option value="online">Online only</option>
           <option value="online_free">Online & free</option>
+        </Filter>
+        <Filter label="Status" value={statusF} onChange={setStatusF}>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="">All</option>
         </Filter>
         <Filter label="Mode" value={mode} onChange={setMode}>
           <option value="">All</option>
