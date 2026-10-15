@@ -10729,6 +10729,7 @@ export type Database = {
         Args: { _allow: string[]; _store_id: string }
         Returns: string
       }
+      merchant_restart_application: { Args: never; Returns: undefined }
       merchant_set_accepting_orders: {
         Args: { _accepting: boolean }
         Returns: boolean
@@ -11408,6 +11409,10 @@ export type Database = {
       staff_delete_customer_address: {
         Args: { _address_id: string }
         Returns: boolean
+      }
+      staff_delete_rejected_merchant: {
+        Args: { _merchant_id: string; _reason: string }
+        Returns: undefined
       }
       staff_delete_reward_program: {
         Args: { _force?: boolean; _id: string }
