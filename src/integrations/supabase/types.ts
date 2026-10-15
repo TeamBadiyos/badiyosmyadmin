@@ -10637,7 +10637,9 @@ export type Database = {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
       }
-      instant_booking_enabled: { Args: never; Returns: boolean }
+      instant_booking_enabled:
+        | { Args: never; Returns: boolean }
+        | { Args: { _g: string }; Returns: boolean }
       instant_free_expert_count: { Args: never; Returns: number }
       is_active_staff: {
         Args: { _roles: string[]; _uid: string }

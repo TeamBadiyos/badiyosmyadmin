@@ -197,9 +197,10 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
   const cq = useCap(group, today);
   const cap = cq.data;
   const d = q.data;
+  const instOn = isWash ? d?.washInstantOn : d?.instantOn;
   const refresh = () => { qc.invalidateQueries({ queryKey: ["slot-cap"] }); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); };
   const instMut = useMutation({
-    mutationFn: (on: boolean) => instFn({ data: { on } }),
+    mutationFn: (on: boolean) => instFn({ data: { on, group } }),
     onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
   });
   const setMut = useMutation({
@@ -213,9 +214,9 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
   return (
     <section className={`${card} divide-y divide-border py-1`}>
       <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Book Now</p><p className="text-[12px] text-muted-foreground">Instant bookings (shared by Home and Auto)</p></div>
-        <Switch label="Book Now" on={!!d?.instantOn} disabled={!d || instMut.isPending}
-          onClick={() => d && confirm(d.instantOn ? "Pause Book Now?" : "Turn Book Now ON?") && instMut.mutate(!d.instantOn)} />
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Book Now</p><p className="text-[12px] text-muted-foreground">{isWash ? "Instant Clean Auto bookings" : "Instant Clean Home bookings"}</p></div>
+        <Switch label="Book Now" on={!!instOn} disabled={!d || instMut.isPending}
+          onClick={() => d && confirm(instOn ? "Pause Book Now?" : "Turn Book Now ON?") && instMut.mutate(!instOn)} />
       </div>
       <div className={row}>
         <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Automatic capacity</p><p className="text-[12px] text-muted-foreground">Slots close by themselves when full</p></div>

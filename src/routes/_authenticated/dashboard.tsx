@@ -717,7 +717,7 @@ function Shell() {
         ) : active === "services" ? (
           <ServicesPage
             onEditHours={(k) =>
-              setActive(k === "clean" ? "maid-settings" : k === "courier" ? "courier-settings" : k === "food" ? "food-orders" : "store-orders")
+              setActive(k === "clean" ? "maid-settings" : k === "wash" ? "wash-settings" : k === "courier" ? "courier-settings" : k === "food" ? "food-orders" : "store-orders")
             }
           />
         ) : active === "event-offers" ? (
@@ -763,7 +763,7 @@ function Shell() {
         ) : active === "maid-settings" || active === "wash-settings" ? (
           <div className="space-y-6 max-w-4xl">
             <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
-            <ServiceHoursPanel serviceKey="clean" title="Opening hours" />
+            <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
             <BookingTimingsTab />
           </div>
         ) : active === "courier-settings" ? (
