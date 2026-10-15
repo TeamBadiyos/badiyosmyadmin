@@ -17,6 +17,8 @@ import {
   type PartnerProgram,
   type PartnerRow,
 } from "@/lib/partner-program.functions";
+import { PartyAgreementCard } from "@/components/agreements";
+import { PartnerPaymentsPanel } from "@/components/partner-payments";
 
 const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   growth: "Growth Partner",
@@ -73,6 +75,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
   const [filter, setFilter] = useState<"all" | PartnerProgram>("all");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [editing, setEditing] = useState<Partial<PartnerRow> | null>(null);
+  const [detail, setDetail] = useState<PartnerRow | null>(null);
   const rows = useMemo(
     () => (q.data?.partners ?? []).filter((p) => (filter === "all" || p.program === filter) && (status === "all" || p.status === status)),
     [q.data, filter, status],
@@ -115,7 +118,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
             {rows.length === 0 && <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No partners yet.</td></tr>}
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-border">
-                <td className="p-2 font-semibold">{p.name}</td>
+                <td className="p-2 font-semibold"><button className="text-primary hover:underline" onClick={() => setDetail(p)}>{p.name}</button></td>
                 <td className="p-2">{p.phone}</td>
                 <td className="p-2">{q.data?.plans.find((x) => x.id === p.plan_id)?.name ?? "—"}</td>
                 <td className="p-2">{p.city}</td>
@@ -132,8 +135,23 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           </tbody>
         </table>
       </div>
+      {detail && <PartnerDetail p={detail} isAdmin={isAdmin} onClose={() => setDetail(null)} />}
       {editing && <PartnerForm initial={editing} zones={q.data?.zones ?? []} plans={q.data?.plans ?? []} onClose={() => setEditing(null)} />}
     </div>
+  );
+}
+
+function PartnerDetail({ p, isAdmin, onClose }: { p: PartnerRow; isAdmin: boolean; onClose: () => void }) {
+  const [t, setT] = useState<"payments" | "agreement">("payments");
+  return (
+    <Modal title={p.name} onClose={onClose}>
+      <div className="mb-3 flex gap-1 border-b border-border">
+        {([["payments", "Payments"], ["agreement", "Agreement"]] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
+        ))}
+      </div>
+      {t === "payments" ? <PartnerPaymentsPanel partnerId={p.id} canEdit={isAdmin} /> : <PartyAgreementCard partyType="partner" partyId={p.id} canManage={isAdmin} />}
+    </Modal>
   );
 }
 
