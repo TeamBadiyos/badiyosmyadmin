@@ -18,6 +18,10 @@ export type SupportTicket = {
   lastMessageFrom: "staff" | "customer" | null;
   userName: string | null;
   userPhone: string | null;
+  bookingId: string | null;
+  assignedStaffId: string | null;
+  unread: number;
+  lastMessageSeen: boolean;
 };
 
 export type TicketMessage = {
@@ -25,6 +29,9 @@ export type TicketMessage = {
   senderType: "staff" | "customer";
   body: string;
   createdAt: string;
+  isInternal?: boolean;
+  seenAt?: string | null;
+  attachmentUrl?: string | null;
 };
 
 export type TicketContact = {
@@ -71,7 +78,7 @@ export const listSupportTickets = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("support_tickets")
       .select(
-        "id, user_id, subject, message, status, source, internal_note, created_at, resolved_at, last_message_at",
+        "id, user_id, subject, message, status, source, internal_note, created_at, resolved_at, last_message_at, booking_id, assigned_staff_id",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -88,22 +95,28 @@ export const listSupportTickets = createServerFn({ method: "POST" })
 
     // Last message per ticket (for the inbox preview)
     const ticketIds = raw.map((r) => r.id);
-    const lastMap = new Map<string, { body: string; sender: "staff" | "customer" }>();
+    const lastMap = new Map<string, { body: string; sender: "staff" | "customer"; seen: boolean }>();
+    const unreadMap = new Map<string, number>();
     if (ticketIds.length) {
       const { data: msgs } = await context.supabase
         .from("support_ticket_messages")
-        .select("ticket_id, body, sender_type, created_at")
+        .select("ticket_id, body, sender_type, created_at, is_internal, seen_at")
         .in("ticket_id", ticketIds)
+        .eq("is_internal", false)
         .order("created_at", { ascending: true });
       for (const m of (msgs ?? []) as Array<{
         ticket_id: string;
         body: string;
         sender_type: string;
+        seen_at: string | null;
       }>) {
         lastMap.set(m.ticket_id, {
           body: m.body,
           sender: m.sender_type === "staff" ? "staff" : "customer",
+          seen: !!m.seen_at,
         });
+        if (m.sender_type !== "staff" && !m.seen_at)
+          unreadMap.set(m.ticket_id, (unreadMap.get(m.ticket_id) ?? 0) + 1);
       }
     }
 
@@ -175,6 +188,10 @@ export const listSupportTickets = createServerFn({ method: "POST" })
         lastMessageFrom: last?.sender ?? "customer",
         userName: r.user_id ? (userMap.get(r.user_id)?.name ?? null) : null,
         userPhone: r.user_id ? (userMap.get(r.user_id)?.phone ?? null) : null,
+        bookingId: r.booking_id ?? null,
+        assignedStaffId: r.assigned_staff_id ?? null,
+        unread: unreadMap.get(r.id) ?? 0,
+        lastMessageSeen: last?.seen ?? false,
       };
     });
 
@@ -196,7 +213,7 @@ export const listTicketMessages = createServerFn({ method: "POST" })
     await requireStaff(context.supabase, context.userId);
     const { data: rows, error } = await context.supabase
       .from("support_ticket_messages")
-      .select("id, sender_type, body, created_at")
+      .select("id, sender_type, body, created_at, is_internal, seen_at, attachment_url")
       .eq("ticket_id", data.ticketId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -205,11 +222,17 @@ export const listTicketMessages = createServerFn({ method: "POST" })
       sender_type: string;
       body: string;
       created_at: string;
+      is_internal: boolean;
+      seen_at: string | null;
+      attachment_url: string | null;
     }>).map((m) => ({
       id: m.id,
       senderType: m.sender_type === "staff" ? "staff" : "customer",
       body: m.body,
       createdAt: m.created_at,
+      isInternal: !!m.is_internal,
+      seenAt: m.seen_at,
+      attachmentUrl: m.attachment_url,
     }));
   });
 
@@ -436,4 +459,58 @@ export const updateSupportTicket = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rpc = (sb: any, fn: string, args: Record<string, unknown>) => sb.rpc(fn, args);
+
+export const markTicketSeenByStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ticketId: string }) => {
+    if (!input?.ticketId) throw new Error("ticketId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await rpc(context.supabase, "staff_mark_ticket_seen", { _ticket_id: data.ticketId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const addTicketNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ticketId: string; body: string }) => {
+    if (!input?.ticketId || !input.body?.trim()) throw new Error("Note is empty");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await rpc(context.supabase, "staff_add_support_note", { _ticket_id: data.ticketId, _body: data.body.trim() });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const assignSupportTicket = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ticketId: string; staffId: string | null }) => input)
+  .handler(async ({ data, context }) => {
+    const { error } = await rpc(context.supabase, "staff_assign_support_ticket", { _ticket_id: data.ticketId, _staff_id: data.staffId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listSupportMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireStaff(context.supabase, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = context.supabase;
+    const [{ data: replies }, { data: staff }] = await Promise.all([
+      sb.from("support_quick_replies").select("id, title, body").order("sort_order"),
+      sb.from("staff_users").select("auth_user_id, name, role, status").eq("status", "active"),
+    ]);
+    return {
+      replies: (replies ?? []) as Array<{ id: string; title: string; body: string }>,
+      staff: ((staff ?? []) as Array<{ auth_user_id: string; name: string | null; role: string }>)
+        .filter((s) => ["super_admin", "ops_manager"].includes(s.role))
+        .map((s) => ({ id: s.auth_user_id, name: s.name ?? "Staff" })),
+    };
   });
