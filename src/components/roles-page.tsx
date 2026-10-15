@@ -1,3 +1,5 @@
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -43,16 +45,13 @@ export function RolesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-          <ShieldCheck size={16} className="text-primary" />
-          Manage staff accounts and their roles.
-        </div>
+<span />
         <button
           onClick={() => setCreateOpen(true)}
           className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0 hover:opacity-95"
         >
           <Plus size={18} />
-          Add Staff User
+          Add staff
         </button>
       </div>
 
@@ -105,17 +104,7 @@ export function RolesPage() {
                 : "—"}
 
             </span>
-            <span>
-              <span
-                className={`inline-flex px-2 py-1 rounded-full text-[11px] font-bold ${
-                  u.status === "active"
-                    ? "bg-success/15 text-success"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {u.status}
-              </span>
-            </span>
+            <span><StatusToggle user={u} /></span>
             <span className="text-muted-foreground text-[13px]">
               {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
             </span>
@@ -134,6 +123,27 @@ export function RolesPage() {
       {editing && <EditModal user={editing} onClose={() => setEditing(null)} />}
     </div>
   );
+}
+
+function StatusToggle({ user }: { user: StaffUserRow }) {
+  const qc = useQueryClient();
+  const update = useServerFn(updateStaffUser);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const u = user as any;
+  const m = useMutation({
+    mutationFn: (active: boolean) =>
+      update({
+        data: {
+          id: user.id,
+          role: user.role,
+          zone_ids: user.role === "area_partner" ? (u.zoneIds ?? (u.zoneId ? [u.zoneId] : [])) : [],
+          status: active ? "active" : "inactive",
+        },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff-users"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return <Switch disabled={user.isSelf || m.isPending} checked={user.status === "active"} onCheckedChange={(v) => m.mutate(v)} />;
 }
 
 function CreateModal({ onClose }: { onClose: () => void }) {
@@ -177,7 +187,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       <div className="bg-card rounded-[24px] w-full max-w-md p-6 space-y-5">
         <div className="flex items-start justify-between">
           <h2 className="text-[18px] font-bold text-foreground">
-            {createdPassword ? "Staff user created" : "Add Staff User"}
+            {createdPassword ? "Staff user created" : "Add staff"}
           </h2>
           <button
             onClick={onClose}
