@@ -11,6 +11,7 @@ import {
   listMerchantSettlements, listRefunds, saveCompanyProfile,
 } from "@/lib/finance.functions";
 import { downloadCommissionInvoicePdf } from "@/lib/commission-invoice-pdf";
+import { supabase } from "@/integrations/supabase/client";
 
 const inr = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
