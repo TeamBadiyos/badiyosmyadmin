@@ -16,7 +16,7 @@ import {
   type LeadStatus,
 } from "@/lib/insurance.functions";
 
-type Role = "super_admin" | "ops_manager" | "area_partner" | null;
+type Role = "super_admin" | "ops_manager" | "area_partner" | "finance" | null;
 
 const STATUS_LABEL: Record<LeadStatus, string> = {
   new: "New",

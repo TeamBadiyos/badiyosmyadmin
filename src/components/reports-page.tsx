@@ -36,7 +36,7 @@ import { getWeeklyExpertReport } from "@/lib/experts.functions";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const TABS = [
   { key: "pnl", label: "Profit & Loss" },

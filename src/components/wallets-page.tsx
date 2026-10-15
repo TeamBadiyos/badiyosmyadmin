@@ -37,7 +37,7 @@ const inr = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-type Role = "super_admin" | "ops_manager" | "area_partner" | null;
+type Role = "super_admin" | "ops_manager" | "area_partner" | "finance" | null;
 
 export function WalletsPage({ role }: { role: Role }) {
   // Merchant money lives only in Finance → Merchants; the old "Merchant Payouts" batches are hidden (data kept).

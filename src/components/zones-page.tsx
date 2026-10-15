@@ -24,7 +24,7 @@ import {
 } from "@/lib/zones.functions";
 
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const LATUR_CENTER = { lat: 18.4088, lng: 76.5604 };
 

@@ -18,7 +18,7 @@ import {
   type ExpenseRow, type SubscriptionRow,
 } from "@/lib/expenses.functions";
 
-type Role = "super_admin" | "ops_manager" | "area_partner" | null;
+type Role = "super_admin" | "ops_manager" | "area_partner" | "finance" | null;
 const inr = (n: unknown) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const istToday = () => new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -136,7 +136,7 @@ function InstantFeeGear({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 export function MerchantsFinance({ role }: { role: Role }) {
   const [chip, setChip] = useState<"settlements" | "commission" | "invoices">("settlements");
-  const canEdit = role === "super_admin" || role === "ops_manager";
+  const canEdit = role === "super_admin" || role === "ops_manager" || role === "finance";
   return (
     <div className="space-y-4">
       <Chips value={chip} onChange={setChip} items={[["settlements", "Settlements"], ["commission", "Commission"], ["invoices", "Invoices"]]} />

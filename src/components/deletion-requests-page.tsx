@@ -23,7 +23,7 @@ const TYPE_STYLES: Record<DeletionAccountType, string> = {
   merchant: "bg-teal-50 text-teal-700",
 };
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const STATUS_STYLES: Record<DeletionRequestStatus, string> = {
   pending: "bg-amber-50 text-amber-700",

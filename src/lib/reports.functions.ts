@@ -7,7 +7,7 @@ export type ReportRange = {
   zoneId?: string | null;
 };
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getScope(supabase: any, userId: string) {

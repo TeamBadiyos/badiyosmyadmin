@@ -10,7 +10,7 @@ import {
 } from "@/lib/interest-leads.functions";
 import { FilterBar, countLabel } from "@/components/section-chrome";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const STATUSES: { key: LeadStatus; label: string; cls: string }[] = [
   { key: "new", label: "New", cls: "bg-primary-tint text-primary" },

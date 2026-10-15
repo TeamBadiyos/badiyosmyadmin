@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+export type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 export type StaffStatus = "active" | "inactive";
 
 export type StaffUserRow = {
@@ -101,7 +101,7 @@ export const listStaffUsers = createServerFn({ method: "GET" })
 export type CreateStaffUserInput = {
   name: string;
   email: string;
-  role: "ops_manager" | "area_partner";
+  role: "ops_manager" | "area_partner" | "finance";
   zone_id?: string | null;
   zone_ids?: string[] | null;
   password: string;
@@ -125,7 +125,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
     const password = input?.password ?? "";
     if (!name) throw new Error("Name required");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Valid email required");
-    if (!["ops_manager", "area_partner"].includes(input?.role))
+    if (!["ops_manager", "area_partner", "finance"].includes(input?.role))
       throw new Error("Invalid role");
     const zone_ids = normalizeZoneIds(input?.role, input?.zone_ids, input?.zone_id);
     if (input.role === "area_partner" && zone_ids.length === 0)
@@ -202,7 +202,7 @@ export const updateStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: UpdateStaffUserInput) => {
     if (!input?.id) throw new Error("id required");
-    if (!["super_admin", "ops_manager", "area_partner"].includes(input?.role))
+    if (!["super_admin", "ops_manager", "area_partner", "finance"].includes(input?.role))
       throw new Error("Invalid role");
     if (!["active", "inactive"].includes(input?.status)) throw new Error("Invalid status");
     const zone_ids = normalizeZoneIds(input.role, input.zone_ids, input.zone_id);

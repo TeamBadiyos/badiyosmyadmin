@@ -11,7 +11,7 @@ import {
 import { setMerchantCommission } from "@/lib/merchants.functions";
 import { useSortFilter, SortFilterHeader, SortFilterReset } from "@/components/table-sort-filter";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 type Tab = "merchants" | "deductions";
 
 const inr = (n: number) =>

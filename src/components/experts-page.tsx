@@ -16,7 +16,7 @@ import {
   SortFilterReset,
 } from "@/components/table-sort-filter";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const LEVELS: ExpertLevel[] = ["bronze", "silver", "gold", "diamond"];
 const KYC_STATUSES: KycStatus[] = ["pending", "approved", "rejected"];
