@@ -554,7 +554,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
   const confirm = useServerFn(confirmRate);
   const [draft, setDraft] = useState<RateDraft | null>(null);
   const [busy, setBusy] = useState(false);
-  const [segTab, setSegTab] = useState<"regular" | "corporate">("regular");
+  const segTab = "regular" as const;
 
   const { data } = useQuery({ queryKey: ["courier", "rates"], queryFn: () => fetchRates() });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "rates"] });
