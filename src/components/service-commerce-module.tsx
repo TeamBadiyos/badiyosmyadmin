@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ServiceHoursPanel } from "@/components/ops-panels";
-import { DefaultCommissionReadOnly, StoreSettingsPage } from "@/components/store-settings-page";
+import { StoreSettingsPage } from "@/components/store-settings-page";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -23,7 +24,7 @@ import {
   listServiceOrders, getServiceOrder, listServiceStores, getStoreDetail, storeAction,
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
   listStoreTypes, saveStoreType, reorderStoreTypes,
-  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings,
+  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, createDraftMerchant,
 } from "@/lib/service-commerce.functions";
 import { cancelStoreOrderWithRefund, reassignStoreRider } from "@/lib/commerce.functions";
 
@@ -77,7 +78,6 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
     <div className="space-y-4" key={service}>
       <div>
         <h1 className="text-xl font-bold">{service === "food" ? "Food" : "Store"}</h1>
-        <p className="text-sm text-muted-foreground">Only {service === "food" ? "food / restaurant" : "store"} data is shown here.</p>
       </div>
       <div className="flex gap-1 border-b overflow-x-auto">
         {tabs.map((t) => (
@@ -93,7 +93,7 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
       {tab === "approvals" && <ApprovalsTab service={service} />}
       {tab === "categories" && <CategoriesTab service={service} role={role} />}
       {tab === "sponsored" && <SponsoredTab service={service} role={role} />}
-      {tab === "settings" && (<div className="space-y-5">{service === "food" ? <DefaultCommissionReadOnly /> : <StoreSettingsPage hideGst />}<SettingsTab service={service} role={role} /><ServiceHoursPanel serviceKey={service} title={service === "food" ? "Food opening hours" : "Store opening hours"} /></div>)}
+      {tab === "settings" && <SettingsTab service={service} role={role} />}
     </div>
   );
 }
@@ -328,6 +328,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
   const [rejectFor, setRejectFor] = useState<any | null>(null);
   const [queryFor, setQueryFor] = useState<any | null>(null);
   const [deleteFor, setDeleteFor] = useState<any | null>(null);
+  const [adding, setAdding] = useState(false);
   const [delReason, setDelReason] = useState("");
   const delFn = useServerFn(deleteRejectedMerchant);
   const del = useMutation({
@@ -367,6 +368,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
           <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
           <Input className="pl-8 w-60" placeholder={`Search ${L.stores.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {service === "food" && canManage && <Button onClick={() => setAdding(true)}><Plus size={14} /> Add restaurant</Button>}
       </div>
       {r.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {r.error && <p className="text-sm text-destructive">{errMsg(r.error)}</p>}
@@ -407,6 +409,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
           );
         })}
       </div>
+      {adding && <AddMerchantDialog service={service} defPct={defPct} onClose={() => setAdding(false)} onDone={() => { setAdding(false); setChip("draft"); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
       {deleteFor && (
         <Dialog open onOpenChange={(v) => !v && setDeleteFor(null)}>
           <DialogContent className="max-w-sm">
@@ -442,6 +445,54 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
       {rejectFor && <RejectModal merchant={{ id: rejectFor.id, storeName: rejectFor.store_name } as any} onClose={() => { setRejectFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
       {queryFor && <QueryModal merchant={{ id: queryFor.id, storeName: queryFor.store_name } as any} onClose={() => { setQueryFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
     </div>
+  );
+}
+
+function AddMerchantDialog({ service, defPct, onClose, onDone }: { service: Svc; defPct: number; onClose: () => void; onDone: () => void }) {
+  const fn = useServerFn(createDraftMerchant);
+  const [f, setF] = useState({ name: "", owner: "", phone: "", address: "", lat: "", lng: "", comm: "" });
+  const [locating, setLocating] = useState(false);
+  const m = useMutation({
+    mutationFn: () => fn({ data: { service, storeName: f.name, ownerName: f.owner, phone: f.phone, address: f.address,
+      lat: f.lat ? Number(f.lat) : null, lng: f.lng ? Number(f.lng) : null, commissionPct: f.comm.trim() ? Number(f.comm) : null } }),
+    onSuccess: () => { toast.success("Restaurant added as Draft — the owner can now log in to the Merchant App with this phone"); onDone(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const pin = () => {
+    if (!navigator.geolocation) return toast.error("Location not available");
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition((p) => { setF((x) => ({ ...x, lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6) })); setLocating(false); },
+      () => { toast.error("Couldn't get location"); setLocating(false); });
+  };
+  const mapUrl = f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : `https://www.google.com/maps/search/${encodeURIComponent(f.address || "Latur")}`;
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Add restaurant</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Restaurant name</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>Owner name</Label><Input value={f.owner} onChange={(e) => setF({ ...f, owner: e.target.value })} /></div>
+            <div><Label>Owner phone</Label><Input inputMode="numeric" maxLength={10} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/\D/g, "") })} /></div>
+          </div>
+          <div><Label>Address</Label><Textarea rows={2} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></div>
+          <div>
+            <Label>Map pin</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Latitude" value={f.lat} onChange={(e) => setF({ ...f, lat: e.target.value })} />
+              <Input placeholder="Longitude" value={f.lng} onChange={(e) => setF({ ...f, lng: e.target.value })} />
+            </div>
+            <div className="flex gap-3 mt-1 text-xs">
+              <button type="button" className="text-primary" onClick={pin}>{locating ? "Locating…" : "Use my location"}</button>
+              <a className="text-primary inline-flex items-center gap-0.5" href={mapUrl} target="_blank" rel="noreferrer">Open in Maps <ExternalLink size={11} /></a>
+            </div>
+          </div>
+          <div><Label>Commission %</Label><Input type="number" min={0} max={50} placeholder={`${defPct} (default)`} value={f.comm} onChange={(e) => setF({ ...f, comm: e.target.value })} />
+            <p className="text-xs text-muted-foreground mt-1">{f.comm.trim() ? `Commission will be ${f.comm}%` : `Blank = default ${defPct}%`}</p></div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={m.isPending} onClick={() => m.mutate()}>{m.isPending ? "Adding…" : "Add restaurant"}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -808,16 +859,20 @@ function CategoriesTab({ service, role }: { service: Svc; role: string }) {
       {service === "store" ? <>
         <h3 className="font-semibold">Product categories</h3>
         <p className="text-xs text-muted-foreground">Used only inside a store's product list — the merchant picks one from a dropdown.</p>
-      </> : <p className="text-xs text-muted-foreground">This order is what customers see on the home row. Images are stored in a public folder so the customer app can show them without login.</p>}
+      </> : <>
+        <h3 className="font-semibold">Food categories</h3>
+        <p className="text-xs text-muted-foreground">Shown on the Food home row in this order, and used inside restaurant menus.</p>
+      </>}
       {canEdit ? (
         <div className="flex gap-2"><Button size="sm" onClick={() => setEdit({ is_active: true })}><Plus size={14} /> New category</Button>
-          <Button size="sm" variant="outline" onClick={() => reorder.mutate()}>Save order</Button></div>
+          <Button size="sm" variant="outline" onClick={() => reorder.mutate()}>Save</Button></div>
       ) : <p className="text-xs text-muted-foreground">Only super admin can change categories.</p>}
       <div className="rounded-lg border bg-card divide-y">
         {rows.map((c, i) => (
           <div key={c.id} className="p-2 flex items-center gap-3">
             {imgUrl(c.image_path) ? <img src={imgUrl(c.image_path)!} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-muted" />}
-            <p className={`flex-1 text-sm font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>{c.name}</p>
+            <p className={`flex-1 text-sm font-medium ${c.is_active ? "" : "text-muted-foreground"}`}>{c.name}</p>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{c.store_count ?? 0} {service === "food" ? "restaurants" : "stores"}</span>
             {canEdit && <>
               <Switch checked={c.is_active} onCheckedChange={(v) => save.mutate({ id: c.id, name: c.name, image_path: c.image_path, is_active: v })} />
               <Arrows onUp={() => setRows(move(rows, i, -1))} onDown={() => setRows(move(rows, i, 1))} />
@@ -879,10 +934,10 @@ function CategoryEditor({ c, service, folder, onClose, onSave }: { c: any; servi
   const [active, setActive] = useState(c.is_active !== false);
   const [busy, setBusy] = useState(false);
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{c.id ? "Edit category" : "New category"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+    <Sheet open onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>{c.id ? "Edit category" : "New category"}</SheetTitle></SheetHeader>
+        <div className="space-y-3 py-4">
           <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="flex items-center gap-3">
             {imgUrl(img) ? <img src={imgUrl(img)!} alt="" className="h-14 w-14 rounded object-cover" /> : <div className="h-14 w-14 rounded bg-muted" />}
@@ -894,9 +949,9 @@ function CategoryEditor({ c, service, folder, onClose, onSave }: { c: any; servi
           </div>
           <div className="flex items-center justify-between"><Label>Active</Label><Switch checked={active} onCheckedChange={setActive} /></div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={busy} onClick={() => onSave({ id: c.id ?? null, name, image_path: img, is_active: active })}>Save</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <SheetFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={busy} onClick={() => onSave({ id: c.id ?? null, name, image_path: img, is_active: active })}>Save</Button></SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -925,12 +980,12 @@ function SponsoredTab({ service, role }: { service: Svc; role: string }) {
   const d = (iso: string) => new Date(new Date(iso).getTime() + 5.5 * 3600e3).toISOString().slice(0, 10);
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 items-center">
-        <Label>List</Label>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={cat} onChange={(e) => setCat(e.target.value)}>
-          <option value="">Home</option>{(cats.data ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        {!canEdit && <span className="text-xs text-muted-foreground">Only super admin can change slots.</span>}
+      <div className="flex gap-2 items-center overflow-x-auto pb-1">
+        {[{ id: "", name: "Home" }, ...((cats.data ?? []) as any[]).filter((c) => c.is_active)].map((c: any) => (
+          <button key={c.id || "home"} onClick={() => setCat(c.id)}
+            className={`h-9 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${cat === c.id ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}>{c.name}</button>
+        ))}
+        {!canEdit && <span className="text-xs text-muted-foreground whitespace-nowrap">Only super admin can change slots.</span>}
       </div>
       <div className="rounded-lg border bg-card divide-y">
         {[1, 2, 3, 4, 5, 6].map((pos) => {
@@ -939,16 +994,20 @@ function SponsoredTab({ service, role }: { service: Svc; role: string }) {
             <div key={pos} className="p-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Slot {pos}</p>
-                {canEdit && <Button size="sm" variant="ghost" onClick={() => setEdit({ position: pos, isActive: true })}><Plus size={14} /> Add</Button>}
+                {canEdit && slots.length === 0 && <Button size="sm" variant="ghost" onClick={() => setEdit({ position: pos, isActive: true })}><Plus size={14} /> Add</Button>}
               </div>
-              {slots.length === 0 && <p className="text-xs text-muted-foreground">Empty</p>}
               {slots.map((s: any) => {
                 const expired = new Date(s.ends_at).getTime() < now;
                 return (
                   <div key={s.id} className={`flex items-center justify-between text-sm py-1 ${expired || !s.is_active ? "opacity-50" : ""}`}>
                     <span>{storeName(s.store_id)} · {d(s.starts_at)} → {d(s.ends_at)} {expired && <Badge variant="secondary">expired</Badge>} {!s.is_active && <Badge variant="outline">off</Badge>}</span>
-                    {canEdit && <span><Button size="sm" variant="ghost" onClick={() => setEdit({ id: s.id, storeId: s.store_id, position: s.position, startsAt: d(s.starts_at), endsAt: d(s.ends_at), isActive: s.is_active })}>Edit</Button>
-                      <Button size="sm" variant="ghost" onClick={() => del.mutate(s.id)}>Remove</Button></span>}
+                    {canEdit && <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Slot actions"><MoreHorizontal size={14} /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEdit({ id: s.id, storeId: s.store_id, position: s.position, startsAt: d(s.starts_at), endsAt: d(s.ends_at), isActive: s.is_active })}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => del.mutate(s.id)}>Remove</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>}
                   </div>
                 );
               })}
@@ -1001,26 +1060,22 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
     onError: (e) => toast.error(errMsg(e)),
   });
   const n = r.data?.notify;
+  const defFn = useServerFn(getStoreCommissionSettings);
+  const def = useQuery({ queryKey: ["store", "commission-settings"], queryFn: () => defFn(), enabled: service === "food" });
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="space-y-5 max-w-3xl">
       <div className="rounded-lg border bg-card p-4 space-y-3">
-        <p className="font-semibold">{service === "food" ? "Food" : "Store"} settings</p>
-        {service === "food" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Delivery minimum fare (₹)</Label><Input type="number" disabled={!canEdit} value={v.min} onChange={(e) => setV({ ...v, min: e.target.value })} /></div>
-            <div><Label>Per km (₹)</Label><Input type="number" disabled={!canEdit} value={v.km} onChange={(e) => setV({ ...v, km: e.target.value })} /></div>
-            <div><Label>Rider share %</Label><Input type="number" disabled={!canEdit} value={v.share} onChange={(e) => setV({ ...v, share: e.target.value })} /></div>
-            <div><Label>Default accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={v.timeout} onChange={(e) => setV({ ...v, timeout: e.target.value })} /></div>
-          </div>
-        ) : (
-          <>
-            <div className="max-w-xs"><Label>Default accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={v.timeout} onChange={(e) => setV({ ...v, timeout: e.target.value })} /></div>
-            <p className="text-sm text-muted-foreground">Store delivery uses Parcel rates.{" "}
-              <a className="text-primary inline-flex items-center gap-0.5" href="/dashboard?tab=courier-rates">Parcel → Rates <ExternalLink size={12} /></a></p>
-          </>
-        )}
+        <p className="font-semibold">Delivery & orders</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div><Label>Minimum fare (₹)</Label><Input type="number" disabled={!canEdit} value={v.min} onChange={(e) => setV({ ...v, min: e.target.value })} /></div>
+          <div><Label>Per km (₹)</Label><Input type="number" disabled={!canEdit} value={v.km} onChange={(e) => setV({ ...v, km: e.target.value })} /></div>
+          <div><Label>Rider share %</Label><Input type="number" disabled={!canEdit} value={v.share} onChange={(e) => setV({ ...v, share: e.target.value })} /></div>
+          <div><Label>Accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={v.timeout} onChange={(e) => setV({ ...v, timeout: e.target.value })} /></div>
+        </div>
         {canEdit ? <Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : <p className="text-xs text-muted-foreground">Only super admin can change these.</p>}
       </div>
+      {service === "store" && <StoreSettingsPage hideGst />}
+      <ServiceHoursPanel serviceKey={service} title="Opening hours" />
       <div className="rounded-lg border bg-card p-4">
         <p className="font-semibold mb-2">Notify-me · last 7 days</p>
         {n?.error ? <p className="text-sm text-destructive">{n.error}</p> : (
@@ -1031,6 +1086,7 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
           </div>
         )}
       </div>
+      {service === "food" && <p className="text-xs text-muted-foreground">Default commission {def.data?.defaultPct ?? 10}% — change in Store → Settings</p>}
     </div>
   );
 }
