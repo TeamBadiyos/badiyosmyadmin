@@ -656,6 +656,7 @@ function Shell() {
             onGoExperts={gotoExperts}
             onOpenBooking={(id) => setSelectedBookingId(id)}
           />
+          </>
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
