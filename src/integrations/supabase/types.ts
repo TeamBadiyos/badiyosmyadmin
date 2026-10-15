@@ -10716,6 +10716,7 @@ export type Database = {
         Args: { _id: string; _paid_via?: string }
         Returns: string
       }
+      fin_overview: { Args: { _from: string; _to: string }; Returns: Json }
       fin_save_expense: { Args: { _id: string; _p: Json }; Returns: string }
       fin_save_expense_category: {
         Args: { _active: boolean; _name: string }
@@ -10725,6 +10726,7 @@ export type Database = {
         Args: { _id: string; _p: Json }
         Returns: string
       }
+      fin_set_instant_fee_pct: { Args: { _pct: number }; Returns: undefined }
       fin_subscription_reminders: { Args: never; Returns: number }
       generate_offline_invoice_number: {
         Args: { _merchant_id: string }
