@@ -560,6 +560,7 @@ function BookingRowItem({
       </td>
       <td className="px-4 py-3 text-muted-foreground">
         <div className="text-foreground flex items-center gap-2 flex-wrap">
+          {row.bookingNumber && <span className="font-mono text-[11px] font-semibold text-foreground">{row.bookingNumber}</span>}
           <span>{row.serviceLabel ?? "—"}</span>
           {row.rating != null && (
             <span

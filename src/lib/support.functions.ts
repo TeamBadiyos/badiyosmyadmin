@@ -19,6 +19,7 @@ export type SupportTicket = {
   userName: string | null;
   userPhone: string | null;
   bookingId: string | null;
+  bookingNumber: string | null;
   assignedStaffId: string | null;
   unread: number;
   lastMessageSeen: boolean;
@@ -120,6 +121,13 @@ export const listSupportTickets = createServerFn({ method: "POST" })
       }
     }
 
+    const bkIds = Array.from(new Set(raw.map((r) => r.booking_id).filter(Boolean)));
+    const bkMap = new Map<string, string>();
+    if (bkIds.length) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: bks } = await (context.supabase as any).from("bookings").select("id, booking_number").in("id", bkIds);
+      for (const b of (bks ?? []) as Array<{ id: string; booking_number: string | null }>) if (b.booking_number) bkMap.set(b.id, b.booking_number);
+    }
     const userIds = Array.from(new Set(raw.map((r) => r.user_id).filter(Boolean)));
     const userMap = new Map<string, { name: string | null; phone: string | null }>();
     if (userIds.length) {
@@ -189,6 +197,7 @@ export const listSupportTickets = createServerFn({ method: "POST" })
         userName: r.user_id ? (userMap.get(r.user_id)?.name ?? null) : null,
         userPhone: r.user_id ? (userMap.get(r.user_id)?.phone ?? null) : null,
         bookingId: r.booking_id ?? null,
+        bookingNumber: r.booking_id ? (bkMap.get(r.booking_id) ?? null) : null,
         assignedStaffId: r.assigned_staff_id ?? null,
         unread: unreadMap.get(r.id) ?? 0,
         lastMessageSeen: last?.seen ?? false,
