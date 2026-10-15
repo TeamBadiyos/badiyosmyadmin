@@ -55,7 +55,7 @@ export function FinanceOverview({ onNav, isSuperAdmin }: { onNav: (key: string) 
     { label: "Tax this month", value: inr(d.tax_month), hint: "Commission GST + TCS + TDS", nav: "fin-tax" },
     { label: "Other income", value: inr(d.other_income), hint: "Instant settlement fees", nav: "reports" },
     { label: "Expenses this month", value: inr(d.expenses_month), nav: isSuperAdmin ? "fin-expenses" : undefined },
-    { label: "Customer wallet outstanding", value: "—", hint: "Customer wallet not live yet" },
+    { label: "Customer wallet outstanding", value: inr(d.wallet_outstanding), hint: "Cash + bonus balances", nav: "fin-wallet" },
   ];
   const todo: { n: number | boolean; label: string; nav: string }[] = [
     { n: Number(t.instant_to_pay ?? 0), label: "instant settlement(s) to pay today", nav: "fin-settlements" },

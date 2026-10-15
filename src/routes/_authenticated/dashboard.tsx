@@ -15,6 +15,7 @@ import { TrainingAddressTab } from "@/components/training-address-tab";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
+import { CustomerInvoicesPage, CustomerWalletPage } from "@/components/customer-finance-pages";
 import { FinanceOverview, MerchantsFinance, ExpensesPage } from "@/components/finance-redesign";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
@@ -174,6 +175,8 @@ const NAV_ITEMS = [
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "fin-overview", label: "Overview", icon: BarChart3 },
   { key: "fin-expenses", label: "Expenses", icon: Receipt },
+  { key: "fin-cust-invoices", label: "Customer Invoices", icon: Receipt },
+  { key: "fin-wallet", label: "Customer Wallet", icon: Wallet },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Sounds", icon: Volume2 },
   { key: "support", label: "Support", icon: LifeBuoy },
@@ -261,7 +264,7 @@ const NAV_GROUPS = [
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["fin-overview", "settlements", "fin-settlements", "wallets", "fin-expenses", "fin-refunds", "fin-tax", "reports"],
+    keys: ["fin-overview", "settlements", "fin-settlements", "wallets", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "reports"],
   },
   {
     id: "settings",
@@ -806,6 +809,10 @@ function Shell() {
           <FinanceOverview isSuperAdmin={role === "super_admin"} onNav={(k) => { if (isNavKey(k)) setActive(k); }} />
         ) : active === "fin-settlements" || active === "fin-instant" || active === "fin-invoices" ? (
           <MerchantsFinance role={role} />
+        ) : active === "fin-cust-invoices" ? (
+          <CustomerInvoicesPage isSuperAdmin={role === "super_admin"} />
+        ) : active === "fin-wallet" ? (
+          <CustomerWalletPage isSuperAdmin={role === "super_admin"} />
         ) : active === "fin-expenses" ? (
           role === "super_admin" ? <ExpensesPage /> : null
         ) : active.startsWith("fin-") || active === "company-profile" ? (
