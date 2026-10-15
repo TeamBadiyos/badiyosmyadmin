@@ -105,11 +105,11 @@ export function ExpertsPage({
         const req = new Set(((v ?? []) as Array<{ required_skill: string | null }>).map((x) => x.required_skill).filter(Boolean));
         return new Set(((data ?? []) as Array<{ expert_id: string; service_category_id: string }>).filter((r) => req.has(r.service_category_id)).map((r) => r.expert_id));
       }
-      const COURIER = "250ebe17-dfc8-4d9b-95ef-1f60a9372142";
+      const CLEAN_SLUGS = new Set(["home-cleaning", "festival-special-cleaning"]);
       const ids = new Set<string>();
       for (const r of (data ?? []) as unknown as Array<{ expert_id: string; service_category_id: string; service_categories: { slug: string } | null }>) {
-        const isWash = r.service_categories?.slug === "car-bike-wash";
-        if (skill === "wash" ? isWash : !isWash && r.service_category_id !== COURIER) ids.add(r.expert_id);
+        const slug = r.service_categories?.slug ?? "";
+        if (skill === "wash" ? slug === "car-bike-wash" : CLEAN_SLUGS.has(slug)) ids.add(r.expert_id);
       }
       return ids;
     },
