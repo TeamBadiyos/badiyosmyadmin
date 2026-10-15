@@ -45,7 +45,7 @@ import { listCommercePipeline, type CommerceOrder, type CommerceStatus } from "@
 export type BoardService = "maid" | "wash" | "store" | "food" | "parcel";
 export const SERVICE_META: Record<BoardService, { label: string; strip: string; dot: string }> = {
   maid: { label: "Maid", strip: "bg-svc-maid", dot: "bg-svc-maid" },
-  wash: { label: "Car/Bike Wash", strip: "bg-svc-wash", dot: "bg-svc-wash" },
+  wash: { label: "Clean Auto", strip: "bg-svc-wash", dot: "bg-svc-wash" },
   store: { label: "Store", strip: "bg-svc-store", dot: "bg-svc-store" },
   food: { label: "Food", strip: "bg-svc-food", dot: "bg-svc-food" },
   parcel: { label: "Parcel", strip: "bg-svc-parcel", dot: "bg-svc-parcel" },
@@ -515,7 +515,7 @@ export function PipelineKanban({
             <button key={k} type="button" onClick={() => setSvcFilter(k)}
               className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-bold ${svcFilter === k ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-foreground"}`}>
               {k !== "all" && <span className={`h-2 w-2 rounded-full ${SERVICE_META[k].dot}`} />}
-              {k === "all" ? "All" : SERVICE_META[k].label === "Car/Bike Wash" ? "Wash" : SERVICE_META[k].label}
+              {k === "all" ? "All" : SERVICE_META[k].label}
               <span className="opacity-70">{svcCounts[k]}</span>
             </button>
           ))}

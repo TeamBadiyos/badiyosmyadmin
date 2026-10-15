@@ -11,6 +11,7 @@ import {
   listMerchantSettlements, listRefunds, saveCompanyProfile,
 } from "@/lib/finance.functions";
 import { downloadCommissionInvoicePdf } from "@/lib/commission-invoice-pdf";
+import { supabase } from "@/integrations/supabase/client";
 
 const inr = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -216,7 +217,10 @@ export function InvoicesTab() {
   const q = useQuery({ queryKey: ["fin-settlements", null, null], queryFn: () => fetch({ data: {} }) });
   const rows = ((q.data ?? []) as any[]).filter((r) => r.invoice_no);
   const dl = async (id: string) => {
-    try { await downloadCommissionInvoicePdf(await inv({ data: { id } })); } catch (e) { toast.error(errMsg(e)); }
+    try {
+      const { data: s } = await supabase.from("ops_settings").select("value").eq("key", "sac_commission").maybeSingle();
+      await downloadCommissionInvoicePdf(await inv({ data: { id } }), s?.value || "998599");
+    } catch (e) { toast.error(errMsg(e)); }
   };
   return (
     <div className="space-y-4">
@@ -253,7 +257,7 @@ export function TaxTab() {
     ["Food GST 9(5) collected", s.food_gst_9_5], ["Store delivery GST", s.store_delivery_gst], ["Food delivery GST", s.food_delivery_gst],
     ["Parcel delivery GST", s.parcel_delivery_gst], ["Commission GST", s.commission_gst], ["Platform fee GST", s.platform_fee_gst],
     ["TCS (total)", s.tcs], ["TDS 194-O (total)", s.tds],
-    ["Maid GST", s.maid_gst], ["Car/Bike Wash GST", s.wash_gst], ["Instant fee GST", s.instant_fee_gst],
+    ["Maid GST", s.maid_gst], ["Clean Auto GST", s.wash_gst], ["Instant fee GST", s.instant_fee_gst],
     ["GST paid on expenses (input credit)", s.expense_input_gst],
   ];
   const m = (d?.merchants ?? []) as any[];

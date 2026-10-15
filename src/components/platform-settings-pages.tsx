@@ -11,7 +11,7 @@ const TAX_LABELS: Record<string, string> = {
   commission_gst: "Commission GST",
   platform_fee_gst: "Platform fee GST",
   maid_gst: "Maid GST",
-  wash_gst: "Car/Bike Wash GST",
+  wash_gst: "Clean Auto GST",
   store_tcs: "Store TCS",
   tds_194o: "TDS 194-O",
   tds_194o_threshold: "TDS threshold (₹)",

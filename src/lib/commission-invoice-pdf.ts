@@ -11,7 +11,7 @@ export type CommissionInvoice = {
 
 const r = (n: number) => "Rs " + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export async function downloadCommissionInvoicePdf(inv: CommissionInvoice) {
+export async function downloadCommissionInvoicePdf(inv: CommissionInvoice, sac = "998599") {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = 18;
