@@ -46,6 +46,7 @@ import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
+import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -98,6 +99,8 @@ import {
   Lightbulb,
   PanelLeftClose,
   PanelLeftOpen,
+  UtensilsCrossed,
+  Percent,
 } from "lucide-react";
 import { SuggestionsPage } from "@/components/suggestions-page";
 import { LuckyDrawPage } from "@/components/lucky-draw-page";
@@ -129,7 +132,7 @@ const NAV_ITEMS = [
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
-  { key: "insurance", label: "Insurance", icon: ShieldCheck },
+  { key: "insurance", label: "Other · Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
@@ -709,7 +712,13 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <CommerceKanban segmentId={null} />
+          <CommerceKanban segmentId={null} service="store" />
+        ) : active === "food-orders" ? (
+          <CommerceKanban segmentId={null} service="food" />
+        ) : active === "tax-settings" ? (
+          <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
+        ) : active === "fees" ? (
+          <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "settlements" ? (
