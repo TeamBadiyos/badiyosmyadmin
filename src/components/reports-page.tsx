@@ -227,10 +227,6 @@ function RevenueTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "pnl-extras", range.from, range.to],
     queryFn: () => fetchPnlExtras(range.from, range.to),
   });
-  const { data: pf } = useQuery({
-    queryKey: ["fin-partner-fees", range.from, range.to],
-    queryFn: () => fetchPartnerFees(range.from, range.to),
-  });
   const [zipBusy, setZipBusy] = useState(false);
   const [zipErr, setZipErr] = useState<string | null>(null);
   const caExport = async () => {
