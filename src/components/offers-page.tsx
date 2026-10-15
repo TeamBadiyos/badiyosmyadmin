@@ -305,25 +305,47 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [chip, setChip] = useState<"active" | "paused" | "expired" | "all">("active");
+  const isExpired = (c: CouponRow) => !!c.valid_until && new Date(c.valid_until).getTime() < Date.now();
+  const stateOf = (c: CouponRow) => (isExpired(c) ? "expired" : c.is_active ? "active" : "paused");
+  const counts = useMemo(() => {
+    const m = { active: 0, paused: 0, expired: 0, all: data.length };
+    data.forEach((c) => { m[stateOf(c)]++; });
+    return m;
+  }, [data]);
   const rows = useMemo(
     () =>
       data.filter((c) =>
-        search.trim()
+        (chip === "all" || stateOf(c) === chip) &&
+        (search.trim()
           ? `${c.code} ${c.title}`.toLowerCase().includes(search.trim().toLowerCase())
-          : true,
+          : true),
       ),
-    [data, search],
+    [data, search, chip],
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 justify-between">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search code or title"
-          className={`${inputCls} max-w-[280px]`}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {(["active", "paused", "expired", "all"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setChip(k)}
+              className={`h-9 px-4 rounded-full text-[13px] font-semibold border capitalize ${
+                chip === k ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {k} ({counts[k]})
+            </button>
+          ))}
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search code or title"
+            className={`${inputCls} max-w-[240px]`}
+          />
+        </div>
         {canWrite && (
           <button className={primaryBtn} onClick={() => setEditing("new")}>
             <Plus size={16} /> New coupon
