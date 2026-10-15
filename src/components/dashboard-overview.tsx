@@ -95,7 +95,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
             <tbody>
               {ROWS.map((r) => {
                 const v = d?.services?.[r.key] ?? {};
-                const orders = Number(v.completed ?? 0) + Number(v.active ?? 0) + Number(v.cancelled ?? 0);
+                const orders = v.orders ?? Number(v.completed ?? 0) + Number(v.active ?? 0) + Number(v.cancelled ?? 0);
                 return (
                   <tr key={r.key} onClick={() => onNavigate(r.nav)} className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/40">
                     <td className="px-4 py-3 font-semibold">
