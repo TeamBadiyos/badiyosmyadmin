@@ -326,33 +326,38 @@ export function CouponsTab({ canWrite }: { canWrite: boolean }) {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          {(["active", "paused", "expired", "all"] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setChip(k)}
-              className={`h-9 px-4 rounded-full text-[13px] font-semibold border capitalize ${
-                chip === k ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {k} ({counts[k]})
-            </button>
-          ))}
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search code or title"
-            className={`${inputCls} max-w-[240px]`}
-          />
-        </div>
-        {canWrite && (
-          <button className={primaryBtn} onClick={() => setEditing("new")}>
-            <Plus size={16} /> New coupon
-          </button>
-        )}
-      </div>
+    <div className="space-y-6">
+      <FilterBar
+        count={
+          <span className="flex items-center gap-3">
+            {countLabel(rows.length, "coupon")}
+            {canWrite && (
+              <button className={primaryBtn} onClick={() => setEditing("new")}>
+                <Plus size={16} /> New coupon
+              </button>
+            )}
+          </span>
+        }
+      >
+        <FilterField label="Search">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search code or title" className={`${filterInputCls} min-w-[230px]`} />
+        </FilterField>
+        <FilterField label="Status">
+          <div className="flex flex-wrap items-center gap-2 h-10">
+            {(["active", "paused", "expired", "all"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setChip(k)}
+                className={`h-9 px-4 rounded-full text-[13px] font-semibold border capitalize ${
+                  chip === k ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {k} ({counts[k]})
+              </button>
+            ))}
+          </div>
+        </FilterField>
+      </FilterBar>
 
       <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
         <div className="min-w-[900px]">
