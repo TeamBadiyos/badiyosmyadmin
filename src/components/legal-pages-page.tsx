@@ -7,7 +7,7 @@ import { ExternalLink, Save } from "lucide-react";
 import { listLegalPages, saveLegalPage, LEGAL_SLUGS } from "@/lib/legal.functions";
 import { MarkdownView } from "@/components/markdown-view";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 export function LegalPagesPage({ role }: { role: StaffRole | null }) {
   const canEdit = role === "super_admin" || role === "ops_manager";

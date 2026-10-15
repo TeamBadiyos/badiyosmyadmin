@@ -12,7 +12,7 @@ import {
   type NotificationSound,
 } from "@/lib/notification-sounds.functions";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const BUCKET = "notification-sounds";
 const MAX_BYTES = 2 * 1024 * 1024;

@@ -55,7 +55,7 @@ import {
 } from "@/lib/store-categories.functions";
 import { StoreCategoryDetail } from "@/components/store-category-detail";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 type PhotoChange = { base64: string; contentType: string; thumbBase64: string } | null | undefined;
 
 const ICONS: Record<string, LucideIcon> = {

@@ -7,7 +7,7 @@ import { getInterestLeads } from "@/lib/interest-leads.functions";
 import { toast } from "sonner";
 import { getWaitlistOverview, notifyWaitlistArea } from "@/lib/waitlist.functions";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 export function WaitlistPage({ role }: { role: StaffRole | null }) {
   const canView = role === null || role === "super_admin" || role === "ops_manager";

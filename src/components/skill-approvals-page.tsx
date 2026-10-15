@@ -9,7 +9,7 @@ import {
   type SkillStatus,
 } from "@/lib/partner-skills.functions";
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const STATUS_STYLES: Record<SkillStatus, string> = {
   pending: "bg-amber-50 text-amber-700",

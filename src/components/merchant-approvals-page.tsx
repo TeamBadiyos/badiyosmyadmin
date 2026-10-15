@@ -32,7 +32,7 @@ const QUICK_REASONS = [
   "Wrong document uploaded. Please upload the correct one.",
 ];
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const STATUS_STYLES: Record<MerchantStatus, string> = {
   draft: "bg-muted text-muted-foreground",

@@ -22,7 +22,7 @@ import {
 } from "@/components/table-sort-filter";
 
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const PAGE_SIZE = 25;
 
