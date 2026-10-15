@@ -173,7 +173,7 @@ function SettlementDetail({ id }: { id: string }) {
   );
 }
 
-function RefundsTab({ canEdit }: { canEdit: boolean }) {
+export function RefundsTab({ canEdit }: { canEdit: boolean }) {
   const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("failed");
   const fetch = useServerFn(listRefunds);
   const act = useServerFn(financeAction);
@@ -210,7 +210,7 @@ function RefundsTab({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function InvoicesTab() {
+export function InvoicesTab() {
   const fetch = useServerFn(listMerchantSettlements);
   const inv = useServerFn(getSettlementInvoice);
   const q = useQuery({ queryKey: ["fin-settlements", null, null], queryFn: () => fetch({ data: {} }) });
@@ -243,7 +243,7 @@ function InvoicesTab() {
   );
 }
 
-function TaxTab() {
+export function TaxTab() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const fetch = useServerFn(getTaxReport);
   const q = useQuery({ queryKey: ["fin-tax", month], queryFn: () => fetch({ data: { month } }) });
