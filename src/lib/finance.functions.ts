@@ -67,9 +67,9 @@ export const listRefunds = createServerFn({ method: "GET" })
       .eq("refund_status", data.status).order("created_at", { ascending: false }).limit(300);
     chk(r);
     const ids = [...new Set((r.data ?? []).map((x: any) => x.merchant_id))];
-    const m = ids.length ? await db.from("merchants").select("id, store_name").in("id", ids) : { data: [] };
-    const mm = new Map((m.data ?? []).map((x: any) => [x.id, x.store_name]));
-    return (r.data ?? []).map((x: any) => ({ ...x, store_name: mm.get(x.merchant_id) ?? "—" }));
+    const m = ids.length ? await db.from("merchants").select("id, store_name, service_type").in("id", ids) : { data: [] };
+    const mm = new Map((m.data ?? []).map((x: any) => [x.id, x]));
+    return (r.data ?? []).map((x: any) => ({ ...x, store_name: (mm.get(x.merchant_id) as any)?.store_name ?? "—", service: (mm.get(x.merchant_id) as any)?.service_type === "food" ? "Food" : "Store" }));
   });
 
 export const getSettlementInvoice = createServerFn({ method: "GET" })

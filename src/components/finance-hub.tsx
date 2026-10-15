@@ -174,7 +174,7 @@ function SettlementDetail({ id }: { id: string }) {
 }
 
 export function RefundsTab({ canEdit }: { canEdit: boolean }) {
-  const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("failed");
+  const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("refund_pending");
   const fetch = useServerFn(listRefunds);
   const act = useServerFn(financeAction);
   const qc = useQueryClient();
@@ -188,16 +188,16 @@ export function RefundsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       
-      <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed — needs action"], ["done", "Done"]]} />
+      <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed"], ["done", "Done"]]} />
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Store</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
+          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Service</th><th className="p-2 text-left">Store</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={7} className="p-3 text-muted-foreground">Loading…</td></tr>}
-            {!q.isLoading && !rows.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
+            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className="border-b last:border-0">
-                <td className="p-2">{r.order_number}</td><td className="p-2">{r.store_name}</td>
+                <td className="p-2">{r.order_number}</td><td className="p-2">{r.service}</td><td className="p-2">{r.store_name}</td>
                 <td className="p-2 text-right">{inr(r.refund_amount)}</td><td className="p-2 text-xs">{r.refund_reason ?? "—"}</td>
                 <td className="p-2 text-right">{r.refund_attempts ?? 0}</td><td className="p-2 text-xs">{r.refund_id ?? "—"}</td>
                 <td className="p-2">{canEdit && s === "failed" && <Button size="sm" disabled={retry.isPending} onClick={() => retry.mutate(r.id)}>Retry refund</Button>}</td>
@@ -226,8 +226,8 @@ export function InvoicesTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Invoice</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Period</th><th className="p-2 text-right">Commission</th><th className="p-2 text-right">GST</th><th className="p-2 text-left">Status</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={7} className="p-3 text-muted-foreground">Loading…</td></tr>}
-            {!q.isLoading && !rows.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
+            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className="border-b last:border-0">
                 <td className="p-2 font-medium">{r.invoice_no}</td><td className="p-2">{r.merchant?.store_name}</td>
@@ -292,7 +292,7 @@ export function TaxTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">GSTIN</th><th className="p-2 text-left">PAN</th><th className="p-2 text-right">Orders</th><th className="p-2 text-right">Value</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
           <tbody>
-            {!m.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No paid orders this month."}</td></tr>}
+            {!m.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No paid orders this month."}</td></tr>}
             {m.map((x) => (
               <tr key={x.merchant_id} className="border-b last:border-0"><td className="p-2">{x.name}</td><td className="p-2 text-xs">{x.gstin ?? "—"}</td><td className="p-2 text-xs">{x.pan ?? "—"}</td><td className="p-2 text-right">{x.orders}</td><td className="p-2 text-right">{inr(x.taxable_value)}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
             ))}
@@ -304,7 +304,7 @@ export function TaxTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Refunded on</th><th className="p-2 text-right">Refund</th><th className="p-2 text-right">GST reversed</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
           <tbody>
-            {!rl.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
+            {!rl.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
             {rl.map((x) => (
               <tr key={x.order_number} className="border-b last:border-0"><td className="p-2">{x.order_number}</td><td className="p-2">{x.merchant}</td><td className="p-2 text-xs">{String(x.refunded_at ?? "").slice(0, 10)}</td><td className="p-2 text-right">{inr(x.refund_amount)}</td><td className="p-2 text-right">{inr(Number(x.gst_items || 0) + Number(x.gst_delivery || 0) + Number(x.gst_platform || 0))}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
             ))}
