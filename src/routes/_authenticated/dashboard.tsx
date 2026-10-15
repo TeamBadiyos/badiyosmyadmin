@@ -477,7 +477,6 @@ function Shell() {
                       setMobileOpen(false);
                     }
                   }}
-                  aria-expanded={open}
                   className={`w-full ${mini ? "lg:justify-center lg:pl-0 lg:pr-0" : ""} flex items-center gap-3 pl-5 pr-4 py-2.5 text-[14px] font-medium transition-colors border-l-[3px] ${
                     group.isActive
                       ? "border-primary bg-primary-tint text-foreground font-semibold"
