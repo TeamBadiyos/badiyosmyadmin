@@ -520,7 +520,6 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
             </select>
           </div>
         )}
-        <div className="flex items-center justify-between"><Label>Open now</Label><Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} /></div>
         <div className="space-y-1">
           <Label>Offer line ({offer.length}/60)</Label>
           <div className="flex gap-2"><Input maxLength={60} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="e.g. 20% off on first order" />

@@ -72,7 +72,22 @@ export const listServiceOrders = createServerFn({ method: "POST" })
     const mIds = Array.from(new Set(rows.map((x: any) => x.merchant_id)));
     const ms = mIds.length ? await db.from("merchants").select("id, store_name").in("id", mIds) : { data: [] };
     const name = new Map((ms.data ?? []).map((m: any) => [m.id, m.store_name]));
-    return rows.map((x: any) => ({ ...x, store_name: name.get(x.merchant_id) ?? "—" }));
+    const oIds = rows.map((x: any) => x.id);
+    const cIds = rows.map((x: any) => x.courier_order_id).filter(Boolean);
+    const [its, cos] = await Promise.all([
+      oIds.length ? db.from("merchant_order_items").select("order_id, quantity").in("order_id", oIds).limit(5000) : Promise.resolve({ data: [] }),
+      cIds.length ? db.from("courier_orders").select("id, assigned_expert_id").in("id", cIds) : Promise.resolve({ data: [] }),
+    ]);
+    const itemCount = new Map<string, number>();
+    for (const it of ((its as any).data ?? []) as any[]) itemCount.set(it.order_id, (itemCount.get(it.order_id) ?? 0) + Number(it.quantity ?? 1));
+    const expOf = new Map(((cos as any).data ?? []).map((c: any) => [c.id, c.assigned_expert_id]));
+    const eIds = Array.from(new Set(Array.from(expOf.values()).filter(Boolean))) as string[];
+    const ex = eIds.length ? await db.from("experts").select("id, name").in("id", eIds) : { data: [] };
+    const eName = new Map(((ex as any).data ?? []).map((e: any) => [e.id, e.name]));
+    return rows.map((x: any) => ({
+      ...x, store_name: name.get(x.merchant_id) ?? "—", item_count: itemCount.get(x.id) ?? 0,
+      rider_name: x.courier_order_id ? (eName.get(expOf.get(x.courier_order_id) as string) ?? null) : null,
+    }));
   });
 
 export const getServiceOrder = createServerFn({ method: "POST" })
