@@ -11082,6 +11082,7 @@ export type Database = {
         }
         Returns: Json
       }
+      fin_ca_export: { Args: { _from: string; _to: string }; Returns: Json }
       fin_company_complete: { Args: never; Returns: boolean }
       fin_company_snapshot: { Args: never; Returns: Json }
       fin_delete_expense: { Args: { _id: string }; Returns: undefined }
@@ -11113,6 +11114,7 @@ export type Database = {
         Args: { _ref_id: string; _ref_type: string }
         Returns: string
       }
+      fin_pnl_extras: { Args: { _from: string; _to: string }; Returns: Json }
       fin_sac: { Args: { _k: string }; Returns: string }
       fin_save_expense: { Args: { _id: string; _p: Json }; Returns: string }
       fin_save_expense_category: {
