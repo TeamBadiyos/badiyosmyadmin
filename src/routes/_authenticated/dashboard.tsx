@@ -15,6 +15,7 @@ import { TrainingAddressTab } from "@/components/training-address-tab";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
+import { FinanceOverview, MerchantsFinance, ExpensesPage } from "@/components/finance-redesign";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
@@ -24,6 +25,7 @@ import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
 import { HomepageBuilderPage } from "@/components/homepage-builder-page";
 import { WalletsPage } from "@/components/wallets-page";
+import { CommissionTab } from "@/components/commission-tab";
 import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
@@ -160,7 +162,7 @@ const NAV_ITEMS = [
   { key: "store-categories", label: "Categories", icon: Store },
   { key: "task-types", label: "Task Types", icon: ClipboardList },
   { key: "homepage", label: "Homepage", icon: LayoutTemplate },
-  { key: "wallets", label: "Wallets & Payouts", icon: Wallet },
+  { key: "wallets", label: "Payouts", icon: Wallet },
   { key: "partners", label: "Partners", icon: Handshake },
   { key: "referrals", label: "Referrals", icon: Gift },
   { key: "rewards", label: "Rewards", icon: Award },
@@ -168,8 +170,10 @@ const NAV_ITEMS = [
   { key: "campaigns", label: "Campaigns", icon: Megaphone },
   { key: "event-offers", label: "Event Offers", icon: Gift },
   { key: "roles", label: "Team", icon: ShieldCheck },
-  { key: "settlements", label: "Settlement", icon: Landmark },
+  { key: "settlements", label: "Collections", icon: Landmark },
   { key: "reports", label: "Reports", icon: BarChart3 },
+  { key: "fin-overview", label: "Overview", icon: BarChart3 },
+  { key: "fin-expenses", label: "Expenses", icon: Receipt },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "notification-sounds", label: "Sounds", icon: Volume2 },
   { key: "support", label: "Support", icon: LifeBuoy },
@@ -188,11 +192,11 @@ const NAV_ITEMS = [
   { key: "services", label: "Services", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax", icon: Percent },
   { key: "fees", label: "Fees", icon: IndianRupee },
-  { key: "fin-settlements", label: "Merchant Settlements", icon: Landmark },
+  { key: "fin-settlements", label: "Merchants", icon: Landmark },
   { key: "fin-instant", label: "Instant — Pay today", icon: Landmark },
   { key: "fin-refunds", label: "Refunds", icon: Receipt },
   { key: "fin-invoices", label: "Commission Invoices", icon: Receipt },
-  { key: "fin-tax", label: "Tax Reports", icon: Percent },
+  { key: "fin-tax", label: "Tax", icon: Percent },
   { key: "company-profile", label: "Company", icon: Settings },
 ] as const;
 
@@ -257,7 +261,7 @@ const NAV_GROUPS = [
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["fin-settlements", "fin-instant", "fin-refunds", "fin-invoices", "fin-tax", "wallets", "merchant-billing", "settlements", "reports"],
+    keys: ["fin-overview", "settlements", "fin-settlements", "wallets", "fin-expenses", "fin-refunds", "fin-tax", "reports"],
   },
   {
     id: "settings",
@@ -281,7 +285,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
+    (k) => k !== "roles" && k !== "fin-expenses" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
   ),
   area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "wash-team", "reports"],
 };
@@ -760,10 +764,11 @@ function Shell() {
             cleanKind={active === "wash-bookings" ? "wash" : "maid"}
             onSelect={(id) => setSelectedBookingId(id)}
           />
-        ) : active === "maid-catalogue" ? (
-          <ServiceCataloguePage kind="maid" />
-        ) : active === "wash-catalogue" ? (
-          <ServiceCataloguePage kind="wash" />
+        ) : active === "maid-catalogue" || active === "wash-catalogue" ? (
+          <div className="space-y-8">
+            <ServiceCataloguePage kind={active === "wash-catalogue" ? "wash" : "maid"} />
+            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Pay rates</h2><CommissionTab only="commission" /></section>
+          </div>
         ) : active === "maid-slots" ? (
           <SlotAvailabilityTab group="clean" />
         ) : active === "wash-slots" ? (
@@ -797,6 +802,12 @@ function Shell() {
           <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "audit" ? (
           <AuditLogsPage />
+        ) : active === "fin-overview" ? (
+          <FinanceOverview isSuperAdmin={role === "super_admin"} onNav={(k) => { if (isNavKey(k)) setActive(k); }} />
+        ) : active === "fin-settlements" || active === "fin-instant" || active === "fin-invoices" ? (
+          <MerchantsFinance role={role} />
+        ) : active === "fin-expenses" ? (
+          role === "super_admin" ? <ExpensesPage /> : null
         ) : active.startsWith("fin-") || active === "company-profile" ? (
           <FinanceHub
             tab={(active === "company-profile" ? "company" : active.slice(4)) as FinanceTab}
