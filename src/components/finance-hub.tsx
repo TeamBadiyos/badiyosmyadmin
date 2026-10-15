@@ -216,7 +216,10 @@ export function InvoicesTab() {
   const q = useQuery({ queryKey: ["fin-settlements", null, null], queryFn: () => fetch({ data: {} }) });
   const rows = ((q.data ?? []) as any[]).filter((r) => r.invoice_no);
   const dl = async (id: string) => {
-    try { await downloadCommissionInvoicePdf(await inv({ data: { id } })); } catch (e) { toast.error(errMsg(e)); }
+    try {
+      const { data: s } = await supabase.from("ops_settings").select("value").eq("key", "sac_commission").maybeSingle();
+      await downloadCommissionInvoicePdf(await inv({ data: { id } }), s?.value || "998599");
+    } catch (e) { toast.error(errMsg(e)); }
   };
   return (
     <div className="space-y-4">
