@@ -377,7 +377,9 @@ function Shell() {
   );
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: visibleItems.filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key)),
+    items: visibleItems
+      .filter((n) => (g.keys as ReadonlyArray<string>).includes(n.key))
+      .sort((a, b) => (g.keys as ReadonlyArray<string>).indexOf(a.key) - (g.keys as ReadonlyArray<string>).indexOf(b.key)),
     isActive: (g.keys as ReadonlyArray<string>).includes(active),
   })).filter((g) => g.items.length > 0);
 
