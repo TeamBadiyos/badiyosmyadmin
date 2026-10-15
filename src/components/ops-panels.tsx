@@ -183,12 +183,10 @@ export function RidersCapacityPanel() {
   const q = useQuery({
     queryKey: ["riders", "capacity"],
     queryFn: async () => {
-      const { data, error } = await db.from("experts").select("id, is_online, is_busy").eq("is_online", true).limit(5000);
+      const { data, error } = await db.rpc("rider_pool_stats");
       if (error) throw error;
-      const rows = (data ?? []) as Array<{ is_online: boolean; is_busy: boolean }>;
-      const online = rows.length;
-      const busy = rows.filter((r) => r.is_busy).length;
-      return { online, busy, free: online - busy };
+      const r = (data ?? { online: 0, busy: 0, free: 0 }) as { online: number; busy: number; free: number };
+      return { online: Number(r.online), busy: Number(r.busy), free: Number(r.free) };
     },
     refetchInterval: 30_000,
   });
@@ -230,7 +228,7 @@ export function RidersCapacityPanel() {
           );
         })}
       </div>
-      <p className="text-[12px] text-muted-foreground">Rider pool is shared with all online Experts (same rule the app uses: online and not busy = free).</p>
+      <p className="text-[12px] text-muted-foreground">Riders = active online Experts with an approved Courier Delivery skill (the same rule dispatch uses). Maids without that skill are not counted.</p>
       <NotifyStatsCard services={["store", "food", "parcel"]} reason="riders_busy" title="Notify-Me (riders busy)" />
     </div>
   );
