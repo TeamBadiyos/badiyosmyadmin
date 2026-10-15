@@ -289,7 +289,8 @@ export function MerchantEditModal({
             <p className="-mt-3 text-[12px] text-muted-foreground">
               Flat commission: <b>{detail?.commissionPct ?? 0}%</b> per order — change it from Merchant Commission & Billing.
             </p>
-            {detail && <CommissionModeBox merchantId={merchantId} detail={detail} />}
+            {/* MRP/Other split commission hidden (unused); data kept. */}
+            {false && detail && <CommissionModeBox merchantId={merchantId} detail={detail!} />}
           </div>
         )}
 

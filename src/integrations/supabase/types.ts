@@ -12009,6 +12009,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      staff_update_tax_setting: {
+        Args: { _active: boolean; _key: string; _rate: number }
+        Returns: undefined
+      }
       staff_update_user: {
         Args: {
           _email: string

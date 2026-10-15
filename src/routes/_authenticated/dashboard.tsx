@@ -46,6 +46,7 @@ import { ServicesPage } from "@/components/services-page";
 import { OffersPage } from "@/components/offers-page";
 import { EventOffersPage } from "@/components/event-offers-page";
 import { CourierPage } from "@/components/courier-page";
+import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -98,6 +99,8 @@ import {
   Lightbulb,
   PanelLeftClose,
   PanelLeftOpen,
+  UtensilsCrossed,
+  Percent,
 } from "lucide-react";
 import { SuggestionsPage } from "@/components/suggestions-page";
 import { LuckyDrawPage } from "@/components/lucky-draw-page";
@@ -129,7 +132,7 @@ const NAV_ITEMS = [
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
-  { key: "insurance", label: "Insurance", icon: ShieldCheck },
+  { key: "insurance", label: "Other · Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
@@ -161,8 +164,11 @@ const NAV_ITEMS = [
   { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Orders", icon: Receipt },
+  { key: "food-orders", label: "Food Orders", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
-  { key: "services", label: "Services", icon: SlidersHorizontal },
+  { key: "services", label: "Service Status", icon: SlidersHorizontal },
+  { key: "tax-settings", label: "Tax Settings", icon: Percent },
+  { key: "fees", label: "Charges & Fees", icon: IndianRupee },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -172,19 +178,13 @@ const NAV_GROUPS = [
     id: "live-ops",
     label: "Live Ops",
     icon: Activity,
-    keys: ["emergency", "support", "unassigned-trips", "suggestions"],
+    keys: ["emergency", "support", "unassigned-trips", "dispatch-alerts", "suggestions"],
   },
   {
     id: "clean",
     label: "Clean",
     icon: Boxes,
-    keys: ["bookings", "catalogue", "task-types"],
-  },
-  {
-    id: "courier",
-    label: "Courier",
-    icon: PackageCheck,
-    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-settings"],
+    keys: ["bookings", "catalogue", "task-types", "training-orders", "skills"],
   },
   {
     id: "store",
@@ -193,28 +193,46 @@ const NAV_GROUPS = [
     keys: ["store-orders", "merchants", "live-stores", "store-categories", "store-settings"],
   },
   {
+    id: "food",
+    label: "Food",
+    icon: UtensilsCrossed,
+    keys: ["food-orders"],
+  },
+  {
+    id: "courier",
+    label: "Parcel",
+    icon: PackageCheck,
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-settings"],
+  },
+  {
+    id: "rewards",
+    label: "Rewards",
+    icon: Award,
+    keys: ["rewards", "offers", "event-offers", "lucky-draw"],
+  },
+  {
     id: "people",
     label: "People",
     icon: Users,
-    keys: ["users", "experts", "training-orders", "skills", "deletion-requests"],
+    keys: ["users", "experts", "partners", "deletion-requests"],
   },
   {
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["offers", "event-offers", "referrals", "rewards", "waitlist", "interest-leads", "insurance", "lucky-draw"],
+    keys: ["referrals", "waitlist", "interest-leads", "homepage"],
   },
   {
     id: "finance",
     label: "Finance",
     icon: Landmark,
-    keys: ["wallets", "partners", "merchant-billing", "settlements", "reports"],
+    keys: ["wallets", "merchant-billing", "settlements", "reports"],
   },
   {
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "zones", "homepage", "dispatch-alerts", "notification-sounds", "legal", "roles", "audit"],
+    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal", "insurance"],
   },
 ] as const;
 
@@ -694,7 +712,13 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <CommerceKanban segmentId={null} />
+          <CommerceKanban segmentId={null} service="store" />
+        ) : active === "food-orders" ? (
+          <CommerceKanban segmentId={null} service="food" />
+        ) : active === "tax-settings" ? (
+          <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
+        ) : active === "fees" ? (
+          <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "settlements" ? (
