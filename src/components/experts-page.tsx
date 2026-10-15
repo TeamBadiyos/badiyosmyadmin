@@ -124,6 +124,33 @@ export function ExpertsPage({
       return Array.from(new Set(((v ?? []) as Array<{ required_skill: string | null }>).map((x) => x.required_skill).filter((x): x is string => !!x)));
     },
   });
+  const { data: riderStats } = useQuery({
+    queryKey: ["experts", "rider-stats"],
+    enabled: isRider,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const ist = new Date(Date.now() + 5.5 * 3600_000);
+      const dayStart = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 5.5 * 3600_000);
+      const dow = (ist.getUTCDay() + 6) % 7;
+      const weekStart = new Date(dayStart.getTime() - dow * 86400_000);
+      const [{ data: vt }, { data: orders }, { data: today }, { data: led }] = await Promise.all([
+        supabase.from("courier_vehicle_types").select("id, name"),
+        supabase.from("courier_orders").select("assigned_expert_id, vehicle_type_id, created_at").not("assigned_expert_id", "is", null).order("created_at", { ascending: false }).limit(1000),
+        supabase.from("courier_orders").select("assigned_expert_id").eq("status", "delivered").gte("delivered_at", dayStart.toISOString()),
+        supabase.from("wallet_ledger").select("owner_id, amount").eq("owner_type", "expert").eq("type", "credit").gte("created_at", weekStart.toISOString()),
+      ]);
+      const vName = new Map(((vt ?? []) as Array<{ id: string; name: string }>).map((v) => [v.id, v.name]));
+      const vehicle = new Map<string, string>();
+      for (const o of (orders ?? []) as Array<{ assigned_expert_id: string; vehicle_type_id: string | null }>) {
+        if (!vehicle.has(o.assigned_expert_id) && o.vehicle_type_id) vehicle.set(o.assigned_expert_id, vName.get(o.vehicle_type_id) ?? "");
+      }
+      const deliveries = new Map<string, number>();
+      for (const o of (today ?? []) as Array<{ assigned_expert_id: string }>) deliveries.set(o.assigned_expert_id, (deliveries.get(o.assigned_expert_id) ?? 0) + 1);
+      const earnings = new Map<string, number>();
+      for (const l of (led ?? []) as Array<{ owner_id: string; amount: number }>) earnings.set(l.owner_id, (earnings.get(l.owner_id) ?? 0) + Number(l.amount));
+      return { vehicle, deliveries, earnings };
+    },
+  });
   const [riderStatus, setRiderStatus] = useState("");
   const [riderSearch, setRiderSearch] = useState("");
   const expertsFiltered = (
@@ -243,8 +270,8 @@ export function ExpertsPage({
 
       {isRider ? (
         <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
-          <div className="grid grid-cols-[56px_minmax(200px,2fr)_130px_minmax(120px,1fr)_100px_100px] min-w-[720px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <span>Photo</span><span>Name</span><span>Phone</span><span>Zone</span><span>Status</span><span className="text-right">Wallet</span>
+          <div className="grid grid-cols-[56px_minmax(180px,2fr)_120px_100px_90px_90px_110px] min-w-[800px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span>Photo</span><span>Name</span><span>Phone</span><span>Vehicle</span><span>Status</span><span className="text-right">Today</span><span className="text-right">This week</span>
           </div>
           {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
           {!isLoading && experts.length === 0 && <p className="text-[13px] text-muted-foreground text-center py-10">No riders found.</p>}
@@ -252,13 +279,14 @@ export function ExpertsPage({
             const st = riderState(e);
             const cls = st === "free" ? "bg-primary/10 text-primary" : st === "busy" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground";
             return (
-              <button key={e.id} onClick={() => setDetailsId(e.id)} className="w-full grid grid-cols-[56px_minmax(200px,2fr)_130px_minmax(120px,1fr)_100px_100px] min-w-[720px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40">
+              <button key={e.id} onClick={() => setDetailsId(e.id)} className="w-full grid grid-cols-[56px_minmax(180px,2fr)_120px_100px_90px_90px_110px] min-w-[800px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40">
                 <ExpertAvatar url={e.photoUrl} />
                 <span className="font-semibold text-foreground break-words">{e.name}</span>
                 <span className="font-mono text-[12px] text-muted-foreground">{e.phone}</span>
-                <span className="text-[12px] text-muted-foreground truncate">{e.zoneNames?.join(", ") || "Unassigned"}</span>
+                <span className="text-[12px] text-muted-foreground truncate">{riderStats?.vehicle.get(e.id) || "—"}</span>
                 <span><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold capitalize ${cls}`}>{st}</span></span>
-                <span className="text-right text-foreground">₹{Math.round(e.walletBalance ?? 0)}</span>
+                <span className="text-right text-foreground">{riderStats?.deliveries.get(e.id) ?? 0}</span>
+                <span className="text-right text-foreground">₹{Math.round(riderStats?.earnings.get(e.id) ?? 0)}</span>
               </button>
             );
           })}
