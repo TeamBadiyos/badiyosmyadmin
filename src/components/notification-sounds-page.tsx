@@ -227,7 +227,7 @@ export function NotificationSoundsPage({ role }: { role: StaffRole | null }) {
 
   return (
     <div className="mx-auto w-full max-w-[900px]">
-      <h1 className="text-[22px] font-bold text-foreground">Notification Sounds</h1>
+      
       <p className="mt-1 text-[13px] text-muted-foreground">
         Custom alert audio played across the Partner and Customer apps. Max 2MB per file.
       </p>

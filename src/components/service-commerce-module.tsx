@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { catalogImageUrl } from "@/lib/catalog-images";
+import { useReportPageTab } from "@/lib/page-tab";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
 import {
   type Svc,
@@ -75,11 +76,9 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
     { k: "orders", label: "Orders" }, { k: "stores", label: L.stores }, { k: "approvals", label: "Approvals" },
     { k: "categories", label: "Categories" }, { k: "sponsored", label: "Sponsored" }, { k: "settings", label: "Settings" },
   ];
+  useReportPageTab(tabs.find((t) => t.k === tab)?.label ?? null);
   return (
     <div className="space-y-4" key={service}>
-      <div>
-        <h1 className="text-xl font-bold">{service === "food" ? "Food" : "Store"}</h1>
-      </div>
       <div className="flex gap-1 border-b overflow-x-auto">
         {tabs.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)}

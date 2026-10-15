@@ -55,8 +55,7 @@ function SettlementsTab({ canEdit }: { canEdit: boolean }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Merchant Settlements</h1>
-          <p className="text-xs text-muted-foreground">Schedule: Wednesday & Saturday</p>
+                    <p className="text-xs text-muted-foreground">Schedule: Wednesday & Saturday</p>
         </div>
         {canEdit && <Button disabled={gen.isPending} onClick={() => { if (confirm("Generate settlement batch for all merchants now?")) gen.mutate(); }}>Generate settlement batch</Button>}
       </div>
@@ -84,7 +83,7 @@ function SettlementTable({ status, type, canEdit, title }: { status: string; typ
   const cols = 13;
   return (
     <div className="space-y-2">
-      {title && <h1 className="text-2xl font-bold">{title}</h1>}
+      
       <div className="flex justify-end"><Button size="sm" variant="outline" disabled={!rows.length} onClick={exportCsv}>Export CSV for bank upload</Button></div>
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
@@ -173,7 +172,7 @@ function RefundsTab({ canEdit }: { canEdit: boolean }) {
   const rows = (q.data ?? []) as any[];
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Refunds</h1>
+      
       <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed — needs action"], ["done", "Done"]]} />
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
@@ -206,7 +205,7 @@ function InvoicesTab() {
   };
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Commission Invoices</h1>
+      
       <p className="text-xs text-muted-foreground">One invoice per settlement. GST is split CGST + SGST when the merchant's state matches the company state, otherwise IGST. Set company details in Company Profile.</p>
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
@@ -262,7 +261,7 @@ function TaxTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">Tax Reports</h1><p className="text-xs text-muted-foreground">Orders counted in the month they were paid (invoice date). Refunds appear as negative credit notes in the month the refund completed.</p></div>
+        <div><p className="text-xs text-muted-foreground">Orders counted in the month they were paid (invoice date). Refunds appear as negative credit notes in the month the refund completed.</p></div>
         <div><Label>Month</Label><Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></div>
       </div>
       {q.isError && <p className="text-destructive text-sm">{errMsg(q.error)}</p>}
@@ -313,7 +312,7 @@ function CompanyTab({ canEdit }: { canEdit: boolean }) {
   );
   return (
     <div className="space-y-4 max-w-2xl">
-      <h1 className="text-2xl font-bold">Company Profile</h1>
+      
       <p className="text-xs text-muted-foreground">Printed on every commission invoice. {canEdit ? "" : "Only super admin can edit."}</p>
       <div className="rounded-lg border bg-card p-4 grid sm:grid-cols-2 gap-4">
         {field("legal_name", "Legal name")}{field("gstin", "GSTIN")}{field("pan", "PAN")}{field("state", "State")}

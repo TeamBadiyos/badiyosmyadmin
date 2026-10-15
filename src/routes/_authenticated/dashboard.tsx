@@ -8,6 +8,7 @@ import { ServiceCommerceModule } from "@/components/service-commerce-module";
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
+import { usePageTabLabel } from "@/lib/page-tab";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
 import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
@@ -327,6 +328,7 @@ function Shell() {
   }
   const mini = collapsed && !mobileOpen;
   const activeItem = NAV_ITEMS.find((n) => n.key === active)!;
+  const pageTab = usePageTabLabel();
 
   function gotoBookings(preset: { status?: string; from?: string; to?: string } | null) {
     setBookingsInitial(preset);
@@ -560,7 +562,7 @@ function Shell() {
               <>
                 <span className="text-muted-foreground font-semibold">{activeGroup.label}</span>
                 <span className="text-muted-foreground font-semibold"> · </span>
-                {activeItem.label}
+                {pageTab ?? activeItem.label}
               </>
             ) : (
               activeItem.label

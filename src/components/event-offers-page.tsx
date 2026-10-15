@@ -81,7 +81,7 @@ function OfferList({ onEdit, onRedemptions }: { onEdit: (o: Partial<EventOfferRo
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Event Offers</h1>
+          
           <p className="text-sm text-muted-foreground">Live counter offers · counts refresh every 15 seconds</p>
         </div>
         <Button onClick={() => onEdit({})}><Plus className="mr-1 h-4 w-4" />New offer</Button>

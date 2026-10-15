@@ -59,7 +59,7 @@ export function SkillApprovalsPage({ role }: { role: StaffRole | null }) {
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
-            <option value="">All</option>
+            <option value="">All statuses</option>
           </select>
         </div>
       </div>
