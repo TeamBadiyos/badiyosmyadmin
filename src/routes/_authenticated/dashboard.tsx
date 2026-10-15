@@ -219,7 +219,7 @@ const NAV_GROUPS = [
     id: "store",
     label: "Store",
     icon: Store,
-    keys: ["store-orders", "merchants", "live-stores", "store-categories", "store-settings"],
+    keys: ["store-orders"],
   },
   {
     id: "food",
@@ -268,7 +268,7 @@ const NAV_GROUPS = [
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
 
 // Reachable (old links, notifications) but never listed in the sidebar.
-const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board"];
+const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board", "merchants", "live-stores", "store-categories", "store-settings"];
 
 const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   courier: "courier-orders",

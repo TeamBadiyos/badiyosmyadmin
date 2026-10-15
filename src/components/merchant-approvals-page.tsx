@@ -407,7 +407,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
 }
 
 /** Rejecting always needs a written reason, and only the Reject button rejects. */
-function RejectModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
+export function RejectModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
   const qc = useQueryClient();
   const decide = useServerFn(decideMerchant);
   const [reason, setReason] = useState("");
@@ -463,7 +463,7 @@ function RejectModal({ merchant, onClose }: { merchant: MerchantRow; onClose: ()
 }
 
 /** Ask the merchant to re-upload specific documents. */
-function QueryModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
+export function QueryModal({ merchant, onClose }: { merchant: MerchantRow; onClose: () => void }) {
   const qc = useQueryClient();
   const raise = useServerFn(raiseMerchantQuery);
   const [docs, setDocs] = useState<string[]>([]);

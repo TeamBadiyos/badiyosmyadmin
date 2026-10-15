@@ -62,7 +62,7 @@ export function DefaultCommissionReadOnly({ onOpenStoreSettings }: { onOpenStore
   );
 }
 
-export function StoreSettingsPage({ onOpenTax }: { onOpenTax?: () => void }) {
+export function StoreSettingsPage({ onOpenTax, hideGst }: { onOpenTax?: () => void; hideGst?: boolean }) {
   const qc = useQueryClient();
   const fetchSettings = useServerFn(getStoreCommissionSettings);
   const save = useServerFn(saveStoreCommissionSettings);
@@ -112,7 +112,7 @@ export function StoreSettingsPage({ onOpenTax }: { onOpenTax?: () => void }) {
           />
           <p className="mt-1 text-[12px] text-muted-foreground">Between 0 and 50%.</p>
         </div>
-        <CommissionGstReadOnly onOpenTax={onOpenTax} />
+        {hideGst ? null : <CommissionGstReadOnly onOpenTax={onOpenTax} />}
         {canEdit ? (
           <button
             disabled={!valid || m.isPending} onClick={() => m.mutate()}

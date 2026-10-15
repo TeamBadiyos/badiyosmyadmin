@@ -107,7 +107,7 @@ export const listServiceStores = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
-      db.from("merchants").select("id, store_name, owner_name, phone, city, status, is_open, rating_avg, rating_count, commission_pct").is("deleted_at", null),
+      db.from("merchants").select("id, store_name, owner_name, phone, city, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number").is("deleted_at", null),
       data.service,
     ).order("store_name"); chk(r);
     const rows = r.data ?? [];
@@ -118,7 +118,22 @@ export const listServiceStores = createServerFn({ method: "POST" })
         .eq("is_training", false).gte("created_at", start.toISOString()).or("payment_mode.neq.online,payment_status.eq.paid").limit(5000);
       for (const x of o.data ?? []) counts.set(x.merchant_id, (counts.get(x.merchant_id) ?? 0) + 1);
     }
-    return rows.map((x: any) => ({ ...x, today_orders: counts.get(x.id) ?? 0 }));
+    const live = new Map<string, number>();
+    const types = new Map<string, string>();
+    if (rows.length) {
+      const [p, t] = await Promise.all([
+        db.from("products").select("merchant_id").in("merchant_id", rows.map((x: any) => x.id))
+          .eq("is_active", true).eq("is_available", true).eq("approval_status", "approved").limit(20000),
+        db.from("store_categories").select("id, name"),
+      ]);
+      for (const x of (p.data ?? []) as any[]) live.set(x.merchant_id, (live.get(x.merchant_id) ?? 0) + 1);
+      for (const x of (t.data ?? []) as any[]) types.set(x.id, x.name);
+    }
+    return rows.map((x: any) => ({
+      ...x, today_orders: counts.get(x.id) ?? 0, live_items: live.get(x.id) ?? 0,
+      store_type: x.store_category_id ? types.get(x.store_category_id) ?? null : null,
+      photo: x.shop_photo_url ?? null, bank_pending: !x.bank_account_number, bank_account_number: undefined,
+    }));
   });
 
 export const getStoreDetail = createServerFn({ method: "POST" })
