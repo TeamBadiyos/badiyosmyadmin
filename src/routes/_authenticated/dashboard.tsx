@@ -641,12 +641,14 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
-          (role === "super_admin" || role === "ops_manager") ? (
-            <DashboardOverview role={role} onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
-          ) : (
+          <div className="space-y-4">
             <UnassignedTripsPage role={role} compact />
-            <PipelineKanban role={role} unified />
-          )
+            {(role === "super_admin" || role === "ops_manager") ? (
+              <DashboardOverview role={role} onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
+            ) : (
+              <PipelineKanban role={role} unified />
+            )}
+          </div>
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
