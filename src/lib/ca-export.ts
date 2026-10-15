@@ -35,8 +35,12 @@ export async function buildCaExportZip(from: string, to: string): Promise<Blob> 
     ["04-merchant-settlements.csv", "settlements"], ["05-payouts.csv", "payouts"], ["06-wallet-ledger.csv", "wallet_ledger"],
   ];
   for (const [name, key] of files) zip.file(name, toCsv((d[key] as Row[]) ?? []));
-  const tax = (d.tax as Row) ?? {};
+  const pf = await (supabase as any).rpc("fin_partner_fees", { _from: from, _to: to });
+  if (pf.error) throw new Error(pf.error.message);
+  const pfd = pf.data as { rows: Row[]; fee_income: number; fee_gst: number; deposits_held: number };
+  const tax = { ...((d.tax as Row) ?? {}), franchise_fee_income: pfd.fee_income, franchise_fee_gst: pfd.fee_gst, partner_deposits_held: pfd.deposits_held };
   zip.file("07-tax-summary.csv", "Item,Amount\n" + Object.entries(tax).map(([k, v]) => `"${k}",${Number(v ?? 0).toFixed(2)}`).join("\n") + "\n");
+  zip.file("08-partner-fees.csv", toCsv((pfd.rows ?? []).map(({ id: _i, partner_id: _p, ...r }) => r)));
   return zip.generateAsync({ type: "blob" });
 }
 

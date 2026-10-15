@@ -823,8 +823,9 @@ function PnlTab({ range }: { range: ReportRange }) {
     const direct = m.merchantPayout + s.expertPayout + s.partnerPayout + c.riderPayout + data.programCommission + T.bonuses + T.refunds + data.gatewayCharges.total;
     const gross = revenue - direct;
     const instant = Number(ex?.instant_fee ?? 0);
+    const franchise = Number(pf?.fee_income ?? 0);
     const expenses = Number(ex?.expenses_total ?? 0);
-    return { revenue, direct, gross, instant, expenses, net: gross + instant - expenses };
+    return { revenue, direct, gross, instant, franchise, expenses, net: gross + instant + franchise - expenses };
   })();
 
   const exportCsv = () => {
