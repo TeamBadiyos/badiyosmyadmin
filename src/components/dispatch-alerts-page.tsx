@@ -10,10 +10,14 @@ import {
   type DispatchConfig,
 } from "@/lib/dispatch-alerts.functions";
 
+type SvcKey = "maid" | "wash" | "store" | "food" | "parcel";
+const SVCS: Array<[SvcKey, string]> = [["maid", "Maid"], ["wash", "Wash"], ["store", "Store"], ["food", "Food"], ["parcel", "Parcel"]];
+
 function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }) {
   const save = useServerFn(updateDispatchConfig);
-  const [minutes, setMinutes] = useState(
-    Math.round(cfg.no_accept_alert_threshold_seconds / 60).toString(),
+  const fallback = Math.round(cfg.no_accept_alert_threshold_seconds / 60).toString();
+  const [perSvc, setPerSvc] = useState<Record<SvcKey, string>>(() =>
+    Object.fromEntries(SVCS.map(([k]) => [k, String(cfg.no_accept_minutes?.[k] ?? fallback)])) as Record<SvcKey, string>,
   );
   const [windowMin, setWindowMin] = useState(cfg.almost_available_window_minutes.toString());
   const [template, setTemplate] = useState(cfg.aisensy_template_name ?? "");
@@ -22,11 +26,12 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
   const [busy, setBusy] = useState(false);
 
   async function saveAll() {
-    const mins = parseInt(minutes, 10);
     const win = parseInt(windowMin, 10);
-    if (!mins || mins < 1 || mins > 60) {
-      toast.error("No-accept threshold must be 1–60 minutes");
-      return;
+    const mins: Partial<Record<SvcKey, number>> = {};
+    for (const [k, label] of SVCS) {
+      const v = parseInt(perSvc[k], 10);
+      if (!v || v < 1 || v > 60) { toast.error(`${label}: wait limit must be 1–60 minutes`); return; }
+      mins[k] = v;
     }
     if (!win || win < 1 || win > 120) {
       toast.error("Almost-available window must be 1–120 minutes");
@@ -37,7 +42,7 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
       await save({
         data: {
           id: cfg.id,
-          no_accept_alert_threshold_seconds: mins * 60,
+          no_accept_minutes: mins,
           almost_available_window_minutes: win,
           aisensy_template_name: template.trim() || null,
           ops_alert_whatsapp_numbers: numbers,
@@ -59,20 +64,22 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
         <h3 className="text-[15px] font-bold text-foreground">{cfg.city}</h3>
       </div>
 
+      <div className="mt-4">
+        <span className="text-[12px] font-semibold text-muted-foreground">
+          No-accept threshold per service (minutes) — the same limit turns Dashboard "⏱ waiting" red
+        </span>
+        <div className="mt-1 grid gap-2 grid-cols-2 sm:grid-cols-5">
+          {SVCS.map(([k, label]) => (
+            <label key={k} className="block">
+              <span className="text-[11px] font-bold uppercase text-muted-foreground">{label}</span>
+              <input type="number" min={1} max={60} value={perSvc[k]}
+                onChange={(e) => setPerSvc((p) => ({ ...p, [k]: e.target.value }))}
+                className="mt-1 w-full rounded-[10px] border border-border bg-background px-3 py-2 text-[13px] text-foreground" />
+            </label>
+          ))}
+        </div>
+      </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-[12px] font-semibold text-muted-foreground">
-            No-accept wait limit (minutes) — also turns Dashboard cards red
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={60}
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
-            className="mt-1 w-full rounded-[10px] border border-border bg-background px-3 py-2 text-[13px] text-foreground"
-          />
-        </label>
         <label className="block">
           <span className="text-[12px] font-semibold text-muted-foreground">
             "Almost available" window (minutes)
