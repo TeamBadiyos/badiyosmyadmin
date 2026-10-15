@@ -103,6 +103,7 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
   const [categoryModal, setCategoryModal] = useState<
     { segment: CatalogueSegment; category: CatalogueCategory | null } | null
   >(null);
+  const delServiceFn = useServerFn(deleteService);
   const [serviceModal, setServiceModal] = useState<
     { category: CatalogueCategory; service: CatalogueService | null } | null
   >(null);
