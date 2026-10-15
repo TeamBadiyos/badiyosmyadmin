@@ -2,236 +2,256 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { listSlotOverrides, setSlotFull, setInstantBooking, getSlotCapacity, setDailyCapacity, setCapacitySetting, setWeekdayCapacity, type CapGroup } from "@/lib/booking-settings.functions";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  listSlotOverrides, setInstantBooking, getSlotCapacity, setBandCapacity, setCapacitySetting,
+  type CapGroup, type CapKey, type Band,
+} from "@/lib/booking-settings.functions";
 
 function istDate(offsetDays = 0) {
-  const d = new Date(Date.now() + 5.5 * 3600000 + offsetDays * 86400000);
-  return d.toISOString().slice(0, 10);
+  return new Date(Date.now() + 5.5 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10);
 }
-function slotLabel(m: number, step: number) {
-  const f = (x: number) => {
-    const h = Math.floor(x / 60), mi = x % 60;
-    return `${h % 12 === 0 ? 12 : h % 12}:${String(mi).padStart(2, "0")} ${h < 12 || h === 24 ? "AM" : "PM"}`;
-  };
-  void step;
-  return f(m);
+function hm(m: number) {
+  const h = Math.floor(m / 60), mi = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
 }
-function ddmmyyyy(iso: string) {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+function slotMinutes(slot: string | null): number | null {
+  const x = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i.exec(slot ?? "");
+  if (!x) return null;
+  let h = Number(x[1]) % 12;
+  if (x[3].toUpperCase() === "PM") h += 12;
+  return h * 60 + Number(x[2] ?? 0);
 }
+const BAND_LABEL = { morning: "Morning", day: "Day", evening: "Evening" } as const;
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const card = "rounded-[16px] border border-border bg-card p-5";
+const inputCls = "h-10 w-24 rounded-[10px] border border-border bg-card px-3 text-[14px] text-foreground";
+const primaryBtn = "h-10 rounded-[10px] bg-primary px-4 text-[13px] font-bold text-primary-foreground disabled:opacity-50 whitespace-nowrap";
+
+function useCap(group: CapGroup, date: string) {
+  const capFn = useServerFn(getSlotCapacity);
+  return useQuery({ queryKey: ["slot-cap", group, date], queryFn: () => capFn({ data: { date, group } }) });
+}
 
 export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = {}) {
   const isWash = group === "wash";
-  const who = isWash ? "washers" : "maids";
+  const Who = isWash ? "Washers" : "Maids";
   const [date, setDate] = useState(istDate());
+  const [openBand, setOpenBand] = useState<Band | null>(null);
   const qc = useQueryClient();
-  const listFn = useServerFn(listSlotOverrides);
-  const fullFn = useServerFn(setSlotFull);
-  const instFn = useServerFn(setInstantBooking);
-  const q = useQuery({ queryKey: ["slot-overrides", date], queryFn: () => listFn({ data: { date } }) });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["slot-overrides"] });
-  const slotMut = useMutation({
-    mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, ...v } }),
-    onSuccess: (_r, v) => { toast.success(v.full ? "Slot marked fully booked" : "Slot re-opened"); refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const instMut = useMutation({
-    mutationFn: (on: boolean) => instFn({ data: { on } }),
-    onSuccess: (_r, on) => { toast.success(on ? "Book Now turned ON" : "Book Now paused"); refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["slot-cap", group] });
+  const cq = useCap(group, date);
+  const cap = cq.data;
 
-  const capFn = useServerFn(getSlotCapacity);
-  const dayCapFn = useServerFn(setDailyCapacity);
   const setFn = useServerFn(setCapacitySetting);
-  const cq = useQuery({ queryKey: ["slot-overrides", "cap", group, date], queryFn: () => capFn({ data: { date, group } }) });
-  const [dayInput, setDayInput] = useState("");
+  const bandFn = useServerFn(setBandCapacity);
   const [defInput, setDefInput] = useState("");
-  const capMut = useMutation({
-    mutationFn: (capacity: number | null) => dayCapFn({ data: { date, capacity, group } }),
-    onSuccess: () => { toast.success("Maid count saved"); setDayInput(""); refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const setMut = useMutation({
-    mutationFn: (v: { key: "slot_capacity_enabled" | "default_slot_capacity" | "slot_capacity_mode"; value: string }) => setFn({ data: v }),
+  const defMut = useMutation({
+    mutationFn: (v: string) => setFn({ data: { key: isWash ? "wash_default_slot_capacity" : "default_slot_capacity", value: v } }),
     onSuccess: () => { toast.success("Saved"); setDefInput(""); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
-  const cap = cq.data;
-  const wkFn = useServerFn(setWeekdayCapacity);
-  const [wkInput, setWkInput] = useState<Record<number, string>>({});
-  const wkMut = useMutation({
-    mutationFn: (v: { weekday: number; capacity: number | null }) => wkFn({ data: { ...v, group } }),
-    onSuccess: (_r, v) => { toast.success("Weekday count saved"); setWkInput((x) => ({ ...x, [v.weekday]: "" })); refresh(); },
+
+  const [ovDate, setOvDate] = useState(istDate(1));
+  const ov = useCap(group, ovDate);
+  const [ovIn, setOvIn] = useState<Record<string, string>>({});
+  const ovMut = useMutation({
+    mutationFn: (clear: boolean) => {
+      const n = (k: string) => {
+        const v = ovIn[k] ?? String(ov.data?.bands.find((b) => b.band === k)?.override ?? "");
+        return clear || v === "" ? null : Number(v);
+      };
+      return bandFn({ data: { date: ovDate, group, morning: n("morning"), day: n("day"), evening: n("evening") } });
+    },
+    onSuccess: () => { toast.success("Date saved"); setOvIn({}); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const d = q.data;
-  const step = d?.step ?? 30;
-  const hours: number[] = [];
-  if (d) for (let m = d.first * 60; m <= d.last * 60; m += step) hours.push(m);
-  const fullSet = new Set((d?.full ?? []).map((f) => f.key));
-
   return (
-    <div className="space-y-4">
-      {!isWash && <section className="flex flex-wrap items-start justify-between gap-3 rounded-[16px] border border-border bg-card px-4 py-4">
-        <div className="min-w-0 max-w-xl">
-          <h3 className="text-[15px] font-bold text-foreground">Book Now (Instant) bookings</h3>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
-            OFF: only "Book Now" is paused. Schedule Later slots stay open. Only Super Admin can change this.
-          </p>
-        </div>
-        <button
-          type="button" role="switch" aria-checked={!!d?.instantOn} aria-label="Instant booking"
-          disabled={!d || instMut.isPending}
-          onClick={() => d && (d.instantOn || true) && (confirm(d.instantOn ? "Pause Book Now (instant) orders?" : "Turn Book Now back ON?")) && instMut.mutate(!d.instantOn)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${d?.instantOn ? "bg-primary" : "bg-border"}`}
-        >
-          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${d?.instantOn ? "left-[22px]" : "left-0.5"}`} />
-        </button>
-      </section>}
-
-      <section className="space-y-3 rounded-[16px] border border-border bg-card px-4 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 max-w-xl">
-            <h3 className="text-[15px] font-bold text-foreground">Automatic slot capacity</h3>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              ON: a slot shows Fully Booked by itself when all maids are busy. Long bookings (e.g. 3 hours) keep one maid busy in every half-hour they cover (plus travel gap). Only Super Admin can change these settings.
-            </p>
-          </div>
-          <button type="button" role="switch" aria-checked={!!cap?.enabled} aria-label="Automatic capacity"
-            disabled={!cap || setMut.isPending}
-            onClick={() => cap && confirm(cap.enabled ? "Turn automatic capacity OFF?" : "Turn automatic capacity ON?") && setMut.mutate({ key: "slot_capacity_enabled", value: cap.enabled ? "0" : "1" })}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${cap?.enabled ? "bg-primary" : "bg-border"}`}>
-            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${cap?.enabled ? "left-[22px]" : "left-0.5"}`} />
-          </button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[12px] border border-border p-3">
-            <p className="text-[12px] font-semibold text-muted-foreground">Maid count source</p>
-            <div className="mt-2 flex gap-2">
-              {(["manual", "live"] as const).map((m) => (
-                <button key={m} type="button" disabled={setMut.isPending}
-                  onClick={() => cap && cap.mode !== m && setMut.mutate({ key: "slot_capacity_mode", value: m })}
-                  className={`rounded-[10px] px-3 py-1.5 text-[12px] font-semibold ${cap?.mode === m ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}>
-                  {m === "manual" ? "Manual entry" : "Live online experts"}
-                </button>
-              ))}
-            </div>
-            {cap?.mode === "live" ? <p className="mt-1 text-[11px] text-muted-foreground">Today uses online experts; future days use the expected count.</p> : null}
-          </div>
-          <div className="rounded-[12px] border border-border p-3">
-            <p className="text-[12px] font-semibold text-muted-foreground">Expected maids (all future days)</p>
-            <div className="mt-2 flex gap-2">
-              <input type="number" min={0} max={500} placeholder={String(cap?.defaultCap ?? "")} value={defInput} onChange={(e) => setDefInput(e.target.value)}
-                className="h-9 w-20 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
-              <button type="button" disabled={!defInput || setMut.isPending} onClick={() => setMut.mutate({ key: "default_slot_capacity", value: defInput })}
-                className="h-9 rounded-[10px] bg-primary px-3 text-[12px] font-bold text-primary-foreground disabled:opacity-50">Save</button>
-            </div>
-          </div>
-          <div className="rounded-[12px] border border-border p-3">
-            <p className="text-[12px] font-semibold text-muted-foreground">{isWash ? "Washers" : "Maids"} on {ddmmyyyy(date)}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input type="number" min={0} max={500} placeholder={String(cap?.capacity ?? "")} value={dayInput} onChange={(e) => setDayInput(e.target.value)}
-                className="h-9 w-20 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
-              <button type="button" disabled={!dayInput || capMut.isPending || !d?.canEdit} onClick={() => capMut.mutate(Number(dayInput))}
-                className="h-9 rounded-[10px] bg-primary px-3 text-[12px] font-bold text-primary-foreground disabled:opacity-50">Save</button>
-              {cap?.dayCap != null ? (
-                <button type="button" disabled={capMut.isPending} onClick={() => capMut.mutate(null)}
-                  className="h-9 rounded-[10px] border border-border px-3 text-[12px] font-semibold text-foreground">Use expected</button>
-              ) : null}
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {cap ? (cap.dayCap != null ? `Set for this day: ${cap.dayCap}` : `Using expected count: ${cap.capacity}`) : ""}
-            </p>
-          </div>
+    <div className="space-y-6 max-w-4xl">
+      <section className={card}>
+        <h3 className="text-[15px] font-bold text-foreground">{Who} per day</h3>
+        <div className="mt-3 flex items-center gap-2">
+          <input type="number" min={0} max={500} placeholder={String(cap?.defaultCap ?? "")} value={defInput}
+            onChange={(e) => setDefInput(e.target.value)} className={inputCls} />
+          <button disabled={!defInput || defMut.isPending} onClick={() => defMut.mutate(defInput)} className={primaryBtn}>Save</button>
+          <span className="text-[12px] text-muted-foreground">Now: {cap?.defaultCap ?? "–"} · used every day by default</span>
         </div>
       </section>
 
-      <section className="space-y-3 rounded-[16px] border border-border bg-card px-4 py-4">
-        <div>
-          <h3 className="text-[15px] font-bold text-foreground">{isWash ? "Wash" : "Maid"} capacity by weekday</h3>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
-            Used when no count is set for a specific date. A date-specific count always wins. Empty = expected count ({cap?.defaultCap ?? "–"}).
-            {isWash ? " Wash capacity is separate — maid bookings never use it." : " Maid capacity is separate — wash bookings never use it."}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {WEEKDAYS.map((w, i) => {
-            const cur = cap?.weekday?.[i];
-            return (
-              <div key={w} className="rounded-[12px] border border-border p-2">
-                <p className="text-[12px] font-semibold text-muted-foreground">{w} · {cur ?? "default"}</p>
-                <div className="mt-1 flex gap-1">
-                  <input type="number" min={0} max={500} value={wkInput[i] ?? ""} placeholder={cur != null ? String(cur) : ""}
-                    onChange={(e) => setWkInput((x) => ({ ...x, [i]: e.target.value }))}
-                    className="h-8 w-14 rounded-[8px] border border-border bg-card px-2 text-[12px] text-foreground" />
-                  <button type="button" disabled={!wkInput[i] || wkMut.isPending || !d?.canEdit} onClick={() => wkMut.mutate({ weekday: i, capacity: Number(wkInput[i]) })}
-                    className="h-8 rounded-[8px] bg-primary px-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50">Save</button>
-                  {cur != null ? (
-                    <button type="button" disabled={wkMut.isPending || !d?.canEdit} onClick={() => wkMut.mutate({ weekday: i, capacity: null })}
-                      className="h-8 rounded-[8px] border border-border px-2 text-[11px] font-semibold text-foreground" aria-label={`Clear ${w}`}>×</button>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="rounded-[16px] border border-border bg-card">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <h3 className="mr-auto text-[15px] font-bold text-foreground">Schedule Later slots · {ddmmyyyy(date)}</h3>
-          {[0, 1, 2].map((o) => (
-            <button key={o} type="button" onClick={() => setDate(istDate(o))}
-              className={`rounded-[10px] px-3 py-1.5 text-[12px] font-semibold ${date === istDate(o) ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}>
-              {o === 0 ? "Today" : o === 1 ? "Tomorrow" : "Day after"}
+      <section className={card}>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="mr-auto text-[15px] font-bold text-foreground">Slots</h3>
+          {[0, 1].map((o) => (
+            <button key={o} onClick={() => setDate(istDate(o))}
+              className={`h-9 rounded-[10px] px-3 text-[13px] font-semibold whitespace-nowrap ${date === istDate(o) ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}>
+              {o === 0 ? "Today" : "Tomorrow"}
             </button>
           ))}
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="h-9 rounded-[10px] border border-border bg-card px-2 text-[12px] text-foreground" />
+            className="h-9 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
         </div>
-        {q.isLoading ? <p className="p-4 text-[13px] text-muted-foreground">Loading slots…</p> : null}
-        {q.isError ? <p className="p-4 text-[13px] text-destructive">{(q.error as Error).message}</p> : null}
-        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-          {hours.map((h) => {
-            const busy = Math.max(cap?.busy[h] ?? 0, step === 60 ? cap?.busy[h + 30] ?? 0 : 0);
-            const autoFull = !!cap?.enabled && busy >= (cap?.capacity ?? 0);
-            const manualFull = fullSet.has(h);
-            const full = manualFull || autoFull;
-            const count = (d?.counts[h] ?? 0) + (step === 60 ? d?.counts[h + 30] ?? 0 : 0);
-            return (
-              <div key={h} className={`rounded-[12px] border p-3 ${full ? "border-destructive/50 bg-destructive/10" : "border-border"}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[14px] font-bold text-foreground">{slotLabel(h, step)}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${full ? "bg-destructive text-destructive-foreground" : "bg-success/15 text-success"}`}>
-                    {manualFull ? "Fully Booked" : autoFull ? "Auto Full" : "Open"}
-                  </span>
-                </div>
-                <p className="mt-1 text-[12px] text-muted-foreground">{count} booking{count === 1 ? "" : "s"} start here · {busy} / {cap?.capacity ?? "–"} {who} busy</p>
-                {cap ? (
-                  <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
-                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Capacity</p><p className="font-bold text-foreground">{cap.capacity}</p></div>
-                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Booked</p><p className="font-bold text-foreground">{busy}</p></div>
-                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Available</p><p className="font-bold text-foreground">{Math.max(0, cap.capacity - busy)}</p></div>
-                    <div className="rounded-[8px] bg-muted py-1"><p className="text-muted-foreground">Used</p><p className="font-bold text-foreground">{cap.capacity > 0 ? Math.min(100, Math.round((busy / cap.capacity) * 100)) : 0}%</p></div>
-                  </div>
-                ) : null}
-                {d?.canEdit && !isWash ? (
-                  <button type="button" disabled={slotMut.isPending}
-                    onClick={() => slotMut.mutate({ hour: Math.floor(h / 60), minute: h % 60, full: !manualFull })}
-                    className={`mt-2 h-9 w-full rounded-[10px] text-[12px] font-bold disabled:opacity-50 ${full ? "border border-border text-foreground" : "bg-destructive text-destructive-foreground"}`}>
-                    {manualFull ? "Re-open slot" : "Mark Fully Booked"}
-                  </button>
-                ) : null}
-              </div>
-            );
-          })}
+        {cq.isError && <p className="mt-3 text-[13px] text-destructive">{(cq.error as Error).message}</p>}
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(cap?.bands ?? []).map((b) => (
+            <button key={b.band} onClick={() => setOpenBand(b)}
+              className={`rounded-[14px] border p-4 text-left transition-colors ${b.full ? "border-destructive/40 bg-destructive/10" : "border-success/40 bg-success/10"}`}>
+              <p className="text-[13px] font-semibold text-muted-foreground whitespace-nowrap">
+                {BAND_LABEL[b.band]} · {hm(b.start_min)}–{b.end_min >= 1440 ? "24:00" : hm(b.end_min)}
+              </p>
+              <p className={`mt-1 text-[24px] font-bold ${b.full ? "text-destructive" : "text-success"}`}>{b.booked} / {b.capacity}</p>
+              <p className="text-[12px] text-muted-foreground">{b.full ? "Full" : "Open"}{b.override != null ? " · set for this date" : ""}</p>
+            </button>
+          ))}
         </div>
       </section>
+
+      <section className={card}>
+        <h3 className="text-[15px] font-bold text-foreground">Change a specific date</h3>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <input type="date" value={ovDate} onChange={(e) => { if (e.target.value) { setOvDate(e.target.value); setOvIn({}); } }}
+            className="h-10 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
+          {(["morning", "day", "evening"] as const).map((k) => {
+            const b = ov.data?.bands.find((x) => x.band === k);
+            return (
+              <label key={k} className="space-y-1">
+                <span className="block text-[12px] font-semibold text-muted-foreground">{BAND_LABEL[k]}</span>
+                <input type="number" min={0} max={500} className={inputCls}
+                  placeholder={String(b?.capacity ?? "")}
+                  value={ovIn[k] ?? (b?.override != null ? String(b.override) : "")}
+                  onChange={(e) => setOvIn((x) => ({ ...x, [k]: e.target.value }))} />
+              </label>
+            );
+          })}
+          <button disabled={ovMut.isPending} onClick={() => ovMut.mutate(false)} className={primaryBtn}>Save</button>
+          {ov.data?.bands.some((b) => b.override != null) && (
+            <button disabled={ovMut.isPending} onClick={() => ovMut.mutate(true)} className="h-10 text-[13px] font-semibold text-muted-foreground underline whitespace-nowrap">Reset</button>
+          )}
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground">Empty = use the daily number.</p>
+      </section>
+
+      {openBand && <BandBookings group={group} date={date} band={openBand} onClose={() => setOpenBand(null)} />}
     </div>
+  );
+}
+
+function BandBookings({ group, date, band, onClose }: { group: CapGroup; date: string; band: Band; onClose: () => void }) {
+  const q = useQuery({
+    queryKey: ["band-bookings", group, date],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bookings")
+        .select("id, booking_number, scheduled_time_slot, status, service_label, service_category_id, service_categories(slug)")
+        .eq("scheduled_date", date).neq("status", "cancelled");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as unknown as Array<{ id: string; booking_number: string | null; scheduled_time_slot: string | null; status: string; service_label: string | null; service_categories: { slug: string } | null }>;
+    },
+  });
+  const rows = (q.data ?? []).filter((r) => {
+    const isW = r.service_categories?.slug === "car-bike-wash";
+    if ((group === "wash") !== isW) return false;
+    const m = slotMinutes(r.scheduled_time_slot);
+    return m != null && m >= band.start_min && m < band.end_min;
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/40" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="h-full w-full max-w-md overflow-y-auto border-l border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[16px] font-bold text-foreground">{BAND_LABEL[band.band]} · {rows.length} bookings</h3>
+          <button onClick={onClose} className="text-[13px] font-semibold text-muted-foreground">Close</button>
+        </div>
+        {q.isLoading && <p className="mt-4 text-[13px] text-muted-foreground">Loading…</p>}
+        {q.isError && <p className="mt-4 text-[13px] text-destructive">{(q.error as Error).message}</p>}
+        <div className="mt-4 space-y-2">
+          {rows.map((r) => (
+            <div key={r.id} className="rounded-[12px] border border-border p-3">
+              <p className="text-[14px] font-semibold text-foreground truncate">{r.service_label ?? "Booking"}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{r.booking_number ?? r.id.slice(0, 8)} · {r.scheduled_time_slot} · {r.status}</p>
+            </div>
+          ))}
+          {!q.isLoading && rows.length === 0 && <p className="text-[13px] text-muted-foreground">No bookings.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Switch({ on, disabled, onClick, label }: { on: boolean; disabled?: boolean; onClick: () => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={onClick}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${on ? "bg-primary" : "bg-border"}`}>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+    </button>
+  );
+}
+
+/** Settings tab: Book Now, automatic capacity, count source, band times. */
+export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup }) {
+  const isWash = group === "wash";
+  const qc = useQueryClient();
+  const listFn = useServerFn(listSlotOverrides);
+  const instFn = useServerFn(setInstantBooking);
+  const setFn = useServerFn(setCapacitySetting);
+  const today = istDate();
+  const q = useQuery({ queryKey: ["slot-overrides", today], queryFn: () => listFn({ data: { date: today } }) });
+  const cq = useCap(group, today);
+  const cap = cq.data;
+  const d = q.data;
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["slot-cap"] }); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); };
+  const instMut = useMutation({
+    mutationFn: (on: boolean) => instFn({ data: { on } }),
+    onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
+  });
+  const setMut = useMutation({
+    mutationFn: (v: { key: CapKey; value: string }) => setFn({ data: v }),
+    onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
+  });
+  const [me, setMe] = useState(""); const [de, setDe] = useState("");
+  const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+
+  const row = "flex items-center justify-between gap-4 py-4";
+  return (
+    <section className={`${card} divide-y divide-border py-1`}>
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Book Now</p><p className="text-[12px] text-muted-foreground">Instant bookings (shared by Home and Auto)</p></div>
+        <Switch label="Book Now" on={!!d?.instantOn} disabled={!d || instMut.isPending}
+          onClick={() => d && confirm(d.instantOn ? "Pause Book Now?" : "Turn Book Now ON?") && instMut.mutate(!d.instantOn)} />
+      </div>
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Automatic capacity</p><p className="text-[12px] text-muted-foreground">Slots close by themselves when full</p></div>
+        <Switch label="Automatic capacity" on={!!cap?.enabled} disabled={!cap || setMut.isPending}
+          onClick={() => cap && confirm(cap.enabled ? "Turn automatic capacity OFF?" : "Turn automatic capacity ON?") && setMut.mutate({ key: "slot_capacity_enabled", value: cap.enabled ? "0" : "1" })} />
+      </div>
+      {!isWash && (
+        <div className={row}>
+          <p className="text-[14px] font-semibold text-foreground">Count source</p>
+          <div className="flex gap-2">
+            {(["manual", "live"] as const).map((m) => (
+              <button key={m} disabled={setMut.isPending} onClick={() => cap && cap.mode !== m && setMut.mutate({ key: "slot_capacity_mode", value: m })}
+                className={`h-9 rounded-[10px] px-3 text-[13px] font-semibold whitespace-nowrap ${cap?.mode === m ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}>
+                {m === "manual" ? "Manual" : "Live online"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Time bands</p><p className="text-[12px] text-muted-foreground">Morning ends · Day ends</p></div>
+        <div className="flex items-center gap-2">
+          <input type="time" step={1800} value={me || (cap ? hm(cap.morningEnd) : "")} onChange={(e) => setMe(e.target.value)}
+            className="h-10 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
+          <input type="time" step={1800} value={de || (cap ? hm(cap.dayEnd) : "")} onChange={(e) => setDe(e.target.value)}
+            className="h-10 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
+          <button disabled={(!me && !de) || setMut.isPending} className={primaryBtn}
+            onClick={async () => {
+              const m = me ? toMin(me) : cap!.morningEnd, dd = de ? toMin(de) : cap!.dayEnd;
+              if (m >= dd) { toast.error("Morning must end before Day"); return; }
+              if (me) await setMut.mutateAsync({ key: `${group}_band_morning_end` as CapKey, value: String(m) });
+              if (de) await setMut.mutateAsync({ key: `${group}_band_day_end` as CapKey, value: String(dd) });
+              setMe(""); setDe("");
+            }}>Save</button>
+        </div>
+      </div>
+    </section>
   );
 }
