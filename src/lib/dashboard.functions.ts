@@ -322,7 +322,15 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .in("expert_id", freeIds);
       riderIds = new Set(((ps ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id));
     }
-    const freeMaids = freeIds.filter((id) => !riderIds.has(id)).length;
+    let freeMaids = 0;
+    if (freeIds.length) {
+      const { data: cc } = await db.from("service_categories").select("id").in("slug", ["home-cleaning", "festival-special-cleaning"]);
+      const cids = ((cc ?? []) as Array<{ id: string }>).map((r) => r.id);
+      if (cids.length) {
+        const { data: ms } = await db.from("partner_skills").select("expert_id").eq("status", "approved").in("service_category_id", cids).in("expert_id", freeIds);
+        freeMaids = new Set(((ms ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id).filter((id) => !riderIds.has(id))).size;
+      }
+    }
     let freeWashers = 0;
     if (freeIds.length) {
       const { data: washCat } = await db.from("service_categories").select("id").eq("slug", "car-bike-wash").limit(1);
