@@ -1,3 +1,4 @@
+import { DashboardKpis, DailyOrdersChart } from "@/components/dashboard-kpis";
 import { DateInput } from "@/components/date-input";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -108,6 +109,12 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
 
   return (
     <div className="space-y-6">
+      {(role === "super_admin" || role === "ops_manager") && (
+        <>
+          <DashboardKpis role={role} />
+          <DailyOrdersChart />
+        </>
+      )}
       {/* Filters */}
       <div className="bg-card border border-border rounded-[18px] p-5 flex flex-wrap items-end gap-4">
         <div>

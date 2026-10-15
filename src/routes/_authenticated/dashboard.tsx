@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { PipelineKanban } from "@/components/pipeline-kanban";
-import { CommerceKanban } from "@/components/commerce-kanban";
+import { OfflinePosToday } from "@/components/commerce-kanban";
 import { ServiceCommerceModule } from "@/components/service-commerce-module";
 
 import { ZonesPage } from "@/components/zones-page";
@@ -207,7 +207,7 @@ const NAV_GROUPS = [
     id: "clean",
     label: "Clean Home",
     icon: Boxes,
-    keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "skills", "training-orders", "task-types", "maid-settings"],
+    keys: ["maid-bookings", "catalogue", "maid-catalogue", "maid-slots", "clean-experts", "skills", "training-orders", "task-types", "maid-settings"],
   },
   {
     id: "wash",
@@ -646,17 +646,11 @@ function Shell() {
       {/* Content */}
       <main className="min-h-[calc(100vh-4rem)] w-full min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8">
         {active === "dashboard" ? (
-          <div>
-          {(role === "super_admin" || role === "ops_manager") && (
-            <DashboardOverview onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
-          )}
-          <DashboardHome
-            role={role}
-            onGoBookings={gotoBookings}
-            onGoExperts={gotoExperts}
-            onOpenBooking={(id) => setSelectedBookingId(id)}
-          />
-          </div>
+          (role === "super_admin" || role === "ops_manager") ? (
+            <DashboardOverview role={role} onNavigate={(k) => { if (isNavKey(k)) setActive(k); }} />
+          ) : (
+            <PipelineKanban role={role} unified />
+          )
         ) : active === "zones" ? (
           <ZonesPage role={role} />
         ) : active === "bookings" ? (
@@ -778,7 +772,10 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <ServiceCommerceModule service="store" role={role ?? ""} />
+          <div>
+            <OfflinePosToday />
+            <ServiceCommerceModule service="store" role={role ?? ""} />
+          </div>
         ) : active === "food-orders" ? (
           <ServiceCommerceModule service="food" role={role ?? ""} />
         ) : active === "tax-settings" ? (
@@ -815,216 +812,3 @@ function Shell() {
     </div>
   );
 }
-
-function DashboardHome({
-  role,
-  onGoBookings,
-  onGoExperts,
-  onOpenBooking,
-}: {
-  onOpenBooking: (id: string) => void;
-  role: StaffRole | null;
-  onGoBookings: (preset: { status?: string; from?: string; to?: string } | null) => void;
-  onGoExperts: (onlineOnly: boolean) => void;
-}) {
-  const fetchStats = useServerFn(getDashboardStats);
-  const queryClient = useQueryClient();
-  const [segmentId, setSegmentId] = useState<string | null>(null);
-  const [discountOpen, setDiscountOpen] = useState(false);
-
-  const segmentsQuery = useQuery({
-    queryKey: ["segments", "filter"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("segments")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("rank", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-    staleTime: 5 * 60_000,
-  });
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["dashboard", "stats", segmentId],
-    queryFn: () => fetchStats({ data: { segmentId } }),
-    refetchInterval: 60_000, // safety-net poll; realtime below drives normal refreshes
-    refetchOnWindowFocus: false,
-  });
-  const ridersQuery = useQuery({
-    queryKey: ["riders", "capacity", "dashboard"],
-    queryFn: async () => {
-      const { data: r, error } = await (supabase as unknown as { rpc: (n: string) => Promise<{ data: unknown; error: Error | null }> }).rpc("rider_pool_stats");
-      if (error) throw error;
-      const v = (r ?? { online: 0, busy: 0, free: 0 }) as { online: number; busy: number; free: number };
-      return { online: Number(v.online), busy: Number(v.busy), free: Number(v.free) };
-    },
-    refetchInterval: 30_000,
-  });
-  const riders = ridersQuery.data;
-
-  // Realtime: any change to bookings, experts, merchant orders or POS sales
-  // invalidates the unified stats.
-  useEffect(() => {
-    const invalidate = () =>
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
-    const channel = supabase
-      .channel("dashboard-stats")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "experts" }, invalidate)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "merchant_orders" },
-        invalidate,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "offline_sales" },
-        invalidate,
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  const inr = new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const showCommerce = role === "super_admin" || role === "ops_manager";
-  const cards: Array<{
-    label: string;
-    value: string;
-    hint?: string;
-    icon: LucideIcon;
-    onClick?: () => void;
-  }> = [
-    {
-      label: "Total Order Value (Gross)",
-      value: inr.format(data?.grossToday ?? 0),
-      hint: "Before discounts · bookings + orders + POS",
-      icon: Receipt,
-      onClick: () => onGoBookings({ from: today, to: today }),
-    },
-    {
-      label: "Discount Given",
-      value: inr.format(data?.discountToday ?? 0),
-      hint: `Today · ${inr.format(data?.discountGiven ?? 0)} all time`,
-      icon: BadgePercent,
-      onClick: () => setDiscountOpen(true),
-    },
-    {
-      label: "Actual Revenue",
-      value: inr.format(data?.todayRevenue ?? 0),
-      hint: `Amount ${inr.format(Math.max(0, (data?.todayRevenue ?? 0) - (data?.gstCollectedToday ?? 0)))} · GST ${inr.format(data?.gstCollectedToday ?? 0)}`,
-      icon: IndianRupee,
-      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
-    },
-    {
-      label: "Active Right Now",
-      value: String(data?.activeNow ?? 0),
-      hint: "In progress + being prepared",
-      icon: Activity,
-      onClick: () => onGoBookings({ status: "active" }),
-    },
-    {
-      label: "Completed Today",
-      value: String(data?.completedToday ?? 0),
-      hint: "Bookings + orders",
-      icon: CheckCircle2,
-      onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
-    },
-    {
-      label: "Free Riders",
-      value: riders ? `${riders.free} / ${riders.online}` : "—",
-      hint: "Online Experts with Courier Delivery skill, not on a job",
-      icon: Users,
-      onClick: () => onGoExperts(true),
-    },
-    {
-      label: "Free Maids",
-      value: String(data?.freeMaids ?? 0),
-      hint: "Online & available Experts without the delivery skill (Clean)",
-      icon: Users,
-      onClick: () => onGoExperts(true),
-    },
-  ];
-
-
-  return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {isError ? (
-          <p className="text-[14px] text-destructive">Failed to load stats. Retrying…</p>
-        ) : (
-          <p className="text-[13px] text-muted-foreground">
-            Unified view across service bookings and merchant commerce.
-          </p>
-        )}
-        <label className="flex items-center gap-2 text-[13px]">
-          <span className="text-muted-foreground font-medium">Segment</span>
-          <select
-            value={segmentId ?? ""}
-            onChange={(e) => setSegmentId(e.target.value || null)}
-            className="h-9 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          >
-            <option value="">All Segments</option>
-            {(segmentsQuery.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5 sm:gap-4 xl:gap-5">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <button
-              key={card.label}
-              type="button"
-              onClick={card.onClick}
-              title={card.hint}
-              className="text-left bg-card border border-border rounded-[18px] p-3 sm:p-4 flex flex-col min-w-0 cursor-pointer transition-all hover:border-primary/40 hover:shadow-sm hover:bg-primary-tint/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            >
-              <div className="flex items-start justify-between gap-2 min-h-[32px]">
-                <p className="text-[11px] font-semibold uppercase tracking-wide leading-[1.3] text-muted-foreground line-clamp-2">
-                  {card.label}
-                </p>
-                <div className="w-8 h-8 rounded-full bg-primary-tint text-primary flex items-center justify-center shrink-0">
-                  <Icon size={16} />
-                </div>
-              </div>
-              <p className="mt-3 text-[19px] sm:text-[24px] leading-none font-bold text-foreground truncate">
-                {isLoading && !data ? "—" : card.value}
-              </p>
-              <p className="mt-2 text-[11px] leading-[1.35] text-muted-foreground line-clamp-2 min-h-[30px]">
-                {card.hint ?? ""}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Live Orders on top, merchant commerce stacked below it. */}
-      <div className="space-y-6">
-        <PipelineKanban role={role} segmentId={segmentId} />
-        {showCommerce && <CommerceKanban segmentId={segmentId} />}
-      </div>
-      <DiscountBreakdownModal
-        open={discountOpen}
-        onClose={() => setDiscountOpen(false)}
-        onOpenBooking={onOpenBooking}
-      />
-    </div>
-  );
-}
-
-

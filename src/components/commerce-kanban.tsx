@@ -473,3 +473,24 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
     </section>
   );
 }
+
+/** Today's offline POS sales line (moved from the Dashboard to the Store section). */
+export function OfflinePosToday() {
+  const fetchPipeline = useServerFn(listCommercePipeline);
+  const { data } = useQuery({
+    queryKey: ["commerce", "board", "offline-pos"],
+    queryFn: () => fetchPipeline({ data: { segmentId: null, training: false, service: "store" } }),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const offline = data?.offlineToday;
+  return (
+    <div className="mb-4 rounded-[12px] border border-border bg-background px-4 py-2.5 flex items-center gap-2 text-[12px]">
+      <Store size={14} className="text-primary shrink-0" />
+      <span className="text-muted-foreground">Offline POS today:</span>
+      <span className="font-bold text-foreground">{offline ? `${offline.count} sales` : "—"}</span>
+      <span className="text-muted-foreground">·</span>
+      <span className="font-bold text-foreground">{offline ? inr.format(offline.revenue) : "—"}</span>
+    </div>
+  );
+}
