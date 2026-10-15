@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
 
 const TAX_LABELS: Record<string, string> = {
   food_gst_9_5: "Food GST (9(5))",
@@ -58,7 +59,7 @@ export function TaxSettingsPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <tr key={t.key} className="border-b border-border last:border-0">
                 <td className="p-3 font-semibold text-foreground">{TAX_LABELS[t.key] ?? t.label}</td>
                 <td className="p-3">{isEd ? <input type="number" step="0.01" min={0} className={inp + " w-28"} value={edit.rate} onChange={(e) => setEdit({ ...edit, rate: e.target.value })} /> : isAmt ? `₹${Number(t.rate_pct).toLocaleString("en-IN")}` : `${t.rate_pct}%`}</td>
-                <td className="p-3">{isEd ? <input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> : t.is_active ? "Yes" : "No"}</td>
+                <td className="p-3"><Switch disabled={!isSuperAdmin} checked={isEd ? edit.active : t.is_active} onCheckedChange={(v) => { setEdit({ key: t.key, rate: isEd ? edit.rate : String(t.rate_pct), active: v }); setConfirm(true); }} /></td>
                 <td className="p-3 text-right">
                   {isSuperAdmin && (isEd ? (
                     <div className="flex gap-2 justify-end">
@@ -133,7 +134,7 @@ export function ChargesFeesPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 <td className="p-3">{f.amount_type === "flat" ? `₹${f.amount}` : `${f.amount}%`}</td>
                 <td className="p-3">{f.gst_key ? TAX_LABELS[f.gst_key] ?? f.gst_key : "—"}</td>
                 <td className="p-3">{d(f.starts_at) || "—"} → {d(f.ends_at) || "—"}</td>
-                <td className="p-3"><input type="checkbox" disabled={!isSuperAdmin} checked={f.is_active} onChange={(e) => save.mutate({ ...f, is_active: e.target.checked })} /></td>
+                <td className="p-3"><Switch disabled={!isSuperAdmin || save.isPending} checked={f.is_active} onCheckedChange={(v) => save.mutate({ ...f, is_active: v })} /></td>
                 <td className="p-3 text-right">{isSuperAdmin && <button className="text-primary font-semibold" onClick={() => setForm({ ...f })}>Edit</button>}</td>
               </tr>
             ))}
@@ -159,7 +160,7 @@ export function ChargesFeesPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <label className="flex-1">Start<input type="date" className={inp + " w-full"} value={d(form.starts_at)} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></label>
               <label className="flex-1">End<input type="date" className={inp + " w-full"} value={d(form.ends_at)} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} /></label>
             </div>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />Active</label>
+            <label className="flex items-center gap-2"><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />Active</label>
             <div className="flex justify-end gap-2">
               <button className="h-9 px-3 text-muted-foreground" onClick={() => setForm(null)}>Cancel</button>
               <button className={btn} disabled={!form.name || save.isPending} onClick={() => save.mutate(form)}>Save</button>
