@@ -84,7 +84,7 @@ export const getTaxReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { month: string }) => ({ month: String(i.month).slice(0, 7) + "-01" }))
   .handler(async ({ data, context }) => {
-    const r = await rpc(context.supabase, "staff_tax_report", { _month: data.month }); chk(r);
+    const r = await rpc(context.supabase, "staff_tax_report_ext", { _month: data.month }); chk(r);
     return r.data as any;
   });
 

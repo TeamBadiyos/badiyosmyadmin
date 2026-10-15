@@ -253,6 +253,8 @@ export function TaxTab() {
     ["Food GST 9(5) collected", s.food_gst_9_5], ["Store delivery GST", s.store_delivery_gst], ["Food delivery GST", s.food_delivery_gst],
     ["Parcel delivery GST", s.parcel_delivery_gst], ["Commission GST", s.commission_gst], ["Platform fee GST", s.platform_fee_gst],
     ["TCS (total)", s.tcs], ["TDS 194-O (total)", s.tds],
+    ["Maid GST", s.maid_gst], ["Car/Bike Wash GST", s.wash_gst], ["Instant fee GST", s.instant_fee_gst],
+    ["GST paid on expenses (input credit)", s.expense_input_gst],
   ];
   const m = (d?.merchants ?? []) as any[];
   const r = d?.refunds ?? {};
