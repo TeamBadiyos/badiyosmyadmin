@@ -210,6 +210,122 @@ export type Database = {
         }
         Relationships: []
       }
+      agreement_templates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          reacceptance_required: boolean
+          title: string
+          type: string
+          version: number
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reacceptance_required?: boolean
+          title?: string
+          type: string
+          version: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reacceptance_required?: boolean
+          title?: string
+          type?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      agreements: {
+        Row: {
+          accepted_at: string | null
+          accepted_device: string | null
+          accepted_ip: string | null
+          accepted_phone: string | null
+          created_at: string
+          id: string
+          is_reacceptance: boolean
+          otp_attempts: number
+          otp_expires_at: string | null
+          otp_hash: string | null
+          paper_path: string | null
+          party_id: string
+          party_type: string
+          rendered_body: string
+          sent_by: string | null
+          signed_method: string | null
+          status: string
+          template_id: string
+          template_type: string
+          template_version: number
+          title: string
+          vals: Json
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_device?: string | null
+          accepted_ip?: string | null
+          accepted_phone?: string | null
+          created_at?: string
+          id?: string
+          is_reacceptance?: boolean
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          paper_path?: string | null
+          party_id: string
+          party_type: string
+          rendered_body: string
+          sent_by?: string | null
+          signed_method?: string | null
+          status?: string
+          template_id: string
+          template_type: string
+          template_version: number
+          title?: string
+          vals?: Json
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_device?: string | null
+          accepted_ip?: string | null
+          accepted_phone?: string | null
+          created_at?: string
+          id?: string
+          is_reacceptance?: boolean
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          paper_path?: string | null
+          party_id?: string
+          party_type?: string
+          rendered_body?: string
+          sent_by?: string | null
+          signed_method?: string | null
+          status?: string
+          template_id?: string
+          template_type?: string
+          template_version?: number
+          title?: string
+          vals?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreements_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agreement_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_banners: {
         Row: {
           app_tab: string
@@ -4236,6 +4352,102 @@ export type Database = {
         }
         Relationships: []
       }
+      expert_applications: {
+        Row: {
+          address: string | null
+          auth_user_id: string
+          bank_account_holder_name: string | null
+          bank_account_number: string | null
+          bank_ifsc: string | null
+          created_at: string
+          documents: Json
+          expert_id: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          photo_path: string | null
+          preferred_zone_id: string | null
+          query_note: string | null
+          query_reason: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          step: number
+          submitted_at: string | null
+          updated_at: string
+          upi_id: string | null
+          work_types: string[]
+        }
+        Insert: {
+          address?: string | null
+          auth_user_id: string
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          created_at?: string
+          documents?: Json
+          expert_id?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          photo_path?: string | null
+          preferred_zone_id?: string | null
+          query_note?: string | null
+          query_reason?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          step?: number
+          submitted_at?: string | null
+          updated_at?: string
+          upi_id?: string | null
+          work_types?: string[]
+        }
+        Update: {
+          address?: string | null
+          auth_user_id?: string
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_ifsc?: string | null
+          created_at?: string
+          documents?: Json
+          expert_id?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          photo_path?: string | null
+          preferred_zone_id?: string | null
+          query_note?: string | null
+          query_reason?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          step?: number
+          submitted_at?: string | null
+          updated_at?: string
+          upi_id?: string | null
+          work_types?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expert_applications_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expert_applications_preferred_zone_id_fkey"
+            columns: ["preferred_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expert_holiday_notices: {
         Row: {
           created_at: string
@@ -6594,6 +6806,62 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          gst_amount: number
+          gst_pct: number
+          id: string
+          mode: string
+          note: string | null
+          paid_on: string
+          partner_id: string
+          receipt_path: string | null
+          reference: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number
+          gst_pct?: number
+          id?: string
+          mode: string
+          note?: string | null
+          paid_on?: string
+          partner_id: string
+          receipt_path?: string | null
+          reference?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number
+          gst_pct?: number
+          id?: string
+          mode?: string
+          note?: string | null
+          paid_on?: string
+          partner_id?: string
+          receipt_path?: string | null
+          reference?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payments_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_payout_batches: {
         Row: {
           approved_at: string | null
@@ -7058,6 +7326,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      party_notifications: {
+        Row: {
+          auth_user_id: string | null
+          body: string
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          party_id: string
+          party_type: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          kind: string
+          party_id: string
+          party_type: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          party_id?: string
+          party_type?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: []
       }
       payment_intents: {
         Row: {
@@ -10039,10 +10346,49 @@ export type Database = {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
       }
+      agreement_issue: {
+        Args: {
+          _by?: string
+          _party_id: string
+          _party_type: string
+          _reaccept?: boolean
+          _type: string
+        }
+        Returns: string
+      }
+      agreement_render: {
+        Args: { _body: string; _vals: Json }
+        Returns: string
+      }
+      agreement_values: {
+        Args: { _party_id: string; _party_type: string }
+        Returns: Json
+      }
+      app_agreement_accept: {
+        Args: {
+          _agreement_id: string
+          _device?: string
+          _ip?: string
+          _otp: string
+        }
+        Returns: Json
+      }
+      app_agreement_request_otp: {
+        Args: { _agreement_id: string }
+        Returns: Json
+      }
+      app_expert_application_agreements: { Args: never; Returns: Json }
+      app_expert_application_get: { Args: never; Returns: Json }
+      app_expert_application_save: {
+        Args: { _patch: Json; _step?: number }
+        Returns: Json
+      }
+      app_expert_application_submit: { Args: never; Returns: Json }
       app_list_banners: {
         Args: { _city_id: string; _tab: string }
         Returns: Json
       }
+      app_my_agreements: { Args: never; Returns: Json }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       award_referral_milestones: { Args: { _user_id: string }; Returns: number }
       booking_capacity_group: {
@@ -11027,6 +11373,10 @@ export type Database = {
         Args: { _exclude?: string; _expert_id: string }
         Returns: number
       }
+      expert_application_missing: {
+        Args: { _a: Database["public"]["Tables"]["expert_applications"]["Row"] }
+        Returns: string[]
+      }
       expert_ensure_booking_codes: {
         Args: { _booking_id: string }
         Returns: {
@@ -11118,6 +11468,7 @@ export type Database = {
         Args: { _ref_id: string; _ref_type: string }
         Returns: string
       }
+      fin_partner_fees: { Args: { _from: string; _to: string }; Returns: Json }
       fin_pnl_extras: { Args: { _from: string; _to: string }; Returns: Json }
       fin_sac: { Args: { _k: string }; Returns: string }
       fin_save_expense: { Args: { _id: string; _p: Json }; Returns: string }
@@ -11485,6 +11836,25 @@ export type Database = {
       }
       partner_recalc_batch: { Args: { _batch_id: string }; Returns: undefined }
       partner_require_admin: { Args: never; Returns: string }
+      party_agreement_types: {
+        Args: { _party_id: string; _party_type: string }
+        Returns: string[]
+      }
+      party_auth_user: {
+        Args: { _party_id: string; _party_type: string }
+        Returns: string
+      }
+      party_notify: {
+        Args: {
+          _body: string
+          _data?: Json
+          _kind: string
+          _party_id: string
+          _party_type: string
+          _title: string
+        }
+        Returns: undefined
+      }
       payout_batch_recalc_total: {
         Args: { _batch_id: string }
         Returns: undefined
@@ -11746,6 +12116,19 @@ export type Database = {
       staff_acknowledge_emergency_alert: {
         Args: { _alert_id: string; _notes?: string }
         Returns: undefined
+      }
+      staff_add_partner_payment: {
+        Args: {
+          _amount: number
+          _mode: string
+          _note: string
+          _paid_on: string
+          _partner_id: string
+          _receipt_path: string
+          _reference: string
+          _type: string
+        }
+        Returns: string
       }
       staff_add_support_note: {
         Args: { _body: string; _ticket_id: string }
@@ -12085,6 +12468,10 @@ export type Database = {
         Args: { _from: string; _q?: string; _service?: string; _to: string }
         Returns: Json
       }
+      staff_list_expert_applications: {
+        Args: { _status?: string }
+        Returns: Json
+      }
       staff_list_notifications: {
         Args: { _filter?: string }
         Returns: {
@@ -12103,6 +12490,7 @@ export type Database = {
       }
       staff_list_refunds_all: { Args: { _status: string }; Returns: Json }
       staff_list_unassigned_business_trips: { Args: never; Returns: Json }
+      staff_list_unsigned_agreements: { Args: never; Returns: Json }
       staff_lucky_draw_delete_campaign: {
         Args: { _id: string }
         Returns: undefined
@@ -12131,6 +12519,10 @@ export type Database = {
       staff_lucky_draw_save_prize: {
         Args: { _campaign_id: string; _id: string; _payload: Json }
         Returns: string
+      }
+      staff_mark_agreement_paper: {
+        Args: { _agreement_id: string; _path: string }
+        Returns: undefined
       }
       staff_mark_all_notifications_read: { Args: never; Returns: undefined }
       staff_mark_notification_read: {
@@ -12226,6 +12618,10 @@ export type Database = {
       }
       staff_partner_update_settings: { Args: { _p: Json }; Returns: undefined }
       staff_partner_upsert: { Args: { _p: Json }; Returns: string }
+      staff_party_agreements: {
+        Args: { _party_id: string; _party_type: string }
+        Returns: Json
+      }
       staff_permanently_delete_user: {
         Args: { _confirm_phone: string; _user_id: string }
         Returns: Json
@@ -12300,6 +12696,10 @@ export type Database = {
         Args: { _ledger_id: string; _reason: string }
         Returns: undefined
       }
+      staff_review_expert_application: {
+        Args: { _action: string; _id: string; _note?: string; _reason?: string }
+        Returns: Json
+      }
       staff_review_product_changes: {
         Args: { _approve: boolean; _note?: string; _product_id: string }
         Returns: Json
@@ -12362,6 +12762,15 @@ export type Database = {
         Args: { _period_start?: string }
         Returns: number
       }
+      staff_save_agreement_template: {
+        Args: {
+          _body: string
+          _reaccept: boolean
+          _title: string
+          _type: string
+        }
+        Returns: Json
+      }
       staff_save_banner: { Args: { _p: Json }; Returns: string }
       staff_save_capacity_message: {
         Args: { _payload: Json }
@@ -12407,6 +12816,10 @@ export type Database = {
       staff_seal_void: {
         Args: { _code: string; _reason: string }
         Returns: Json
+      }
+      staff_send_agreement: {
+        Args: { _party_id: string; _party_type: string; _type?: string }
+        Returns: number
       }
       staff_send_campaign: { Args: { _id: string }; Returns: number }
       staff_send_campaign_test: {
