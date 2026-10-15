@@ -154,7 +154,7 @@ export function NotifyStatsCard({ services, reason, title }: { services: string[
         <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
       </div>
       <p className="mt-0.5 text-[12px] text-muted-foreground">Last 7 days · reason "{reason}"</p>
-      {q.isError ? <p className="mt-2 text-[12px] text-destructive">Could not load (only super admin can read notify-me records).</p> : null}
+      {q.isError ? <p className="mt-2 text-[12px] text-destructive">Could not load (only super admin or ops manager can read notify-me records).</p> : null}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead><tr className="text-left text-muted-foreground"><th className="py-1.5 pr-3">Service</th><th className="py-1.5 pr-3">Attempted</th><th className="py-1.5 pr-3">Notified</th><th className="py-1.5">Converted</th></tr></thead>
@@ -183,12 +183,10 @@ export function RidersCapacityPanel() {
   const q = useQuery({
     queryKey: ["riders", "capacity"],
     queryFn: async () => {
-      const { data, error } = await db.from("experts").select("id, is_online, is_busy").eq("is_online", true).limit(5000);
+      const { data, error } = await db.rpc("rider_pool_stats");
       if (error) throw error;
-      const rows = (data ?? []) as Array<{ is_online: boolean; is_busy: boolean }>;
-      const online = rows.length;
-      const busy = rows.filter((r) => r.is_busy).length;
-      return { online, busy, free: online - busy };
+      const r = (data ?? { online: 0, busy: 0, free: 0 }) as { online: number; busy: number; free: number };
+      return { online: Number(r.online), busy: Number(r.busy), free: Number(r.free) };
     },
     refetchInterval: 30_000,
   });
@@ -230,7 +228,7 @@ export function RidersCapacityPanel() {
           );
         })}
       </div>
-      <p className="text-[12px] text-muted-foreground">Rider pool is shared with all online Experts (same rule the app uses: online and not busy = free).</p>
+      <p className="text-[12px] text-muted-foreground">Riders = active online Experts with an approved Courier Delivery skill (the same rule dispatch uses). Maids without that skill are not counted.</p>
       <NotifyStatsCard services={["store", "food", "parcel"]} reason="riders_busy" title="Notify-Me (riders busy)" />
     </div>
   );

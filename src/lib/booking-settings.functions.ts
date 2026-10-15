@@ -205,20 +205,25 @@ export const setInstantBooking = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type CapGroup = "clean" | "wash";
+const grp = (g?: string): CapGroup => (g === "wash" ? "wash" : "clean");
+
 export const getSlotCapacity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string }) => {
+  .inputValidator((i: { date: string; group?: CapGroup }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
-    return i;
+    return { date: i.date, group: grp(i.group) };
   })
   .handler(async ({ data, context }) => {
     const sb = (context as Ctx).supabase;
-    const [cfg, day, cap, busy] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anySb = sb as any;
+    const [cfg, day, cap, busy, wk] = await Promise.all([
       sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "default_slot_capacity", "slot_capacity_mode"]),
-      sb.from("service_daily_capacity").select("capacity").eq("service_key", "clean").eq("cap_date", data.date).maybeSingle(),
-      sb.rpc("slot_capacity_for", { _service_key: "clean", _date: data.date }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sb.rpc as any)("slot_busy_by_half", { _service_key: "clean", _date: data.date }),
+      sb.from("service_daily_capacity").select("capacity").eq("service_key", data.group).eq("cap_date", data.date).maybeSingle(),
+      sb.rpc("slot_capacity_for", { _service_key: data.group, _date: data.date }),
+      anySb.rpc("slot_busy_by_half", { _service_key: data.group, _date: data.date }),
+      anySb.from("slot_capacity_weekday").select("weekday, capacity").eq("service_key", data.group),
     ]);
     if (cap.error) throw new Error(cap.error.message);
     if (busy.error) throw new Error(busy.error.message);
@@ -226,6 +231,8 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
     for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
     const busyMap: Record<number, number> = {};
     for (const r of (busy.data ?? []) as Array<{ start_min: number; busy: number }>) busyMap[r.start_min] = r.busy;
+    const weekday: Record<number, number> = {};
+    for (const r of (wk.data ?? []) as Array<{ weekday: number; capacity: number }>) weekday[r.weekday] = r.capacity;
     return {
       enabled: c["slot_capacity_enabled"] === "1",
       mode: (c["slot_capacity_mode"] === "live" ? "live" : "manual") as "live" | "manual",
@@ -233,14 +240,29 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
       dayCap: (day.data as { capacity: number } | null)?.capacity ?? null,
       capacity: Number(cap.data ?? 0),
       busy: busyMap,
+      weekday,
     };
   });
 
 export const setDailyCapacity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; capacity: number | null }) => i)
+  .inputValidator((i: { date: string; capacity: number | null; group?: CapGroup }) => ({ ...i, group: grp(i.group) }))
   .handler(async ({ data, context }) => {
-    const { error } = await (context as Ctx).supabase.rpc("staff_set_daily_capacity", { _date: data.date, _capacity: data.capacity });
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_daily_capacity", { _date: data.date, _capacity: data.capacity, _service_key: data.group } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setWeekdayCapacity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { weekday: number; capacity: number | null; group?: CapGroup }) => {
+    if (!Number.isInteger(i.weekday) || i.weekday < 0 || i.weekday > 6) throw new Error("Invalid weekday");
+    if (i.capacity != null && (!Number.isInteger(i.capacity) || i.capacity < 0 || i.capacity > 500)) throw new Error("Count must be 0–500");
+    return { ...i, group: grp(i.group) };
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_weekday_capacity", { _service_key: data.group, _weekday: data.weekday, _capacity: data.capacity });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
