@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   deleteLuckyCampaign,
   deleteLuckyPrize,
@@ -136,12 +136,19 @@ export function LuckyDrawPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="flex items-center gap-2 text-xl font-semibold">
-            <Dices className="h-5 w-5 text-primary" /> Lucky Draw
-          </h2>
-          <p className="text-sm text-muted-foreground">Campaigns, prizes, enrolments and the draw. Super Admin only.</p>
-        </div>
+        {campaigns.length > 1 ? (
+          <select
+            value={current?.id ?? ""}
+            onChange={(e) => setSelected(e.target.value)}
+            className="h-10 rounded-[12px] border border-border bg-card px-3 text-[13px]"
+          >
+            {campaigns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}{c.is_active ? " (Active)" : ""}
+              </option>
+            ))}
+          </select>
+        ) : <span />}
         <Button onClick={() => openEdit()}>
           <Plus className="mr-1 h-4 w-4" /> New campaign
         </Button>
@@ -155,19 +162,6 @@ export function LuckyDrawPage() {
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {campaigns.map((c) => (
-              <Button
-                key={c.id}
-                size="sm"
-                variant={current?.id === c.id ? "default" : "outline"}
-                onClick={() => setSelected(c.id)}
-              >
-                {c.title}
-                {c.is_active && <Badge className="ml-2" variant="secondary">Active</Badge>}
-              </Button>
-            ))}
-          </div>
           {current && (
             <CampaignDetail
               campaign={current}
@@ -268,6 +262,7 @@ function CampaignDetail({
   onDelete: () => void;
 }) {
   const qc = useQueryClient();
+  const [view, setView] = useState<"prizes" | "enrolments" | "draw">("prizes");
   const detailFn = useServerFn(getLuckyCampaignDetail);
   const runFn = useServerFn(runLuckyDraw);
   const resetFn = useServerFn(resetLuckyDraw);
@@ -312,57 +307,64 @@ function CampaignDetail({
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row">
+        <CardContent className="flex items-center gap-4 pt-6">
           {campaign.banner_url && (
-            <img src={campaign.banner_url} alt={campaign.title} className="h-32 w-full rounded-md object-cover md:w-56" />
+            <img src={campaign.banner_url} alt={campaign.title} className="h-14 w-20 shrink-0 rounded-md object-cover" />
           )}
-          <div className="flex-1 space-y-1">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-semibold">{campaign.title}</h3>
+              <h3 className="truncate text-base font-semibold">{campaign.title}</h3>
               <Badge variant={campaign.is_active ? "default" : "outline"}>{campaign.is_active ? "Active" : "Inactive"}</Badge>
               {campaign.draw_executed_at && <Badge variant="secondary">Draw done</Badge>}
             </div>
-            {campaign.description && <p className="text-sm text-muted-foreground">{campaign.description}</p>}
             <p className="text-xs text-muted-foreground">
               {fmt(campaign.start_at)} → {fmt(campaign.end_at)}
             </p>
           </div>
-          <div className="flex gap-2 md:flex-col">
-            <Button size="sm" variant="outline" onClick={onEdit}>
-              <Pencil className="mr-1 h-4 w-4" /> Edit
-            </Button>
-            <Button size="sm" variant="outline" onClick={onDelete}>
-              <Trash2 className="mr-1 h-4 w-4" /> Delete
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" aria-label="More actions"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}><Pencil className="h-4 w-4" /> Edit</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}><Trash2 className="h-4 w-4" /> Delete</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Enrolled" value={enrolled.toLocaleString("en-IN")} />
         <Kpi label="Target" value={`${pct.toFixed(1)}% of ${campaign.enrolment_target}`} />
-        <Kpi label="Total entries" value={(data?.overview.total_entries ?? 0).toLocaleString("en-IN")} />
+        <Kpi label="Entries" value={(data?.overview.total_entries ?? 0).toLocaleString("en-IN")} />
         <Kpi label="Draw" value={campaign.draw_executed_at ? fmt(campaign.draw_executed_at) : canRun ? "Ready" : "Not yet"} />
       </div>
 
-      <Tabs defaultValue="prizes">
-        <TabsList>
-          <TabsTrigger value="prizes">Prizes</TabsTrigger>
-          <TabsTrigger value="enrolments">Enrolments</TabsTrigger>
-          <TabsTrigger value="draw">Draw & Winners</TabsTrigger>
-        </TabsList>
-        <TabsContent value="prizes" className="space-y-4">
+      <div className="flex gap-2">
+        {(["prizes", "enrolments", "draw"] as const).map((k) => (
+          <button
+            key={k}
+            onClick={() => setView(k)}
+            className={`h-9 rounded-full border px-4 text-[13px] font-semibold capitalize ${
+              view === k ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
+            }`}
+          >
+            {k}
+          </button>
+        ))}
+      </div>
+        {view === "prizes" && <div className="space-y-4">
           {isLoading ? null : (
             <>
               <PrizeList campaignId={campaign.id} type="lucky_draw" prizes={data?.prizes ?? []} onChanged={refresh} />
               <PrizeList campaignId={campaign.id} type="leaderboard" prizes={data?.prizes ?? []} onChanged={refresh} />
             </>
           )}
-        </TabsContent>
-        <TabsContent value="enrolments">
+        </div>}
+        {view === "enrolments" && <div>
           <EnrolmentsTable rows={data?.overview.enrolments ?? []} title={campaign.title} />
-        </TabsContent>
-        <TabsContent value="draw" className="space-y-4">
+        </div>}
+        {view === "draw" && <div className="space-y-4">
           <Card>
             <CardContent className="flex flex-wrap items-center gap-3 pt-6">
               <Button
@@ -439,8 +441,8 @@ function CampaignDetail({
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>}
+
     </div>
   );
 }
