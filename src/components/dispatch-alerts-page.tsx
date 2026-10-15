@@ -62,7 +62,7 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="text-[12px] font-semibold text-muted-foreground">
-            No-accept alert threshold (minutes)
+            No-accept wait limit (minutes) — also turns Dashboard cards red
           </span>
           <input
             type="number"
@@ -178,7 +178,7 @@ export function DispatchAlertsPage() {
     refetchInterval: 60_000,
   });
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["dispatch"] });
+  const refresh = () => { queryClient.invalidateQueries({ queryKey: ["dispatch"] }); queryClient.invalidateQueries({ queryKey: ["dispatch-config"] }); };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
