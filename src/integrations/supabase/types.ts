@@ -11383,10 +11383,15 @@ export type Database = {
         Args: { _payload: Json }
         Returns: string
       }
+      staff_dashboard_money: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
       staff_dashboard_overview: {
         Args: { _from: string; _to: string }
         Returns: Json
       }
+      staff_dashboard_team: { Args: never; Returns: Json }
       staff_decide_merchant: {
         Args: { _decision: string; _merchant_id: string; _notes?: string }
         Returns: undefined
