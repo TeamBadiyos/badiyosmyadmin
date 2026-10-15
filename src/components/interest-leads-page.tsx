@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { RefreshCw, Store, MapPin, Handshake, UserPlus, Phone, MessageCircle, Mail } from "lucide-react";
+import { Store, MapPin, Handshake, UserPlus, Phone, MessageCircle, Mail } from "lucide-react";
 import {
   getInterestLeads,
   setLeadStatus,
   type ContactLead,
   type LeadStatus,
 } from "@/lib/interest-leads.functions";
+import { FilterBar, countLabel } from "@/components/section-chrome";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
@@ -29,15 +30,16 @@ function digits(phone: string) {
 export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
   const canView = role === null || role === "super_admin" || role === "ops_manager";
   const canEdit = canView;
-  const [tab, setTab] = useState<"expert" | "business" | "city">("expert");
+  const [tab, setTab] = useState<"expert" | "business">("expert");
   const fetchLeads = useServerFn(getInterestLeads);
   const statusFn = useServerFn(setLeadStatus);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["interest-leads"],
     queryFn: () => fetchLeads(),
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
     enabled: canView,
   });
 
@@ -56,36 +58,20 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
   }
 
   const business = data?.business ?? [];
-  const city = data?.city ?? [];
   const expert = data?.expert ?? [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground max-w-[620px]">
-          Everything submitted from the badiyos.com website — Home Expert
-          applications, shops who want to join, and customers asking us to launch in their city.
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="h-10 px-4 rounded-[12px] border border-border bg-card text-[13px] font-semibold inline-flex items-center gap-2 hover:bg-muted"
-        >
-          <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} />
-          Refresh
-        </button>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        <TabBtn active={tab === "expert"} onClick={() => setTab("expert")} icon={UserPlus}>
-          Expert Leads ({expert.length})
-        </TabBtn>
-        <TabBtn active={tab === "business"} onClick={() => setTab("business")} icon={Store}>
-          Business Interest ({business.length})
-        </TabBtn>
-        <TabBtn active={tab === "city"} onClick={() => setTab("city")} icon={MapPin}>
-          City Requests ({city.length})
-        </TabBtn>
-      </div>
+    <div className="space-y-4">
+      <FilterBar count={<span className="text-[13px] text-muted-foreground">{countLabel(tab === "expert" ? expert.length : business.length, "lead")}</span>}>
+        <div className="flex gap-2 flex-wrap">
+          <TabBtn active={tab === "expert"} onClick={() => setTab("expert")} icon={UserPlus}>
+            Experts ({expert.length})
+          </TabBtn>
+          <TabBtn active={tab === "business"} onClick={() => setTab("business")} icon={Store}>
+            Businesses ({business.length})
+          </TabBtn>
+        </div>
+      </FilterBar>
 
       {isLoading ? (
         <p className="text-[14px] text-muted-foreground">Loading…</p>
@@ -101,7 +87,7 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
           pending={updateStatus.isPending}
           empty="No Home Expert applications yet."
         />
-      ) : tab === "business" ? (
+      ) : (
         <Table
           head={["Business", "Owner", "Phone", "Interested in", "City", "Received"]}
           rows={business.map((l) => [
@@ -113,12 +99,6 @@ export function InterestLeadsPage({ role }: { role: StaffRole | null }) {
             fmt(l.created_at),
           ])}
           empty="No business interest submissions yet."
-        />
-      ) : (
-        <Table
-          head={["Name", "Phone", "City", "Received"]}
-          rows={city.map((l) => [l.name, l.phone, l.city, fmt(l.created_at)])}
-          empty="No city requests yet."
         />
       )}
     </div>
