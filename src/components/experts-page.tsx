@@ -1,3 +1,4 @@
+import { useUrlState } from "@/components/ui/data-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -52,19 +53,19 @@ export function ExpertsPage({
   const canManage = role === "super_admin" || role === "ops_manager";
   const showZoneFilter = role !== "area_partner";
 
-  const [zoneId, setZoneId] = useState("");
-  const [kycStatus, setKycStatus] = useState("");
-  const [level, setLevel] = useState("");
+  const [zoneId, setZoneId] = useUrlState("zone", "");
+  const [kycStatus, setKycStatus] = useUrlState("kyc", "");
+  const [level, setLevel] = useUrlState("level", "");
   const [availability, setAvailability] = useState<string>(
     initialOnlineOnly ? "online_free" : "",
   );
-  const [mode, setMode] = useState("");
-  const [skillF, setSkillF] = useState<"" | "maid" | "wash" | "rider">("");
+  const [mode, setMode] = useUrlState("mode", "");
+  const [skillF, setSkillF] = useUrlState<"" | "maid" | "wash" | "rider">("skill", "");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useUrlState("page", 1);
+  const [pageSize, setPageSize] = useUrlState("size", 25);
   const effSkill = skill ?? (skillF || undefined);
-  const [statusF, setStatusF] = useState(skill ? "active" : "");
+  const [statusF, setStatusF] = useUrlState("status", skill ? "active" : "");
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);

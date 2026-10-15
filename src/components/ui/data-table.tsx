@@ -106,3 +106,29 @@ export function EmptyState({ text, onClear }: { text: string; onClear?: () => vo
 
 export const maskEmail = (e: string | null | undefined) =>
   !e || /@badiyos\.phone\.local$/i.test(e) ? "—" : e;
+
+/** useState that mirrors its value into the page URL (?key=value), surviving reload and Back/Forward. */
+export function useUrlState<T extends string | number>(key: string, initial: T): [T, (v: T) => void] {
+  const read = (): T => {
+    if (typeof window === "undefined") return initial;
+    const raw = new URLSearchParams(window.location.search).get(key);
+    if (raw == null) return initial;
+    return (typeof initial === "number" ? (Number(raw) as T) : (raw as T));
+  };
+  const [v, setV] = useState<T>(initial);
+  useEffect(() => {
+    setV(read());
+    const onPop = () => setV(read());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const set = (next: T) => {
+    setV(next);
+    const url = new URL(window.location.href);
+    if (next === initial || next === "") url.searchParams.delete(key);
+    else url.searchParams.set(key, String(next));
+    window.history.pushState(window.history.state, "", url.toString());
+  };
+  return [v, set];
+}
