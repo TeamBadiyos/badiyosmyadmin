@@ -4,23 +4,19 @@ import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, ChevronDown, Info, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
-import { BookingTimingsTab } from "@/components/booking-timings-tab";
-import { SlotAvailabilityTab } from "@/components/slot-availability-tab";
+import { WeeklyHoursSummary } from "@/components/ops-panels";
 import { TrainingAddressTab } from "@/components/training-address-tab";
 import { SuggestionStatusesTab } from "@/components/suggestion-statuses-tab";
 import {
   ServiceStatusCard,
   ServiceStatusSection,
 } from "@/components/courier/service-status-section";
-import {
-  ServiceHoursEditor,
-  ServicePreviewTable,
-} from "@/components/courier/service-hours-section";
+import { ServicePreviewTable } from "@/components/courier/service-hours-section";
 import { getCourierAccess, listServiceFlags } from "@/lib/courier.functions";
 import { listServiceControl } from "@/lib/service-control.functions";
 import { listSegments, setSegmentActive, type Segment } from "@/lib/segments.functions";
 
-type ServicesTab = "controls" | "slots" | "capacity" | "timings" | "suggestions" | "training";
+type ServicesTab = "controls" | "capacity" | "suggestions" | "training";
 
 const SERVICE_ORDER = ["clean", "store", "courier"] as const;
 const SEGMENT_SLUG_BY_SERVICE: Partial<Record<(typeof SERVICE_ORDER)[number], string>> = {
@@ -59,7 +55,7 @@ function Toggle({
   );
 }
 
-export function ServicesPage() {
+export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: string) => void } = {}) {
   const queryClient = useQueryClient();
   const fetchAccess = useServerFn(getCourierAccess);
   const fetchFlags = useServerFn(listServiceFlags);
@@ -153,8 +149,6 @@ export function ServicesPage() {
           <div className="flex w-max gap-2">
             {([
               ["controls", "Service Controls"],
-              ["slots", "Slot Availability"],
-              ["timings", "Booking Timings"],
               ["capacity", "Capacity Messages"],
               ["suggestions", "Suggestion statuses"],
               ["training", "Training address"],
@@ -196,8 +190,6 @@ export function ServicesPage() {
       </div>
 
       {tab === "capacity" ? <CapacityMessagesPage /> : null}
-      {tab === "slots" ? <SlotAvailabilityTab /> : null}
-      {tab === "timings" ? <BookingTimingsTab /> : null}
       {tab === "suggestions" ? <SuggestionStatusesTab /> : null}
       {tab === "training" ? <TrainingAddressTab /> : null}
 
@@ -270,15 +262,6 @@ export function ServicesPage() {
                         activeOrders={activeOrdersByKey.get(flag.service_key) ?? 0}
                         onSaved={refresh}
                       />
-                      <div className="rounded-[16px] border border-border bg-card p-4">
-                        <ServiceHoursEditor
-                          flag={flag}
-                          hours={controlQuery.data.hours}
-                          holidays={controlQuery.data.holidays}
-                          canWrite={canWrite}
-                          onSaved={refresh}
-                        />
-                      </div>
                     </div>
                   ) : null}
                 </section>
@@ -294,6 +277,7 @@ export function ServicesPage() {
             onSaved={refresh}
             showRows={false}
           />
+          <WeeklyHoursSummary onEdit={(k) => onEditHours?.(k)} />
           <ServicePreviewTable canWrite={canWrite} />
         </>
       ) : null}
