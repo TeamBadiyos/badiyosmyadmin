@@ -200,7 +200,7 @@ function OrdersTab({ service }: { service: Svc }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </div></div>
       {openId && <OrderDetail id={openId} service={service} storeLabel={L.store} onClose={() => setOpenId(null)} />}
     </div>
   );
