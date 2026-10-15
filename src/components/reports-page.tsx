@@ -116,7 +116,13 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
         </>
       )}
       {/* Filters */}
-      <div className="bg-card border border-border rounded-[18px] p-5 flex flex-wrap items-end gap-4">
+      <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Report</label>
+          <select value={tab} onChange={(e) => setTab(e.target.value as typeof tab)} className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[180px]">
+            {visibleTabs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">
             From
@@ -125,7 +131,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
             
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px]"
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
           />
         </div>
         <div>
@@ -136,7 +142,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
             
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px]"
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
           />
         </div>
         {role !== "area_partner" && (
@@ -147,7 +153,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
             <select
               value={zoneId}
               onChange={(e) => setZoneId(e.target.value)}
-              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[14px] w-full"
+              className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] w-full"
             >
               <option value="">All zones</option>
               {zones.map((z) => (
@@ -160,22 +166,6 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
-        {visibleTabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-[14px] font-semibold border-b-2 -mb-px transition-colors ${
-              tab === t.key
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {tab === "pnl" && <PnlTab range={range} />}
       {tab === "revenue" && <RevenueTab range={range} />}
@@ -282,7 +272,7 @@ function RevenueTab({ range }: { range: ReportRange }) {
             {data.byCategory.map((c) => (
               <div
                 key={c.categoryId ?? "none"}
-                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_140px] gap-4 py-2.5 text-[14px]"
+                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_140px] gap-4 py-2.5 text-[13px]"
               >
                 <span className="font-semibold text-foreground truncate">{c.categoryName}</span>
                 <span className="text-muted-foreground truncate">{c.segmentName}</span>
@@ -709,7 +699,7 @@ function SimpleTable({
       {rows.map((r, ri) => (
         <div
           key={ri}
-          className="grid gap-4 items-center px-5 py-3 border-b border-border last:border-b-0 text-[14px]"
+          className="grid gap-4 items-center px-5 py-3 border-b border-border last:border-b-0 text-[13px]"
           style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
         >
           {r.map((cell, ci) => (
