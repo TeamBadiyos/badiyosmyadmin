@@ -12090,6 +12090,7 @@ export type Database = {
           unread_total: number
         }[]
       }
+      staff_list_refunds_all: { Args: { _status: string }; Returns: Json }
       staff_list_unassigned_business_trips: { Args: never; Returns: Json }
       staff_lucky_draw_delete_campaign: {
         Args: { _id: string }
@@ -12271,6 +12272,10 @@ export type Database = {
       staff_reset_receiver_location: {
         Args: { _reason: string; _receiver_id: string }
         Returns: Json
+      }
+      staff_retry_refund: {
+        Args: { _id: string; _kind: string }
+        Returns: undefined
       }
       staff_retry_store_refund: {
         Args: { _order_id: string }
