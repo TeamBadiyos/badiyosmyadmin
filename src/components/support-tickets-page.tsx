@@ -113,9 +113,6 @@ export function SupportTicketsPage({ role }: { role: StaffRole | null }) {
     );
   }, [tickets, search]);
 
-  useEffect(() => {
-    if (!activeId && filtered.length) setActiveId(filtered[0]!.id);
-  }, [filtered, activeId]);
 
   if (!canManage) {
     return (
