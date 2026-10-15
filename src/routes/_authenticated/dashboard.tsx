@@ -17,6 +17,7 @@ import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
 import { CustomerInvoicesPage, CustomerWalletPage } from "@/components/customer-finance-pages";
 import { FinanceOverview, MerchantsFinance, ExpensesPage } from "@/components/finance-redesign";
+import { SacCodesCard } from "@/components/sac-codes-card";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import { ServiceCataloguePage } from "@/components/service-catalogue-page";
@@ -810,7 +811,10 @@ function Shell() {
         ) : active === "food-orders" ? (
           <ServiceCommerceModule service="food" role={role ?? ""} />
         ) : active === "tax-settings" ? (
-          <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
+          <div className="space-y-4">
+            <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
+            <SacCodesCard isSuperAdmin={role === "super_admin"} />
+          </div>
         ) : active === "fees" ? (
           <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "audit" ? (

@@ -79,12 +79,14 @@ export function CustomerInvoicesPage({ isSuperAdmin }: { isSuperAdmin: boolean }
               <tbody>
                 {inv.map((i) => (
                   <tr key={i.id}>
-                    <td className="font-semibold">{i.invoice_no}</td><td>{i.invoice_date}</td>
+                    <td className="font-semibold">{i.invoice_no}{(i as { status?: string }).status === "draft" && <span className="ml-2"><StatusPill status="pending" label="Draft" /></span>}</td><td>{i.invoice_date}</td>
                     <td>{i.customer_name ?? "—"}<div className="text-[11px] text-muted-foreground">{i.customer_phone}</div></td>
                     <td>{svcLabel(i.service)}</td><td>{i.ref_code}</td>
                     <td className="text-right">{inr(i.taxable_value)}</td><td className="text-right">{inr(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}</td>
                     <td className="text-right font-semibold">{inr(i.total)}</td>
-                    <td><Button size="sm" variant="ghost" onClick={() => downloadCustomerInvoicePdf(i)}><Download className="h-4 w-4" /></Button></td>
+                    <td>{(i as { status?: string }).status === "draft"
+                      ? <span className="text-[11px] text-muted-foreground" title="Complete Settings → Company (GSTIN, PAN, address) to issue">—</span>
+                      : <Button size="sm" variant="ghost" onClick={() => downloadCustomerInvoicePdf(i)}><Download className="h-4 w-4" /></Button>}</td>
                   </tr>
                 ))}
                 {!inv.length && !data.isLoading && <tr><td colSpan={9} className="text-center text-muted-foreground py-6">No invoices in this period.</td></tr>}
