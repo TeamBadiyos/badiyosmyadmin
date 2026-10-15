@@ -113,6 +113,8 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
       .select(cols)
       .eq("is_training", data.training)
       .in("status", ["pending", "accepted", "preparing", "ready"])
+      // Unpaid online orders are only payment attempts — never show them as real orders
+      .or("payment_mode.neq.online,payment_status.eq.paid")
       .order("created_at", { ascending: false })
       .limit(200);
     let doneQ = db
