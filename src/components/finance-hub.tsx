@@ -42,8 +42,10 @@ export function FinanceHub({ tab, canEdit, isSuperAdmin }: { tab: FinanceTab; ca
   return <CompanyTab canEdit={isSuperAdmin} />;
 }
 
-function SettlementsTab({ canEdit }: { canEdit: boolean }) {
-  const [status, setStatus] = useState<"draft" | "approved" | "paid" | "carry_forward">("draft");
+type SChip = "draft" | "approved" | "instant" | "paid" | "carry_forward" | "on_hold";
+
+export function SettlementsTab({ canEdit, extra }: { canEdit: boolean; extra?: React.ReactNode }) {
+  const [status, setStatus] = useState<SChip>("draft");
   const qc = useQueryClient();
   const act = useServerFn(financeAction);
   const gen = useMutation({
@@ -54,24 +56,37 @@ function SettlementsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-                    <p className="text-xs text-muted-foreground">Schedule: Wednesday & Saturday</p>
+        <Pills value={status} onChange={setStatus} items={[["draft", "Draft"], ["approved", "Approved"], ["instant", "Pay today (instant)"], ["paid", "Paid"], ["carry_forward", "Carry forward"], ["on_hold", "On hold"]]} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Batch runs Wed & Sat</span>
+          {canEdit && <Button disabled={gen.isPending} onClick={() => { if (confirm("Generate settlement batch for all merchants now?")) gen.mutate(); }}>Generate settlement batch</Button>}
+          {extra}
         </div>
-        {canEdit && <Button disabled={gen.isPending} onClick={() => { if (confirm("Generate settlement batch for all merchants now?")) gen.mutate(); }}>Generate settlement batch</Button>}
       </div>
-      <Pills value={status} onChange={setStatus} items={[["draft", "Draft"], ["approved", "Approved"], ["paid", "Paid"], ["carry_forward", "Carry forward"]]} />
-      <SettlementTable status={status} canEdit={canEdit} />
+      {status === "on_hold" && <p className="text-xs text-muted-foreground">Merchants without bank account / IFSC. Add bank details in Store/Food → store → Commercials to release.</p>}
+      {status === "instant"
+        ? <SettlementTable type="instant" status="approved" canEdit={canEdit} />
+        : <SettlementTable status={status} canEdit={canEdit} />}
     </div>
   );
 }
 
-function SettlementTable({ status, type, canEdit, title }: { status: string; type?: string; canEdit: boolean; title?: string }) {
+const noBank = (r: any) => !r.merchant?.bank_account_number || !r.merchant?.bank_ifsc;
+
+export function SettlementTable({ status, type, canEdit }: { status: string; type?: string; canEdit: boolean; title?: string }) {
   const fetch = useServerFn(listMerchantSettlements);
   const act = useServerFn(financeAction);
   const qc = useQueryClient();
   const [open, setOpen] = useState<string | null>(null);
-  const q = useQuery({ queryKey: ["fin-settlements", status, type ?? null], queryFn: () => fetch({ data: { status, type: type ?? null } }) });
-  const rows = (q.data ?? []) as any[];
+  const onHold = status === "on_hold";
+  const q = useQuery({
+    queryKey: ["fin-settlements", status, type ?? null],
+    queryFn: () => fetch({ data: { status: onHold ? null : status, type: type ?? null } }),
+  });
+  const all = (q.data ?? []) as any[];
+  const rows = onHold
+    ? all.filter((r) => (r.status === "draft" || r.status === "approved") && noBank(r))
+    : status === "draft" || status === "approved" ? all.filter((r) => !noBank(r) || r.type === "instant") : all;
   const done = (m: string) => { toast.success(m); qc.invalidateQueries({ queryKey: ["fin-settlements"] }); };
   const approve = useMutation({ mutationFn: (id: string) => act({ data: { kind: "approve", id } }), onSuccess: () => done("Approved"), onError: (e) => toast.error(errMsg(e)) });
   const paid = useMutation({ mutationFn: (v: { id: string; reference: string }) => act({ data: { kind: "paid", ...v } }), onSuccess: () => done("Marked paid"), onError: (e) => toast.error(errMsg(e)) });
