@@ -89,7 +89,7 @@ export async function renderBrandedPdf(doc: JsPDF, d: BrandedDoc, a: PdfAssets) 
   const page = () => {
     // header band
     fill(BRAND.green); doc.rect(0, 0, W, 30, "F");
-    if (a.logo) { try { doc.addImage(a.logo, "PNG", M, 9, 38, 12); } catch { /* logo optional */ } }
+    if (a.logo) { try { const ip = doc.getImageProperties(a.logo); const lh = 12, lw = Math.min(55, (lh * ip.width) / ip.height); doc.addImage(a.logo, "PNG", M, 9, lw, lh); } catch { /* logo optional */ } }
     else { ink("#FFFFFF"); font("bold", 20); doc.text("badiyos", M, 20); }
     ink("#FFFFFF"); font("bold", 16); doc.text(d.title, W - M, 15, { align: "right" });
     font("normal", 10); doc.text(d.number, W - M, 22, { align: "right" });
