@@ -119,7 +119,7 @@ export function ExpertsPage({
   ).filter((e) => !mode || e.mode === mode)
    .filter((e) => !skill || (skillIds ? skillIds.has(e.id) : false))
    .filter((e) => !statusF || (statusF === "active" ? e.status === "active" : e.status !== "active"))
-   .sort((a, b) => (skill ? Number(!!b.isBusy) - Number(!!a.isBusy) : 0));
+   .sort((a, b) => rank(a) - rank(b));
 
   const sf = useSortFilter(expertsFiltered, [
     { key: "name", label: "Name", value: (e: ExpertRow) => e.name },
@@ -148,21 +148,6 @@ export function ExpertsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-[14px] text-muted-foreground">
-          {canManage ? "Manage experts, KYC & payouts." : "Experts in your assigned zone."}
-        </p>
-        {canManage && (
-          <button
-            onClick={() => setAddOpen(true)}
-            className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 hover:opacity-95"
-          >
-            <Plus size={18} />
-            Add Expert
-          </button>
-        )}
-      </div>
-
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
         {showZoneFilter && (
           <Filter label="Zone" value={zoneId} onChange={setZoneId}>
@@ -195,6 +180,15 @@ export function ExpertsPage({
           <option value="TRAINING">Training</option>
           <option value="LIVE">Live</option>
         </Filter>
+        {canManage && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="ml-auto h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-2 hover:opacity-95"
+          >
+            <Plus size={16} />
+            Add Expert
+          </button>
+        )}
       </div>
 
       <div className="flex justify-end">
@@ -248,6 +242,11 @@ export function ExpertsPage({
       )}
     </div>
   );
+}
+
+function rank(e: ExpertRow) {
+  if (e.status !== "active") return 3;
+  return e.isBusy ? 0 : e.isOnline ? 1 : 2;
 }
 
 function Filter({
