@@ -427,7 +427,7 @@ function Shell() {
 
   useEffect(() => {
     if (role && !allowedKeys.includes(active)) {
-      setActive("dashboard");
+      setActive(allowedKeys[0] ?? "dashboard");
     }
   }, [role, active, allowedKeys]);
 
