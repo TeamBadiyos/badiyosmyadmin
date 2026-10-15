@@ -136,7 +136,7 @@ function InstantFeeGear({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 export function MerchantsFinance({ role }: { role: Role }) {
   const [chip, setChip] = useState<"settlements" | "commission" | "invoices">("settlements");
-  const canEdit = role === "super_admin" || role === "ops_manager";
+  const canEdit = role === "super_admin" || role === "ops_manager" || role === "finance";
   return (
     <div className="space-y-4">
       <Chips value={chip} onChange={setChip} items={[["settlements", "Settlements"], ["commission", "Commission"], ["invoices", "Invoices"]]} />
