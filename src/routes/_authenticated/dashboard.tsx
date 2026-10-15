@@ -279,8 +279,13 @@ const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as 
 // Reachable (old links, notifications) but never listed in the sidebar.
 const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board", "merchants", "live-stores", "store-categories", "store-settings", "rewards", "event-offers", "lucky-draw"];
 
+// Fixed sidebar config. Only "dashboard" sits above the groups; new pages go inside a group's tabs.
+const SIDEBAR_TOP_KEYS = ["dashboard"] as const;
+
 const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   courier: "courier-orders",
+  "merchant-billing": "fin-settlements",
+  "unassigned-trips": "dashboard",
 };
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner";
@@ -313,8 +318,13 @@ function Shell() {
     if (search.tab !== k) navigate({ to: "/dashboard", search: k === "dashboard" ? {} : { tab: k } });
   };
   useEffect(() => {
-    const t = isNavKey(search.tab) ? search.tab : "dashboard";
-    setActiveState((cur) => (cur === t ? cur : t));
+    const raw = isNavKey(search.tab) ? search.tab : "dashboard";
+    const alias = LEGACY_NAV_ALIASES[raw];
+    if (alias && alias !== raw) {
+      navigate({ to: "/dashboard", search: alias === "dashboard" ? {} : { tab: alias }, replace: true });
+      return;
+    }
+    setActiveState((cur) => (cur === raw ? cur : raw));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.tab]);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -394,9 +404,9 @@ function Shell() {
   const allowedKeys = role ? ROLE_ALLOWED[role] : NAV_ITEMS.map((n) => n.key);
 
   const visibleItems = NAV_ITEMS.filter((n) => allowedKeys.includes(n.key));
-  const topLevelItems = visibleItems.filter(
-    (n) => !GROUPED_KEYS.includes(n.key) && !HIDDEN_KEYS.includes(n.key),
-  );
+  // Sidebar is a fixed config: Dashboard + the 11 NAV_GROUPS. Nothing else is ever listed.
+  void GROUPED_KEYS; void HIDDEN_KEYS;
+  const topLevelItems = visibleItems.filter((n) => (SIDEBAR_TOP_KEYS as ReadonlyArray<string>).includes(n.key));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
     items: visibleItems
@@ -484,7 +494,7 @@ function Shell() {
                   strokeWidth={isActive ? 2.25 : 2}
                   className={isActive ? "text-primary" : ""}
                 />
-                <span className={mini ? "lg:hidden" : ""}>{item.label}</span>
+                <span className={`whitespace-nowrap truncate ${mini ? "lg:hidden" : ""}`}>{item.label}</span>
               </button>
             );
           })}
@@ -513,7 +523,7 @@ function Shell() {
                     strokeWidth={group.isActive ? 2.25 : 2}
                     className={group.isActive ? "text-primary" : ""}
                   />
-                  <span className={`flex-1 text-left ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
+                  <span className={`flex-1 min-w-0 text-left whitespace-nowrap truncate ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
                   {(group.keys as readonly string[]).includes("support") &&
                     openTickets > 0 && (
                       <span className={`min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center ${mini ? "lg:hidden" : ""}`}>
