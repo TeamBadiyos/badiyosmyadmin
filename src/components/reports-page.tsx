@@ -111,7 +111,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
     <div className="space-y-6">
       {(role === "super_admin" || role === "ops_manager") && (
         <>
-          <DashboardKpis role={role} />
+          {/* Non-money live counters moved to the Dashboard */}
           <DailyOrdersChart />
         </>
       )}
