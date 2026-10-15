@@ -178,7 +178,7 @@ export function DispatchAlertsPage() {
     refetchInterval: 60_000,
   });
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["dispatch"] });
+  const refresh = () => { queryClient.invalidateQueries({ queryKey: ["dispatch"] }); queryClient.invalidateQueries({ queryKey: ["dispatch-config"] }); };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
