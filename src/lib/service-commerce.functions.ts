@@ -155,8 +155,12 @@ export const getStoreDetail = createServerFn({ method: "POST" })
     const categories = ((cats.data ?? []) as any[])
       .map((c) => ({ ...c, store_order: so.get(c.id) ?? 1000 + (c.sort_order ?? 0) }))
       .sort((a, b) => a.store_order - b.store_order);
+    const types = data.service === "store"
+      ? await db.from("store_categories").select("id, name, is_active").order("sort_order")
+      : { data: [] };
     return {
       store: m.data,
+      storeTypes: ((types as any).data ?? []) as { id: string; name: string; is_active: boolean }[],
       categories,
       products: ((prods.data ?? []) as any[]).map((p) => ({ ...p, variants: vm.get(p.id) ?? [], addons: am.get(p.id) ?? [] })),
       staff: [
@@ -170,8 +174,9 @@ export const getStoreDetail = createServerFn({ method: "POST" })
 type StoreAct =
   | { kind: "open"; value: boolean }
   | { kind: "offer"; text: string | null }
-  | { kind: "approve" }
+  | { kind: "approve"; reason: string }
   | { kind: "suspend"; reason: string }
+  | { kind: "storeType"; storeCategoryId: string | null }
   | { kind: "commercials"; commission_pct: number; instant_settlement_fee_pct: number; accept_timeout_minutes: number | null }
   | { kind: "reorderCategories"; ids: string[] }
   | { kind: "reorderProducts"; categoryId: string | null; ids: string[] }
@@ -193,13 +198,23 @@ export const storeAction = createServerFn({ method: "POST" })
         if (t && t.length > 60) throw new Error("Offer line can be at most 60 characters.");
         chk(await (db.rpc as any)("set_offer_text", { _store_id: sid, _text: t })); break;
       }
-      case "approve": chk(await (db.rpc as any)("staff_decide_merchant", { _merchant_id: sid, _decision: "approved", _notes: null })); break;
+      case "approve":
       case "suspend": {
         const reason = String(a.reason ?? "").trim();
         if (!reason) throw new Error("Reason required");
-        const b = await db.from("merchants").select("status").eq("id", sid).maybeSingle();
-        chk(await db.from("merchants").update({ status: "suspended" }).eq("id", sid));
-        await audit(context, "merchant_suspended", "merchants", sid, b.data, { status: "suspended", reason });
+        chk(await (db.rpc as any)("staff_set_merchant_status", {
+          _merchant_id: sid, _status: a.kind === "approve" ? "approved" : "suspended", _reason: reason,
+        }));
+        break;
+      }
+      case "storeType": {
+        const b = await db.from("merchants").select("store_category_id").eq("id", sid).maybeSingle();
+        if (a.storeCategoryId) {
+          const c = await db.from("store_categories").select("id").eq("id", a.storeCategoryId).maybeSingle();
+          if (!c.data) throw new Error("Store type not found");
+        }
+        chk(await db.from("merchants").update({ store_category_id: a.storeCategoryId || null } as any).eq("id", sid));
+        await audit(context, "merchant_store_type_updated", "merchants", sid, b.data, { store_category_id: a.storeCategoryId || null });
         break;
       }
       case "commercials": {
@@ -315,6 +330,55 @@ export const reorderCatalogCategories = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ---------------- Store types (store_categories) ---------------- */
+
+export const listStoreTypes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const r = await context.supabase.from("store_categories").select("id, name, image_path, icon_url, sort_order, is_active, segment_id").order("sort_order");
+    chk(r);
+    return (r.data ?? []) as any[];
+  });
+
+export const saveStoreType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { id?: string | null; name: string; image_path?: string | null; is_active: boolean }) => ({
+    id: i.id || null, name: String(i.name ?? "").trim().slice(0, 60), image_path: i.image_path || null, is_active: !!i.is_active,
+  }))
+  .handler(async ({ data, context }) => {
+    if (!data.name) throw new Error("Name required");
+    const db = context.supabase;
+    const patch = { name: data.name, image_path: data.image_path, is_active: data.is_active };
+    if (data.id) {
+      const b = await db.from("store_categories").select("*").eq("id", data.id).maybeSingle();
+      if (!b.data) throw new Error("Store type not found");
+      chk(await db.from("store_categories").update(patch as any).eq("id", data.id));
+      await audit(context, "store_type_updated", "store_categories", data.id, b.data, patch);
+    } else {
+      const ex = await db.from("store_categories").select("segment_id, sort_order").order("sort_order", { ascending: false }).limit(1);
+      const seg = (ex.data?.[0] as any)?.segment_id;
+      if (!seg) throw new Error("No store segment found");
+      const slug = (data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "type") + "-" + Date.now().toString(36).slice(-4);
+      const r = await db.from("store_categories").insert({
+        ...patch, segment_id: seg, slug, sort_order: (((ex.data?.[0] as any)?.sort_order as number) ?? 0) + 1,
+      } as any).select("id").single();
+      chk(r);
+      await audit(context, "store_type_created", "store_categories", (r.data as any).id, null, patch);
+    }
+    return { ok: true as const };
+  });
+
+export const reorderStoreTypes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { ids: string[] }) => ({ ids: (i.ids ?? []).map(String) }))
+  .handler(async ({ data, context }) => {
+    for (let k = 0; k < data.ids.length; k++) {
+      chk(await context.supabase.from("store_categories").update({ sort_order: k + 1 }).eq("id", data.ids[k]));
+    }
+    await audit(context, "store_types_reordered", "store_categories", null, null, { ids: data.ids });
+    return { ok: true as const };
+  });
+
 /* ---------------- Sponsored ---------------- */
 
 export const listSponsored = createServerFn({ method: "POST" })
@@ -323,7 +387,8 @@ export const listSponsored = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     let q = db.from("sponsored_slots").select("*").eq("service_type", data.service).order("position");
-    q = data.categoryId ? q.eq("category_id", data.categoryId) : q.is("category_id", null);
+    const col = data.service === "store" ? "store_category_id" : "category_id";
+    q = data.categoryId ? q.eq(col as any, data.categoryId) : q.is(col as any, null);
     const [slots, stores] = await Promise.all([
       q,
       scopeMerchants(db.from("merchants").select("id, store_name").eq("status", "approved").is("deleted_at", null), data.service).order("store_name"),
@@ -345,7 +410,10 @@ export const saveSponsoredSlot = createServerFn({ method: "POST" })
     const st = await db.from("merchants").select("status, service_type").eq("id", data.storeId).maybeSingle();
     if (!st.data || st.data.status !== "approved" || (st.data.service_type === "food" ? "food" : "store") !== svc) throw new Error("Pick an approved store from this service");
     const row = {
-      service_type: svc, category_id: data.categoryId || null, store_id: data.storeId, position: pos,
+      service_type: svc,
+      category_id: svc === "food" ? data.categoryId || null : null,
+      store_category_id: svc === "store" ? data.categoryId || null : null,
+      store_id: data.storeId, position: pos,
       starts_at: new Date(data.startsAt + "T00:00:00+05:30").toISOString(),
       ends_at: new Date(data.endsAt + "T23:59:59+05:30").toISOString(), is_active: !!data.isActive,
     };

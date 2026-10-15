@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, Plus, Search, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, Plus, Search, Upload, Volume2, VolumeX } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   type Svc,
   listServiceOrders, getServiceOrder, listServiceStores, getStoreDetail, storeAction,
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
+  listStoreTypes, saveStoreType, reorderStoreTypes,
   listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings,
 } from "@/lib/service-commerce.functions";
 import { cancelStoreOrderWithRefund, reassignStoreRider } from "@/lib/commerce.functions";
@@ -108,9 +109,59 @@ function OrdersTab({ service }: { service: Svc }) {
     queryFn: () => fn({ data: { service, status: status || null, q, from: from || null, to: to || null } }),
     refetchInterval: 30000,
   });
+  const qc = useQueryClient();
+  const pend = useQuery({
+    queryKey: ["svc", service, "orders", "pending-alert"],
+    queryFn: () => fn({ data: { service, status: "pending", q: "", from: null, to: null } }),
+    refetchInterval: 30000,
+  });
+  const pendingCount = (pend.data ?? []).length;
+  const [muted, setMuted] = useState(false);
+  useEffect(() => { setMuted(localStorage.getItem("commerce-audio-muted") === "1"); }, []);
+  // Realtime: any order change refreshes the list (same as old live board)
+  useEffect(() => {
+    const ch = supabase.channel(`svc-orders-${service}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "merchant_orders" }, () => {
+        qc.invalidateQueries({ queryKey: ["svc", service, "orders"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "courier_orders" }, () => {
+        qc.invalidateQueries({ queryKey: ["svc", service, "orders"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [service, qc]);
+  // New-order beep (620 Hz, every 1.8s) while unaccepted paid orders wait
+  useEffect(() => {
+    if (muted || pendingCount === 0) return;
+    let ctx: AudioContext | null = null;
+    const beep = () => {
+      try {
+        ctx = ctx ?? new (window.AudioContext || (window as any).webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle"; o.frequency.value = 620;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.55);
+      } catch { /* audio blocked until user interacts */ }
+    };
+    beep();
+    const t = setInterval(beep, 1800);
+    return () => { clearInterval(t); ctx?.close().catch(() => {}); };
+  }, [muted, pendingCount]);
+  const toggleMute = () => { const n = !muted; setMuted(n); localStorage.setItem("commerce-audio-muted", n ? "1" : "0"); };
   return (
     <div className="space-y-3">
+      {pendingCount > 0 && (
+        <div className="rounded-lg border border-destructive bg-destructive/10 p-3 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-destructive">{pendingCount} new order{pendingCount > 1 ? "s" : ""} waiting for {L.store.toLowerCase()} to accept</p>
+          <Button size="sm" variant="outline" onClick={() => setStatus("pending")}>Show</Button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" variant="outline" onClick={toggleMute} aria-label={muted ? "Unmute alert" : "Mute alert"}>
+          {muted ? <VolumeX size={14} /> : <Volume2 size={14} />} {muted ? "Sound off" : "Sound on"}
+        </Button>
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
           <Input className="pl-8 w-56" placeholder="Order no / phone" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -145,6 +196,14 @@ function OrdersTab({ service }: { service: Svc }) {
       {openId && <OrderDetail id={openId} service={service} storeLabel={L.store} onClose={() => setOpenId(null)} />}
     </div>
   );
+}
+
+function itemLabel(it: any) {
+  const unit = Number(it.unit_price ?? it.price_snapshot ?? 0);
+  if (it.unit_price == null) return `${it.quantity} × ${it.product_name_snapshot}`; // old orders: saved note
+  const name = String(it.product_name_snapshot ?? "").replace(/ \(.*$/, "").replace(/ \+ .*$/, "");
+  const extras = [it.variant_name, ...((Array.isArray(it.addons) ? it.addons : []) as any[]).map((a) => a.name)].filter(Boolean);
+  return `${it.quantity} × ${name}${extras.length ? ` — ${extras.join(" + ")}` : ""}, ${inr(unit)} each`;
 }
 
 function Row({ k, v, strong }: { k: string; v: React.ReactNode; strong?: boolean }) {
@@ -189,9 +248,8 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Items</p>
               {(r.data?.items ?? []).map((it: any) => (
-                <Row key={it.id} k={`${it.quantity} × ${it.product_name_snapshot}`} v={inr(Number(it.price_snapshot) * Number(it.quantity))} />
+                <Row key={it.id} k={itemLabel(it)} v={inr(it.line_total ?? Number(it.price_snapshot) * Number(it.quantity))} />
               ))}
-              <p className="text-[11px] text-muted-foreground mt-1">Variant and add-on names are not saved on order lines yet; item price already includes them.</p>
             </div>
             <div className="rounded-md border p-3">
               <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Money (order snapshot)</p>
@@ -301,7 +359,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
             ))}
           </div>
-          {t === "profile" && <ProfilePane s={s} act={act} />}
+          {t === "profile" && <ProfilePane s={s} act={act} storeTypes={service === "store" ? r.data?.storeTypes : undefined} />}
           {t === "commercials" && <CommercialsPane s={s} act={act} />}
           {t === "products" && <ProductsPane data={r.data} act={act} service={service} storeId={storeId} />}
           {t === "staff" && (
@@ -332,7 +390,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
   );
 }
 
-function ProfilePane({ s, act }: { s: any; act: any }) {
+function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { id: string; name: string; is_active: boolean }[] }) {
   const [offer, setOffer] = useState(s.offer_text ?? "");
   const [reason, setReason] = useState("");
   useEffect(() => setOffer(s.offer_text ?? ""), [s.offer_text]);
@@ -345,6 +403,16 @@ function ProfilePane({ s, act }: { s: any; act: any }) {
         <Row k="Rating" v={Number(s.rating_count) >= 3 ? `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` : ""} />
       </div>
       <div className="rounded-lg border bg-card p-4 space-y-4">
+        {storeTypes && (
+          <div className="space-y-1">
+            <Label>Store type</Label>
+            <select className="w-full h-9 rounded-md border bg-background px-2 text-sm" value={s.store_category_id ?? ""}
+              onChange={(e) => act.mutate({ kind: "storeType", storeCategoryId: e.target.value || null })}>
+              <option value="">— Not set —</option>
+              {storeTypes.map((t) => <option key={t.id} value={t.id}>{t.name}{t.is_active ? "" : " (inactive)"}</option>)}
+            </select>
+          </div>
+        )}
         <div className="flex items-center justify-between"><Label>Open now</Label><Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} /></div>
         <div className="space-y-1">
           <Label>Offer line ({offer.length}/60)</Label>
@@ -352,11 +420,11 @@ function ProfilePane({ s, act }: { s: any; act: any }) {
             <Button size="sm" onClick={() => act.mutate({ kind: "offer", text: offer })}>Save</Button></div>
         </div>
         <div className="space-y-2 border-t pt-3">
-          {s.status !== "approved" && <Button size="sm" onClick={() => act.mutate({ kind: "approve" })}>Approve</Button>}
-          {s.status !== "suspended" && (
-            <div className="flex gap-2"><Input placeholder="Reason to suspend" value={reason} onChange={(e) => setReason(e.target.value)} />
-              <Button size="sm" variant="destructive" disabled={!reason.trim()} onClick={() => act.mutate({ kind: "suspend", reason })}>Suspend</Button></div>
-          )}
+          <Input placeholder="Reason (required to approve or suspend)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div className="flex gap-2">
+            {s.status !== "approved" && <Button size="sm" disabled={!reason.trim()} onClick={() => act.mutate({ kind: "approve", reason }, { onSuccess: () => setReason("") })}>Approve</Button>}
+            {s.status !== "suspended" && <Button size="sm" variant="destructive" disabled={!reason.trim()} onClick={() => act.mutate({ kind: "suspend", reason }, { onSuccess: () => setReason("") })}>Suspend</Button>}
+          </div>
         </div>
       </div>
     </div>
@@ -594,8 +662,13 @@ function CategoriesTab({ service, role }: { service: Svc; role: string }) {
   const save = useMutation({ mutationFn: (v: any) => saveFn({ data: { service, ...v } }), onSuccess: () => { toast.success("Saved"); setEdit(null); inv(); }, onError: (e) => toast.error(errMsg(e)) });
   const reorder = useMutation({ mutationFn: () => reFn({ data: { service, ids: rows.map((x) => x.id) } }), onSuccess: () => { toast.success("Order saved"); inv(); }, onError: (e) => toast.error(errMsg(e)) });
   return (
+    <div className="space-y-6">
+    {service === "store" && <StoreTypesSection role={role} />}
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">This order is what customers see on the home row. Images are stored in a public folder so the customer app can show them without login.</p>
+      {service === "store" ? <>
+        <h3 className="font-semibold">Product categories</h3>
+        <p className="text-xs text-muted-foreground">Used only inside a store's product list — the merchant picks one from a dropdown.</p>
+      </> : <p className="text-xs text-muted-foreground">This order is what customers see on the home row. Images are stored in a public folder so the customer app can show them without login.</p>}
       {canEdit ? (
         <div className="flex gap-2"><Button size="sm" onClick={() => setEdit({ is_active: true })}><Plus size={14} /> New category</Button>
           <Button size="sm" variant="outline" onClick={() => reorder.mutate()}>Save order</Button></div>
@@ -615,10 +688,52 @@ function CategoriesTab({ service, role }: { service: Svc; role: string }) {
       </div>
       {edit && <CategoryEditor c={edit} service={service} onClose={() => setEdit(null)} onSave={(v) => save.mutate(v)} />}
     </div>
+    </div>
   );
 }
 
-function CategoryEditor({ c, service, onClose, onSave }: { c: any; service: Svc; onClose: () => void; onSave: (v: any) => void }) {
+function StoreTypesSection({ role }: { role: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(listStoreTypes);
+  const saveFn = useServerFn(saveStoreType);
+  const reFn = useServerFn(reorderStoreTypes);
+  const r = useQuery({ queryKey: ["svc", "store", "types"], queryFn: () => fn() });
+  const [rows, setRows] = useState<any[]>([]);
+  const [edit, setEdit] = useState<any | null>(null);
+  useEffect(() => setRows(r.data ?? []), [r.data]);
+  const canEdit = role === "super_admin";
+  const inv = () => qc.invalidateQueries({ queryKey: ["svc", "store"] });
+  const save = useMutation({ mutationFn: (v: any) => saveFn({ data: v }), onSuccess: () => { toast.success("Saved"); setEdit(null); inv(); }, onError: (e) => toast.error(errMsg(e)) });
+  const reorder = useMutation({ mutationFn: () => reFn({ data: { ids: rows.map((x) => x.id) } }), onSuccess: () => { toast.success("Order saved"); inv(); }, onError: (e) => toast.error(errMsg(e)) });
+  const pic = (c: any) => imgUrl(c.image_path, c.icon_url && /^https?:/.test(c.icon_url) ? c.icon_url : null);
+  return (
+    <div className="space-y-3">
+      <h3 className="font-semibold">Store types (home row)</h3>
+      <p className="text-xs text-muted-foreground">Customers see these on the Store home row in this order. Tapping one shows stores of that type.</p>
+      {canEdit ? (
+        <div className="flex gap-2"><Button size="sm" onClick={() => setEdit({ is_active: true })}><Plus size={14} /> New store type</Button>
+          <Button size="sm" variant="outline" onClick={() => reorder.mutate()}>Save order</Button></div>
+      ) : <p className="text-xs text-muted-foreground">Only super admin can change store types.</p>}
+      <div className="rounded-lg border bg-card divide-y">
+        {r.isLoading && <p className="p-3 text-sm text-muted-foreground">Loading…</p>}
+        {rows.map((c, i) => (
+          <div key={c.id} className="p-2 flex items-center gap-3">
+            {pic(c) ? <img src={pic(c)!} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-muted" />}
+            <p className={`flex-1 text-sm font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>{c.name}</p>
+            {canEdit && <>
+              <Switch checked={c.is_active} onCheckedChange={(v) => save.mutate({ id: c.id, name: c.name, image_path: c.image_path, is_active: v })} />
+              <Arrows onUp={() => setRows(move(rows, i, -1))} onDown={() => setRows(move(rows, i, 1))} />
+              <Button size="sm" variant="ghost" onClick={() => setEdit(c)}>Edit</Button></>}
+          </div>
+        ))}
+        {r.data?.length === 0 && <p className="p-3 text-sm text-muted-foreground">No store types yet.</p>}
+      </div>
+      {edit && <CategoryEditor c={edit} service="store" folder="_store_types" onClose={() => setEdit(null)} onSave={(v) => save.mutate(v)} />}
+    </div>
+  );
+}
+
+function CategoryEditor({ c, service, folder, onClose, onSave }: { c: any; service: Svc; folder?: string; onClose: () => void; onSave: (v: any) => void }) {
   const [name, setName] = useState(c.name ?? "");
   const [img, setImg] = useState<string | null>(c.image_path ?? null);
   const [active, setActive] = useState(c.is_active !== false);
@@ -634,7 +749,7 @@ function CategoryEditor({ c, service, onClose, onSave }: { c: any; service: Svc;
             <label className="inline-flex items-center gap-1 text-sm cursor-pointer text-primary"><Upload size={14} /> {busy ? "Uploading…" : "Upload image"}
               <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                 const f = e.target.files?.[0]; if (!f) return; setBusy(true);
-                try { setImg(await uploadImage(f, `_categories/${service}`)); } catch (er) { toast.error(errMsg(er)); } finally { setBusy(false); }
+                try { setImg(await uploadImage(f, folder ?? `_categories/${service}`)); } catch (er) { toast.error(errMsg(er)); } finally { setBusy(false); }
               }} /></label>
           </div>
           <div className="flex items-center justify-between"><Label>Active</Label><Switch checked={active} onCheckedChange={setActive} /></div>
@@ -654,7 +769,11 @@ function SponsoredTab({ service, role }: { service: Svc; role: string }) {
   const saveFn = useServerFn(saveSponsoredSlot);
   const delFn = useServerFn(deleteSponsoredSlot);
   const [cat, setCat] = useState<string>("");
-  const cats = useQuery({ queryKey: ["svc", service, "cats"], queryFn: () => catsFn({ data: { service } }) });
+  const typesFn = useServerFn(listStoreTypes);
+  const cats = useQuery({
+    queryKey: ["svc", service, service === "store" ? "types" : "cats"],
+    queryFn: () => (service === "store" ? typesFn() : catsFn({ data: { service } })),
+  });
   const r = useQuery({ queryKey: ["svc", service, "sponsored", cat], queryFn: () => fn({ data: { service, categoryId: cat || null } }) });
   const [edit, setEdit] = useState<any | null>(null);
   const canEdit = role === "super_admin";

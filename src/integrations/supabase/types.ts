@@ -4900,31 +4900,46 @@ export type Database = {
       }
       merchant_order_items: {
         Row: {
+          addons: Json | null
           id: string
           is_mrp_snapshot: boolean
+          line_total: number | null
           order_id: string
           price_snapshot: number
           product_id: string
           product_name_snapshot: string
           quantity: number
+          unit_price: number | null
+          variant_id: string | null
+          variant_name: string | null
         }
         Insert: {
+          addons?: Json | null
           id?: string
           is_mrp_snapshot?: boolean
+          line_total?: number | null
           order_id: string
           price_snapshot: number
           product_id: string
           product_name_snapshot: string
           quantity?: number
+          unit_price?: number | null
+          variant_id?: string | null
+          variant_name?: string | null
         }
         Update: {
+          addons?: Json | null
           id?: string
           is_mrp_snapshot?: boolean
+          line_total?: number | null
           order_id?: string
           price_snapshot?: number
           product_id?: string
           product_name_snapshot?: string
           quantity?: number
+          unit_price?: number | null
+          variant_id?: string | null
+          variant_name?: string | null
         }
         Relationships: [
           {
@@ -4953,6 +4968,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -8119,6 +8141,7 @@ export type Database = {
           position: number
           service_type: string
           starts_at: string | null
+          store_category_id: string | null
           store_id: string
         }
         Insert: {
@@ -8130,6 +8153,7 @@ export type Database = {
           position: number
           service_type: string
           starts_at?: string | null
+          store_category_id?: string | null
           store_id: string
         }
         Update: {
@@ -8141,6 +8165,7 @@ export type Database = {
           position?: number
           service_type?: string
           starts_at?: string | null
+          store_category_id?: string | null
           store_id?: string
         }
         Relationships: [
@@ -8149,6 +8174,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "catalog_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_slots_store_category_id_fkey"
+            columns: ["store_category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
             referencedColumns: ["id"]
           },
           {
@@ -8318,6 +8350,7 @@ export type Database = {
           icon: string | null
           icon_url: string | null
           id: string
+          image_path: string | null
           is_active: boolean
           name: string
           rank: number
@@ -8330,6 +8363,7 @@ export type Database = {
           icon?: string | null
           icon_url?: string | null
           id?: string
+          image_path?: string | null
           is_active?: boolean
           name: string
           rank?: number
@@ -8342,6 +8376,7 @@ export type Database = {
           icon?: string | null
           icon_url?: string | null
           id?: string
+          image_path?: string | null
           is_active?: boolean
           name?: string
           rank?: number
@@ -11836,6 +11871,10 @@ export type Database = {
           _reason: string
           _store_enabled: boolean
         }
+        Returns: undefined
+      }
+      staff_set_merchant_status: {
+        Args: { _merchant_id: string; _reason: string; _status: string }
         Returns: undefined
       }
       staff_set_milestone_active: {
