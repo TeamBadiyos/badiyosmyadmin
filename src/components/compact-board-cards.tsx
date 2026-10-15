@@ -1,5 +1,14 @@
 import { MoreHorizontal } from "lucide-react";
-import type { PipelineBooking, PipelineStatus } from "@/lib/live-orders.functions";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getDispatchConfig, type PipelineBooking, type PipelineStatus } from "@/lib/live-orders.functions";
+
+// Same no-accept limit as Settings → Alerts.
+function useWaitLimit() {
+  const fn = useServerFn(getDispatchConfig);
+  const q = useQuery({ queryKey: ["dispatch-config"], queryFn: () => fn(), staleTime: 5 * 60_000 });
+  return q.data?.noAcceptMinutes ?? 10;
+}
 import type { CommerceOrder } from "@/lib/commerce.functions";
 import type { CourierOrderRow } from "@/lib/courier.functions";
 
@@ -77,10 +86,11 @@ function Bottom({ left, action, onAction }: { left: React.ReactNode; action?: st
 
 export function CompactBookingCard({ b, col, now, onOpen }: { b: PipelineBooking; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(b.broadcastStartedAt ?? b.createdAt, now);
+  const limit = useWaitLimit();
   const service = b.serviceLabel ?? (b.serviceDurationMinutes ? `${b.serviceDurationMinutes} min` : "Service");
   const expert = b.assignedExpertName?.trim() || "Not assigned";
   const third =
-    col === "accepted" ? <span className={wait >= 10 ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
+    col === "accepted" ? <span className={wait >= limit ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
     : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)} · ${expert}`
     : `Expert: ${expert}`;
   const status =
@@ -105,8 +115,9 @@ const COMMERCE_STATUS: Record<string, string> = {
 
 export function CompactCommerceCard({ o, col, now, onOpen }: { o: CommerceOrder; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(o.createdAt, now);
+  const limit = useWaitLimit();
   const third =
-    col === "accepted" ? <span className={wait >= 5 ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
+    col === "accepted" ? <span className={wait >= limit ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
     : `Rider: ${o.riderName ? first(o.riderName) : "—"}`;
   const flag = o.alerts.length ? o.alerts.map((a) => ALERT_LABEL[a] ?? a).join(" · ") : null;
@@ -126,8 +137,9 @@ const COURIER_STATUS: Record<string, string> = {
 
 export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(o.created_at, now);
+  const limit = useWaitLimit();
   const third =
-    col === "accepted" ? <span className={wait >= 10 ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
+    col === "accepted" ? <span className={wait >= limit ? "text-destructive font-semibold" : ""}>⏱ {wait} min</span>
     : col === "completed" ? "✓ Delivered"
     : `Rider: ${first(o.riderName)}`;
   return (

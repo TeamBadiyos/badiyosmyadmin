@@ -219,6 +219,7 @@ export type DispatchConfig = {
   broadcastRadiusKm: number;
   broadcastTimeoutSeconds: number;
   noExpertTimeoutMinutes: number;
+  noAcceptMinutes: number;
 };
 
 export const getDispatchConfig = createServerFn({ method: "GET" })
@@ -228,7 +229,7 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("dispatch_config")
       .select(
-        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes",
+        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes, no_accept_alert_threshold_seconds",
       )
       .limit(1)
       .maybeSingle();
@@ -239,6 +240,7 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
       broadcastRadiusKm: Number(row?.broadcast_radius_km ?? 5),
       broadcastTimeoutSeconds: Number(row?.broadcast_timeout_seconds ?? 90),
       noExpertTimeoutMinutes: Number(row?.no_expert_timeout_minutes ?? 30),
+      noAcceptMinutes: Math.max(1, Math.round(Number(row?.no_accept_alert_threshold_seconds ?? 600) / 60)),
     };
   });
 
