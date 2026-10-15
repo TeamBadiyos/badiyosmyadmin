@@ -57,7 +57,7 @@ import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
-import { ParcelGstNote, RidersCapacityPanel, ServiceHoursPanel } from "@/components/ops-panels";
+import { RidersCapacityPanel, ServiceHoursPanel } from "@/components/ops-panels";
 
 /* --------------------------------- shared -------------------------------- */
 
@@ -1964,7 +1964,7 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
           {typeTab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
         </>
       ) : null}
-      {section === "rates" ? (<div className="space-y-4"><ParcelGstNote /><RatesTab canWrite={canWrite} /></div>) : null}
+      {section === "rates" ? (<RatesTab canWrite={canWrite} />) : null}
       {section === "riders" ? <div className="space-y-6"><RidersCapacityPanel /><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
       {section === "settings" ? (
         <div className="space-y-5">
