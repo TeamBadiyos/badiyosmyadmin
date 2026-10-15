@@ -35,6 +35,7 @@ import { listZoneOptions } from "@/lib/bookings.functions";
 import { getWeeklyExpertReport } from "@/lib/experts.functions";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
+import { buildCaExportZip, downloadBlob, fetchPnlExtras } from "@/lib/ca-export";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
@@ -221,6 +222,18 @@ function RevenueTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "revenue", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -297,6 +310,18 @@ function BookingsTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "bookings", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -405,6 +430,18 @@ function ExpertsTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "experts", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   const rows = [...(data ?? [])].sort((a, b) =>
@@ -456,6 +493,18 @@ function ReferralsTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "referrals", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -643,6 +692,18 @@ function CustomersTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "customers", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -740,6 +801,18 @@ function PnlTab({ range }: { range: ReportRange }) {
     queryKey: ["reports", "pnl", range],
     queryFn: () => fetchFn({ data: range }),
   });
+  const { data: ex } = useQuery({
+    queryKey: ["reports", "pnl-extras", range.from, range.to],
+    queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipErr, setZipErr] = useState<string | null>(null);
+  const caExport = async () => {
+    setZipBusy(true); setZipErr(null);
+    try { downloadBlob(await buildCaExportZip(range.from, range.to), `badiyos-ca-export-${range.from}-to-${range.to}.zip`); }
+    catch (e) { setZipErr((e as Error).message); }
+    finally { setZipBusy(false); }
+  };
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -752,6 +825,10 @@ function PnlTab({ range }: { range: ReportRange }) {
       ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
       ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission], ["Razorpay gateway charges", data.gatewayCharges.total],
       ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Gross profit", T.grossProfit], ["Net profit", T.platformProfit],
+      ["Other Income – Instant Settlement Fee", Number(ex?.instant_fee ?? 0)],
+      ...((ex?.expenses_by_category ?? []).map((e) => [`Expense – ${e.category}`, Number(e.amount)] as [string, number])),
+      ["Net profit after expenses", T.platformProfit + Number(ex?.instant_fee ?? 0) - Number(ex?.expenses_total ?? 0)],
+      ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
     const csv = ["Item,Amount", ...lines.map(([k, v]) => `"${k}",${v.toFixed(2)}`), "", "Date,Collected,Payouts,Profit",
@@ -764,7 +841,11 @@ function PnlTab({ range }: { range: ReportRange }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 items-center">
+        {zipErr && <span className="text-[12px] text-destructive">{zipErr}</span>}
+        <button onClick={caExport} disabled={zipBusy} className="h-9 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted disabled:opacity-60">
+          {zipBusy ? "Preparing…" : "Monthly CA export (ZIP)"}
+        </button>
         <button onClick={exportCsv} className="h-9 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted">
           Download CSV
         </button>
@@ -799,7 +880,25 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label="Razorpay gateway charges" sub={`Fees ${inr.format(data.gatewayCharges.fees)} + GST ${inr.format(data.gatewayCharges.gst)} (from synced settlements)`} value={data.gatewayCharges.total} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
           <Row label={`Net profit · ${T.marginPct.toFixed(1)}%`} value={T.platformProfit} bold />
+          {ex && (
+            <>
+              <Row label="Other Income – Instant Settlement Fee" sub="Fee on instant settlements paid in range (excl GST)" value={Number(ex.instant_fee)} />
+              {ex.expenses_by_category.map((e) => (
+                <Row key={e.category} label={`Expense – ${e.category}`} value={Number(e.amount)} neg />
+              ))}
+              <Row label="Net profit after expenses" value={T.platformProfit + Number(ex.instant_fee) - Number(ex.expenses_total)} bold />
+            </>
+          )}
         </Card>
+        {ex && (
+          <Card>
+            <h3 className="text-[15px] font-bold text-foreground mb-2">GST (shown separately, not income)</h3>
+            <Row label="GST collected on customer orders" value={T.gst} />
+            <Row label="GST on store commission" value={m.commissionGst} />
+            <Row label="GST on instant settlement fee" value={Number(ex.instant_fee_gst)} />
+            <Row label="GST paid on expenses (input credit)" value={Number(ex.expense_gst)} neg />
+          </Card>
+        )}
         <Card>
           <h3 className="text-[15px] font-bold text-foreground mb-2">Payout status (batches in range)</h3>
           <Row label="Paid out (after TDS)" value={data.paidOut.paid} />
