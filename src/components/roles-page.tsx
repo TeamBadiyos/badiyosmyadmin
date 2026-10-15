@@ -22,7 +22,7 @@ function randomPassword(len = 14) {
 }
 
 function roleLabel(r: StaffRole) {
-  return r === "super_admin" ? "Super Admin" : r === "ops_manager" ? "Ops Manager" : "Area Partner";
+  return r === "super_admin" ? "Super Admin" : r === "ops_manager" ? "Ops Manager" : r === "finance" ? "Finance" : "Area Partner";
 }
 
 function roleBadgeClass(r: StaffRole) {
@@ -159,7 +159,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"ops_manager" | "area_partner">("ops_manager");
+  const [role, setRole] = useState<"ops_manager" | "area_partner" | "finance">("ops_manager");
   const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [password, setPassword] = useState(() => randomPassword());
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +170,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
     mutationFn: (payload: {
       name: string;
       email: string;
-      role: "ops_manager" | "area_partner";
+      role: "ops_manager" | "area_partner" | "finance";
       zone_ids: string[];
       password: string;
     }) => create({ data: payload }),
@@ -261,10 +261,11 @@ function CreateModal({ onClose }: { onClose: () => void }) {
             <Field label="Role">
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as "ops_manager" | "area_partner")}
+                onChange={(e) => setRole(e.target.value as "ops_manager" | "area_partner" | "finance")}
                 className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
               >
                 <option value="ops_manager">Ops Manager</option>
+                <option value="finance">Finance</option>
               </select>
             </Field>
             {role === "area_partner" && (

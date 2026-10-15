@@ -289,13 +289,14 @@ const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   "unassigned-trips": "dashboard",
 };
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
   ops_manager: NAV_ITEMS.map((n) => n.key).filter(
     (k) => k !== "roles" && k !== "fin-expenses" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
   ),
+  finance: ["fin-overview", "settlements", "fin-settlements", "wallets", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "reports"],
   area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "wash-team", "reports"],
 };
 
@@ -828,7 +829,7 @@ function Shell() {
         ) : active === "fin-wallet" ? (
           <CustomerWalletPage isSuperAdmin={role === "super_admin"} />
         ) : active === "fin-expenses" ? (
-          role === "super_admin" ? <ExpensesPage /> : null
+          role === "super_admin" || role === "finance" ? <ExpensesPage /> : null
         ) : active.startsWith("fin-") || active === "company-profile" ? (
           <FinanceHub
             tab={(active === "company-profile" ? "company" : active.slice(4)) as FinanceTab}
