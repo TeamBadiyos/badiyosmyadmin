@@ -180,7 +180,7 @@ const NAV_ITEMS = [
   { key: "courier-types", label: "Parcel Types", icon: Boxes },
   { key: "courier-bulk", label: "Bulk / Business Delivery", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
-  { key: "store-orders", label: "Manage Store", icon: Receipt },
+  { key: "store-orders", label: "Store", icon: Receipt },
   { key: "food-orders", label: "Manage Food", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Service Status", icon: SlidersHorizontal },
