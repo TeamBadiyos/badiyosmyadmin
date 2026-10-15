@@ -101,7 +101,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold">Merchant Commission & Billing</h1>
+          
           <p className="text-[13px] text-muted-foreground">
             Har completed store order se merchant ka Commission % kata jata hai. Yahi % yahan se edit karo.
           </p>

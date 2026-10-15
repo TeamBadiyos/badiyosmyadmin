@@ -41,7 +41,7 @@ export function ReferralsPage() {
           onChange={(e) => setStatus(e.target.value)}
           className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px]"
         >
-          <option value="">All</option>
+          <option value="">All statuses</option>
           {statuses.map((s) => (
             <option key={s} value={s}>
               {s}

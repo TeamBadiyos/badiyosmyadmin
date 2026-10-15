@@ -50,7 +50,7 @@ export function PartnersPage({ role }: { role: string | null }) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold">Partner Program</h1>
+        
         <p className="text-sm text-muted-foreground">Growth Partners, Zone Franchise and City Master. Commission is worked out only when you generate a payout.</p>
       </div>
       <div className="flex gap-2 overflow-x-auto">

@@ -173,10 +173,10 @@ export function ExpertsPage({
         <Filter label="Status" value={statusF} onChange={setStatusF}>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-          <option value="">All</option>
+          <option value="">All statuses</option>
         </Filter>
         <Filter label="Mode" value={mode} onChange={setMode}>
-          <option value="">All</option>
+          <option value="">All modes</option>
           <option value="TRAINING">Training</option>
           <option value="LIVE">Live</option>
         </Filter>
