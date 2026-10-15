@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getDashboardStats } from "@/lib/dashboard.functions";
 import { PipelineKanban } from "@/components/pipeline-kanban";
 import { CommerceKanban } from "@/components/commerce-kanban";
+import { ServiceCommerceModule } from "@/components/service-commerce-module";
 
 import { ZonesPage } from "@/components/zones-page";
 import { BookingsPage } from "@/components/bookings-page";
@@ -132,7 +133,7 @@ const NAV_ITEMS = [
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
-  { key: "insurance", label: "Other · Insurance", icon: ShieldCheck },
+  { key: "insurance", label: "Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
@@ -163,8 +164,8 @@ const NAV_ITEMS = [
   { key: "courier-types", label: "Parcel", icon: Boxes },
   { key: "courier-bulk", label: "Bulk Courier", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
-  { key: "store-orders", label: "Orders", icon: Receipt },
-  { key: "food-orders", label: "Food Orders", icon: UtensilsCrossed },
+  { key: "store-orders", label: "Manage Store", icon: Receipt },
+  { key: "food-orders", label: "Manage Food", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Service Status", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax Settings", icon: Percent },
@@ -220,7 +221,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["referrals", "waitlist", "interest-leads", "homepage"],
+    keys: ["referrals", "waitlist", "interest-leads", "homepage", "insurance"],
   },
   {
     id: "finance",
@@ -232,7 +233,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal", "insurance"],
+    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal"],
   },
 ] as const;
 
@@ -712,9 +713,9 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <CommerceKanban segmentId={null} service="store" />
+          <ServiceCommerceModule service="store" role={role ?? ""} />
         ) : active === "food-orders" ? (
-          <CommerceKanban segmentId={null} service="food" />
+          <ServiceCommerceModule service="food" role={role ?? ""} />
         ) : active === "tax-settings" ? (
           <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
         ) : active === "fees" ? (
