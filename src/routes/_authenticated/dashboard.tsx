@@ -607,6 +607,10 @@ function Shell() {
               if ((key === "store-orders" || key === "food-orders") && a.targetId) {
                 try { sessionStorage.setItem("cc-open-order", a.targetId); } catch { /* ignore */ }
               }
+              if (key === "courier-orders" && a.targetId) {
+                try { sessionStorage.setItem("cc-open-courier", a.targetId); } catch { /* ignore */ }
+                window.dispatchEvent(new Event("cc-open-courier"));
+              }
             }}
           />
 

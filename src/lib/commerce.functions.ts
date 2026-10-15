@@ -198,7 +198,7 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
         alerts.push("merchant_slow");
       if (r.status !== "completed" && riderState === "searching") {
         const since = co?.search_started_at ?? r.ready_at;
-        if (co?.needs_ops_attention || minsSince(since, nowMs) >= RIDER_SEARCH_MIN)
+        if (co?.needs_ops_attention || minsSince(since, nowMs) >= (Number(lim.parcel) || RIDER_SEARCH_MIN))
           alerts.push("no_rider");
       }
       if (
