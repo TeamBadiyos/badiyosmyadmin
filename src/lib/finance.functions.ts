@@ -106,3 +106,23 @@ export const saveCompanyProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     chk(await rpc(context.supabase, "staff_save_company_profile", { _p: data })); return { ok: true };
   });
+
+export const getDashboardTeam = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const r = await rpc(context.supabase, "staff_dashboard_team", {}); chk(r);
+    return (r.data ?? []) as Array<{
+      id: string; name: string; phone: string | null; zone: string | null;
+      group: "maid" | "washer" | "rider"; busy: boolean; vehicle: string | null;
+      job: { kind: string; label: string; status: string; area: string | null } | null;
+      free_since: string | null; last_seen: string | null;
+    }>;
+  });
+
+export const getDashboardMoney = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { from: string; to: string }) => ({ from: String(i.from).slice(0, 10), to: String(i.to).slice(0, 10) }))
+  .handler(async ({ data, context }) => {
+    const r = await rpc(context.supabase, "staff_dashboard_money", { _from: data.from, _to: data.to }); chk(r);
+    return (r.data ?? {}) as Record<string, { gross: number; discount: number; net: number }>;
+  });
