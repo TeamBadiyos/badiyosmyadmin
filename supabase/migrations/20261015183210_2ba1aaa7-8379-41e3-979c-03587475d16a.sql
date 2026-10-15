@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.ops_settings_tax_guard() FROM PUBLIC, anon, authenticated;
