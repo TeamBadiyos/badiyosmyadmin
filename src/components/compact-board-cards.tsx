@@ -6,7 +6,8 @@ import type { CourierOrderRow } from "@/lib/courier.functions";
 const inr = (n: number | null | undefined) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
 const clock = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "";
-const dayTime = (date: string | null, slot: string | null) => {
+const dayTime = (date: string | null, slot: string | null, slotType?: string | null) => {
+  if (!date && (slotType ?? "").toLowerCase() === "now") return "Now";
   const d = date ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" }) : "";
   const t = (slot ?? "").split(/\s*[-–(]/)[0].trim();
   return [d, t].filter(Boolean).join(" ") || "—";
