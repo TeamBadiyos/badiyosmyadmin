@@ -271,7 +271,6 @@ export function ParcelGstNote() {
   });
   return (
     <div className="space-y-1 rounded-[12px] border border-info/30 bg-info/10 px-4 py-3 text-[12px] text-foreground">
-      <p className="font-semibold">Store delivery uses these rates; Food has its own rates in Food → Settings.</p>
       <p className="flex items-center gap-1.5"><Timer size={13} className="text-info" />
         Parcel delivery GST: {q.data ? `${q.data.rate_pct}%${q.data.is_active ? "" : " (off)"}` : "—"} on top of the base fare (read-only, change in Platform Settings → Tax Settings).
       </p>

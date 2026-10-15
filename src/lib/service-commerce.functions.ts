@@ -324,7 +324,14 @@ export const listCatalogCategories = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const r = await context.supabase.from("catalog_categories").select("*").eq("service_type", data.service).order("sort_order");
     chk(r);
-    return r.data ?? [];
+    const cats = (r.data ?? []) as any[];
+    const ids = cats.map((c) => c.id);
+    const counts: Record<string, Set<string>> = {};
+    if (ids.length) {
+      const p = await context.supabase.from("products").select("category_id, merchant_id").in("category_id", ids).limit(5000);
+      for (const x of (p.data ?? []) as any[]) (counts[x.category_id] ??= new Set()).add(x.merchant_id);
+    }
+    return cats.map((c) => ({ ...c, store_count: counts[c.id]?.size ?? 0 }));
   });
 
 export const saveCatalogCategory = createServerFn({ method: "POST" })
@@ -494,7 +501,7 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
     const t = Math.round(Number(data.default_accept_timeout_minutes));
     if (!(t >= 1 && t <= 120)) throw new Error("Accept timeout must be 1–120 minutes");
     patch.default_accept_timeout_minutes = t;
-    if (svc === "food") {
+    if (svc === "food" || svc === "store") {
       const a = Number(data.delivery_min_fare), b = Number(data.delivery_per_km), c = Number(data.rider_share_pct);
       if (!(a >= 0) || !(b >= 0) || !(c >= 0 && c <= 100)) throw new Error("Check the values");
       Object.assign(patch, { delivery_min_fare: a, delivery_per_km: b, rider_share_pct: c });
@@ -506,4 +513,35 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
     if (!r.data?.length) throw new Error("Only super admin can change this.");
     await audit(context, "service_settings_updated", "service_settings", null, b.data, { service: svc, ...patch });
     return { ok: true as const };
+  });
+
+/* ---------------- Add restaurant (draft) ---------------- */
+
+export const createDraftMerchant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: Svc; storeName: string; ownerName: string; phone: string; address: string; lat?: number | null; lng?: number | null; commissionPct?: number | null }) => ({
+    service: svcOk(i.service), storeName: String(i.storeName ?? "").trim().slice(0, 80), ownerName: String(i.ownerName ?? "").trim().slice(0, 80),
+    phone: String(i.phone ?? "").replace(/\D/g, "").slice(-10), address: String(i.address ?? "").trim().slice(0, 300),
+    lat: i.lat == null || !Number.isFinite(Number(i.lat)) ? null : Number(i.lat), lng: i.lng == null || !Number.isFinite(Number(i.lng)) ? null : Number(i.lng),
+    commissionPct: i.commissionPct == null || !Number.isFinite(Number(i.commissionPct)) ? null : Number(i.commissionPct),
+  }))
+  .handler(async ({ data, context }) => {
+    const st = await context.supabase.from("staff_users").select("status, role").eq("auth_user_id", context.userId).maybeSingle();
+    if (!st.data || st.data.status !== "active" || !["super_admin", "ops_manager"].includes(st.data.role)) throw new Error("You don't have permission for this.");
+    if (!data.storeName || !data.ownerName || data.phone.length !== 10 || !data.address) throw new Error("Fill name, owner, 10-digit phone and address.");
+    if (data.commissionPct != null && !(data.commissionPct >= 0 && data.commissionPct <= 50)) throw new Error("Commission must be 0–50%.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const dup = await supabaseAdmin.from("merchants").select("id").is("deleted_at", null).or(`phone.eq.${data.phone},phone.eq.+91${data.phone}`).limit(1);
+    if (dup.data?.length) throw new Error("A merchant with this phone already exists.");
+    const row: any = { service_type: data.service, status: "draft", onboarding_step: 1, store_name: data.storeName, owner_name: data.ownerName,
+      phone: data.phone, address: data.address, latitude: data.lat, longitude: data.lng, commission_pct: data.commissionPct };
+    let r = await supabaseAdmin.from("merchants").insert(row).select("id").single();
+    if (r.error && /commission_pct/.test(r.error.message) && data.commissionPct == null) {
+      const d = await supabaseAdmin.from("ops_settings").select("value").eq("key", "store_default_commission_pct").maybeSingle();
+      row.commission_pct = Number((d.data as any)?.value ?? 10);
+      r = await supabaseAdmin.from("merchants").insert(row).select("id").single();
+    }
+    chk(r);
+    await audit(context, "merchant_draft_created", "merchants", r.data!.id, null, row);
+    return { id: r.data!.id as string };
   });

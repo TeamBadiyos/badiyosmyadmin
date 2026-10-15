@@ -98,7 +98,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      offlineRevenueRes,
     ] = await Promise.all([
       noBookings
         ? emptyCount
@@ -203,16 +202,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
               .select("*", countOnly).eq("is_training", false)
               .eq("status", "pending"),
           ),
-      noMerchants
-        ? emptyCount
-        : scopeMerchant(
-            db
-              .from("offline_sales")
-              .select("total_amount")
-              .gte("created_at", startOfDay)
-              .lt("created_at", endOfDay)
-              .limit(1000),
-          ),
     ]);
 
     for (const res of [
@@ -227,7 +216,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       activeOrdersRes,
       completedOrdersRes,
       pendingOrdersRes,
-      offlineRevenueRes,
     ]) {
       if (res.error) throw res.error;
     }
@@ -298,7 +286,6 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       orderRevenue += Math.max(0, charged - refundedOf(r, charged));
     }
 
-    const offlineRevenue = sum(offlineRevenueRes.data, "total_amount");
 
     const todayBookings = todayBookingsRes.count ?? 0;
     const todayOrders = todayOrdersRes.count ?? 0;
@@ -427,8 +414,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 
     return {
       freeWashers,
-      grossToday: bookingGross + orderGross + offlineRevenue + courierGross,
-      todayRevenue: bookingRevenue + orderRevenue + offlineRevenue + courierRevenue,
+      grossToday: bookingGross + orderGross + courierGross,
+      todayRevenue: bookingRevenue + orderRevenue + courierRevenue,
       gstCollectedToday: bookingGst + courierGst,
       todayTransactions: todayBookings + todayOrders + courierToday,
       activeNow:
