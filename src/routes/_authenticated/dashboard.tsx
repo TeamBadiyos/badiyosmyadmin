@@ -11,6 +11,8 @@ import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { usePageTabLabel } from "@/lib/page-tab";
 import { TrainingOrdersPage } from "@/components/training-orders-page";
+import { TrainingAddressTab } from "@/components/training-address-tab";
+import { CapacityMessagesPage } from "@/components/capacity-messages-page";
 import { GraduationCap } from "lucide-react";
 import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
 import { DashboardOverview } from "@/components/dashboard-overview";
@@ -165,14 +167,14 @@ const NAV_ITEMS = [
   { key: "offers", label: "Coupons", icon: Megaphone },
   { key: "campaigns", label: "Campaigns", icon: Megaphone },
   { key: "event-offers", label: "Event Offers", icon: Gift },
-  { key: "roles", label: "Roles & Permissions", icon: ShieldCheck },
+  { key: "roles", label: "Team", icon: ShieldCheck },
   { key: "settlements", label: "Settlement", icon: Landmark },
   { key: "reports", label: "Reports", icon: BarChart3 },
   { key: "legal", label: "Legal", icon: Scale },
-  { key: "notification-sounds", label: "Notification Sounds", icon: Volume2 },
+  { key: "notification-sounds", label: "Sounds", icon: Volume2 },
   { key: "support", label: "Support", icon: LifeBuoy },
   { key: "deletion-requests", label: "Deletions", icon: UserMinus },
-  { key: "audit", label: "Audit Logs", icon: ScrollText },
+  { key: "audit", label: "Audit log", icon: ScrollText },
   { key: "dispatch-alerts", label: "Alerts", icon: BellRing },
   { key: "courier", label: "Courier", icon: PackageCheck },
   { key: "courier-orders", label: "Orders", icon: PackageCheck },
@@ -183,15 +185,15 @@ const NAV_ITEMS = [
   { key: "store-orders", label: "Store", icon: Receipt },
   { key: "food-orders", label: "Food", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
-  { key: "services", label: "Service Status", icon: SlidersHorizontal },
-  { key: "tax-settings", label: "Tax Settings", icon: Percent },
-  { key: "fees", label: "Charges & Fees", icon: IndianRupee },
+  { key: "services", label: "Services", icon: SlidersHorizontal },
+  { key: "tax-settings", label: "Tax", icon: Percent },
+  { key: "fees", label: "Fees", icon: IndianRupee },
   { key: "fin-settlements", label: "Merchant Settlements", icon: Landmark },
   { key: "fin-instant", label: "Instant — Pay today", icon: Landmark },
   { key: "fin-refunds", label: "Refunds", icon: Receipt },
   { key: "fin-invoices", label: "Commission Invoices", icon: Receipt },
   { key: "fin-tax", label: "Tax Reports", icon: Percent },
-  { key: "company-profile", label: "Company Profile", icon: Settings },
+  { key: "company-profile", label: "Company", icon: Settings },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -261,7 +263,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["services", "tax-settings", "fees", "company-profile", "roles", "zones", "audit", "dispatch-alerts", "notification-sounds", "legal"],
+    keys: ["company-profile", "services", "zones", "tax-settings", "fees", "roles", "dispatch-alerts", "notification-sounds", "legal", "audit"],
   },
 ] as const;
 
@@ -768,12 +770,14 @@ function Shell() {
           <div className="space-y-8">
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training orders</h2><TrainingOrdersPage /></section>
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Skill approvals</h2><SkillApprovalsPage role={role} /></section>
+            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training address</h2><TrainingAddressTab /></section>
           </div>
         ) : active === "maid-settings" || active === "wash-settings" ? (
           <div className="space-y-6 max-w-4xl">
             <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
             <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
             <BookingTimingsTab />
+            <CapacityMessagesPage />
           </div>
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
