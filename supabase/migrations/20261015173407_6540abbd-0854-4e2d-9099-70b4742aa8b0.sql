@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.dispatch_limit_minutes(text,text) FROM authenticated;
