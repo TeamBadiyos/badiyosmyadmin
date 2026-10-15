@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ServiceHoursPanel } from "@/components/ops-panels";
-import { DefaultCommissionReadOnly } from "@/components/store-settings-page";
+import { DefaultCommissionReadOnly, StoreSettingsPage } from "@/components/store-settings-page";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, Plus, Search, Upload, Volume2, VolumeX } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, MapPin, MessageCircle, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
+import { decideMerchant, setMerchantCommission, getStoreCommissionSettings } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -34,7 +37,6 @@ const move = <T,>(arr: T[], i: number, d: -1 | 1) => {
 };
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-const STATUSES = ["pending", "placed", "accepted", "preparing", "ready", "picked_up", "delivered", "rejected", "cancelled"];
 type Tab = "orders" | "stores" | "approvals" | "categories" | "sponsored" | "settings";
 
 function useLabels(svc: Svc) {
@@ -91,109 +93,112 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
       {tab === "approvals" && <ApprovalsTab service={service} />}
       {tab === "categories" && <CategoriesTab service={service} role={role} />}
       {tab === "sponsored" && <SponsoredTab service={service} role={role} />}
-      {tab === "settings" && (<div className="space-y-5">{service === "food" ? <DefaultCommissionReadOnly /> : null}<SettingsTab service={service} role={role} /><ServiceHoursPanel serviceKey={service} title={service === "food" ? "Food opening hours" : "Store opening hours"} /></div>)}
+      {tab === "settings" && (<div className="space-y-5">{service === "food" ? <DefaultCommissionReadOnly /> : <StoreSettingsPage hideGst />}<SettingsTab service={service} role={role} /><ServiceHoursPanel serviceKey={service} title={service === "food" ? "Food opening hours" : "Store opening hours"} /></div>)}
     </div>
   );
 }
 
 /* ================= Orders ================= */
 
+const ORDER_STATUS: { v: string; l: string }[] = [
+  { v: "", l: "All" }, { v: "delivered", l: "Delivered" }, { v: "cancelled", l: "Cancelled" }, { v: "refunded", l: "Refunded" },
+];
+type OSort = "customer" | "store" | "items" | "amount" | "status" | "rider" | "placed";
+
 function OrdersTab({ service }: { service: Svc }) {
   const fn = useServerFn(listServiceOrders);
+  const storesFn = useServerFn(listServiceStores);
   const [status, setStatus] = useState("");
+  const [store, setStore] = useState("");
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [sort, setSort] = useState<{ k: OSort; asc: boolean }>({ k: "placed", asc: false });
   const [openId, setOpenId] = useState<string | null>(null);
   const L = useLabels(service);
-  const r = useQuery({
-    queryKey: ["svc", service, "orders", status, q, from, to],
-    queryFn: () => fn({ data: { service, status: status || null, q, from: from || null, to: to || null } }),
-    refetchInterval: 30000,
-  });
   const qc = useQueryClient();
-  const pend = useQuery({
-    queryKey: ["svc", service, "orders", "pending-alert"],
-    queryFn: () => fn({ data: { service, status: "pending", q: "", from: null, to: null } }),
-    refetchInterval: 30000,
+  const r = useQuery({
+    queryKey: ["svc", service, "orders", status === "refunded" ? "" : status, q, from, to],
+    queryFn: () => fn({ data: { service, status: status === "refunded" ? null : status || null, q, from: from || null, to: to || null } }),
   });
-  const pendingCount = (pend.data ?? []).length;
-  const [muted, setMuted] = useState(false);
-  useEffect(() => { setMuted(localStorage.getItem("commerce-audio-muted") === "1"); }, []);
-  // Realtime: any order change refreshes the list (same as old live board)
+  const stores = useQuery({ queryKey: ["svc", service, "stores"], queryFn: () => storesFn({ data: { service } }) });
+  // Keep the list fresh quietly (no sound, no live chips).
   useEffect(() => {
     const ch = supabase.channel(`svc-orders-${service}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "merchant_orders" }, () => {
         qc.invalidateQueries({ queryKey: ["svc", service, "orders"] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "courier_orders" }, () => {
-        qc.invalidateQueries({ queryKey: ["svc", service, "orders"] });
-      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [service, qc]);
-  // New-order beep (620 Hz, every 1.8s) while unaccepted paid orders wait
-  useEffect(() => {
-    if (muted || pendingCount === 0) return;
-    let ctx: AudioContext | null = null;
-    const beep = () => {
-      try {
-        ctx = ctx ?? new (window.AudioContext || (window as any).webkitAudioContext)();
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = "triangle"; o.frequency.value = 620;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-        o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.55);
-      } catch { /* audio blocked until user interacts */ }
-    };
-    beep();
-    const t = setInterval(beep, 1800);
-    return () => { clearInterval(t); ctx?.close().catch(() => {}); };
-  }, [muted, pendingCount]);
-  const toggleMute = () => { const n = !muted; setMuted(n); localStorage.setItem("commerce-audio-muted", n ? "1" : "0"); };
+  const val = (o: any, k: OSort): string | number => {
+    switch (k) {
+      case "customer": return (o.customer_name || "").toLowerCase();
+      case "store": return (o.store_name || "").toLowerCase();
+      case "items": return Number(o.item_count ?? o.items_count ?? 0);
+      case "amount": return Number(o.total_payable ?? o.total_amount ?? 0);
+      case "status": return o.status || "";
+      case "rider": return (o.rider_name || "").toLowerCase();
+      default: return o.created_at || "";
+    }
+  };
+  const rows = useMemo(() => {
+    let x = (r.data ?? []) as any[];
+    if (status === "refunded") x = x.filter((o) => o.refund_status === "done");
+    if (store) x = x.filter((o) => o.merchant_id === store || o.store_name === store);
+    return [...x].sort((a, b) => {
+      const A = val(a, sort.k), B = val(b, sort.k);
+      return (A < B ? -1 : A > B ? 1 : 0) * (sort.asc ? 1 : -1);
+    });
+  }, [r.data, status, store, sort]);
+  const H = ({ k, l, right }: { k: OSort; l: string; right?: boolean }) => (
+    <th className={`p-3 font-semibold ${right ? "text-right" : "text-left"}`}>
+      <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => setSort((s) => ({ k, asc: s.k === k ? !s.asc : true }))}>
+        {l}{sort.k === k ? (sort.asc ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : null}
+      </button>
+    </th>
+  );
   return (
     <div className="space-y-3">
-      {pendingCount > 0 && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-3 flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-destructive">{pendingCount} new order{pendingCount > 1 ? "s" : ""} waiting for {L.store.toLowerCase()} to accept</p>
-          <Button size="sm" variant="outline" onClick={() => setStatus("pending")}>Show</Button>
-        </div>
-      )}
       <div className="flex flex-wrap gap-2 items-center">
-        <Button size="sm" variant="outline" onClick={toggleMute} aria-label={muted ? "Unmute alert" : "Mute alert"}>
-          {muted ? <VolumeX size={14} /> : <Volume2 size={14} />} {muted ? "Sound off" : "Sound on"}
-        </Button>
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
-          <Input className="pl-8 w-56" placeholder="Order no / phone" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-8 w-64" placeholder="Customer, order no or phone" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <Input type="date" className="w-40" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" className="w-40" value={to} onChange={(e) => setTo(e.target.value)} />
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+          {ORDER_STATUS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+        </select>
+        <select className="h-9 rounded-md border bg-background px-2 text-sm max-w-48" value={store} onChange={(e) => setStore(e.target.value)}>
+          <option value="">All {L.stores.toLowerCase()}</option>
+          {(stores.data ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.store_name}</option>)}
+        </select>
+        <Input type="date" className="w-40" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" />
+        <Input type="date" className="w-40" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" />
+        <span className="text-sm text-muted-foreground ml-auto">{rows.length} orders</span>
       </div>
-      <div className="flex flex-wrap gap-1">
-        {["", ...STATUSES].map((s) => (
-          <Button key={s || "all"} size="sm" variant={status === s ? "default" : "outline"} onClick={() => setStatus(s)}>
-            {s ? s.replace("_", " ") : "All"}
-          </Button>
-        ))}
-      </div>
-      <div className="rounded-lg border bg-card divide-y">
-        {r.isLoading && <p className="p-4 text-sm text-muted-foreground">Loading…</p>}
-        {r.error && <p className="p-4 text-sm text-destructive">{errMsg(r.error)}</p>}
-        {r.data?.length === 0 && <p className="p-4 text-sm text-muted-foreground">No orders.</p>}
-        {(r.data ?? []).map((o: any) => (
-          <button key={o.id} onClick={() => setOpenId(o.id)} className="w-full text-left p-3 hover:bg-muted/50 flex flex-wrap justify-between gap-2">
-            <div>
-              <p className="font-semibold text-sm">{o.order_number} · {o.store_name}</p>
-              <p className="text-xs text-muted-foreground">{o.customer_name || "Customer"} · {o.customer_phone || "—"} · {dt(o.created_at)}</p>
-            </div>
-            <div className="text-right">
-              <Badge variant="outline">{o.status}</Badge>
-              <OrderPaymentSummary paid={Number(o.total_payable ?? o.total_amount ?? 0)} className="justify-end mt-1" />
-            </div>
-          </button>
-        ))}
+      <div className="rounded-xl border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-muted-foreground border-b"><tr>
+            <H k="customer" l="Customer" /><H k="store" l={L.store} /><H k="items" l="Items" right /><H k="amount" l="Amount" right />
+            <H k="status" l="Status" /><H k="rider" l="Rider" /><H k="placed" l="Placed" />
+          </tr></thead>
+          <tbody>
+            {r.isLoading && <tr><td colSpan={7} className="p-4 text-muted-foreground">Loading…</td></tr>}
+            {r.error && <tr><td colSpan={7} className="p-4 text-destructive">{errMsg(r.error)}</td></tr>}
+            {r.data && rows.length === 0 && <tr><td colSpan={7} className="p-4 text-muted-foreground">No orders.</td></tr>}
+            {rows.map((o: any) => (
+              <tr key={o.id} onClick={() => setOpenId(o.id)} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
+                <td className="p-3"><p className="font-semibold">{o.customer_name || "Customer"}</p><p className="text-xs text-muted-foreground">{o.order_number}</p></td>
+                <td className="p-3">{o.store_name}</td>
+                <td className="p-3 text-right">{o.item_count ?? o.items_count ?? "—"}</td>
+                <td className="p-3 text-right font-semibold">{inr(o.total_payable ?? o.total_amount)}</td>
+                <td className="p-3 capitalize">{o.refund_status === "done" ? "Refunded" : String(o.status ?? "").replace("_", " ")}</td>
+                <td className="p-3">{o.rider_name || "—"}</td>
+                <td className="p-3 whitespace-nowrap text-muted-foreground">{dt(o.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       {openId && <OrderDetail id={openId} service={service} storeLabel={L.store} onClose={() => setOpenId(null)} />}
     </div>
@@ -290,45 +295,123 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
 
 /* ================= Stores ================= */
 
+type SChip = "live" | "pending" | "draft" | "closed" | "suspended";
+const chipOf = (s: any): SChip | null =>
+  s.status === "pending_review" ? "pending" : s.status === "draft" ? "draft" : s.status === "suspended" ? "suspended"
+    : s.status === "approved" ? (s.is_open ? "live" : "closed") : null;
+const CHIP_LABEL: Record<SChip, string> = { live: "Live", pending: "Pending review", draft: "Draft", closed: "Closed", suspended: "Suspended" };
+const todayHours = (h: any): string => {
+  if (!h) return "Hours not set";
+  if (typeof h === "string") return h;
+  const day = new Date().toLocaleDateString("en-US", { weekday: "short" }).toLowerCase();
+  const d = h[day] ?? h[day.slice(0, 3)] ?? h[new Date().getDay()];
+  if (!d) return "Hours not set";
+  if (typeof d === "string") return d;
+  if (d.closed) return "Closed today";
+  return d.open && d.close ? `${d.open} – ${d.close}` : "Hours not set";
+};
+
 function StoresTab({ service, role }: { service: Svc; role: string }) {
   const L = useLabels(service);
+  const qc = useQueryClient();
   const fn = useServerFn(listServiceStores);
+  const settingsFn = useServerFn(getStoreCommissionSettings);
+  const decide = useServerFn(decideMerchant);
+  const setComm = useServerFn(setMerchantCommission);
   const r = useQuery({ queryKey: ["svc", service, "stores"], queryFn: () => fn({ data: { service } }) });
-  const [open, setOpen] = useState<"" | "open" | "closed">("");
-  const [appr, setAppr] = useState("");
+  const def = useQuery({ queryKey: ["store", "commission-settings"], queryFn: () => settingsFn() });
+  const [chip, setChip] = useState<SChip>("live");
+  const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
+  const [approveFor, setApproveFor] = useState<any | null>(null);
+  const [commission, setCommission] = useState("");
+  const [rejectFor, setRejectFor] = useState<any | null>(null);
+  const [queryFor, setQueryFor] = useState<any | null>(null);
+  const canManage = role === "super_admin" || role === "ops_manager";
+  const defPct = Number(def.data?.defaultPct ?? 10);
+  const approve = useMutation({
+    mutationFn: async () => {
+      const pct = Number(commission);
+      if (commission.trim() && Number.isFinite(pct) && pct !== Number(approveFor.commission_pct ?? -1)) {
+        await setComm({ data: { merchantId: approveFor.id, pct } });
+      }
+      await decide({ data: { merchantId: approveFor.id, decision: "approved" } });
+    },
+    onSuccess: () => { toast.success(`${L.store} approved`); setApproveFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); qc.invalidateQueries({ queryKey: ["merchants"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
   if (sel) return <StoreDetail service={service} storeId={sel} role={role} onBack={() => setSel(null)} />;
-  const rows = (r.data ?? []).filter((s: any) => (!open || (open === "open") === !!s.is_open) && (!appr || s.status === appr));
+  const all = (r.data ?? []) as any[];
+  const counts = all.reduce((m: Record<string, number>, s) => { const c = chipOf(s); if (c) m[c] = (m[c] ?? 0) + 1; return m; }, {});
+  const needle = q.trim().toLowerCase();
+  const rows = all.filter((s) => chipOf(s) === chip && (!needle || [s.store_name, s.owner_name, s.phone, s.city].some((v) => String(v ?? "").toLowerCase().includes(needle))));
+  const noComm = (s: any) => s.commission_pct == null || Number(s.commission_pct) === 0;
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-1">
-        {(["", "open", "closed"] as const).map((v) => <Button key={v || "a"} size="sm" variant={open === v ? "default" : "outline"} onClick={() => setOpen(v)}>{v || "All"}</Button>)}
-        <span className="mx-2" />
-        {["", "approved", "draft", "rejected", "suspended"].map((v) => <Button key={v || "b"} size="sm" variant={appr === v ? "default" : "outline"} onClick={() => setAppr(v)}>{v || "Any approval"}</Button>)}
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-center">
+        {(Object.keys(CHIP_LABEL) as SChip[]).map((c) => (
+          <button key={c} onClick={() => setChip(c)}
+            className={`h-9 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${chip === c ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}>
+            {CHIP_LABEL[c]} {counts[c] ?? 0}
+          </button>
+        ))}
+        <div className="relative ml-auto">
+          <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
+          <Input className="pl-8 w-60" placeholder={`Search ${L.stores.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
       </div>
-      <div className="rounded-lg border bg-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground"><tr className="border-b">
-            <th className="text-left p-2">{L.store}</th><th className="text-left p-2">Open</th><th className="text-left p-2">Approval</th>
-            <th className="text-right p-2">Rating</th><th className="text-right p-2">Commission</th><th className="text-right p-2">Today</th>
-          </tr></thead>
-          <tbody>
-            {r.isLoading && <tr><td className="p-3 text-muted-foreground" colSpan={6}>Loading…</td></tr>}
-            {r.error && <tr><td className="p-3 text-destructive" colSpan={6}>{errMsg(r.error)}</td></tr>}
-            {rows.map((s: any) => (
-              <tr key={s.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer" onClick={() => setSel(s.id)}>
-                <td className="p-2"><p className="font-semibold">{s.store_name}</p><p className="text-xs text-muted-foreground">{s.city}</p></td>
-                <td className="p-2">{s.is_open ? <Badge>Open</Badge> : <Badge variant="secondary">Closed</Badge>}</td>
-                <td className="p-2"><Badge variant="outline">{s.status}</Badge></td>
-                <td className="p-2 text-right">{Number(s.rating_count) >= 3 ? `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` : ""}</td>
-                <td className="p-2 text-right">{s.commission_pct}%</td>
-                <td className="p-2 text-right">{s.today_orders}</td>
-              </tr>
-            ))}
-            {r.data && rows.length === 0 && <tr><td className="p-3 text-muted-foreground" colSpan={6}>Nothing here.</td></tr>}
-          </tbody>
-        </table>
+      {r.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {r.error && <p className="text-sm text-destructive">{errMsg(r.error)}</p>}
+      {r.data && rows.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">Nothing here.</p>}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map((s) => {
+          const c = chipOf(s)!;
+          const review = c === "pending" || c === "draft";
+          return (
+            <div key={s.id} className="rounded-2xl border bg-card overflow-hidden flex flex-col">
+              <button onClick={() => setSel(s.id)} className="text-left flex-1">
+                <div className="h-32 bg-muted">
+                  {s.photo ? <img src={s.photo} alt={s.store_name} className="h-full w-full object-cover" /> : null}
+                </div>
+                <div className="p-4 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-bold truncate">{s.store_name || "Unnamed"}</p>
+                    <Badge variant={c === "live" ? "default" : c === "suspended" ? "destructive" : "secondary"} className="whitespace-nowrap">{CHIP_LABEL[c]}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{s.store_type || (service === "food" ? "Restaurant" : "Store type not set")}</p>
+                  <p className="text-xs text-muted-foreground">{todayHours(s.store_hours)} · {s.live_items} live items</p>
+                  {review && noComm(s) && <p className="text-xs text-muted-foreground">Commission will be {defPct}% (default)</p>}
+                </div>
+              </button>
+              {review && canManage && (
+                <div className="px-4 pb-4 flex gap-2">
+                  <Button size="sm" onClick={() => { setApproveFor(s); setCommission(noComm(s) ? "" : String(s.commission_pct)); }}>Approve</Button>
+                  <Button size="sm" variant="outline" onClick={() => setQueryFor(s)}>Raise query</Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectFor(s)}>Reject</Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
+      {approveFor && (
+        <Dialog open onOpenChange={(v) => !v && setApproveFor(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Approve {approveFor.store_name}</DialogTitle></DialogHeader>
+            <div className="space-y-1">
+              <Label>Commission %</Label>
+              <Input type="number" min={0} max={50} placeholder={`${defPct} (default)`} value={commission} onChange={(e) => setCommission(e.target.value)} />
+              <p className="text-xs text-muted-foreground">{commission.trim() ? `Commission will be ${commission}%` : `Commission will be ${defPct}% (default)`}</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setApproveFor(null)}>Cancel</Button>
+              <Button disabled={approve.isPending} onClick={() => approve.mutate()}>{approve.isPending ? "Approving…" : "Approve"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {rejectFor && <RejectModal merchant={{ id: rejectFor.id, storeName: rejectFor.store_name } as any} onClose={() => { setRejectFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
+      {queryFor && <QueryModal merchant={{ id: queryFor.id, storeName: queryFor.store_name } as any} onClose={() => { setQueryFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
     </div>
   );
 }
@@ -355,9 +438,31 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
       {r.error && <p className="text-sm text-destructive">{errMsg(r.error)}</p>}
       {s && (
         <>
-          <h2 className="text-lg font-bold">{s.store_name}</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            {s.shop_photo_url ? <img src={s.shop_photo_url} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="h-14 w-14 rounded-xl bg-muted" />}
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold truncate">{s.store_name}</h2>
+              <p className="text-xs text-muted-foreground">{(r.data?.storeTypes ?? []).find((x: any) => x.id === s.store_category_id)?.name ?? (service === "food" ? "Restaurant" : "Store type not set")} · {s.status === "suspended" ? "Suspended" : s.status}</p>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm">{s.is_open ? "Open" : "Closed"}</span>
+              <Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} />
+              {s.phone && <Button size="icon" variant="outline" asChild aria-label="WhatsApp"><a href={`https://wa.me/91${String(s.phone).replace(/\D/g, "").slice(-10)}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /></a></Button>}
+              {(s.latitude != null || s.address) && <Button size="icon" variant="outline" asChild aria-label="Maps"><a href={s.latitude != null ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}` : `https://www.google.com/maps/search/${encodeURIComponent(s.address)}`} target="_blank" rel="noreferrer"><MapPin size={16} /></a></Button>}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label="More"><MoreHorizontal size={16} /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {s.status === "suspended" ? (
+                    <DropdownMenuItem onClick={() => { const reason = window.prompt("Reason to reactivate"); if (reason?.trim()) act.mutate({ kind: "approve", reason }); }}>Reactivate</DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem className="text-destructive" onClick={() => { const reason = window.prompt("Reason to suspend"); if (reason?.trim()) act.mutate({ kind: "suspend", reason }); }}>Suspend</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
           <div className="flex gap-1 border-b overflow-x-auto">
-            {([["profile", "Profile"], ["commercials", "Commercials"], ["products", L.products], ["staff", "Staff"], ["settlements", "Settlements"]] as [DTab, string][]).map(([k, l]) => (
+            {([["profile", "Overview"], ["products", L.products], ["commercials", "Commercials"], ["staff", "Staff"], ["settlements", "Settlements"]] as [DTab, string][]).map(([k, l]) => (
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
             ))}
           </div>
@@ -401,7 +506,7 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
       <div className="rounded-lg border bg-card p-4 space-y-1 text-sm">
         <Row k="Owner" v={s.owner_name || "—"} /><Row k="Phone" v={s.phone || "—"} /><Row k="City" v={s.city || "—"} />
         <Row k="Address" v={<span className="text-right max-w-[60%] inline-block">{s.address || "—"}</span>} />
-        <Row k="GSTIN" v={s.gstin || "—"} /><Row k="Approval" v={<Badge variant="outline">{s.status}</Badge>} />
+        <Row k="GSTIN" v={s.gstin || "—"} /><Row k="PAN" v={s.pan || "—"} /><Row k="Bank" v={s.bank_account_number ? `${s.bank_account_holder_name || "—"} · ••••${String(s.bank_account_number).slice(-4)}` : <span className="text-destructive font-semibold">Bank details pending</span>} /><Row k="Approval" v={<Badge variant="outline">{s.status}</Badge>} />
         <Row k="Rating" v={Number(s.rating_count) >= 3 ? `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` : ""} />
       </div>
       <div className="rounded-lg border bg-card p-4 space-y-4">
@@ -415,7 +520,6 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
             </select>
           </div>
         )}
-        <div className="flex items-center justify-between"><Label>Open now</Label><Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} /></div>
         <div className="space-y-1">
           <Label>Offer line ({offer.length}/60)</Label>
           <div className="flex gap-2"><Input maxLength={60} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="e.g. 20% off on first order" />

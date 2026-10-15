@@ -180,8 +180,8 @@ const NAV_ITEMS = [
   { key: "courier-types", label: "Parcel Types", icon: Boxes },
   { key: "courier-bulk", label: "Bulk / Business Delivery", icon: Truck },
   { key: "courier-settings", label: "Settings", icon: Settings },
-  { key: "store-orders", label: "Manage Store", icon: Receipt },
-  { key: "food-orders", label: "Manage Food", icon: UtensilsCrossed },
+  { key: "store-orders", label: "Store", icon: Receipt },
+  { key: "food-orders", label: "Food", icon: UtensilsCrossed },
   { key: "store-settings", label: "Settings", icon: Settings },
   { key: "services", label: "Service Status", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax Settings", icon: Percent },
@@ -219,7 +219,7 @@ const NAV_GROUPS = [
     id: "store",
     label: "Store",
     icon: Store,
-    keys: ["store-orders", "merchants", "live-stores", "store-categories", "store-settings"],
+    keys: ["store-orders"],
   },
   {
     id: "food",
@@ -268,7 +268,7 @@ const NAV_GROUPS = [
 const GROUPED_KEYS: ReadonlyArray<string> = NAV_GROUPS.flatMap((g) => g.keys as ReadonlyArray<string>);
 
 // Reachable (old links, notifications) but never listed in the sidebar.
-const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board"];
+const HIDDEN_KEYS: ReadonlyArray<string> = ["courier", "catalogue", "task-types", "skills", "training-orders", "bookings", "live-board", "merchants", "live-stores", "store-categories", "store-settings"];
 
 const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   courier: "courier-orders",
