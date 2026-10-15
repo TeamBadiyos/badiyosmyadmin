@@ -3647,6 +3647,7 @@ export type Database = {
           created_at: string
           id: string
           no_accept_alert_threshold_seconds: number
+          no_accept_minutes: Json | null
           no_expert_timeout_minutes: number
           ops_alert_whatsapp_numbers: string[]
           radius_expand_after_seconds: number
@@ -3663,6 +3664,7 @@ export type Database = {
           created_at?: string
           id?: string
           no_accept_alert_threshold_seconds?: number
+          no_accept_minutes?: Json | null
           no_expert_timeout_minutes?: number
           ops_alert_whatsapp_numbers?: string[]
           radius_expand_after_seconds?: number
@@ -3679,6 +3681,7 @@ export type Database = {
           created_at?: string
           id?: string
           no_accept_alert_threshold_seconds?: number
+          no_accept_minutes?: Json | null
           no_expert_timeout_minutes?: number
           ops_alert_whatsapp_numbers?: string[]
           radius_expand_after_seconds?: number
@@ -11850,6 +11853,10 @@ export type Database = {
       staff_send_campaign_test: {
         Args: { _id: string; _phone: string }
         Returns: Json
+      }
+      staff_send_support_attachment: {
+        Args: { _body: string; _path: string; _ticket_id: string }
+        Returns: undefined
       }
       staff_send_support_message: {
         Args: { _body: string; _ticket_id: string }
