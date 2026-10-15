@@ -604,17 +604,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
-        {(["regular", "corporate"] as const).map((sg) => (
-          <button
-            key={sg}
-            onClick={() => setSegTab(sg)}
-            className={`rounded-[10px] px-4 py-1.5 text-[12px] font-bold ${segTab === sg ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            {sg === "regular" ? "Regular" : "Corporate"}
-          </button>
-        ))}
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span />
         {canWrite ? (
@@ -627,56 +616,71 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
         ) : null}
       </div>
 
-      {rows.map((r) => (
-        <div key={r.id} className="rounded-[16px] border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Bike size={16} className="text-primary" />
-              <span className="text-[14px] font-bold text-foreground">{r.vehicleName}</span>
-              <Pill tone="info">{r.city}</Pill>
-              {r.is_placeholder ? <Pill tone="warn">Placeholder</Pill> : <Pill tone="ok">Confirmed</Pill>}
-            </div>
-            <div className="flex items-center gap-2">
-              {canWrite ? (
-                <button
-                  onClick={() => setDraft(rateDraft(r))}
-                  className="flex items-center gap-1 rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted"
-                >
-                  <Pencil size={13} /> Edit
-                </button>
-              ) : null}
-              {canWrite && r.is_placeholder ? (
-                <button
-                  onClick={async () => {
-                    try {
-                      await confirm({ data: { id: r.id } });
-                      toast.success("Rate marked as confirmed");
-                      refresh();
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Update failed");
-                    }
-                  }}
-                  className="flex items-center gap-1 rounded-[10px] bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground"
-                >
-                  <CheckCircle2 size={13} /> Mark as confirmed
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-2 grid gap-1 text-[12px] text-muted-foreground sm:grid-cols-3">
-            <span>Base ₹{r.base_fare} · {r.included_km} km included</span>
-            <span>Per km ₹{r.per_km} · Min ₹{r.min_fare}</span>
-            <span>Platform ₹{r.platform_fee} · Commission {r.commission_pct}%</span>
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Extra pickup ₹{r.extra_pickup_fee} · Extra drop ₹{r.extra_drop_fee} · Max{" "}
-            {r.max_pickups == null && r.max_drops == null
-              ? "No limit"
-              : `${r.max_pickups ?? "No limit"}/${r.max_drops ?? "No limit"}`}{" "}
-            · Return ₹{r.return_per_km}/km
-          </p>
-        </div>
-      ))}
+      <div className="overflow-x-auto rounded-[16px] border border-border bg-card">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2.5">Vehicle</th>
+              <th className="px-3 py-2.5">City</th>
+              <th className="px-3 py-2.5 text-right">Base (incl. km)</th>
+              <th className="px-3 py-2.5 text-right">Per km</th>
+              <th className="px-3 py-2.5 text-right">Min fare</th>
+              <th className="px-3 py-2.5 text-right">Extra stop</th>
+              <th className="px-3 py-2.5 text-right">Return/km</th>
+              <th className="px-3 py-2.5 text-right">Commission</th>
+              <th className="px-3 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-4 text-muted-foreground">No rates yet.</td></tr>
+            ) : null}
+            {rows.map((r) => (
+              <tr key={r.id} className="border-b border-border last:border-0">
+                <td className="px-3 py-2.5 font-bold text-foreground">
+                  {r.vehicleName}
+                  {r.is_placeholder ? <span className="ml-1.5"><Pill tone="warn">Placeholder</Pill></span> : null}
+                </td>
+                <td className="px-3 py-2.5 text-foreground">{r.city}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.base_fare} · {r.included_km} km</td>
+                <td className="px-3 py-2.5 text-right">₹{r.per_km}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.min_fare}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.extra_drop_fee}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.return_per_km}</td>
+                <td className="px-3 py-2.5 text-right">{r.commission_pct}%</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex justify-end gap-1.5">
+                    {canWrite && r.is_placeholder ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await confirm({ data: { id: r.id } });
+                            toast.success("Rate marked as confirmed");
+                            refresh();
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Update failed");
+                          }
+                        }}
+                        className="flex items-center gap-1 rounded-[10px] border border-border px-2.5 py-1 text-[12px] font-semibold text-foreground hover:bg-muted"
+                      >
+                        <CheckCircle2 size={13} /> Confirm
+                      </button>
+                    ) : null}
+                    {canWrite ? (
+                      <button
+                        onClick={() => setDraft(rateDraft(r))}
+                        className="flex items-center gap-1 rounded-[10px] border border-border px-2.5 py-1 text-[12px] font-semibold text-foreground hover:bg-muted"
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {draft ? (
         <Modal title={draft.id ? "Edit rate" : "New rate"} onClose={() => setDraft(null)}>
