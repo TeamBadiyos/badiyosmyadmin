@@ -103,6 +103,7 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
   const [categoryModal, setCategoryModal] = useState<
     { segment: CatalogueSegment; category: CatalogueCategory | null } | null
   >(null);
+  const delServiceFn = useServerFn(deleteService);
   const [serviceModal, setServiceModal] = useState<
     { category: CatalogueCategory; service: CatalogueService | null } | null
   >(null);
@@ -246,12 +247,21 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
               <div className="divide-y divide-border">
                 {svcs.map((svc) => (
                   <div key={svc.id}>
-                    {svcs.length > 1 && (
-                      <div className="flex items-center gap-2 px-5 pt-3 text-[12px] font-semibold text-muted-foreground">
-                        <span className="truncate">{svc.name}</span>
-                        <button onClick={() => setServiceModal({ category: cat, service: svc })} className="underline">Edit</button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 px-5 pt-3 text-[12px] font-semibold text-muted-foreground">
+                      <span className="truncate">{svc.name}</span>
+                      <button onClick={() => setServiceModal({ category: cat, service: svc })} className="underline">Edit service</button>
+                      <button
+                        className="underline text-destructive"
+                        onClick={() => {
+                          if (!window.confirm(`Delete service "${svc.name}"?`)) return;
+                          delServiceFn({ data: { id: svc.id } })
+                            .then(() => { toast.success("Service deleted"); queryClient.invalidateQueries({ queryKey: ["catalogue"] }); })
+                            .catch((e: Error) => toast.error(e.message));
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                     {(optionsByService.get(svc.id) ?? []).map((o) => (
                       <div key={o.id} className="flex items-center gap-3 px-5 py-3">
                         <span className="flex-1 min-w-0 truncate text-[14px] font-medium text-foreground">{o.label}</span>
@@ -283,16 +293,20 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
                     ))}
                   </div>
                 ))}
-                <div className="px-5 py-3">
+                <div className="px-5 py-3 flex flex-wrap gap-4">
+                  {svcs[0] && (
+                    <button
+                      onClick={() => setOptionModal({ service: svcs[0], option: null })}
+                      className="text-[13px] font-semibold text-primary inline-flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <Plus size={14} /> Add option
+                    </button>
+                  )}
                   <button
-                    onClick={() =>
-                      svcs[0]
-                        ? setOptionModal({ service: svcs[0], option: null })
-                        : setServiceModal({ category: cat, service: null })
-                    }
+                    onClick={() => setServiceModal({ category: cat, service: null })}
                     className="text-[13px] font-semibold text-primary inline-flex items-center gap-1 whitespace-nowrap"
                   >
-                    <Plus size={14} /> Add option
+                    <Plus size={14} /> Add service
                   </button>
                 </div>
               </div>
