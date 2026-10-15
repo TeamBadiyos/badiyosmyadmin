@@ -11767,6 +11767,16 @@ export type Database = {
         Args: { _customer: string; _order_id: string; _service: string }
         Returns: undefined
       }
+      notify_merchant_push: {
+        Args: {
+          _alert_type: string
+          _body: string
+          _data: Json
+          _merchant_id: string
+          _title: string
+        }
+        Returns: undefined
+      }
       notify_push_event: {
         Args: {
           _alert_type: string
