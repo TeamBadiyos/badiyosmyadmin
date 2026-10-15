@@ -8,3 +8,4 @@
 - [x] Clean: separate Book Now switches for Home and Auto (UI + booking checks).
 - [x] Clean: separate opening hours for Auto (copy of Clean), wash slots/bookings use Auto hours, Service Status shows both read-only.
 - [x] Board cards: instant bookings show "Now"; Done-today cards show amount only (on the way / arrived shown only while in progress).
+- [x] Live Ops redesign: Support two-pane chat (ticks, unread, notes, quick replies, assign), SOS chips, Suggestions list-first + More filters, badge, Business trips on Dashboard, Dispatch Alerts → Settings.
