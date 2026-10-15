@@ -17,6 +17,12 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--card-foreground);
   --color-primary: var(--primary);
+  --color-svc-maid: #00b97a;
+  --color-svc-wash: #222831;
+  --color-svc-store: #7c3aed;
+  --color-svc-food: #dc2626;
+  --color-svc-parcel: #2563eb;
+  --color-svc-foreground: #ffffff;
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-tint: var(--primary-tint);
   --color-secondary: var(--secondary);

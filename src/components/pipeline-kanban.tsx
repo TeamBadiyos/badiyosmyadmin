@@ -36,6 +36,40 @@ import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
+import { CommerceCard, OrderSheet } from "@/components/commerce-kanban";
+import { listCommercePipeline, type CommerceOrder, type CommerceStatus } from "@/lib/commerce.functions";
+
+export type BoardService = "maid" | "wash" | "store" | "food" | "parcel";
+export const SERVICE_META: Record<BoardService, { label: string; strip: string; dot: string }> = {
+  maid: { label: "Maid", strip: "bg-svc-maid", dot: "bg-svc-maid" },
+  wash: { label: "Car/Bike Wash", strip: "bg-svc-wash", dot: "bg-svc-wash" },
+  store: { label: "Store", strip: "bg-svc-store", dot: "bg-svc-store" },
+  food: { label: "Food", strip: "bg-svc-food", dot: "bg-svc-food" },
+  parcel: { label: "Parcel", strip: "bg-svc-parcel", dot: "bg-svc-parcel" },
+};
+const UNIFIED_LABELS: Record<PipelineStatus, string> = {
+  confirmed: "Scheduled",
+  accepted: "New / To assign",
+  expert_assigned: "Assigned",
+  in_progress: "In progress",
+  completed: "Done today",
+} as Record<PipelineStatus, string>;
+function commerceColumn(s: CommerceStatus): PipelineStatus {
+  if (s === "pending") return "accepted";
+  if (s === "accepted") return "expert_assigned";
+  if (s === "completed") return "completed";
+  return "in_progress";
+}
+function Strip({ svc, children }: { svc: BoardService; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[12px] overflow-hidden shadow-sm">
+      <div className={`${SERVICE_META[svc].strip} text-svc-foreground px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide`}>
+        {SERVICE_META[svc].label}
+      </div>
+      <div className="[&>*]:rounded-t-none">{children}</div>
+    </div>
+  );
+}
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [
   { key: "confirmed", label: "Scheduled Orders" },
@@ -151,10 +185,34 @@ function stopBeep(ref: React.MutableRefObject<AudioHandle | null>) {
 export function PipelineKanban({
   role,
   segmentId = null,
+  unified = false,
 }: {
   role: StaffRole | null;
   segmentId?: string | null;
+  /** Dashboard mode: merges Store/Food orders in, adds service chips, Live/Training and coloured strips. */
+  unified?: boolean;
 }) {
+  const [training, setTraining] = useState(false);
+  const [svcFilter, setSvcFilter] = useState<BoardService | "all">("all");
+  const fetchCommerce = useServerFn(listCommercePipeline);
+  const canSeeCommerce = unified && (role === "super_admin" || role === "ops_manager");
+  const storeQ = useQuery({
+    queryKey: ["commerce", "board", "unified", "store", training],
+    queryFn: () => fetchCommerce({ data: { segmentId: null, training, service: "store" } }),
+    enabled: canSeeCommerce, refetchInterval: 30_000, refetchOnWindowFocus: false,
+  });
+  const foodQ = useQuery({
+    queryKey: ["commerce", "board", "unified", "food", training],
+    queryFn: () => fetchCommerce({ data: { segmentId: null, training, service: "food" } }),
+    enabled: canSeeCommerce, refetchInterval: 30_000, refetchOnWindowFocus: false,
+  });
+  const commerceAll = useMemo(() => [
+    ...((storeQ.data?.orders ?? []) as CommerceOrder[]).map((o) => ({ o, svc: "store" as const })),
+    ...((foodQ.data?.orders ?? []) as CommerceOrder[]).map((o) => ({ o, svc: "food" as const })),
+  ], [storeQ.data, foodQ.data]);
+  const commerceManage = !!(storeQ.data?.canManage || foodQ.data?.canManage);
+  const [openCommerceId, setOpenCommerceId] = useState<string | null>(null);
+  const openCommerce = commerceAll.find((x) => x.o.id === openCommerceId)?.o ?? null;
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listPipelineBookings);
   const fetchDispatchConfig = useServerFn(getDispatchConfig);
@@ -165,8 +223,8 @@ export function PipelineKanban({
   const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["pipeline", "board", segmentId],
-    queryFn: () => fetchPipeline({ data: { segmentId } }),
+    queryKey: ["pipeline", "board", segmentId, training],
+    queryFn: () => fetchPipeline({ data: { segmentId, training } }),
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -223,6 +281,14 @@ export function PipelineKanban({
         { event: "*", schema: "public", table: "courier_orders" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] });
+          queryClient.invalidateQueries({ queryKey: ["commerce", "board"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "merchant_orders" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["commerce", "board"] });
         },
       )
       .subscribe();
@@ -277,6 +343,23 @@ export function PipelineKanban({
     return map;
   }, [courierData]);
 
+  const commerceGrouped = useMemo(() => {
+    const map = new Map<PipelineStatus, Array<{ o: CommerceOrder; svc: "store" | "food" }>>();
+    COLUMNS.forEach((c) => map.set(c.key, []));
+    for (const x of commerceAll) map.get(commerceColumn(x.o.status))?.push(x);
+    return map;
+  }, [commerceAll]);
+  const svcOfBooking = (b: PipelineBooking): BoardService => (b.serviceGroup === "wash" ? "wash" : "maid");
+  const svcCounts = useMemo(() => {
+    const c: Record<BoardService | "all", number> = { all: 0, maid: 0, wash: 0, store: 0, food: 0, parcel: 0 };
+    for (const b of data ?? []) c[b.serviceGroup === "wash" ? "wash" : "maid"]++;
+    const parcels = (courierData ?? []).filter((o) => courierColumn(o.status, o.created_at)).length;
+    c.parcel = training ? 0 : parcels;
+    for (const x of commerceAll) c[x.svc]++;
+    c.all = c.maid + c.wash + c.store + c.food + c.parcel;
+    return c;
+  }, [data, courierData, commerceAll, training]);
+  const commerceAlertIds = commerceAll.filter((x) => x.o.status === "pending" || x.o.alerts.length > 0).map((x) => x.o.id);
   const [toneFilter, setToneFilter] = useState<ToneFilter>("all");
   const [boardNow, setBoardNow] = useState(() => Date.now());
   useEffect(() => {
@@ -301,8 +384,9 @@ export function PipelineKanban({
     () => [
       ...(grouped.get("accepted") ?? []).map((b) => b.id),
       ...(courierGrouped.get("accepted") ?? []).map((o) => o.id),
+      ...commerceAlertIds,
     ],
-    [grouped, courierGrouped],
+    [grouped, courierGrouped, commerceAlertIds.join(",")],
   );
 
   const audioRef = useRef<AudioHandle | null>(null);
@@ -410,7 +494,77 @@ export function PipelineKanban({
     const ro = new ResizeObserver(update);
     ro.observe(board);
     return () => ro.disconnect();
-  }, [data, courierData]);
+  }, [data, courierData, commerceAll]);
+
+  if (unified) {
+    const show = (svc: BoardService) => svcFilter === "all" || svcFilter === svc;
+    return (
+      <section className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {(["all", "maid", "wash", "store", "food", "parcel"] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setSvcFilter(k)}
+              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-bold ${svcFilter === k ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-foreground"}`}>
+              {k !== "all" && <span className={`h-2 w-2 rounded-full ${SERVICE_META[k].dot}`} />}
+              {k === "all" ? "All" : SERVICE_META[k].label === "Car/Bike Wash" ? "Wash" : SERVICE_META[k].label}
+              <span className="opacity-70">{svcCounts[k]}</span>
+            </button>
+          ))}
+          <div className="ml-auto flex items-center gap-2">
+            <div className="inline-flex rounded-full border border-border p-0.5 text-[12px] font-bold">
+              <button onClick={() => setTraining(false)} className={`px-3 h-7 rounded-full ${!training ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Live</button>
+              <button onClick={() => setTraining(true)} className={`px-3 h-7 rounded-full ${training ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>Training</button>
+            </div>
+            <button type="button" onClick={() => setMuted((v) => !v)} aria-pressed={muted}
+              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-bold ${muted ? "border-border text-muted-foreground" : "border-primary text-primary"}`}>
+              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />} {muted ? "Sound off" : "Sound on"}
+            </button>
+          </div>
+        </div>
+        {isError && <p className="text-[12px] text-destructive mb-2">Failed to load board{error instanceof Error && error.message ? `: ${error.message}` : ""}.</p>}
+        <div className="grid gap-3 grid-cols-[repeat(5,minmax(240px,1fr))] overflow-x-auto overscroll-x-contain pb-2">
+          {COLUMNS.map((col) => {
+            const items = (grouped.get(col.key) ?? []).filter((b) => show(svcOfBooking(b)));
+            const courierItems = !training && show("parcel") ? courierGrouped.get(col.key) ?? [] : [];
+            const comm = (commerceGrouped.get(col.key) ?? []).filter((x) => show(x.svc));
+            const total = items.length + courierItems.length + comm.length;
+            return (
+              <div key={col.key} className="min-w-0 bg-muted/40 border border-border rounded-[14px] flex flex-col">
+                <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
+                  <span className="text-[12px] font-bold uppercase tracking-wide text-foreground truncate">{UNIFIED_LABELS[col.key]}</span>
+                  <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-background text-foreground text-[11px] font-bold">{total}</span>
+                </div>
+                <div className="p-2.5 space-y-2.5 max-h-[560px] overflow-y-auto">
+                  {isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">Loading…</p>}
+                  {!isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
+                  {items.map((b) => (
+                    <Strip key={b.id} svc={svcOfBooking(b)}>
+                      <BoardCard booking={b} role={role} broadcastTimeoutSeconds={broadcastTimeoutSeconds} noExpertTimeoutMinutes={noExpertTimeoutMinutes} journeyConfig={journeyConfig} onOpen={() => setOpenId(b.id)} />
+                    </Strip>
+                  ))}
+                  {comm.map(({ o, svc }) => (
+                    <Strip key={o.id} svc={svc}>
+                      <CommerceCard o={o} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
+                    </Strip>
+                  ))}
+                  {courierItems.map((o) => (
+                    <Strip key={o.id} svc="parcel">
+                      <CourierBoardCard order={o} onOpen={() => setOpenCourier(o)} />
+                    </Strip>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {openId && <BookingDetailsModal bookingId={openId} role={role} onClose={() => setOpenId(null)} />}
+        {openCourier && (
+          <OrderDetail order={openCourier} canWrite={role === "super_admin"} onClose={() => setOpenCourier(null)}
+            onChanged={() => { queryClient.invalidateQueries({ queryKey: ["pipeline", "courier"] }); setOpenCourier(null); }} />
+        )}
+        {openCommerce && <OrderSheet order={openCommerce} canManage={commerceManage} onClose={() => setOpenCommerceId(null)} />}
+      </section>
+    );
+  }
 
   return (
     <section className="bg-card border border-border rounded-[18px] p-4 sm:p-6">
