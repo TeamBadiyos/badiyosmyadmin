@@ -12265,6 +12265,7 @@ export type Database = {
       staff_store_reassign: { Args: { _order_id: string }; Returns: Json }
       staff_sync_notifications: { Args: never; Returns: undefined }
       staff_tax_report: { Args: { _month: string }; Returns: Json }
+      staff_tax_report_ext: { Args: { _month: string }; Returns: Json }
       staff_tds_report: {
         Args: { _fy_start_year: number }
         Returns: {
