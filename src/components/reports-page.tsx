@@ -818,17 +818,26 @@ function PnlTab({ range }: { range: ReportRange }) {
   if (!data) return null;
   const T = data.totals;
   const s = data.services, c = data.courier, m = data.store;
+  const P = (() => {
+    const revenue = T.collected - T.gst;
+    const direct = m.merchantPayout + s.expertPayout + s.partnerPayout + c.riderPayout + data.programCommission + T.bonuses + T.refunds + data.gatewayCharges.total;
+    const gross = revenue - direct;
+    const instant = Number(ex?.instant_fee ?? 0);
+    const expenses = Number(ex?.expenses_total ?? 0);
+    return { revenue, direct, gross, instant, expenses, net: gross + instant - expenses };
+  })();
 
   const exportCsv = () => {
     const lines: Array<[string, number]> = [
-      ["Gross order value", T.gross], ["Discounts (coupon + coins)", T.discount], ["Collected from customers", T.collected],
-      ["Refunds", T.refunds], ["GST", T.gst], ["Net revenue (excl GST)", T.netRevenue],
-      ["Expert payouts", s.expertPayout], ["Rider payouts", c.riderPayout], ["Partner Program commission", data.programCommission], ["Razorpay gateway charges", data.gatewayCharges.total],
-      ["Bonuses", T.bonuses], ["Store commission", m.commission], ["Gross profit", T.grossProfit], ["Net profit", T.platformProfit],
-      ["Other Income – Instant Settlement Fee", Number(ex?.instant_fee ?? 0)],
+      ["Revenue (excl GST)", P.revenue],
+      ["Direct cost – Merchant payouts", m.merchantPayout], ["Direct cost – Expert payouts", s.expertPayout + s.partnerPayout],
+      ["Direct cost – Rider payouts", c.riderPayout], ["Direct cost – Partner Program commission", data.programCommission],
+      ["Direct cost – Bonuses", T.bonuses], ["Direct cost – Refunds", T.refunds], ["Direct cost – Razorpay fees", data.gatewayCharges.total],
+      ["Gross profit", P.gross],
+      ["Other Income – Instant Settlement Fee", P.instant], ["Other Income – Franchise fee", 0],
       ...((ex?.expenses_by_category ?? []).map((e) => [`Expense – ${e.category}`, Number(e.amount)] as [string, number])),
-      ["Net profit after expenses", T.platformProfit + Number(ex?.instant_fee ?? 0) - Number(ex?.expenses_total ?? 0)],
-      ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
+      ["Net profit", P.net],
+      ["GST collected on customer orders", T.gst], ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
     const csv = ["Item,Amount", ...lines.map(([k, v]) => `"${k}",${v.toFixed(2)}`), "", "Date,Collected,Payouts,Profit",
@@ -858,8 +867,8 @@ function PnlTab({ range }: { range: ReportRange }) {
         <Stat label="Bonuses" value={inr.format(T.bonuses)} />
         <Stat label="GST Collected" value={inr.format(T.gst)} />
         <Stat label="Refunds" value={inr.format(T.refunds)} />
-        <Stat label={`Gross Profit (${T.grossPct.toFixed(1)}%)`} value={inr.format(T.grossProfit)} />
-        <Stat label={`Net Profit (${T.marginPct.toFixed(1)}%)`} value={inr.format(T.platformProfit)} />
+        <Stat label="Gross Profit" value={inr.format(P.gross)} />
+        <Stat label="Net Profit" value={inr.format(P.net)} />
         <Stat label="Store Commission" value={inr.format(m.commission)} />
         <Stat label="Area Partner Commission" value={inr.format(data.programCommission)} />
       </div>
@@ -867,28 +876,25 @@ function PnlTab({ range }: { range: ReportRange }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <h3 className="text-[15px] font-bold text-foreground mb-2">Overall P&amp;L</h3>
-          <Row label="Gross order value" sub="Full price before any discount" value={T.gross} />
-          <Row label="Discounts" sub="Coupons + coin / free orders" value={T.discount} neg />
-          <Row label="Collected from customers" value={T.collected} bold />
-          <Row label="Refunds" value={T.refunds} neg />
-          <Row label="GST (goes to government)" value={T.gst} neg />
-          <Row label="Net revenue" sub="Includes store commission (excl GST)" value={T.netRevenue} bold />
-          <Row label="Expert payouts (services)" value={s.expertPayout} neg />
+          <Row label="Revenue (excl GST)" sub={`Collected ${inr.format(T.collected)} − GST ${inr.format(T.gst)} · after discounts ${inr.format(T.discount)}`} value={P.revenue} bold />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Direct costs</p>
+          <Row label="Merchant payouts (Store & Food)" value={m.merchantPayout} neg />
+          <Row label="Expert payouts (services)" value={s.expertPayout + s.partnerPayout} neg />
           <Row label="Rider payouts (delivery, store & bulk)" value={c.riderPayout} neg />
-          <Row label={`Gross profit · ${T.grossPct.toFixed(1)}%`} value={T.grossProfit} bold />
-          <Row label="Partner Program commission" sub="Draft, approved and paid partner batches" value={data.programCommission} neg />
-          <Row label="Razorpay gateway charges" sub={`Fees ${inr.format(data.gatewayCharges.fees)} + GST ${inr.format(data.gatewayCharges.gst)} (from synced settlements)`} value={data.gatewayCharges.total} neg />
+          <Row label="Partner Program commission" value={data.programCommission} neg />
           <Row label="Bonuses / incentives" value={T.bonuses} neg />
-          <Row label={`Net profit · ${T.marginPct.toFixed(1)}%`} value={T.platformProfit} bold />
-          {ex && (
-            <>
-              <Row label="Other Income – Instant Settlement Fee" sub="Fee on instant settlements paid in range (excl GST)" value={Number(ex.instant_fee)} />
-              {ex.expenses_by_category.map((e) => (
-                <Row key={e.category} label={`Expense – ${e.category}`} value={Number(e.amount)} neg />
-              ))}
-              <Row label="Net profit after expenses" value={T.platformProfit + Number(ex.instant_fee) - Number(ex.expenses_total)} bold />
-            </>
-          )}
+          <Row label="Refunds" value={T.refunds} neg />
+          <Row label="Razorpay fees" sub={`Fees ${inr.format(data.gatewayCharges.fees)} + GST ${inr.format(data.gatewayCharges.gst)}`} value={data.gatewayCharges.total} neg />
+          <Row label={`Gross profit · ${P.revenue > 0 ? ((P.gross / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.gross} bold />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Other income</p>
+          <Row label="Other Income – Instant Settlement Fee" sub="Excl GST" value={P.instant} />
+          <Row label="Other Income – Franchise fee" sub="No franchise fees recorded yet" value={0} />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Expenses</p>
+          {(ex?.expenses_by_category ?? []).length === 0 && <p className="text-[12px] text-muted-foreground py-2">No expenses in range.</p>}
+          {(ex?.expenses_by_category ?? []).map((e) => (
+            <Row key={e.category} label={e.category} value={Number(e.amount)} neg />
+          ))}
+          <Row label={`Net profit · ${P.revenue > 0 ? ((P.net / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.net} bold />
         </Card>
         {ex && (
           <Card>

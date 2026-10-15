@@ -81,3 +81,34 @@ export const deleteBanner = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type LinkOption = { type: "service" | "store" | "coupon" | "lucky_draw"; id: string; name: string; sub?: string; zone_id?: string | null };
+
+export const SERVICE_LINK_OPTIONS: LinkOption[] = [
+  { type: "service", id: "maid", name: "Clean Home" },
+  { type: "service", id: "wash", name: "Clean Auto" },
+  { type: "service", id: "store", name: "Store" },
+  { type: "service", id: "food", name: "Food" },
+  { type: "service", id: "parcel", name: "Parcel" },
+];
+
+export const listBannerLinkOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = context.supabase as any;
+    const now = new Date().toISOString();
+    const [m, c, l] = await Promise.all([
+      sb.from("merchants").select("id, store_name, zone_id, service_type, status").order("store_name").limit(2000),
+      sb.from("coupons").select("id, code, title, valid_until, is_active").eq("is_active", true).order("code").limit(1000),
+      sb.from("lucky_draw_campaigns").select("id, title, end_at, is_active").order("title").limit(500),
+    ]);
+    const opts: LinkOption[] = [...SERVICE_LINK_OPTIONS];
+    for (const r of (m.data ?? []) as Array<{ id: string; store_name: string | null; zone_id: string | null; service_type: string | null; status: string | null }>)
+      opts.push({ type: "store", id: r.id, name: r.store_name ?? "Unnamed", sub: `${r.service_type === "food" ? "Restaurant" : "Store"}${r.status && r.status !== "active" ? ` · ${r.status}` : ""}`, zone_id: r.zone_id });
+    for (const r of (c.data ?? []) as Array<{ id: string; code: string; title: string | null; valid_until: string | null }>)
+      if (!r.valid_until || r.valid_until >= now) opts.push({ type: "coupon", id: r.code, name: r.code, sub: r.title ?? undefined });
+    for (const r of (l.data ?? []) as Array<{ id: string; title: string; end_at: string | null; is_active: boolean }>)
+      opts.push({ type: "lucky_draw", id: r.id, name: r.title, sub: r.is_active ? "Active" : "Inactive" });
+    return opts;
+  });
