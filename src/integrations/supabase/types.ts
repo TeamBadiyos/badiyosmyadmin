@@ -2109,6 +2109,36 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_categories: {
+        Row: {
+          created_at: string
+          id: string
+          image_path: string | null
+          is_active: boolean
+          name: string
+          service_type: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          name: string
+          service_type: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          name?: string
+          service_type?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       city_interest_leads: {
         Row: {
           city: string
@@ -4164,6 +4194,53 @@ export type Database = {
           },
         ]
       }
+      fee_rules: {
+        Row: {
+          amount: number
+          amount_type: string
+          created_at: string
+          ends_at: string | null
+          gst_key: string | null
+          id: string
+          is_active: boolean
+          name: string
+          service_types: string[]
+          starts_at: string | null
+        }
+        Insert: {
+          amount?: number
+          amount_type?: string
+          created_at?: string
+          ends_at?: string | null
+          gst_key?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          service_types?: string[]
+          starts_at?: string | null
+        }
+        Update: {
+          amount?: number
+          amount_type?: string
+          created_at?: string
+          ends_at?: string | null
+          gst_key?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          service_types?: string[]
+          starts_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_rules_gst_key_fkey"
+            columns: ["gst_key"]
+            isOneToOne: false
+            referencedRelation: "tax_settings"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       gateway_settlement_items: {
         Row: {
           amount: number
@@ -4873,9 +4950,11 @@ export type Database = {
           cancelled_at: string | null
           commission_amount: number | null
           commission_breakdown: Json | null
+          commission_gst: number
           commission_gst_amount: number
           commission_gst_pct: number
           commission_pct: number
+          commission_pct_applied: number | null
           courier_order_id: string | null
           created_at: string
           customer_name: string | null
@@ -4887,8 +4966,12 @@ export type Database = {
           delivery_lat: number | null
           delivery_lng: number | null
           delivery_quote: Json | null
+          gst_delivery: number
+          gst_items: number
+          gst_platform: number
           id: string
           is_training: boolean
+          item_total: number | null
           items_total: number
           merchant_id: string
           merchant_net: number
@@ -4899,6 +4982,7 @@ export type Database = {
           payment_status: string
           picked_up_at: string | null
           placed_at: string | null
+          platform_fee: number
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           ready_at: string | null
@@ -4909,10 +4993,15 @@ export type Database = {
           refund_reason: string | null
           refund_status: string | null
           reject_reason: string | null
+          rider_share_amount: number
           source: string
           status: string
           stock_deducted: boolean
+          tax_rates_snapshot: Json
+          tcs_amount: number
+          tds_amount: number
           total_amount: number
+          total_payable: number | null
           updated_at: string
           user_id: string | null
         }
@@ -4923,9 +5012,11 @@ export type Database = {
           cancelled_at?: string | null
           commission_amount?: number | null
           commission_breakdown?: Json | null
+          commission_gst?: number
           commission_gst_amount?: number
           commission_gst_pct?: number
           commission_pct?: number
+          commission_pct_applied?: number | null
           courier_order_id?: string | null
           created_at?: string
           customer_name?: string | null
@@ -4937,8 +5028,12 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           delivery_quote?: Json | null
+          gst_delivery?: number
+          gst_items?: number
+          gst_platform?: number
           id?: string
           is_training?: boolean
+          item_total?: number | null
           items_total?: number
           merchant_id: string
           merchant_net?: number
@@ -4949,6 +5044,7 @@ export type Database = {
           payment_status?: string
           picked_up_at?: string | null
           placed_at?: string | null
+          platform_fee?: number
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           ready_at?: string | null
@@ -4959,10 +5055,15 @@ export type Database = {
           refund_reason?: string | null
           refund_status?: string | null
           reject_reason?: string | null
+          rider_share_amount?: number
           source?: string
           status?: string
           stock_deducted?: boolean
+          tax_rates_snapshot?: Json
+          tcs_amount?: number
+          tds_amount?: number
           total_amount?: number
+          total_payable?: number | null
           updated_at?: string
           user_id?: string | null
         }
@@ -4973,9 +5074,11 @@ export type Database = {
           cancelled_at?: string | null
           commission_amount?: number | null
           commission_breakdown?: Json | null
+          commission_gst?: number
           commission_gst_amount?: number
           commission_gst_pct?: number
           commission_pct?: number
+          commission_pct_applied?: number | null
           courier_order_id?: string | null
           created_at?: string
           customer_name?: string | null
@@ -4987,8 +5090,12 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           delivery_quote?: Json | null
+          gst_delivery?: number
+          gst_items?: number
+          gst_platform?: number
           id?: string
           is_training?: boolean
+          item_total?: number | null
           items_total?: number
           merchant_id?: string
           merchant_net?: number
@@ -4999,6 +5106,7 @@ export type Database = {
           payment_status?: string
           picked_up_at?: string | null
           placed_at?: string | null
+          platform_fee?: number
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           ready_at?: string | null
@@ -5009,10 +5117,15 @@ export type Database = {
           refund_reason?: string | null
           refund_status?: string | null
           reject_reason?: string | null
+          rider_share_amount?: number
           source?: string
           status?: string
           stock_deducted?: boolean
+          tax_rates_snapshot?: Json
+          tcs_amount?: number
+          tds_amount?: number
           total_amount?: number
+          total_payable?: number | null
           updated_at?: string
           user_id?: string | null
         }
@@ -5129,6 +5242,121 @@ export type Database = {
           {
             foreignKeyName: "merchant_schedule_overrides_merchant_id_fkey"
             columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_settlement_items: {
+        Row: {
+          created_at: string
+          order_id: string
+          settlement_id: string
+        }
+        Insert: {
+          created_at?: string
+          order_id: string
+          settlement_id: string
+        }
+        Update: {
+          created_at?: string
+          order_id?: string
+          settlement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_settlement_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "store_revenue_report"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "merchant_settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_settlements: {
+        Row: {
+          commission_gst_total: number
+          commission_total: number
+          created_at: string
+          gross_amount: number
+          id: string
+          instant_fee: number
+          net_amount: number
+          paid_at: string | null
+          period_from: string | null
+          period_to: string | null
+          reference: string | null
+          status: string
+          store_id: string
+          tcs_total: number
+          tds_total: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          commission_gst_total?: number
+          commission_total?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          instant_fee?: number
+          net_amount?: number
+          paid_at?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          reference?: string | null
+          status?: string
+          store_id: string
+          tcs_total?: number
+          tds_total?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_gst_total?: number
+          commission_total?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          instant_fee?: number
+          net_amount?: number
+          paid_at?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          reference?: string | null
+          status?: string
+          store_id?: string
+          tcs_total?: number
+          tds_total?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_settlements_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_settlements_store_id_fkey"
+            columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "public_stores"
             referencedColumns: ["id"]
@@ -5328,6 +5556,7 @@ export type Database = {
       }
       merchants: {
         Row: {
+          accept_timeout_minutes: number | null
           address: string | null
           approved_at: string | null
           approved_by: string | null
@@ -5338,6 +5567,7 @@ export type Database = {
           bank_ifsc: string | null
           city: string | null
           commission_mode: string
+          commission_pct: number
           commission_type: string
           commission_value: number
           country: string | null
@@ -5354,11 +5584,14 @@ export type Database = {
           gst_status: string | null
           gstin: string | null
           id: string
+          instant_settlement_fee_pct: number
           is_accepting_orders: boolean
           is_gst_registered: boolean | null
+          is_open: boolean
           latitude: number | null
           longitude: number | null
           mrp_commission_pct: number
+          offer_text: string | null
           onboarded_by: string | null
           onboarding_step: number
           other_commission_pct: number
@@ -5371,9 +5604,12 @@ export type Database = {
           queried_by: string | null
           query_doc_types: string[] | null
           query_notes: string | null
+          rating_avg: number
+          rating_count: number
           rejection_reason: string | null
           reuploaded_at: string | null
           segment_id: string | null
+          service_type: string
           shop_photo_url: string | null
           state: string | null
           status: string
@@ -5386,6 +5622,7 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          accept_timeout_minutes?: number | null
           address?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -5396,6 +5633,7 @@ export type Database = {
           bank_ifsc?: string | null
           city?: string | null
           commission_mode?: string
+          commission_pct?: number
           commission_type?: string
           commission_value?: number
           country?: string | null
@@ -5412,11 +5650,14 @@ export type Database = {
           gst_status?: string | null
           gstin?: string | null
           id?: string
+          instant_settlement_fee_pct?: number
           is_accepting_orders?: boolean
           is_gst_registered?: boolean | null
+          is_open?: boolean
           latitude?: number | null
           longitude?: number | null
           mrp_commission_pct?: number
+          offer_text?: string | null
           onboarded_by?: string | null
           onboarding_step?: number
           other_commission_pct?: number
@@ -5429,9 +5670,12 @@ export type Database = {
           queried_by?: string | null
           query_doc_types?: string[] | null
           query_notes?: string | null
+          rating_avg?: number
+          rating_count?: number
           rejection_reason?: string | null
           reuploaded_at?: string | null
           segment_id?: string | null
+          service_type?: string
           shop_photo_url?: string | null
           state?: string | null
           status?: string
@@ -5444,6 +5688,7 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          accept_timeout_minutes?: number | null
           address?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -5454,6 +5699,7 @@ export type Database = {
           bank_ifsc?: string | null
           city?: string | null
           commission_mode?: string
+          commission_pct?: number
           commission_type?: string
           commission_value?: number
           country?: string | null
@@ -5470,11 +5716,14 @@ export type Database = {
           gst_status?: string | null
           gstin?: string | null
           id?: string
+          instant_settlement_fee_pct?: number
           is_accepting_orders?: boolean
           is_gst_registered?: boolean | null
+          is_open?: boolean
           latitude?: number | null
           longitude?: number | null
           mrp_commission_pct?: number
+          offer_text?: string | null
           onboarded_by?: string | null
           onboarding_step?: number
           other_commission_pct?: number
@@ -5487,9 +5736,12 @@ export type Database = {
           queried_by?: string | null
           query_doc_types?: string[] | null
           query_notes?: string | null
+          rating_avg?: number
+          rating_count?: number
           rejection_reason?: string | null
           reuploaded_at?: string | null
           segment_id?: string | null
+          service_type?: string
           shop_photo_url?: string | null
           state?: string | null
           status?: string
@@ -5568,6 +5820,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notify_requests: {
+        Row: {
+          converted_order_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          notified_at: string | null
+          reason: string
+          service_type: string
+          status: string
+          store_id: string | null
+        }
+        Insert: {
+          converted_order_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          notified_at?: string | null
+          reason: string
+          service_type: string
+          status?: string
+          store_id?: string | null
+        }
+        Update: {
+          converted_order_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notified_at?: string | null
+          reason?: string
+          service_type?: string
+          status?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notify_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notify_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       offline_sale_items: {
         Row: {
@@ -6514,80 +6817,198 @@ export type Database = {
         }
         Relationships: []
       }
+      product_addons: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          product_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          product_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          product_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_addons_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_addons_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          price: number
+          product_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          price: number
+          product_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          price?: number
+          product_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           admin_hidden: boolean
           admin_hidden_reason: string | null
+          approval_note: string | null
           approval_reason: string | null
           approval_reviewed_at: string | null
           approval_reviewed_by: string | null
           approval_status: string
+          category_id: string | null
           category_label: string | null
           created_at: string
           description: string | null
           gst_rate: number | null
           hsn_sac_code: string | null
           id: string
+          image_path: string | null
           image_url: string | null
           image_url_2: string | null
           is_active: boolean
+          is_available: boolean
           is_mrp: boolean
+          is_recommended: boolean
           low_stock_threshold: number
           merchant_id: string
           name: string
           price: number
+          recommended_order: number | null
+          sort_order: number
           stock_quantity: number
           unit: string | null
         }
         Insert: {
           admin_hidden?: boolean
           admin_hidden_reason?: string | null
+          approval_note?: string | null
           approval_reason?: string | null
           approval_reviewed_at?: string | null
           approval_reviewed_by?: string | null
           approval_status?: string
+          category_id?: string | null
           category_label?: string | null
           created_at?: string
           description?: string | null
           gst_rate?: number | null
           hsn_sac_code?: string | null
           id?: string
+          image_path?: string | null
           image_url?: string | null
           image_url_2?: string | null
           is_active?: boolean
+          is_available?: boolean
           is_mrp?: boolean
+          is_recommended?: boolean
           low_stock_threshold?: number
           merchant_id: string
           name: string
           price: number
+          recommended_order?: number | null
+          sort_order?: number
           stock_quantity?: number
           unit?: string | null
         }
         Update: {
           admin_hidden?: boolean
           admin_hidden_reason?: string | null
+          approval_note?: string | null
           approval_reason?: string | null
           approval_reviewed_at?: string | null
           approval_reviewed_by?: string | null
           approval_status?: string
+          category_id?: string | null
           category_label?: string | null
           created_at?: string
           description?: string | null
           gst_rate?: number | null
           hsn_sac_code?: string | null
           id?: string
+          image_path?: string | null
           image_url?: string | null
           image_url_2?: string | null
           is_active?: boolean
+          is_available?: boolean
           is_mrp?: boolean
+          is_recommended?: boolean
           low_stock_threshold?: number
           merchant_id?: string
           name?: string
           price?: number
+          recommended_order?: number | null
+          sort_order?: number
           stock_quantity?: number
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_merchant_id_fkey"
             columns: ["merchant_id"]
@@ -7461,6 +7882,42 @@ export type Database = {
           },
         ]
       }
+      service_settings: {
+        Row: {
+          default_accept_timeout_minutes: number
+          delivery_min_fare: number
+          delivery_per_km: number
+          is_live: boolean
+          rider_share_pct: number
+          service_key: string
+          timings: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_accept_timeout_minutes?: number
+          delivery_min_fare?: number
+          delivery_per_km?: number
+          is_live?: boolean
+          rider_share_pct?: number
+          service_key: string
+          timings?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_accept_timeout_minutes?: number
+          delivery_min_fare?: number
+          delivery_per_km?: number
+          is_live?: boolean
+          rider_share_pct?: number
+          service_key?: string
+          timings?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       service_slot_overrides: {
         Row: {
           created_at: string
@@ -7549,6 +8006,64 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsored_slots: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          position: number
+          service_type: string
+          starts_at: string | null
+          store_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          position: number
+          service_type: string
+          starts_at?: string | null
+          store_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          position?: number
+          service_type?: string
+          starts_at?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsored_slots_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_slots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_slots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
             referencedColumns: ["id"]
           },
         ]
@@ -7742,6 +8257,105 @@ export type Database = {
             columns: ["segment_id"]
             isOneToOne: false
             referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_category_order: {
+        Row: {
+          category_id: string
+          sort_order: number
+          store_id: string
+        }
+        Insert: {
+          category_id: string
+          sort_order?: number
+          store_id: string
+        }
+        Update: {
+          category_id?: string
+          sort_order?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_category_order_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_category_order_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_category_order_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          order_id: string
+          rating: number
+          store_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          order_id: string
+          rating: number
+          store_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "store_revenue_report"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "store_ratings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_ratings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
             referencedColumns: ["id"]
           },
         ]
@@ -8101,6 +8715,33 @@ export type Database = {
           rank?: number
           slug?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tax_settings: {
+        Row: {
+          is_active: boolean
+          key: string
+          label: string
+          rate_pct: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          is_active?: boolean
+          key: string
+          label: string
+          rate_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          is_active?: boolean
+          key?: string
+          label?: string
+          rate_pct?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -9584,6 +10225,10 @@ export type Database = {
       courier_verify_stop_otp: {
         Args: { _otp: string; _proof_url?: string; _stop_id: string }
         Returns: Json
+      }
+      create_notify_request: {
+        Args: { p_reason: string; p_service_type: string; p_store_id?: string }
+        Returns: string
       }
       credit_booking_completion: {
         Args: { _booking_id: string }
@@ -11489,6 +12134,10 @@ export type Database = {
       submit_booking_review: {
         Args: { _booking_id: string; _rating: number; _review: string }
         Returns: undefined
+      }
+      submit_store_rating: {
+        Args: { p_comment?: string; p_order_id: string; p_rating: number }
+        Returns: string
       }
       support_mark_ticket_read: {
         Args: { _ticket_id: string }
