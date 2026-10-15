@@ -181,7 +181,7 @@ export function RefundsTab({ canEdit }: { canEdit: boolean }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["fin-refunds", s], queryFn: () => fetch({ data: { status: s } }) });
   const retry = useMutation({
-    mutationFn: (id: string) => act({ data: { kind: "retryRefund", id } }),
+    mutationFn: (r: { id: string; kind: string }) => act({ data: { kind: "retryRefund", id: r.id, refundKind: r.kind } }),
     onSuccess: () => { toast.success("Refund retry started"); qc.invalidateQueries({ queryKey: ["fin-refunds"] }); },
     onError: (e) => toast.error(errMsg(e)),
   });
@@ -192,16 +192,16 @@ export function RefundsTab({ canEdit }: { canEdit: boolean }) {
       <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed"], ["done", "Done"]]} />
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Service</th><th className="p-2 text-left">Store</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
+          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Service</th><th className="p-2 text-left">Store / item</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Refunded to</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
-            {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
+            {q.isLoading && <tr><td colSpan={9} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {!q.isLoading && !rows.length && <tr><td colSpan={9} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
             {rows.map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
+              <tr key={r.kind + r.id} className="border-b last:border-0">
                 <td className="p-2">{r.order_number}</td><td className="p-2">{r.service}</td><td className="p-2">{r.store_name}</td>
-                <td className="p-2 text-right">{inr(r.refund_amount)}</td><td className="p-2 text-xs">{r.refund_reason ?? "—"}</td>
+                <td className="p-2 text-right">{inr(r.refund_amount)}</td><td className="p-2">{r.refunded_to}</td><td className="p-2 text-xs">{r.refund_error ?? r.refund_reason ?? "—"}</td>
                 <td className="p-2 text-right">{r.refund_attempts ?? 0}</td><td className="p-2 text-xs">{r.refund_id ?? "—"}</td>
-                <td className="p-2">{canEdit && s === "failed" && <Button size="sm" disabled={retry.isPending} onClick={() => retry.mutate(r.id)}>Retry refund</Button>}</td>
+                <td className="p-2">{canEdit && s === "failed" && <Button size="sm" disabled={retry.isPending} onClick={() => retry.mutate({ id: r.id, kind: r.kind })}>Retry</Button>}</td>
               </tr>
             ))}
           </tbody>
@@ -230,10 +230,10 @@ export function InvoicesTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Invoice</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Period</th><th className="p-2 text-right">Commission</th><th className="p-2 text-right">GST</th><th className="p-2 text-left">Status</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {q.isLoading && <tr><td colSpan={9} className="p-3 text-muted-foreground">Loading…</td></tr>}
             {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
             {rows.map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
+              <tr key={r.kind + r.id} className="border-b last:border-0">
                 <td className="p-2 font-medium">{r.invoice_no}</td><td className="p-2">{r.merchant?.store_name}</td>
                 <td className="p-2">{r.period_from} → {r.period_to}</td><td className="p-2 text-right">{inr(r.commission_total)}</td>
                 <td className="p-2 text-right">{inr(r.commission_gst_total)}</td><td className="p-2">{r.status}</td>
