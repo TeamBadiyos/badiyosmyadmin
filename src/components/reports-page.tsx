@@ -867,8 +867,8 @@ function PnlTab({ range }: { range: ReportRange }) {
         <Stat label="Bonuses" value={inr.format(T.bonuses)} />
         <Stat label="GST Collected" value={inr.format(T.gst)} />
         <Stat label="Refunds" value={inr.format(T.refunds)} />
-        <Stat label={`Gross Profit (${T.grossPct.toFixed(1)}%)`} value={inr.format(T.grossProfit)} />
-        <Stat label={`Net Profit (${T.marginPct.toFixed(1)}%)`} value={inr.format(T.platformProfit)} />
+        <Stat label="Gross Profit" value={inr.format(P.gross)} />
+        <Stat label="Net Profit" value={inr.format(P.net)} />
         <Stat label="Store Commission" value={inr.format(m.commission)} />
         <Stat label="Area Partner Commission" value={inr.format(data.programCommission)} />
       </div>
