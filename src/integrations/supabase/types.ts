@@ -3509,6 +3509,224 @@ export type Database = {
           },
         ]
       }
+      customer_credit_notes: {
+        Row: {
+          cgst: number
+          created_at: string
+          credit_note_no: string
+          fy: string
+          id: string
+          igst: number
+          invoice_id: string
+          note_date: string
+          reason: string | null
+          sgst: number
+          taxable_value: number
+          total: number
+          user_id: string | null
+        }
+        Insert: {
+          cgst?: number
+          created_at?: string
+          credit_note_no: string
+          fy: string
+          id?: string
+          igst?: number
+          invoice_id: string
+          note_date?: string
+          reason?: string | null
+          sgst?: number
+          taxable_value?: number
+          total?: number
+          user_id?: string | null
+        }
+        Update: {
+          cgst?: number
+          created_at?: string
+          credit_note_no?: string
+          fy?: string
+          id?: string
+          igst?: number
+          invoice_id?: string
+          note_date?: string
+          reason?: string | null
+          sgst?: number
+          taxable_value?: number
+          total?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "customer_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_doc_counters: {
+        Row: {
+          fy: string
+          last_no: number
+          series: string
+        }
+        Insert: {
+          fy: string
+          last_no?: number
+          series: string
+        }
+        Update: {
+          fy?: string
+          last_no?: number
+          series?: string
+        }
+        Relationships: []
+      }
+      customer_invoices: {
+        Row: {
+          cgst: number
+          company: Json
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          discount: number
+          fy: string
+          id: string
+          igst: number
+          invoice_date: string
+          invoice_no: string
+          lines: Json
+          ref_code: string | null
+          ref_id: string
+          ref_type: string
+          service: string
+          sgst: number
+          taxable_value: number
+          total: number
+          user_id: string | null
+        }
+        Insert: {
+          cgst?: number
+          company?: Json
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount?: number
+          fy: string
+          id?: string
+          igst?: number
+          invoice_date?: string
+          invoice_no: string
+          lines?: Json
+          ref_code?: string | null
+          ref_id: string
+          ref_type: string
+          service: string
+          sgst?: number
+          taxable_value?: number
+          total?: number
+          user_id?: string | null
+        }
+        Update: {
+          cgst?: number
+          company?: Json
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          discount?: number
+          fy?: string
+          id?: string
+          igst?: number
+          invoice_date?: string
+          invoice_no?: string
+          lines?: Json
+          ref_code?: string | null
+          ref_id?: string
+          ref_type?: string
+          service?: string
+          sgst?: number
+          taxable_value?: number
+          total?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      customer_wallet_ledger: {
+        Row: {
+          amount: number
+          bonus_after: number
+          bucket: string
+          cash_after: number
+          created_at: string
+          created_by: string | null
+          expired: boolean
+          expires_at: string | null
+          id: string
+          reason: string | null
+          ref_id: string | null
+          ref_type: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bonus_after: number
+          bucket: string
+          cash_after: number
+          created_at?: string
+          created_by?: string | null
+          expired?: boolean
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          ref_id?: string | null
+          ref_type?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bonus_after?: number
+          bucket?: string
+          cash_after?: number
+          created_at?: string
+          created_by?: string | null
+          expired?: boolean
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          ref_id?: string | null
+          ref_type?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      customer_wallets: {
+        Row: {
+          bonus_balance: number
+          cash_balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bonus_balance?: number
+          cash_balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bonus_balance?: number
+          cash_balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deleted_accounts_registry: {
         Row: {
           deleted_at: string
@@ -9380,6 +9598,51 @@ export type Database = {
           },
         ]
       }
+      wallet_bonus_rules: {
+        Row: {
+          bonus_type: string
+          bonus_value: number
+          created_at: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          max_bonus: number | null
+          min_topup: number
+          name: string
+          starts_at: string | null
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          bonus_type?: string
+          bonus_value?: number
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_bonus?: number | null
+          min_topup?: number
+          name: string
+          starts_at?: string | null
+          updated_at?: string
+          validity_days?: number
+        }
+        Update: {
+          bonus_type?: string
+          bonus_value?: number
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_bonus?: number | null
+          min_topup?: number
+          name?: string
+          starts_at?: string | null
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: []
+      }
       wallet_ledger: {
         Row: {
           amount: number
@@ -9423,6 +9686,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wallet_topups: {
+        Row: {
+          amount: number
+          bonus_rule_id: string | null
+          created_at: string
+          id: string
+          paid_at: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bonus_rule_id?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bonus_rule_id?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       wallet_transactions: {
         Row: {
@@ -10566,6 +10865,7 @@ export type Database = {
         Returns: boolean
       }
       customer_list_devices: { Args: never; Returns: Json }
+      customer_list_invoices: { Args: never; Returns: Json }
       customer_lucky_draw_enrol: { Args: never; Returns: Json }
       customer_lucky_draw_leaderboard: {
         Args: { _limit?: number }
@@ -10614,6 +10914,12 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      customer_wallet_get: { Args: never; Returns: Json }
+      customer_wallet_pay: {
+        Args: { _amount: number; _ref_id: string; _ref_type: string }
+        Returns: Json
+      }
+      customer_wallet_start_topup: { Args: { _amount: number }; Returns: Json }
       dispatch_limit_minutes: {
         Args: { _city: string; _svc: string }
         Returns: number
@@ -10711,9 +11017,28 @@ export type Database = {
         }
         Returns: Json
       }
+      fin_company_snapshot: { Args: never; Returns: Json }
       fin_delete_expense: { Args: { _id: string }; Returns: undefined }
+      fin_fy: { Args: { _d: string }; Returns: string }
+      fin_issue_credit_note: {
+        Args: {
+          _amount: number
+          _reason: string
+          _ref_id: string
+          _ref_type: string
+        }
+        Returns: string
+      }
+      fin_issue_invoice: {
+        Args: { _d?: string; _ref_id: string; _ref_type: string }
+        Returns: string
+      }
       fin_mark_subscription_paid: {
         Args: { _id: string; _paid_via?: string }
+        Returns: string
+      }
+      fin_next_doc_no: {
+        Args: { _d: string; _series: string }
         Returns: string
       }
       fin_overview: { Args: { _from: string; _to: string }; Returns: Json }
@@ -10815,10 +11140,9 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { _g: string }; Returns: boolean }
       instant_free_expert_count: { Args: never; Returns: number }
-      is_active_staff: {
-        Args: { _roles: string[]; _uid: string }
-        Returns: boolean
-      }
+      is_active_staff:
+        | { Args: { _uid: string }; Returns: boolean }
+        | { Args: { _roles: string[]; _uid: string }; Returns: boolean }
       is_delivery_rider: { Args: { _expert_id: string }; Returns: boolean }
       is_internal_tester: { Args: never; Returns: boolean }
       is_offer_finance_user: { Args: never; Returns: boolean }
@@ -11648,6 +11972,7 @@ export type Database = {
           tds_total: number
         }[]
       }
+      staff_find_customer: { Args: { _phone: string }; Returns: Json }
       staff_force_expert_offline: {
         Args: { _expert_id: string }
         Returns: undefined
@@ -11676,6 +12001,10 @@ export type Database = {
       }
       staff_insurance_stats: { Args: never; Returns: Json }
       staff_list_bulk_plans: { Args: never; Returns: Json }
+      staff_list_customer_invoices: {
+        Args: { _from: string; _q?: string; _service?: string; _to: string }
+        Returns: Json
+      }
       staff_list_notifications: {
         Args: { _filter?: string }
         Returns: {
@@ -11948,6 +12277,10 @@ export type Database = {
         Returns: undefined
       }
       staff_save_company_profile: { Args: { _p: Json }; Returns: undefined }
+      staff_save_wallet_bonus_rule: {
+        Args: { _id: string; _p: Json }
+        Returns: string
+      }
       staff_seal_assign_batch: {
         Args: {
           _batch_id: string
@@ -12096,6 +12429,10 @@ export type Database = {
       }
       staff_set_expert_zones: {
         Args: { _expert_id: string; _primary?: string; _zone_ids: string[] }
+        Returns: undefined
+      }
+      staff_set_finance_flag: {
+        Args: { _key: string; _value: boolean }
         Returns: undefined
       }
       staff_set_homepage_section_active: {
@@ -12554,15 +12891,37 @@ export type Database = {
         Args: { _booking_id: string; _otp: string }
         Returns: undefined
       }
-      staff_wallet_adjust: {
+      staff_wallet_adjust:
+        | {
+            Args: {
+              _amount: number
+              _owner_id: string
+              _owner_type: string
+              _reason: string
+              _type: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _amount: number
+              _bucket: string
+              _reason: string
+              _user_id: string
+            }
+            Returns: Json
+          }
+      staff_wallet_ledger: { Args: { _user_id: string }; Returns: Json }
+      staff_wallet_overview: { Args: { _q?: string }; Returns: Json }
+      staff_wallet_refund_in: {
         Args: {
           _amount: number
-          _owner_id: string
-          _owner_type: string
           _reason: string
-          _type: string
+          _ref_id: string
+          _ref_type: string
+          _user_id: string
         }
-        Returns: string
+        Returns: Json
       }
       staff_zone_ids: { Args: { _auth_user_id: string }; Returns: string[] }
       start_offer_payment: {
@@ -12690,6 +13049,14 @@ export type Database = {
         Args: { _coins: number; _order_id: string; _user_id: string }
         Returns: number
       }
+      system_confirm_wallet_topup: {
+        Args: {
+          _amount_paise: number
+          _payment_id: string
+          _razorpay_order_id: string
+        }
+        Returns: Json
+      }
       system_coupon_release: { Args: { _order_id: string }; Returns: undefined }
       system_coupon_reserve: {
         Args: {
@@ -12788,6 +13155,10 @@ export type Database = {
         Args: { _order_id: string; _redemption_id: string }
         Returns: undefined
       }
+      system_set_wallet_topup_order: {
+        Args: { _id: string; _order_id: string }
+        Returns: undefined
+      }
       system_store_mark_paid: {
         Args: { _payment_id: string; _rzp_order_id: string }
         Returns: boolean
@@ -12849,6 +13220,21 @@ export type Database = {
       }
       verify_login_pin_internal: {
         Args: { p_phone: string; p_pin: string }
+        Returns: Json
+      }
+      wallet_expire_bonuses: { Args: never; Returns: number }
+      wallet_post: {
+        Args: {
+          _amount: number
+          _bucket: string
+          _by: string
+          _expires: string
+          _reason: string
+          _ref_id: string
+          _ref_type: string
+          _type: string
+          _uid: string
+        }
         Returns: Json
       }
       zone_delete_impact: { Args: { _zone_id: string }; Returns: Json }
