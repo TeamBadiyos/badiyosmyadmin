@@ -1,7 +1,7 @@
 import { TripLeftBehind } from "@/components/left-behind";
 import { FilterBar, FilterField, filterInputCls, filterSelectCls, countLabel } from "@/components/section-chrome";
 import { StopProofs } from "@/components/drop-proofs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -1666,6 +1666,24 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
     refetchInterval: 30_000,
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "orders"] });
+  // Opened from a bell alert: open that exact order/trip once the list has it.
+  const [pendingOpen, setPendingOpen] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      try {
+        const id = sessionStorage.getItem("cc-open-courier");
+        if (id) { sessionStorage.removeItem("cc-open-courier"); setPendingOpen(id); setStatus(""); setSearch(""); setBusiness(""); setMultiStop(false); }
+      } catch { /* ignore */ }
+    };
+    read();
+    window.addEventListener("cc-open-courier", read);
+    return () => window.removeEventListener("cc-open-courier", read);
+  }, []);
+  useEffect(() => {
+    if (!pendingOpen || !data) return;
+    const hit = data.find((o) => o.id === pendingOpen);
+    if (hit) { setSelected(hit); setPendingOpen(null); }
+  }, [pendingOpen, data]);
 
   const [range, setRange] = useState<"all" | "today" | "yesterday" | "7d" | "30d" | "custom">("all");
   const [from, setFrom] = useState("");
