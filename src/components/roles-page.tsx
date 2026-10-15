@@ -350,7 +350,7 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
 
   const roleOptions = useMemo(() => {
     if (user.role === "super_admin") return ["super_admin"] as StaffRole[];
-    return ["ops_manager"] as StaffRole[];
+    return (user.role === "area_partner" ? ["ops_manager", "finance", "area_partner"] : ["ops_manager", "finance"]) as StaffRole[];
   }, [user.role]);
 
   return (
