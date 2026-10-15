@@ -11,6 +11,7 @@ import {
   Upload,
   Layers,
   CalendarClock,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -19,6 +20,8 @@ import {
   upsertCategory,
   setCategoryActive,
   setSegmentActive,
+  deleteCategory,
+  setPriceOptionActive,
   upsertService,
   deleteService,
   upsertPriceOption,
@@ -119,6 +122,8 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
   const queryClient = useQueryClient();
   const setSegActiveFn = useServerFn(setSegmentActive);
   const setCatActiveFn = useServerFn(setCategoryActive);
+  const delCatFn = useServerFn(deleteCategory);
+  const optActiveFn = useServerFn(setPriceOptionActive);
 
   async function applyActiveToggle(
     kind: "segment" | "category",
@@ -189,202 +194,113 @@ export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" |
     return m;
   }, [priceOptions]);
 
+  const seg0 = segments[0];
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
-      <div className="space-y-4 min-w-0">
-        <p className="text-[14px] text-muted-foreground">
-          Segment → Category → Service → Price options. Pricing can be
-          duration-based, flat, or quantity-based per service.
-        </p>
-
-        {isLoading && (
-          <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>
-        )}
+    <div>
+      <div className="space-y-4 min-w-0 max-w-4xl">
+        <div className="flex items-center justify-end">
+          {seg0 && (
+            <button
+              onClick={() => setCategoryModal({ segment: seg0, category: null })}
+              className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1 whitespace-nowrap"
+            >
+              <Plus size={14} /> Add category
+            </button>
+          )}
+        </div>
+        {isLoading && <p className="text-[13px] text-muted-foreground text-center py-10">Loading…</p>}
         {isError && (
           <p className="text-[13px] text-destructive text-center py-10">
-            {(error as Error)?.message ?? "Failed to load catalogue."}
+            {(error as Error)?.message ?? "Failed to load services."}
           </p>
         )}
-
-        {segments.map((seg) => {
-          const open = openSegments[seg.id] ?? true;
-          const cats = catsBySegment.get(seg.id) ?? [];
-          const segActiveServices = cats.reduce(
-            (n, c) =>
-              n +
-              (servicesByCategory.get(c.id) ?? []).filter((s) => s.is_active).length,
-            0,
-          );
+        {!isLoading && categories.length === 0 && (
+          <p className="text-[13px] text-muted-foreground text-center py-10">No categories yet.</p>
+        )}
+        {categories.map((cat) => {
+          const seg = segments.find((s) => s.id === cat.segment_id) ?? seg0!;
+          const svcs = servicesByCategory.get(cat.id) ?? [];
           return (
-            <section
-              key={seg.id}
-              className="bg-card border border-border rounded-[18px] overflow-hidden"
-            >
-              <header className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
-                <button
-                  onClick={() => setOpenSegments((s) => ({ ...s, [seg.id]: !open }))}
-                  className="inline-flex items-center gap-2 text-left"
-                >
-                  {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <Layers size={16} className="text-primary" />
-                  <span className="text-[15px] font-bold text-foreground">{seg.name}</span>
-                  {!seg.is_active && (
-                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
-                      inactive
-                    </span>
-                  )}
-                  <span className="text-[12px] text-muted-foreground">
-                    {cats.length} categor{cats.length === 1 ? "y" : "ies"}
-                  </span>
-                </button>
-                <div className="flex items-center gap-3">
-                  <ActiveSwitch
-                    active={seg.is_active}
-                    label={`${seg.name} active`}
-                    onToggle={() =>
-                      requestActiveToggle(
-                        "segment",
-                        seg.id,
-                        seg.name,
-                        seg.is_active,
-                        segActiveServices,
-                      )
-                    }
-                  />
+            <section key={cat.id} className="bg-card border border-border rounded-[16px]">
+              <header className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                <span className="flex-1 min-w-0 truncate text-[15px] font-bold text-foreground">{cat.name}</span>
+                <AvailabilityBadge override={overrides.find((o) => o.target_type === "category" && o.target_id === cat.id)} />
+                <ActiveSwitch
+                  active={cat.is_active}
+                  label={`${cat.name} on/off`}
+                  onToggle={() => requestActiveToggle("category", cat.id, cat.name, cat.is_active, svcs.filter((s) => s.is_active).length)}
+                />
+                <RowMenu
+                  items={[
+                    { label: "Rename", onClick: () => setCategoryModal({ segment: seg, category: cat }) },
+                    { label: "Availability", onClick: () => setAvailabilityModal({ category: cat }) },
+                    { label: "Delete", danger: true, onClick: () => {
+                      if (window.confirm(`Delete category "${cat.name}"?`))
+                        delCatFn({ data: { id: cat.id } })
+                          .then(() => { toast.success("Category deleted"); queryClient.invalidateQueries({ queryKey: ["catalogue"] }); })
+                          .catch((e: Error) => toast.error(e.message));
+                    } },
+                  ]}
+                />
+              </header>
+              <div className="divide-y divide-border">
+                {svcs.map((svc) => (
+                  <div key={svc.id}>
+                    {svcs.length > 1 && (
+                      <div className="flex items-center gap-2 px-5 pt-3 text-[12px] font-semibold text-muted-foreground">
+                        <span className="truncate">{svc.name}</span>
+                        <button onClick={() => setServiceModal({ category: cat, service: svc })} className="underline">Edit</button>
+                      </div>
+                    )}
+                    {(optionsByService.get(svc.id) ?? []).map((o) => (
+                      <div key={o.id} className="flex items-center gap-3 px-5 py-3">
+                        <span className="flex-1 min-w-0 truncate text-[14px] font-medium text-foreground">{o.label}</span>
+                        <span className="w-16 text-right text-[13px] text-muted-foreground whitespace-nowrap">
+                          {(o.duration_minutes ?? o.estimated_minutes) != null ? `${o.duration_minutes ?? o.estimated_minutes} min` : ""}
+                        </span>
+                        <span className="w-28 text-right whitespace-nowrap">
+                          <span className="text-[14px] font-semibold text-foreground">{inr.format(o.customer_price)}</span>
+                          {o.strikethrough_price != null && (
+                            <span className="ml-1.5 text-[12px] text-muted-foreground line-through">{inr.format(o.strikethrough_price)}</span>
+                          )}
+                        </span>
+                        <ActiveSwitch
+                          active={o.is_active}
+                          label={`${o.label} on/off`}
+                          onToggle={() =>
+                            optActiveFn({ data: { id: o.id, active: !o.is_active } })
+                              .then(() => queryClient.invalidateQueries({ queryKey: ["catalogue"] }))
+                              .catch((e: Error) => toast.error(e.message))
+                          }
+                        />
+                        <button
+                          onClick={() => setOptionModal({ service: svc, option: o })}
+                          className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold hover:bg-muted"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div className="px-5 py-3">
                   <button
-                    onClick={() => setCategoryModal({ segment: seg, category: null })}
-                    className="h-9 px-3 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1"
+                    onClick={() =>
+                      svcs[0]
+                        ? setOptionModal({ service: svcs[0], option: null })
+                        : setServiceModal({ category: cat, service: null })
+                    }
+                    className="text-[13px] font-semibold text-primary inline-flex items-center gap-1 whitespace-nowrap"
                   >
-                    <Plus size={14} /> Category
+                    <Plus size={14} /> Add option
                   </button>
                 </div>
-              </header>
-
-              {open && (
-                <div className="divide-y divide-border">
-                  {cats.length === 0 && (
-                    <p className="text-[13px] text-muted-foreground px-5 py-6">
-                      No categories yet.
-                    </p>
-                  )}
-                  {cats.map((cat) => {
-                    const catOpen = openCategories[cat.id] ?? true;
-                    const svcs = servicesByCategory.get(cat.id) ?? [];
-                    return (
-                      <div key={cat.id} className="px-5 py-3">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <button
-                            onClick={() =>
-                              setOpenCategories((s) => ({ ...s, [cat.id]: !catOpen }))
-                            }
-                            className="inline-flex items-center gap-2"
-                          >
-                            {catOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            <span className="text-[14px] font-semibold text-foreground">
-                              {cat.name}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                cat.is_active
-                                  ? "bg-primary-tint text-primary"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {cat.is_active ? "active" : "inactive"}
-                            </span>
-                            <AvailabilityBadge
-                              override={overrides.find(
-                                (o) =>
-                                  o.target_type === "category" && o.target_id === cat.id,
-                              )}
-                            />
-                            <span className="text-[12px] text-muted-foreground">
-                              {svcs.length} service{svcs.length === 1 ? "" : "s"}
-                            </span>
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <ActiveSwitch
-                              active={cat.is_active}
-                              label={`${cat.name} active`}
-                              onToggle={() =>
-                                requestActiveToggle(
-                                  "category",
-                                  cat.id,
-                                  cat.name,
-                                  cat.is_active,
-                                  svcs.filter((s) => s.is_active).length,
-                                )
-                              }
-                            />
-                            <button
-                              onClick={() => setAvailabilityModal({ category: cat })}
-                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
-                            >
-                              <CalendarClock size={12} /> Availability
-                            </button>
-                            <button
-                              onClick={() =>
-                                setCategoryModal({ segment: seg, category: cat })
-                              }
-                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
-                            >
-                              <Pencil size={12} /> Edit
-                            </button>
-                            <button
-                              onClick={() => setServiceModal({ category: cat, service: null })}
-                              className="h-8 px-3 rounded-[10px] border border-border text-[12px] font-semibold inline-flex items-center gap-1 hover:bg-muted"
-                            >
-                              <Plus size={12} /> Service
-                            </button>
-                          </div>
-
-                        </div>
-
-                        {catOpen && (
-                          <div className="mt-3 space-y-3 pl-6">
-                            {svcs.length === 0 && (
-                              <p className="text-[12px] text-muted-foreground">
-                                No services yet.
-                              </p>
-                            )}
-                            {svcs.map((svc) => (
-                              <ServiceRow
-                                key={svc.id}
-                                service={svc}
-                                overrides={overrides}
-                                options={optionsByService.get(svc.id) ?? []}
-
-                                onEdit={() =>
-                                  setServiceModal({ category: cat, service: svc })
-                                }
-                                onAddOption={() =>
-                                  setOptionModal({ service: svc, option: null })
-                                }
-                                onEditOption={(o) =>
-                                  setOptionModal({ service: svc, option: o })
-                                }
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              </div>
             </section>
           );
         })}
       </div>
 
-      <PreviewPane
-        segments={segments}
-        categories={categories}
-        services={services}
-        options={priceOptions}
-        taskTypes={taskTypes}
-        itemLinks={itemLinks}
-      />
 
       {availabilityModal && (
         <AvailabilityModal
@@ -612,6 +528,31 @@ function ServiceRow({
   );
 }
 
+function RowMenu({ items }: { items: Array<{ label: string; onClick: () => void; danger?: boolean }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button aria-label="More" onClick={() => setOpen((o) => !o)}
+        className="h-8 w-8 rounded-[10px] border border-border inline-flex items-center justify-center hover:bg-muted">
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <>
+          <button aria-label="Close menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-9 z-30 min-w-[150px] rounded-[12px] border border-border bg-card py-1 shadow-lg">
+            {items.map((it) => (
+              <button key={it.label} onClick={() => { setOpen(false); it.onClick(); }}
+                className={`block w-full whitespace-nowrap px-4 py-2 text-left text-[13px] font-medium hover:bg-muted ${it.danger ? "text-destructive" : "text-foreground"}`}>
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ActiveSwitch({
   active,
   label,
@@ -652,8 +593,8 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-[18px] w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-foreground/40 flex justify-end" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-card border-l border-border w-full max-w-xl h-full overflow-y-auto">
         <header className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
           <button onClick={onClose} aria-label="Close" className="text-muted-foreground">
