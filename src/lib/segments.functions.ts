@@ -186,3 +186,17 @@ export const reorderSegments = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const setServiceVisible = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { flagId: string; active: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    await requireSegmentStaff(context.supabase, context.userId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase as any).rpc("staff_set_service_visible", {
+      _flag_id: data.flagId,
+      _active: data.active,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

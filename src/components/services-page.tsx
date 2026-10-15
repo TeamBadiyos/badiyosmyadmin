@@ -14,11 +14,12 @@ import {
 import { ServicePreviewTable } from "@/components/courier/service-hours-section";
 import { getCourierAccess, listServiceFlags } from "@/lib/courier.functions";
 import { listServiceControl } from "@/lib/service-control.functions";
-import { listSegments, setSegmentActive, type Segment } from "@/lib/segments.functions";
+import { listSegments, setSegmentActive, setServiceVisible, type Segment } from "@/lib/segments.functions";
 
 type ServicesTab = "controls" | "capacity" | "suggestions" | "training";
 
-const SERVICE_ORDER = ["clean", "store", "courier"] as const;
+const SERVICE_ORDER = ["clean", "wash", "store", "food", "courier"] as const;
+const SERVICE_NAME: Record<string, string> = { clean: "Clean Home", wash: "Clean Auto", store: "Store", food: "Food", courier: "Parcel" };
 const SEGMENT_SLUG_BY_SERVICE: Partial<Record<(typeof SERVICE_ORDER)[number], string>> = {
   clean: "clean",
   store: "store",
@@ -62,6 +63,7 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
   const fetchControl = useServerFn(listServiceControl);
   const fetchSegments = useServerFn(listSegments);
   const toggleSegment = useServerFn(setSegmentActive);
+  const toggleFlag = useServerFn(setServiceVisible);
 
   const [tab, setTab] = useState<ServicesTab>("controls");
   const [city, setCity] = useState("Latur");
@@ -129,6 +131,19 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
     }
   }
 
+  async function setFlagShown(flagId: string, active: boolean) {
+    setBusySegment(flagId);
+    try {
+      await toggleFlag({ data: { flagId, active } });
+      toast.success(active ? "Service shown in app" : "Service hidden from app");
+      refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Update failed");
+    } finally {
+      setBusySegment(null);
+    }
+  }
+
   if (accessQuery.isLoading || controlQuery.isLoading || flagsQuery.isLoading) {
     return <p className="text-[13px] text-muted-foreground">Loading services…</p>;
   }
@@ -147,12 +162,7 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="board-swipe max-w-full flex-1 overflow-x-auto">
           <div className="flex w-max gap-2">
-            {([
-              ["controls", "Service Controls"],
-              ["capacity", "Capacity Messages"],
-              ["suggestions", "Suggestion statuses"],
-              ["training", "Training address"],
-            ] as const).map(([key, label]) => (
+            {([] as Array<readonly [ServicesTab, string]>).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -200,7 +210,7 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
               const serviceKey = flag.service_key as (typeof SERVICE_ORDER)[number];
               const segmentSlug = SEGMENT_SLUG_BY_SERVICE[serviceKey];
               const segment = segmentSlug ? segmentsBySlug.get(segmentSlug) : undefined;
-              const showInApp = serviceKey === "courier" ? null : (segment?.is_active ?? false);
+              const showInApp = serviceKey === "courier" ? null : segment ? segment.is_active : flag.is_active;
               const statusLive = (flag.status || "live") === "live";
               const warning =
                 showInApp === false && statusLive
@@ -219,7 +229,7 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
                       className="flex min-w-0 flex-1 items-center gap-2 text-left"
                     >
                       <SlidersHorizontal size={16} className="shrink-0 text-primary" />
-                      <span className="text-[15px] font-bold text-foreground">{flag.label ?? flag.service_key}</span>
+                      <span className="text-[15px] font-bold text-foreground">{SERVICE_NAME[flag.service_key] ?? flag.label ?? flag.service_key}</span>
                       <span className="rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info">
                         {flag.city}
                       </span>
@@ -236,11 +246,12 @@ export function ServicesPage({ onEditHours }: { onEditHours?: (serviceKey: strin
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-semibold text-foreground">Show in app</span>
                         <Toggle
-                          on={Boolean(segment?.is_active)}
-                          disabled={!canToggleVisibility || !segment || busySegment === segment.id}
-                          label={`Show ${flag.label ?? flag.service_key} in app`}
+                          on={Boolean(showInApp)}
+                          disabled={!canToggleVisibility || busySegment === (segment?.id ?? flag.id)}
+                          label={`Show ${SERVICE_NAME[flag.service_key] ?? flag.service_key} in app`}
                           onChange={(next) => {
                             if (segment) void setShown(segment, next);
+                            else void setFlagShown(flag.id, next);
                           }}
                         />
                       </div>
