@@ -96,7 +96,7 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
     ["Merchant name", "Account holder", "Bank account", "IFSC", "Amount", "Reference"],
     ...rows.map((r) => [r.merchant?.store_name, r.merchant?.bank_account_holder_name, r.merchant?.bank_account_number, r.merchant?.bank_ifsc, Number(r.net_amount).toFixed(2), r.invoice_no ?? r.id]),
   ]);
-  const cols = 13;
+  const cols = 14;
   return (
     <div className="space-y-2">
       
