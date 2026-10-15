@@ -36,6 +36,7 @@ import { getWeeklyExpertReport } from "@/lib/experts.functions";
 import { BatchDetail } from "@/components/wallets-page";
 import type { PayoutBatch } from "@/lib/wallets.functions";
 import { buildCaExportZip, downloadBlob, fetchPnlExtras } from "@/lib/ca-export";
+import { fetchPartnerFees } from "@/components/partner-payments";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
@@ -225,6 +226,10 @@ function RevenueTab({ range }: { range: ReportRange }) {
   const { data: ex } = useQuery({
     queryKey: ["reports", "pnl-extras", range.from, range.to],
     queryFn: () => fetchPnlExtras(range.from, range.to),
+  });
+  const { data: pf } = useQuery({
+    queryKey: ["fin-partner-fees", range.from, range.to],
+    queryFn: () => fetchPartnerFees(range.from, range.to),
   });
   const [zipBusy, setZipBusy] = useState(false);
   const [zipErr, setZipErr] = useState<string | null>(null);
@@ -835,10 +840,10 @@ function PnlTab({ range }: { range: ReportRange }) {
       ["Direct cost – Rider payouts", c.riderPayout], ["Direct cost – Partner Program commission", data.programCommission],
       ["Direct cost – Bonuses", T.bonuses], ["Direct cost – Refunds", T.refunds], ["Direct cost – Razorpay fees", data.gatewayCharges.total],
       ["Gross profit", P.gross],
-      ["Other Income – Instant Settlement Fee", P.instant], ["Other Income – Franchise fee", 0],
+      ["Other Income – Instant Settlement Fee", P.instant], ["Other Income – Franchise Fee", P.franchise],
       ...((ex?.expenses_by_category ?? []).map((e) => [`Expense – ${e.category}`, Number(e.amount)] as [string, number])),
       ["Net profit", P.net],
-      ["GST collected on customer orders", T.gst], ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
+      ["GST collected on customer orders", T.gst], ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST on franchise fees", Number(pf?.fee_gst ?? 0)], ["Partner deposits held (liability)", Number(pf?.deposits_held ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
     const csv = ["Item,Amount", ...lines.map(([k, v]) => `"${k}",${v.toFixed(2)}`), "", "Date,Collected,Payouts,Profit",
@@ -889,7 +894,7 @@ function PnlTab({ range }: { range: ReportRange }) {
           <Row label={`Gross profit · ${P.revenue > 0 ? ((P.gross / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.gross} bold />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Other income</p>
           <Row label="Other Income – Instant Settlement Fee" sub="Excl GST" value={P.instant} />
-          <Row label="Other Income – Franchise fee" sub="No franchise fees recorded yet" value={0} />
+          <Row label="Other Income – Franchise Fee" sub="Partner franchise / joining / renewal / other fees, excl GST" value={P.franchise} />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Expenses</p>
           {(ex?.expenses_by_category ?? []).length === 0 && <p className="text-[12px] text-muted-foreground py-2">No expenses in range.</p>}
           {(ex?.expenses_by_category ?? []).map((e) => (
@@ -903,6 +908,7 @@ function PnlTab({ range }: { range: ReportRange }) {
             <Row label="GST collected on customer orders" value={T.gst} />
             <Row label="GST on store commission" value={m.commissionGst} />
             <Row label="GST on instant settlement fee" value={Number(ex.instant_fee_gst)} />
+            <Row label="GST on franchise fees" value={Number(pf?.fee_gst ?? 0)} />
             <Row label="GST paid on expenses (input credit)" value={Number(ex.expense_gst)} neg />
           </Card>
         )}
