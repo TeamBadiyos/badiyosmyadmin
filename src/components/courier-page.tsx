@@ -554,7 +554,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
   const confirm = useServerFn(confirmRate);
   const [draft, setDraft] = useState<RateDraft | null>(null);
   const [busy, setBusy] = useState(false);
-  const [segTab, setSegTab] = useState<"regular" | "corporate">("regular");
+  const segTab = "regular" as const;
 
   const { data } = useQuery({ queryKey: ["courier", "rates"], queryFn: () => fetchRates() });
   const refresh = () => qc.invalidateQueries({ queryKey: ["courier", "rates"] });
@@ -604,17 +604,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-[12px] bg-muted p-1 w-fit">
-        {(["regular", "corporate"] as const).map((sg) => (
-          <button
-            key={sg}
-            onClick={() => setSegTab(sg)}
-            className={`rounded-[10px] px-4 py-1.5 text-[12px] font-bold ${segTab === sg ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            {sg === "regular" ? "Regular" : "Corporate"}
-          </button>
-        ))}
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span />
         {canWrite ? (
@@ -627,56 +616,71 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
         ) : null}
       </div>
 
-      {rows.map((r) => (
-        <div key={r.id} className="rounded-[16px] border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Bike size={16} className="text-primary" />
-              <span className="text-[14px] font-bold text-foreground">{r.vehicleName}</span>
-              <Pill tone="info">{r.city}</Pill>
-              {r.is_placeholder ? <Pill tone="warn">Placeholder</Pill> : <Pill tone="ok">Confirmed</Pill>}
-            </div>
-            <div className="flex items-center gap-2">
-              {canWrite ? (
-                <button
-                  onClick={() => setDraft(rateDraft(r))}
-                  className="flex items-center gap-1 rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted"
-                >
-                  <Pencil size={13} /> Edit
-                </button>
-              ) : null}
-              {canWrite && r.is_placeholder ? (
-                <button
-                  onClick={async () => {
-                    try {
-                      await confirm({ data: { id: r.id } });
-                      toast.success("Rate marked as confirmed");
-                      refresh();
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Update failed");
-                    }
-                  }}
-                  className="flex items-center gap-1 rounded-[10px] bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground"
-                >
-                  <CheckCircle2 size={13} /> Mark as confirmed
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-2 grid gap-1 text-[12px] text-muted-foreground sm:grid-cols-3">
-            <span>Base ₹{r.base_fare} · {r.included_km} km included</span>
-            <span>Per km ₹{r.per_km} · Min ₹{r.min_fare}</span>
-            <span>Platform ₹{r.platform_fee} · Commission {r.commission_pct}%</span>
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Extra pickup ₹{r.extra_pickup_fee} · Extra drop ₹{r.extra_drop_fee} · Max{" "}
-            {r.max_pickups == null && r.max_drops == null
-              ? "No limit"
-              : `${r.max_pickups ?? "No limit"}/${r.max_drops ?? "No limit"}`}{" "}
-            · Return ₹{r.return_per_km}/km
-          </p>
-        </div>
-      ))}
+      <div className="overflow-x-auto rounded-[16px] border border-border bg-card">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2.5">Vehicle</th>
+              <th className="px-3 py-2.5">City</th>
+              <th className="px-3 py-2.5 text-right">Base (incl. km)</th>
+              <th className="px-3 py-2.5 text-right">Per km</th>
+              <th className="px-3 py-2.5 text-right">Min fare</th>
+              <th className="px-3 py-2.5 text-right">Extra stop</th>
+              <th className="px-3 py-2.5 text-right">Return/km</th>
+              <th className="px-3 py-2.5 text-right">Commission</th>
+              <th className="px-3 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-4 text-muted-foreground">No rates yet.</td></tr>
+            ) : null}
+            {rows.map((r) => (
+              <tr key={r.id} className="border-b border-border last:border-0">
+                <td className="px-3 py-2.5 font-bold text-foreground">
+                  {r.vehicleName}
+                  {r.is_placeholder ? <span className="ml-1.5"><Pill tone="warn">Placeholder</Pill></span> : null}
+                </td>
+                <td className="px-3 py-2.5 text-foreground">{r.city}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.base_fare} · {r.included_km} km</td>
+                <td className="px-3 py-2.5 text-right">₹{r.per_km}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.min_fare}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.extra_drop_fee}</td>
+                <td className="px-3 py-2.5 text-right">₹{r.return_per_km}</td>
+                <td className="px-3 py-2.5 text-right">{r.commission_pct}%</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex justify-end gap-1.5">
+                    {canWrite && r.is_placeholder ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await confirm({ data: { id: r.id } });
+                            toast.success("Rate marked as confirmed");
+                            refresh();
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Update failed");
+                          }
+                        }}
+                        className="flex items-center gap-1 rounded-[10px] border border-border px-2.5 py-1 text-[12px] font-semibold text-foreground hover:bg-muted"
+                      >
+                        <CheckCircle2 size={13} /> Confirm
+                      </button>
+                    ) : null}
+                    {canWrite ? (
+                      <button
+                        onClick={() => setDraft(rateDraft(r))}
+                        className="flex items-center gap-1 rounded-[10px] border border-border px-2.5 py-1 text-[12px] font-semibold text-foreground hover:bg-muted"
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {draft ? (
         <Modal title={draft.id ? "Edit rate" : "New rate"} onClose={() => setDraft(null)}>
@@ -721,19 +725,6 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 />
               </Field>
             ))}
-            <Field label="Segment">
-              <select
-                className={inputCls}
-                disabled={!!draft.id}
-                value={draft.segment}
-                onChange={(e) =>
-                  setDraft({ ...draft, segment: e.target.value as "regular" | "corporate", noLimitPickups: false, noLimitDrops: false })
-                }
-              >
-                <option value="regular">Regular</option>
-                <option value="corporate">Corporate</option>
-              </select>
-            </Field>
           </div>
           <div className="mt-4 rounded-[12px] border border-border p-3">
             <h4 className="text-[13px] font-bold text-foreground">Multi-stop charges</h4>
@@ -1664,9 +1655,17 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
 
   const rows = data ?? [];
 
+  const typeVal = multiStop ? "multi" : business === "any" ? "business" : business ? business : "";
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          placeholder="Search code, customer, phone"
+          className={`${inputCls} max-w-[260px]`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <select
           className={`${inputCls} max-w-[200px]`}
           value={status}
@@ -1679,66 +1678,92 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
             </option>
           ))}
         </select>
-        <input
-          placeholder="Search order code"
-          className={`${inputCls} max-w-[240px]`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label className="flex items-center gap-2 rounded-[10px] border border-border px-3 text-[12px] font-semibold text-foreground">
-          <input type="checkbox" checked={multiStop} onChange={(e) => setMultiStop(e.target.checked)} />
-          Multi-stop
-        </label>
         <select
           className={`${inputCls} max-w-[220px]`}
-          value={business}
-          onChange={(e) => setBusiness(e.target.value)}
+          value={typeVal}
+          onChange={(e) => {
+            const v = e.target.value;
+            setMultiStop(v === "multi");
+            setBusiness(v === "business" ? "any" : v === "" || v === "multi" ? "" : v);
+          }}
         >
-          <option value="">All orders</option>
-          <option value="any">Business trips only</option>
+          <option value="">All types</option>
+          <option value="multi">Multi-stop</option>
+          <option value="business">Business (all)</option>
           {(bizList ?? []).map((b) => (
             <option key={b.merchant_id} value={b.merchant_id}>
-              {b.business_name}
+              {`Business · ${b.business_name}`}
             </option>
           ))}
         </select>
+        <span className="ml-auto text-[12px] text-muted-foreground">{rows.length} orders</span>
       </div>
 
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">No courier orders found.</p>
-      ) : null}
-
-      {rows.map((o) => (
-        <button
-          key={o.id}
-          onClick={() => setSelected(o)}
-          className="block w-full rounded-[16px] border border-border bg-card p-4 text-left hover:bg-muted/40"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[14px] font-bold text-foreground">{o.order_code}</span>
-              <Pill tone="info">{o.status}</Pill>
-              {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
-              {o.pickup_count > 1 || o.drop_count > 1 ? (
-                <Pill tone="off">{`${o.pickup_count}P · ${o.drop_count}D`}</Pill>
-              ) : null}
-              {o.returnPaymentPending ? <Pill tone="warn">Return payment pending</Pill> : null}
-              {o.businessName ? <Pill tone="ok">{`Business · ${o.businessName}`}</Pill> : null}
-            </div>
-            <OrderPaymentSummary
-              className="shrink-0 text-right"
-              paid={String(o.payment_status ?? "").toLowerCase() === "paid" ? o.total_amount : 0}
-              base={o.base_amount}
-              coupon={o.discount_amount}
-              gst={o.gst_amount}
-            />
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            {o.customerName ?? "Customer"} · {o.riderName ?? "No rider"} ·{" "}
-            {new Date(o.created_at).toLocaleString()}
-          </p>
-        </button>
-      ))}
+      ) : (
+        <div className="overflow-x-auto rounded-[16px] border border-border bg-card">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2.5">Code</th>
+                <th className="px-3 py-2.5">Customer</th>
+                <th className="px-3 py-2.5">Rider</th>
+                <th className="px-3 py-2.5">Stops</th>
+                <th className="px-3 py-2.5 text-right">Amount</th>
+                <th className="px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5">Placed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((o) => {
+                const cancelled = String(o.status).toLowerCase().includes("cancel");
+                const refunded = (o.refund_status ?? "none") !== "none";
+                return (
+                  <tr
+                    key={o.id}
+                    onClick={() => setSelected(o)}
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/40"
+                  >
+                    <td className="px-3 py-2.5 font-bold text-foreground">
+                      {o.order_code}
+                      {o.businessName ? <div className="text-[11px] font-normal text-muted-foreground">{o.businessName}</div> : null}
+                    </td>
+                    <td className="px-3 py-2.5 text-foreground">{o.customerName ?? "Customer"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{o.riderName ?? "No rider"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{`${o.pickup_count}P · ${o.drop_count}D`}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      {cancelled && !refunded ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : cancelled ? (
+                        <span className="text-muted-foreground">Refund {o.refund_status}</span>
+                      ) : (
+                        <OrderPaymentSummary
+                          className="text-right"
+                          paid={String(o.payment_status ?? "").toLowerCase() === "paid" ? o.total_amount : 0}
+                          base={o.base_amount}
+                          coupon={o.discount_amount}
+                          gst={o.gst_amount}
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        <Pill tone={toneFor(o.status)}>{o.status}</Pill>
+                        {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+                        {o.returnPaymentPending ? <Pill tone="warn">Return pending</Pill> : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                      {new Date(o.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected ? (
         <OrderDetail
@@ -1914,7 +1939,6 @@ function ZoneMappingTab({ canWrite }: { canWrite: boolean }) {
 
 export function CourierPage({ section = "orders" }: { section?: CourierSection }) {
   const fetchAccess = useServerFn(getCourierAccess);
-  const [typeTab, setTypeTab] = useState<TypeTab>("vehicles");
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["courier", "access"],
@@ -1941,31 +1965,13 @@ export function CourierPage({ section = "orders" }: { section?: CourierSection }
       ) : null}
 
       {section === "types" ? (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { key: "vehicles", label: "Vehicle Types" },
-              { key: "types", label: "Courier Types" },
-            ] as const).map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setTypeTab(item.key)}
-                className={`rounded-[10px] px-3.5 py-2 text-[12px] font-semibold ${
-                  typeTab === item.key
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          {typeTab === "vehicles" ? <VehicleTypesTab canWrite={canWrite} /> : null}
-          {typeTab === "types" ? <CourierTypesTab canWrite={canWrite} /> : null}
-        </>
+        <div className="space-y-8">
+          <section><h2 className="mb-3 text-[15px] font-bold text-foreground">Vehicles</h2><VehicleTypesTab canWrite={canWrite} /></section>
+          <section><h2 className="mb-3 text-[15px] font-bold text-foreground">Parcel types</h2><CourierTypesTab canWrite={canWrite} /></section>
+        </div>
       ) : null}
       {section === "rates" ? (<RatesTab canWrite={canWrite} />) : null}
-      {section === "riders" ? <div className="space-y-6"><RidersCapacityPanel /><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
+      {section === "riders" ? <div className="space-y-6"><ExpertsPage role={access?.role === "super_admin" || access?.role === "ops_manager" ? access.role : null} skill="rider" /></div> : null}
       {section === "settings" ? (
         <div className="space-y-5">
           <ServiceHoursPanel serviceKey="courier" title="Courier timings" />
