@@ -7684,7 +7684,10 @@ export type Database = {
           cap_date: string
           capacity: number
           created_at: string
+          day_cap: number | null
+          evening_cap: number | null
           id: string
+          morning_cap: number | null
           service_key: string
           updated_at: string
           updated_by: string | null
@@ -7693,7 +7696,10 @@ export type Database = {
           cap_date: string
           capacity: number
           created_at?: string
+          day_cap?: number | null
+          evening_cap?: number | null
           id?: string
+          morning_cap?: number | null
           service_key?: string
           updated_at?: string
           updated_by?: string | null
@@ -7702,7 +7708,10 @@ export type Database = {
           cap_date?: string
           capacity?: number
           created_at?: string
+          day_cap?: number | null
+          evening_cap?: number | null
           id?: string
+          morning_cap?: number | null
           service_key?: string
           updated_at?: string
           updated_by?: string | null
@@ -8133,30 +8142,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      slot_capacity_weekday: {
-        Row: {
-          capacity: number
-          service_key: string
-          updated_at: string
-          updated_by: string | null
-          weekday: number
-        }
-        Insert: {
-          capacity: number
-          service_key: string
-          updated_at?: string
-          updated_by?: string | null
-          weekday: number
-        }
-        Update: {
-          capacity?: number
-          service_key?: string
-          updated_at?: string
-          updated_by?: string | null
-          weekday?: number
-        }
-        Relationships: []
       }
       sponsored_slots: {
         Row: {
@@ -11129,6 +11114,14 @@ export type Database = {
         Returns: string
       }
       settlement_next_invoice: { Args: { _d: string }; Returns: string[] }
+      slot_band_capacity: {
+        Args: { _date: string; _min: number; _service_key: string }
+        Returns: number
+      }
+      slot_band_of: {
+        Args: { _min: number; _service_key: string }
+        Returns: string
+      }
       slot_busy_by_half: {
         Args: { _date: string; _service_key: string }
         Returns: {
@@ -11819,6 +11812,16 @@ export type Database = {
         }
         Returns: string
       }
+      staff_set_band_capacity: {
+        Args: {
+          _date: string
+          _day: number
+          _evening: number
+          _morning: number
+          _service_key: string
+        }
+        Returns: undefined
+      }
       staff_set_booking_location: {
         Args: {
           _area: string
@@ -12029,9 +12032,9 @@ export type Database = {
         Args: { _archived: boolean; _id: string }
         Returns: boolean
       }
-      staff_set_weekday_capacity: {
-        Args: { _capacity: number; _service_key: string; _weekday: number }
-        Returns: undefined
+      staff_slot_band_summary: {
+        Args: { _date: string; _service_key: string }
+        Returns: Json
       }
       staff_soft_delete_booking: {
         Args: { _booking_id: string; _reason: string }
