@@ -10500,6 +10500,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      dispatch_limit_minutes: {
+        Args: { _city: string; _svc: string }
+        Returns: number
+      }
       ensure_start_otp: { Args: { _booking_id: string }; Returns: string }
       evaluate_reward_triggers: {
         Args: {
@@ -12547,6 +12551,7 @@ export type Database = {
         }
         Returns: Json
       }
+      system_check_commerce_alerts: { Args: never; Returns: undefined }
       system_check_no_accept_alerts: { Args: never; Returns: string[] }
       system_coins_release: { Args: { _order_id: string }; Returns: number }
       system_coins_reserve: {
