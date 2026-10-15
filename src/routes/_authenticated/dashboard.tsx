@@ -494,7 +494,7 @@ function Shell() {
                   strokeWidth={isActive ? 2.25 : 2}
                   className={isActive ? "text-primary" : ""}
                 />
-                <span className={mini ? "lg:hidden" : ""}>{item.label}</span>
+                <span className={`whitespace-nowrap truncate ${mini ? "lg:hidden" : ""}`}>{item.label}</span>
               </button>
             );
           })}
@@ -523,7 +523,7 @@ function Shell() {
                     strokeWidth={group.isActive ? 2.25 : 2}
                     className={group.isActive ? "text-primary" : ""}
                   />
-                  <span className={`flex-1 text-left ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
+                  <span className={`flex-1 min-w-0 text-left whitespace-nowrap truncate ${mini ? "lg:hidden" : ""}`}>{group.label}</span>
                   {(group.keys as readonly string[]).includes("support") &&
                     openTickets > 0 && (
                       <span className={`min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center ${mini ? "lg:hidden" : ""}`}>
