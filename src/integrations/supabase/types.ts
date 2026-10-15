@@ -3937,6 +3937,27 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       expert_holiday_notices: {
         Row: {
           created_at: string
@@ -6120,6 +6141,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      operating_expenses: {
+        Row: {
+          amount: number
+          bill_path: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          expense_date: string
+          gst_paid: number
+          id: string
+          note: string | null
+          paid_via: string
+          subscription_id: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number
+          bill_path?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          expense_date?: string
+          gst_paid?: number
+          id?: string
+          note?: string | null
+          paid_via?: string
+          subscription_id?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          bill_path?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          expense_date?: string
+          gst_paid?: number
+          id?: string
+          note?: string | null
+          paid_via?: string
+          subscription_id?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
       }
       ops_settings: {
         Row: {
@@ -9158,6 +9227,51 @@ export type Database = {
           },
         ]
       }
+      vendor_subscriptions: {
+        Row: {
+          amount: number
+          auto_renew: boolean
+          billing_cycle: string
+          category: string
+          created_at: string
+          id: string
+          name: string
+          next_due_date: string
+          payment_method_label: string | null
+          status: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number
+          auto_renew?: boolean
+          billing_cycle?: string
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          next_due_date?: string
+          payment_method_label?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          auto_renew?: boolean
+          billing_cycle?: string
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          next_due_date?: string
+          payment_method_label?: string | null
+          status?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       waitlist_notify_events: {
         Row: {
           channel: string
@@ -10597,6 +10711,21 @@ export type Database = {
         }
         Returns: Json
       }
+      fin_delete_expense: { Args: { _id: string }; Returns: undefined }
+      fin_mark_subscription_paid: {
+        Args: { _id: string; _paid_via?: string }
+        Returns: string
+      }
+      fin_save_expense: { Args: { _id: string; _p: Json }; Returns: string }
+      fin_save_expense_category: {
+        Args: { _active: boolean; _name: string }
+        Returns: undefined
+      }
+      fin_save_subscription: {
+        Args: { _id: string; _p: Json }
+        Returns: string
+      }
+      fin_subscription_reminders: { Args: never; Returns: number }
       generate_offline_invoice_number: {
         Args: { _merchant_id: string }
         Returns: string
