@@ -73,6 +73,7 @@ export type ListBookingsInput = {
   pageSize?: number;
   includeDeleted?: boolean;
   search?: string | null; // customer / expert name or phone
+  cleanKind?: "maid" | "wash" | null;
 };
 
 export type ListBookingsResult = {
@@ -143,6 +144,21 @@ export const listBookings = createServerFn({ method: "POST" })
     }
     if (data.from) q = q.gte("created_at", `${data.from}T00:00:00Z`);
     if (data.to) q = q.lte("created_at", `${data.to}T23:59:59Z`);
+
+    // Clean sub-section filter: Car & Bike Wash = the "Auto Care" category.
+    if (data.cleanKind) {
+      const { data: washCats } = await context.supabase
+        .from("service_categories")
+        .select("id")
+        .ilike("name", "%auto care%");
+      const ids = ((washCats ?? []) as { id: string }[]).map((c) => c.id);
+      if (data.cleanKind === "wash") {
+        if (!ids.length) return { rows: [], total: 0, page, pageSize };
+        q = q.in("service_category_id", ids);
+      } else if (ids.length) {
+        q = q.or(`service_category_id.is.null,service_category_id.not.in.(${ids.join(",")})`);
+      }
+    }
 
     // Search by customer or expert name / phone: resolve matching ids first,
     // then filter bookings on user_id / assigned_expert_id.

@@ -66,7 +66,9 @@ export function BookingsPage({
   role,
   onSelect,
   initialFilters,
+  cleanKind = null,
 }: {
+  cleanKind?: "maid" | "wash" | null;
   role: StaffRole | null;
   onSelect?: (bookingId: string) => void;
   initialFilters?: BookingsInitialFilters;
@@ -77,7 +79,7 @@ export function BookingsPage({
   const [to, setTo] = useState<string>(initialFilters?.to ?? "");
   const [page, setPage] = useState<number>(1);
   const [includeDeleted, setIncludeDeleted] = useState<boolean>(false);
-  const [orderType, setOrderType] = useState<"all" | "service" | "courier">("all");
+  const [orderType, setOrderType] = useState<"all" | "service" | "courier">(cleanKind ? "service" : "all");
   const [openCourier, setOpenCourier] = useState<CourierOrderRow | null>(null);
   const [searchInput, setSearchInput] = useState<string>("");
   const [search, setSearch] = useState<string>("");
@@ -115,8 +117,9 @@ export function BookingsPage({
       pageSize: PAGE_SIZE,
       includeDeleted: includeDeleted && role === "super_admin",
       search: search || null,
+      cleanKind,
     };
-  }, [status, zoneId, from, to, page, includeDeleted, role, search]);
+  }, [status, zoneId, from, to, page, includeDeleted, role, search, cleanKind]);
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
@@ -253,7 +256,7 @@ export function BookingsPage({
             )}
           </div>
         </div>
-        {canSeeCourier && (
+        {canSeeCourier && !cleanKind && (
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Type

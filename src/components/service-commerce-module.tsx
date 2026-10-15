@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ServiceHoursPanel } from "@/components/ops-panels";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -89,7 +90,7 @@ export function ServiceCommerceModule({ service, role }: { service: Svc; role: s
       {tab === "approvals" && <ApprovalsTab service={service} />}
       {tab === "categories" && <CategoriesTab service={service} role={role} />}
       {tab === "sponsored" && <SponsoredTab service={service} role={role} />}
-      {tab === "settings" && <SettingsTab service={service} role={role} />}
+      {tab === "settings" && (<div className="space-y-5"><SettingsTab service={service} role={role} /><ServiceHoursPanel serviceKey={service} title={service === "food" ? "Food opening hours" : "Store opening hours"} /></div>)}
     </div>
   );
 }
