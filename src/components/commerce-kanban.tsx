@@ -127,7 +127,45 @@ function RiderLine({ o }: { o: CommerceOrder }) {
   );
 }
 
-function OrderSheet({
+export function CommerceCard({ o, now, onOpen }: { o: CommerceOrder; now: number; onOpen: () => void }) {
+  const red = o.alerts.length > 0;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full text-left bg-card rounded-[12px] p-3 shadow-sm border transition-colors ${
+        red ? "border-destructive ring-1 ring-destructive/40" : "border-border hover:border-primary"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <p className="text-[13px] font-bold text-foreground truncate">{o.merchantName}</p>
+        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+          {o.orderNumber || `#${o.id.slice(0, 6)}`}
+        </span>
+      </div>
+      <div className="text-[12px] flex items-center gap-1 text-muted-foreground mb-1 min-w-0">
+        <User size={12} className="shrink-0" />
+        <span className="truncate">{o.customerName}</span>
+      </div>
+      <div className="text-[12px] mb-1.5 min-w-0"><RiderLine o={o} /></div>
+      <p className="truncate text-[12px] text-muted-foreground">
+        {STATUS_LABEL[o.status]} · {ago(o.createdAt, now)}
+      </p>
+      <OrderPaymentSummary className="mt-1.5" paid={o.paidAmount} base={o.itemsTotal} coupon={o.discountAmount} delivery={o.deliveryFee} />
+      {red && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {o.alerts.map((a) => (
+            <span key={a} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-[10px] font-bold px-2 py-0.5">
+              <AlertTriangle size={10} /> {ALERT_LABEL[a]}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
+  );
+}
+
+export function OrderSheet({
   order,
   canManage,
   onClose,
@@ -422,50 +460,7 @@ export function CommerceKanban({ segmentId, service = null }: { segmentId: strin
               <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
                 {isLoading && items.length === 0 && <p className="text-[12px] text-muted-foreground px-1">Loading…</p>}
                 {!isLoading && items.length === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
-                {items.map((o) => {
-                  const red = o.alerts.length > 0;
-                  return (
-                    <button
-                      type="button"
-                      key={o.id}
-                      onClick={() => setSelectedId(o.id)}
-                      className={`w-full text-left bg-card rounded-[12px] p-3 shadow-sm border transition-colors ${
-                        red ? "border-destructive ring-1 ring-destructive/40" : "border-border hover:border-primary"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-[13px] font-bold text-foreground truncate">{o.merchantName}</p>
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                          {o.orderNumber || `#${o.id.slice(0, 6)}`}
-                        </span>
-                      </div>
-                      <div className="text-[12px] flex items-center gap-1 text-muted-foreground mb-1 min-w-0">
-                        <User size={12} className="shrink-0" />
-                        <span className="truncate">{o.customerName}</span>
-                      </div>
-                      <div className="text-[12px] mb-1.5 min-w-0"><RiderLine o={o} /></div>
-                      <p className="truncate text-[12px] text-muted-foreground">
-                        {STATUS_LABEL[o.status]} · {ago(o.createdAt, now)}
-                      </p>
-                      <OrderPaymentSummary
-                        className="mt-1.5"
-                        paid={o.paidAmount}
-                        base={o.itemsTotal}
-                        coupon={o.discountAmount}
-                        delivery={o.deliveryFee}
-                      />
-                      {red && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {o.alerts.map((a) => (
-                            <span key={a} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-[10px] font-bold px-2 py-0.5">
-                              <AlertTriangle size={10} /> {ALERT_LABEL[a]}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                {items.map((o) => <CommerceCard key={o.id} o={o} now={now} onOpen={() => setSelectedId(o.id)} />)}
               </div>
             </div>
           );
