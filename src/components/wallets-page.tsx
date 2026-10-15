@@ -24,6 +24,7 @@ import {
 } from "@/lib/wallets.functions";
 import { downloadPayoutPdf, downloadPayoutCsv } from "@/lib/payout-pdf";
 import { CommissionTab } from "@/components/commission-tab";
+import { PartnersPage } from "@/components/partners-page";
 import {
   useSortFilter,
   SortFilterHeader,
@@ -39,32 +40,22 @@ const inr = new Intl.NumberFormat("en-IN", {
 type Role = "super_admin" | "ops_manager" | "area_partner" | null;
 
 export function WalletsPage({ role }: { role: Role }) {
-  const [tab, setTab] = useState<
-    "balances" | "payouts" | "merchant_payouts" | "commission" | "tds"
-  >("balances");
+  // Merchant money lives only in Finance → Merchants; the old "Merchant Payouts" batches are hidden (data kept).
+  // Service pay rates moved to Clean Home / Clean Auto → Services.
+  const [tab, setTab] = useState<"balances" | "payouts" | "partners" | "incentives" | "tds">("balances");
   return (
     <div className="space-y-6">
       <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
-        <TabBtn active={tab === "balances"} onClick={() => setTab("balances")}>
-          Balances
-        </TabBtn>
-        <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")}>
-          Payouts
-        </TabBtn>
-        <TabBtn active={tab === "merchant_payouts"} onClick={() => setTab("merchant_payouts")}>
-          Merchant Payouts
-        </TabBtn>
-        <TabBtn active={tab === "commission"} onClick={() => setTab("commission")}>
-          Commission &amp; Incentives
-        </TabBtn>
-        <TabBtn active={tab === "tds"} onClick={() => setTab("tds")}>
-          TDS
-        </TabBtn>
+        <TabBtn active={tab === "balances"} onClick={() => setTab("balances")}>Balances</TabBtn>
+        <TabBtn active={tab === "payouts"} onClick={() => setTab("payouts")}>Requests</TabBtn>
+        <TabBtn active={tab === "partners"} onClick={() => setTab("partners")}>Partners</TabBtn>
+        <TabBtn active={tab === "incentives"} onClick={() => setTab("incentives")}>Incentives</TabBtn>
+        <TabBtn active={tab === "tds"} onClick={() => setTab("tds")}>TDS</TabBtn>
       </div>
       {tab === "balances" && <BalancesTab role={role} />}
       {tab === "payouts" && <PayoutsTab mode="expert" />}
-      {tab === "merchant_payouts" && <PayoutsTab mode="merchant" />}
-      {tab === "commission" && <CommissionTab />}
+      {tab === "partners" && <PartnersPage role={role} initialTab="payouts" />}
+      {tab === "incentives" && <CommissionTab only="incentives" />}
       {tab === "tds" && <TdsTab role={role} />}
     </div>
   );

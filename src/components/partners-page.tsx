@@ -45,12 +45,12 @@ function lastWeekIST() {
   return { from: f(mon), to: f(sun) };
 }
 
-export function PartnersPage({ role }: { role: string | null }) {
+export function PartnersPage({ role, initialTab }: { role: string | null; initialTab?: "payouts" }) {
   const isAdmin = role === "super_admin";
-  const [tab, setTab] = useState<"partners" | "payouts" | "settings">("partners");
+  const [tab, setTab] = useState<"partners" | "payouts" | "settings">(initialTab ?? "partners");
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <div className={`flex gap-2 overflow-x-auto ${initialTab ? "hidden" : ""}`}>
         {(["partners", "payouts", "settings"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
             {t === "partners" ? "Partners" : t === "payouts" ? "Payouts" : "Settings"}

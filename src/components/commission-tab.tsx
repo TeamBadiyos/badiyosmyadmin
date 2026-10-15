@@ -44,7 +44,7 @@ function splitOf(
   return { expert, partner, hq: Math.round(price) - expert - partner };
 }
 
-export function CommissionTab() {
+export function CommissionTab({ only }: { only?: "commission" | "incentives" } = {}) {
   const queryClient = useQueryClient();
   const fetchAccess = useServerFn(getCommissionAccess);
   const fetchRules = useServerFn(listCommissionRules);
@@ -59,7 +59,7 @@ export function CommissionTab() {
   });
 
   const canWrite = !!access?.canWrite;
-  const [sub, setSub] = useState<"commission" | "incentives" | "bonus preview">("commission");
+  const [sub, setSub] = useState<"commission" | "incentives" | "bonus preview">(only === "incentives" ? "incentives" : "commission");
   const [editing, setEditing] = useState<CommissionRuleRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [simFor, setSimFor] = useState<CommissionRuleRow | null>(null);
@@ -70,8 +70,10 @@ export function CommissionTab() {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
-        {(canWrite
+      <div className={`inline-flex rounded-[14px] border border-border bg-card p-1 ${only === "commission" ? "hidden" : ""}`}>
+        {(only === "incentives"
+          ? (canWrite ? (["incentives", "bonus preview"] as const) : (["incentives"] as const))
+          : canWrite
           ? (["commission", "incentives", "bonus preview"] as const)
           : (["commission", "incentives"] as const)
         ).map((s) => (

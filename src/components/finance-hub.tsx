@@ -42,8 +42,10 @@ export function FinanceHub({ tab, canEdit, isSuperAdmin }: { tab: FinanceTab; ca
   return <CompanyTab canEdit={isSuperAdmin} />;
 }
 
-function SettlementsTab({ canEdit }: { canEdit: boolean }) {
-  const [status, setStatus] = useState<"draft" | "approved" | "paid" | "carry_forward">("draft");
+type SChip = "draft" | "approved" | "instant" | "paid" | "carry_forward" | "on_hold";
+
+export function SettlementsTab({ canEdit, extra }: { canEdit: boolean; extra?: React.ReactNode }) {
+  const [status, setStatus] = useState<SChip>("draft");
   const qc = useQueryClient();
   const act = useServerFn(financeAction);
   const gen = useMutation({
@@ -54,24 +56,37 @@ function SettlementsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-                    <p className="text-xs text-muted-foreground">Schedule: Wednesday & Saturday</p>
+        <Pills value={status} onChange={setStatus} items={[["draft", "Draft"], ["approved", "Approved"], ["instant", "Pay today (instant)"], ["paid", "Paid"], ["carry_forward", "Carry forward"], ["on_hold", "On hold"]]} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Batch runs Wed & Sat</span>
+          {canEdit && <Button disabled={gen.isPending} onClick={() => { if (confirm("Generate settlement batch for all merchants now?")) gen.mutate(); }}>Generate settlement batch</Button>}
+          {extra}
         </div>
-        {canEdit && <Button disabled={gen.isPending} onClick={() => { if (confirm("Generate settlement batch for all merchants now?")) gen.mutate(); }}>Generate settlement batch</Button>}
       </div>
-      <Pills value={status} onChange={setStatus} items={[["draft", "Draft"], ["approved", "Approved"], ["paid", "Paid"], ["carry_forward", "Carry forward"]]} />
-      <SettlementTable status={status} canEdit={canEdit} />
+      {status === "on_hold" && <p className="text-xs text-muted-foreground">Merchants without bank account / IFSC. Add bank details in Store/Food → store → Commercials to release.</p>}
+      {status === "instant"
+        ? <SettlementTable type="instant" status="approved" canEdit={canEdit} />
+        : <SettlementTable status={status} canEdit={canEdit} />}
     </div>
   );
 }
 
-function SettlementTable({ status, type, canEdit, title }: { status: string; type?: string; canEdit: boolean; title?: string }) {
+const noBank = (r: any) => !r.merchant?.bank_account_number || !r.merchant?.bank_ifsc;
+
+export function SettlementTable({ status, type, canEdit }: { status: string; type?: string; canEdit: boolean; title?: string }) {
   const fetch = useServerFn(listMerchantSettlements);
   const act = useServerFn(financeAction);
   const qc = useQueryClient();
   const [open, setOpen] = useState<string | null>(null);
-  const q = useQuery({ queryKey: ["fin-settlements", status, type ?? null], queryFn: () => fetch({ data: { status, type: type ?? null } }) });
-  const rows = (q.data ?? []) as any[];
+  const onHold = status === "on_hold";
+  const q = useQuery({
+    queryKey: ["fin-settlements", status, type ?? null],
+    queryFn: () => fetch({ data: { status: onHold ? null : status, type: type ?? null } }),
+  });
+  const all = (q.data ?? []) as any[];
+  const rows = onHold
+    ? all.filter((r) => (r.status === "draft" || r.status === "approved") && noBank(r))
+    : status === "draft" || status === "approved" ? all.filter((r) => !noBank(r) || r.type === "instant") : all;
   const done = (m: string) => { toast.success(m); qc.invalidateQueries({ queryKey: ["fin-settlements"] }); };
   const approve = useMutation({ mutationFn: (id: string) => act({ data: { kind: "approve", id } }), onSuccess: () => done("Approved"), onError: (e) => toast.error(errMsg(e)) });
   const paid = useMutation({ mutationFn: (v: { id: string; reference: string }) => act({ data: { kind: "paid", ...v } }), onSuccess: () => done("Marked paid"), onError: (e) => toast.error(errMsg(e)) });
@@ -158,8 +173,8 @@ function SettlementDetail({ id }: { id: string }) {
   );
 }
 
-function RefundsTab({ canEdit }: { canEdit: boolean }) {
-  const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("failed");
+export function RefundsTab({ canEdit }: { canEdit: boolean }) {
+  const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("refund_pending");
   const fetch = useServerFn(listRefunds);
   const act = useServerFn(financeAction);
   const qc = useQueryClient();
@@ -173,16 +188,16 @@ function RefundsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4">
       
-      <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed — needs action"], ["done", "Done"]]} />
+      <Pills value={s} onChange={setS} items={[["refund_pending", "Pending"], ["processing", "Processing"], ["failed", "Failed"], ["done", "Done"]]} />
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Store</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
+          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Service</th><th className="p-2 text-left">Store</th><th className="p-2 text-right">Amount</th><th className="p-2 text-left">Reason</th><th className="p-2 text-right">Attempts</th><th className="p-2 text-left">Refund ID</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={7} className="p-3 text-muted-foreground">Loading…</td></tr>}
-            {!q.isLoading && !rows.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
+            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className="border-b last:border-0">
-                <td className="p-2">{r.order_number}</td><td className="p-2">{r.store_name}</td>
+                <td className="p-2">{r.order_number}</td><td className="p-2">{r.service}</td><td className="p-2">{r.store_name}</td>
                 <td className="p-2 text-right">{inr(r.refund_amount)}</td><td className="p-2 text-xs">{r.refund_reason ?? "—"}</td>
                 <td className="p-2 text-right">{r.refund_attempts ?? 0}</td><td className="p-2 text-xs">{r.refund_id ?? "—"}</td>
                 <td className="p-2">{canEdit && s === "failed" && <Button size="sm" disabled={retry.isPending} onClick={() => retry.mutate(r.id)}>Retry refund</Button>}</td>
@@ -195,7 +210,7 @@ function RefundsTab({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function InvoicesTab() {
+export function InvoicesTab() {
   const fetch = useServerFn(listMerchantSettlements);
   const inv = useServerFn(getSettlementInvoice);
   const q = useQuery({ queryKey: ["fin-settlements", null, null], queryFn: () => fetch({ data: {} }) });
@@ -211,8 +226,8 @@ function InvoicesTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Invoice</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Period</th><th className="p-2 text-right">Commission</th><th className="p-2 text-right">GST</th><th className="p-2 text-left">Status</th><th className="p-2"></th></tr></thead>
           <tbody>
-            {q.isLoading && <tr><td colSpan={7} className="p-3 text-muted-foreground">Loading…</td></tr>}
-            {!q.isLoading && !rows.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
+            {q.isLoading && <tr><td colSpan={8} className="p-3 text-muted-foreground">Loading…</td></tr>}
+            {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className="border-b last:border-0">
                 <td className="p-2 font-medium">{r.invoice_no}</td><td className="p-2">{r.merchant?.store_name}</td>
@@ -228,7 +243,7 @@ function InvoicesTab() {
   );
 }
 
-function TaxTab() {
+export function TaxTab() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const fetch = useServerFn(getTaxReport);
   const q = useQuery({ queryKey: ["fin-tax", month], queryFn: () => fetch({ data: { month } }) });
@@ -277,7 +292,7 @@ function TaxTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">GSTIN</th><th className="p-2 text-left">PAN</th><th className="p-2 text-right">Orders</th><th className="p-2 text-right">Value</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
           <tbody>
-            {!m.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No paid orders this month."}</td></tr>}
+            {!m.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : "No paid orders this month."}</td></tr>}
             {m.map((x) => (
               <tr key={x.merchant_id} className="border-b last:border-0"><td className="p-2">{x.name}</td><td className="p-2 text-xs">{x.gstin ?? "—"}</td><td className="p-2 text-xs">{x.pan ?? "—"}</td><td className="p-2 text-right">{x.orders}</td><td className="p-2 text-right">{inr(x.taxable_value)}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
             ))}
@@ -289,7 +304,7 @@ function TaxTab() {
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Order</th><th className="p-2 text-left">Merchant</th><th className="p-2 text-left">Refunded on</th><th className="p-2 text-right">Refund</th><th className="p-2 text-right">GST reversed</th><th className="p-2 text-right">TCS</th><th className="p-2 text-right">TDS</th></tr></thead>
           <tbody>
-            {!rl.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
+            {!rl.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
             {rl.map((x) => (
               <tr key={x.order_number} className="border-b last:border-0"><td className="p-2">{x.order_number}</td><td className="p-2">{x.merchant}</td><td className="p-2 text-xs">{String(x.refunded_at ?? "").slice(0, 10)}</td><td className="p-2 text-right">{inr(x.refund_amount)}</td><td className="p-2 text-right">{inr(Number(x.gst_items || 0) + Number(x.gst_delivery || 0) + Number(x.gst_platform || 0))}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
             ))}
