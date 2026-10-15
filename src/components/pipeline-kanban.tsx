@@ -36,7 +36,8 @@ import { OrderDetail } from "@/components/courier-page";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
 import type { StaffRole } from "@/lib/staff.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
-import { CommerceCard, OrderSheet } from "@/components/commerce-kanban";
+import { OrderSheet } from "@/components/commerce-kanban";
+import { CompactBookingCard, CompactCommerceCard, CompactCourierCard } from "@/components/compact-board-cards";
 import { listCommercePipeline, type CommerceOrder, type CommerceStatus } from "@/lib/commerce.functions";
 
 export type BoardService = "maid" | "wash" | "store" | "food" | "parcel";
@@ -538,17 +539,17 @@ export function PipelineKanban({
                   {!isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
                   {items.map((b) => (
                     <Strip key={b.id} svc={svcOfBooking(b)}>
-                      <BoardCard booking={b} role={role} broadcastTimeoutSeconds={broadcastTimeoutSeconds} noExpertTimeoutMinutes={noExpertTimeoutMinutes} journeyConfig={journeyConfig} onOpen={() => setOpenId(b.id)} />
+                      <CompactBookingCard b={b} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
                     </Strip>
                   ))}
                   {comm.map(({ o, svc }) => (
                     <Strip key={o.id} svc={svc}>
-                      <CommerceCard o={o} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
+                      <CompactCommerceCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
                     </Strip>
                   ))}
                   {courierItems.map((o) => (
                     <Strip key={o.id} svc="parcel">
-                      <CourierBoardCard order={o} onOpen={() => setOpenCourier(o)} />
+                      <CompactCourierCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCourier(o)} />
                     </Strip>
                   ))}
                 </div>
