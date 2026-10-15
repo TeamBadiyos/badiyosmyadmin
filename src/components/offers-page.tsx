@@ -1712,3 +1712,14 @@ function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: stri
     </div>
   );
 }
+
+export function useOffersAccess() {
+  const fetchAccess = useServerFn(getOffersAccess);
+  return useQuery({ queryKey: ["offers", "access"], queryFn: () => fetchAccess(), staleTime: 60_000 }).data;
+}
+
+/** Growth → Campaigns. */
+export function CampaignsPage() {
+  const access = useOffersAccess();
+  return <CampaignsTab canWrite={access?.canWrite ?? false} role={access?.role ?? null} city={access?.city ?? null} />;
+}
