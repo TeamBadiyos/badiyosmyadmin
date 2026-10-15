@@ -18,7 +18,7 @@ import {
   type ExpenseRow, type SubscriptionRow,
 } from "@/lib/expenses.functions";
 
-type Role = "super_admin" | "ops_manager" | "area_partner" | null;
+type Role = "super_admin" | "ops_manager" | "area_partner" | "finance" | null;
 const inr = (n: unknown) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const err = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const istToday = () => new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
