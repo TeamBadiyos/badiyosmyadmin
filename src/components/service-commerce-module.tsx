@@ -359,7 +359,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
             ))}
           </div>
-          {t === "profile" && <ProfilePane s={s} act={act} />}
+          {t === "profile" && <ProfilePane s={s} act={act} storeTypes={service === "store" ? r.data?.storeTypes : undefined} />}
           {t === "commercials" && <CommercialsPane s={s} act={act} />}
           {t === "products" && <ProductsPane data={r.data} act={act} service={service} storeId={storeId} />}
           {t === "staff" && (
