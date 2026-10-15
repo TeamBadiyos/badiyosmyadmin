@@ -827,10 +827,9 @@ export const saveStoreCommissionSettings = createServerFn({ method: "POST" })
       .select("key, value")
       .in("key", COMMISSION_KEYS as unknown as string[]);
 
+    // Commission GST lives only in Tax Settings; only the default % is saved here.
     const updates: Array<[string, string]> = [
       ["store_default_commission_pct", String(data.defaultPct)],
-      ["store_commission_gst_enabled", data.gstEnabled ? "1" : "0"],
-      ["store_commission_gst_pct", String(data.gstPct)],
     ];
     for (const [key, value] of updates) {
       const { data: upd, error } = await db

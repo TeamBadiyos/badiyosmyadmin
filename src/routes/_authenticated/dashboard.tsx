@@ -687,7 +687,7 @@ function Shell() {
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
         ) : active === "store-settings" ? (
-          <StoreSettingsPage />
+          <StoreSettingsPage onOpenTax={() => setActive("tax-settings")} />
         ) : active === "live-stores" ? (
           <LiveStoresView />
         ) : active === "store-categories" ? (
@@ -833,6 +833,17 @@ function DashboardHome({
     refetchInterval: 60_000, // safety-net poll; realtime below drives normal refreshes
     refetchOnWindowFocus: false,
   });
+  const ridersQuery = useQuery({
+    queryKey: ["riders", "capacity", "dashboard"],
+    queryFn: async () => {
+      const { data: r, error } = await (supabase as unknown as { rpc: (n: string) => Promise<{ data: unknown; error: Error | null }> }).rpc("rider_pool_stats");
+      if (error) throw error;
+      const v = (r ?? { online: 0, busy: 0, free: 0 }) as { online: number; busy: number; free: number };
+      return { online: Number(v.online), busy: Number(v.busy), free: Number(v.free) };
+    },
+    refetchInterval: 30_000,
+  });
+  const riders = ridersQuery.data;
 
   // Realtime: any change to bookings, experts, merchant orders or POS sales
   // invalidates the unified stats.
@@ -910,9 +921,16 @@ function DashboardHome({
       onClick: () => onGoBookings({ from: today, to: today, status: "completed" }),
     },
     {
-      label: "Free Right Now",
-      value: String(data?.onlineNow ?? 0),
-      hint: "Online & available experts",
+      label: "Free Riders",
+      value: riders ? `${riders.free} / ${riders.online}` : "—",
+      hint: "Online Experts with Courier Delivery skill, not on a job",
+      icon: Users,
+      onClick: () => onGoExperts(true),
+    },
+    {
+      label: "Free Maids",
+      value: String(data?.freeMaids ?? 0),
+      hint: "Online & available Experts without the delivery skill (Clean)",
       icon: Users,
       onClick: () => onGoExperts(true),
     },

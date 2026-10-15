@@ -10,6 +10,8 @@ export type DashboardStats = {
   completedToday: number;
   pendingAction: number;
   onlineNow: number;
+  /** Online, not-busy Experts who are NOT delivery riders (Clean capacity). */
+  freeMaids: number;
   // breakdown (used for tooltips / drilldowns)
   todayBookings: number;
   todayOrders: number;
@@ -300,6 +302,26 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const todayOrders = todayOrdersRes.count ?? 0;
     const onlineExperts = expertsRes.count ?? 0;
 
+    // Free maids = online, free Experts minus those with the delivery-rider skill
+    // (same rule as dispatch / Riders & Capacity: approved skill required by an active vehicle).
+    const [freeIdsRes, vehRes] = await Promise.all([
+      db.from("experts").select("id").eq("status", "active").eq("is_online", true).eq("is_busy", false).limit(5000),
+      db.from("courier_vehicle_types").select("required_skill").eq("is_active", true),
+    ]);
+    const freeIds = ((freeIdsRes.data ?? []) as Array<{ id: string }>).map((r) => r.id);
+    const skillIds = [...new Set(((vehRes.data ?? []) as Array<{ required_skill: string | null }>).map((v) => v.required_skill).filter((x): x is string => !!x))];
+    let riderIds = new Set<string>();
+    if (freeIds.length && skillIds.length) {
+      const { data: ps } = await db
+        .from("partner_skills")
+        .select("expert_id")
+        .eq("status", "approved")
+        .in("service_category_id", skillIds)
+        .in("expert_id", freeIds);
+      riderIds = new Set(((ps ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id));
+    }
+    const freeMaids = freeIds.filter((id) => !riderIds.has(id)).length;
+
     // Offers & campaigns (not segment-scoped)
     const [redemptionsRes, activeCampaignsRes, awardsRes] = await Promise.all([
       db.from("coupon_redemptions").select("discount_amount").eq("status", "applied").limit(10000),
@@ -402,6 +424,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         (pendingOrdersRes.count ?? 0) +
         (courierPendingRes.count ?? 0),
       onlineNow: onlineExperts,
+      freeMaids,
       todayBookings,
       todayOrders,
       courierToday,
