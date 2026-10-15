@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getDashboardOverview } from "@/lib/finance.functions";
-import { getDashboardStats } from "@/lib/dashboard.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { getDashboardOverview, getDashboardTeam, getDashboardMoney } from "@/lib/finance.functions";
+import { Info, Phone } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PipelineKanban, SERVICE_META, type BoardService } from "@/components/pipeline-kanban";
 import type { StaffRole } from "@/lib/staff.functions";
 
@@ -26,28 +26,45 @@ const ROWS: { key: BoardService; nav: string; live: boolean }[] = [
   { key: "parcel", nav: "courier-orders", live: true },
 ];
 
+type TeamKey = "maid" | "washer" | "rider";
+const TEAM: { key: TeamKey; label: string }[] = [
+  { key: "maid", label: "maids" }, { key: "washer", label: "washers" }, { key: "rider", label: "riders" },
+];
+const ago = (iso: string | null) => {
+  if (!iso) return "—";
+  const m = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)} hr ${m % 60} min` : `${Math.floor(m / 1440)} d`;
+};
+
+const TIPS: Record<string, string> = {
+  Orders: "Completed orders in the selected dates.",
+  Cancelled: "Cancelled + rejected orders.",
+  Gross: "Price before discount, without GST (items + delivery + platform fee).",
+  Discount: "Coupons and offers given.",
+  "Net revenue": "Gross − Discount, without GST.",
+  "badiyos earning": "Commission + delivery share + platform fee, without GST.",
+};
+
+function Th({ label, right = true }: { label: string; right?: boolean }) {
+  return (
+    <th className={`px-4 py-2.5 font-semibold whitespace-nowrap ${right ? "text-right" : ""}`}>
+      <span className="inline-flex items-center gap-1" title={TIPS[label]}>
+        {label}{TIPS[label] && <Info size={11} className="opacity-60" />}
+      </span>
+    </th>
+  );
+}
+
 export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null; onNavigate: (key: string) => void }) {
   const [range, setRange] = useState<Range>("today");
+  const [panel, setPanel] = useState<{ group: TeamKey; busy: boolean } | null>(null);
   const { from, to } = useMemo(() => rangeDates(range), [range]);
   const fetch = useServerFn(getDashboardOverview);
-  const fetchStats = useServerFn(getDashboardStats);
+  const fetchTeam = useServerFn(getDashboardTeam);
+  const fetchMoney = useServerFn(getDashboardMoney);
   const q = useQuery({ queryKey: ["dash-overview", from, to], queryFn: () => fetch({ data: { from, to } }), refetchInterval: 60_000 });
-  const stats = useQuery({
-    queryKey: ["dashboard", "stats", null],
-    queryFn: () => fetchStats({ data: { segmentId: null } }),
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  }).data;
-  const riders = useQuery({
-    queryKey: ["riders", "capacity", "dashboard"],
-    queryFn: async () => {
-      const { data: r, error } = await (supabase as unknown as { rpc: (n: string) => Promise<{ data: unknown; error: Error | null }> }).rpc("rider_pool_stats");
-      if (error) throw error;
-      const v = (r ?? {}) as { free?: number };
-      return { free: Number(v.free ?? 0) };
-    },
-    refetchInterval: 30_000,
-  }).data;
+  const money = useQuery({ queryKey: ["dash-money", from, to], queryFn: () => fetchMoney({ data: { from, to } }), refetchInterval: 60_000 }).data;
+  const team = useQuery({ queryKey: ["dash-team"], queryFn: () => fetchTeam(), refetchInterval: 30_000 }).data;
 
   const d = q.data as { services?: Record<string, Record<string, number | null>>; alerts?: Record<string, number> } | undefined;
   const a = d?.alerts ?? {};
@@ -59,15 +76,31 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
     { n: Number(a.carry_forward_merchants ?? 0), label: "Carry-forward merchants", nav: "fin-settlements" },
   ].filter((x) => x.n > 0);
 
+  const count = (g: TeamKey, busy: boolean) => (team ? team.filter((t) => t.group === g && t.busy === busy).length : null);
+  const panelRows = panel && team ? team.filter((t) => t.group === panel.group && t.busy === panel.busy) : [];
+
+  const rows = ROWS.map((r) => {
+    const v = d?.services?.[r.key] ?? {};
+    const m = money?.[r.key];
+    return { r, orders: Number(v.completed ?? 0), cancelled: Number(v.cancelled ?? 0), gross: m?.gross ?? 0, discount: m?.discount ?? 0, net: m?.net ?? 0, earning: Number(v.earning ?? 0) };
+  });
+  const tot = rows.reduce((t, x) => ({ orders: t.orders + x.orders, cancelled: t.cancelled + x.cancelled, gross: t.gross + x.gross, discount: t.discount + x.discount, net: t.net + x.net, earning: t.earning + x.earning }),
+    { orders: 0, cancelled: 0, gross: 0, discount: 0, net: 0, earning: 0 });
+  const ready = !!q.data && !!money;
+  const cell = "px-4 py-3 text-right whitespace-nowrap";
+
   return (
     <div className="space-y-8 bg-background">
       <PipelineKanban role={role} unified />
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">Team right now</span>
-        <span>Free maids <b className="text-foreground">{stats?.freeMaids ?? "—"}</b></span>
-        <span>Free washers <b className="text-foreground">{stats?.freeWashers ?? "—"}</b></span>
-        <span>Free riders <b className="text-foreground">{riders?.free ?? "—"}</b></span>
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+        {TEAM.flatMap((t) => [false, true].map((busy) => (
+          <button key={t.key + busy} type="button" onClick={() => setPanel({ group: t.key, busy })}
+            className="rounded-[14px] border border-border bg-card px-4 py-3 text-left hover:border-primary/60">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{busy ? "Busy" : "Free"} {t.label}</p>
+            <p className={`text-[22px] font-bold ${busy ? "text-foreground" : "text-primary"}`}>{count(t.key, busy) ?? "—"}</p>
+          </button>
+        )))}
       </div>
 
       <div className="space-y-3">
@@ -84,34 +117,32 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                <th className="px-4 py-2.5 font-semibold">Service</th>
-                <th className="px-4 py-2.5 font-semibold text-right">Orders</th>
-                <th className="px-4 py-2.5 font-semibold text-right">Cancelled</th>
-                <th className="px-4 py-2.5 font-semibold text-right">GMV</th>
-                <th className="px-4 py-2.5 font-semibold text-right">badiyos earning</th>
-                <th className="px-4 py-2.5 font-semibold text-right">Utilisation</th>
+                <Th label="Service" right={false} /><Th label="Orders" /><Th label="Cancelled" /><Th label="Gross" /><Th label="Discount" /><Th label="Net revenue" /><Th label="badiyos earning" />
               </tr>
             </thead>
             <tbody>
-              {ROWS.map((r) => {
-                const v = d?.services?.[r.key] ?? {};
-                const orders = v.orders ?? Number(v.completed ?? 0) + Number(v.active ?? 0) + Number(v.cancelled ?? 0);
-                return (
-                  <tr key={r.key} onClick={() => onNavigate(r.nav)} className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/40">
-                    <td className="px-4 py-3 font-semibold">
-                      <span className="inline-flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${SERVICE_META[r.key].dot}`} />{SERVICE_META[r.key].label}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">{q.data ? orders : "—"}</td>
-                    <td className="px-4 py-3 text-right">{v.cancelled ?? "—"}</td>
-                    <td className="px-4 py-3 text-right">{inr(v.gmv)}</td>
-                    <td className="px-4 py-3 text-right">{inr(v.earning)}</td>
-                    <td className="px-4 py-3 text-right">
-                      {v.utilisation == null ? "—" : `${v.utilisation}%`}
-                      {r.live && <span className="ml-1.5 rounded bg-primary/10 px-1.5 text-[10px] font-semibold uppercase text-primary">Live</span>}
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map((x) => (
+                <tr key={x.r.key} onClick={() => onNavigate(x.r.nav)} className="border-b border-border cursor-pointer hover:bg-muted/40">
+                  <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                    <span className="inline-flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${SERVICE_META[x.r.key].dot}`} />{SERVICE_META[x.r.key].label}</span>
+                  </td>
+                  <td className={cell}>{ready ? x.orders : "—"}</td>
+                  <td className={cell}>{ready ? x.cancelled : "—"}</td>
+                  <td className={cell}>{inr(x.gross)}</td>
+                  <td className={cell}>{inr(x.discount)}</td>
+                  <td className={cell}>{inr(x.net)}</td>
+                  <td className={cell}>{inr(x.earning)}</td>
+                </tr>
+              ))}
+              <tr className="bg-muted/40 font-bold">
+                <td className="px-4 py-3">Total</td>
+                <td className={cell}>{ready ? tot.orders : "—"}</td>
+                <td className={cell}>{ready ? tot.cancelled : "—"}</td>
+                <td className={cell}>{inr(tot.gross)}</td>
+                <td className={cell}>{inr(tot.discount)}</td>
+                <td className={cell}>{inr(tot.net)}</td>
+                <td className={cell}>{inr(tot.earning)}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -126,6 +157,35 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
           ))}
         </div>
       )}
+
+      <Sheet open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{panel ? `${panel.busy ? "Busy" : "Free"} ${TEAM.find((t) => t.key === panel.group)?.label}` : ""} · {panelRows.length}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 divide-y divide-border">
+            {panelRows.length === 0 && <p className="py-6 text-[13px] text-muted-foreground">Nobody right now.</p>}
+            {panelRows.map((p) => (
+              <div key={p.id} className="py-3 flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-[14px] font-semibold text-foreground truncate">{p.name}</p>
+                  <p className="text-[12px] text-muted-foreground truncate">{[p.zone, p.vehicle].filter(Boolean).join(" · ") || "—"}</p>
+                  {p.busy ? (
+                    <p className="text-[12px] text-foreground truncate">{p.job ? `${p.job.label} · ${p.job.status.replace(/_/g, " ").toLowerCase()}${p.job.area ? ` · ${p.job.area}` : ""}` : "Busy"}</p>
+                  ) : (
+                    <p className="text-[12px] text-muted-foreground truncate">Free for {ago(p.free_since)} · seen {ago(p.last_seen)} ago</p>
+                  )}
+                </div>
+                {p.phone && (
+                  <a href={`tel:${p.phone}`} className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary" aria-label={`Call ${p.name}`}>
+                    <Phone size={15} />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
