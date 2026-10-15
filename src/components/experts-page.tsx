@@ -235,9 +235,11 @@ export function ExpertsPage({
       </div>
       )}
 
+      {!isRider && (
       <div className="flex justify-end">
         <SortFilterReset api={sf} />
       </div>
+      )}
 
       {isRider ? (
         <div className="bg-card border border-border rounded-[18px] overflow-x-auto">
@@ -292,6 +294,7 @@ export function ExpertsPage({
           />
         ))}
       </div>
+      )}
 
       {addOpen && canManage && (
         <ExpertFormModal
