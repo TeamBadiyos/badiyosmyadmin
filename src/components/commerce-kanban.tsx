@@ -287,14 +287,14 @@ function OrderSheet({
   );
 }
 
-export function CommerceKanban({ segmentId }: { segmentId: string | null }) {
+export function CommerceKanban({ segmentId, service = null }: { segmentId: string | null; service?: "store" | "food" | null }) {
   const queryClient = useQueryClient();
   const fetchPipeline = useServerFn(listCommercePipeline);
 
   const [training, setTraining] = useState(false);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["commerce", "board", segmentId, training],
-    queryFn: () => fetchPipeline({ data: { segmentId, training } }),
+    queryKey: ["commerce", "board", segmentId, service, training],
+    queryFn: () => fetchPipeline({ data: { segmentId, training, service } }),
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
