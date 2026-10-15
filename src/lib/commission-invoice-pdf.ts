@@ -33,7 +33,7 @@ export function commissionInvoiceDoc(inv: CommissionInvoice, sac = "998599"): Br
     paid: true,
     billTo: { title: "Bill to (merchant)", lines: [m.name || "—", m.address || "", `GSTIN ${m.gstin || "Unregistered"}${m.pan ? `  ·  PAN ${m.pan}` : ""}`].filter(Boolean) },
     chip: { label: "Commission", color: "#00B97A" },
-    lines, totals, grandLabel: "TOTAL (recovered from settlement)", grand,
+    lines, totals, grandLabel: "TOTAL", grand,
     after: {
       title: "Settlement summary (for information, not part of taxable value)",
       rows: [
