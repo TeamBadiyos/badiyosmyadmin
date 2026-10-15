@@ -415,38 +415,48 @@ function CouponsTab({ canWrite }: { canWrite: boolean }) {
               <span>
                 <span
                   className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase ${
-                    c.is_active
+                    stateOf(c) === "active"
                       ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      : stateOf(c) === "expired"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {c.is_active ? "Active" : "Paused"}
+                  {stateOf(c) === "expired" ? "Expired" : c.is_active ? "Active" : "Paused"}
                 </span>
               </span>
               <div className="flex justify-end gap-2">
                 {canWrite && (
                   <>
                     <button className={ghostBtn} onClick={() => setEditing(c)}>
-                      <Pencil size={14} />
+                      <Pencil size={14} /> Edit
                     </button>
-                    <button
-                      className={ghostBtn}
-                      disabled={toggleMut.isPending}
-                      onClick={() => toggleMut.mutate({ id: c.id, active: !c.is_active })}
-                    >
-                      {c.is_active ? <Pause size={14} /> : <Play size={14} />}
-                    </button>
-                    <button
-                      className={`${ghostBtn} text-destructive`}
-                      title="Delete coupon"
-                      disabled={deleteMut.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Delete coupon ${c.code}? This cannot be undone.`))
-                          deleteMut.mutate(c.id);
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className={ghostBtn} aria-label="More actions">
+                          <MoreHorizontal size={14} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          disabled={toggleMut.isPending}
+                          onClick={() => toggleMut.mutate({ id: c.id, active: !c.is_active })}
+                        >
+                          {c.is_active ? <Pause size={14} /> : <Play size={14} />}
+                          {c.is_active ? "Pause" : "Resume"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          disabled={deleteMut.isPending}
+                          onClick={() => {
+                            if (window.confirm(`Delete coupon ${c.code}? This cannot be undone.`))
+                              deleteMut.mutate(c.id);
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 )}
               </div>
