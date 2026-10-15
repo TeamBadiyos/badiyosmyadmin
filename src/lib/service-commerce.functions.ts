@@ -187,13 +187,13 @@ export const storeAction = createServerFn({ method: "POST" })
     await assertStoreInService(db, data.storeId, data.service);
     const a = data.act; const sid = data.storeId;
     switch (a.kind) {
-      case "open": chk(await db.rpc("set_store_open", { _store_id: sid, _is_open: !!a.value })); break;
+      case "open": chk(await (db.rpc as any)("set_store_open", { _store_id: sid, _is_open: !!a.value })); break;
       case "offer": {
         const t = a.text?.trim() || null;
         if (t && t.length > 60) throw new Error("Offer line can be at most 60 characters.");
-        chk(await db.rpc("set_offer_text", { _store_id: sid, _text: t })); break;
+        chk(await (db.rpc as any)("set_offer_text", { _store_id: sid, _text: t })); break;
       }
-      case "approve": chk(await db.rpc("staff_decide_merchant", { _merchant_id: sid, _decision: "approved", _notes: null })); break;
+      case "approve": chk(await (db.rpc as any)("staff_decide_merchant", { _merchant_id: sid, _decision: "approved", _notes: null })); break;
       case "suspend": {
         const reason = String(a.reason ?? "").trim();
         if (!reason) throw new Error("Reason required");
@@ -212,11 +212,11 @@ export const storeAction = createServerFn({ method: "POST" })
         await audit(context, "merchant_commercials_updated", "merchants", sid, b.data, after);
         break;
       }
-      case "reorderCategories": chk(await db.rpc("reorder_store_categories", { _store_id: sid, _category_ids: a.ids })); break;
-      case "reorderProducts": chk(await db.rpc("reorder_products", { _store_id: sid, _category_id: a.categoryId, _product_ids: a.ids })); break;
-      case "recommended": chk(await db.rpc("set_recommended_products", { _store_id: sid, _product_ids: a.ids })); break;
-      case "availability": chk(await db.rpc("set_product_availability", { _product_id: a.productId, _is_available: !!a.value })); break;
-      case "upsertProduct": chk(await db.rpc("staff_upsert_product", { _store_id: sid, _payload: a.payload, _product_id: a.productId })); break;
+      case "reorderCategories": chk(await (db.rpc as any)("reorder_store_categories", { _store_id: sid, _category_ids: a.ids })); break;
+      case "reorderProducts": chk(await (db.rpc as any)("reorder_products", { _store_id: sid, _category_id: a.categoryId, _product_ids: a.ids })); break;
+      case "recommended": chk(await (db.rpc as any)("set_recommended_products", { _store_id: sid, _product_ids: a.ids })); break;
+      case "availability": chk(await (db.rpc as any)("set_product_availability", { _product_id: a.productId, _is_available: !!a.value })); break;
+      case "upsertProduct": chk(await (db.rpc as any)("staff_upsert_product", { _store_id: sid, _payload: a.payload, _product_id: a.productId })); break;
     }
     return { ok: true as const };
   });
@@ -264,7 +264,7 @@ export const reviewProduct = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }) => {
     if (!data.approve && !data.note) throw new Error("Please add a note when rejecting.");
-    chk(await context.supabase.rpc("staff_review_product_changes", { _product_id: data.productId, _approve: data.approve, _note: data.note }));
+    chk(await (context.supabase.rpc as any)("staff_review_product_changes", { _product_id: data.productId, _approve: data.approve, _note: data.note }));
     return { ok: true as const };
   });
 
@@ -300,7 +300,7 @@ export const saveCatalogCategory = createServerFn({ method: "POST" })
         sort_order: ((mx.data?.[0]?.sort_order as number) ?? 0) + 1,
       }).select("id").single();
       chk(r);
-      await audit(context, "catalog_category_created", "catalog_categories", r.data.id, null, data);
+      await audit(context, "catalog_category_created", "catalog_categories", (r.data as any).id, null, data);
     }
     return { ok: true as const };
   });

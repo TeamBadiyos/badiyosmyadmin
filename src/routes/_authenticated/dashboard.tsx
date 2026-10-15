@@ -713,9 +713,9 @@ function Shell() {
         ) : active === "courier-settings" ? (
           <CourierPage section="settings" />
         ) : active === "store-orders" ? (
-          <ServiceCommerceModule service="store" role={role} />
+          <ServiceCommerceModule service="store" role={role ?? ""} />
         ) : active === "food-orders" ? (
-          <ServiceCommerceModule service="food" role={role} />
+          <ServiceCommerceModule service="food" role={role ?? ""} />
         ) : active === "tax-settings" ? (
           <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
         ) : active === "fees" ? (
