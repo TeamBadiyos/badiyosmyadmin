@@ -133,7 +133,7 @@ const NAV_ITEMS = [
   { key: "users", label: "Customers", icon: Users },
   { key: "waitlist", label: "Waitlist", icon: ListChecks },
   { key: "interest-leads", label: "Business Leads", icon: Sprout },
-  { key: "insurance", label: "Other · Insurance", icon: ShieldCheck },
+  { key: "insurance", label: "Insurance", icon: ShieldCheck },
   { key: "suggestions", label: "Suggestions", icon: Lightbulb },
   { key: "lucky-draw", label: "Lucky Draw", icon: Gift },
 
@@ -221,7 +221,7 @@ const NAV_GROUPS = [
     id: "growth",
     label: "Growth",
     icon: TrendingUp,
-    keys: ["referrals", "waitlist", "interest-leads", "homepage"],
+    keys: ["referrals", "waitlist", "interest-leads", "homepage", "insurance"],
   },
   {
     id: "finance",
@@ -233,7 +233,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Platform Settings",
     icon: Settings,
-    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal", "insurance"],
+    keys: ["services", "tax-settings", "fees", "roles", "zones", "audit", "notification-sounds", "legal"],
   },
 ] as const;
 
