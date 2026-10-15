@@ -256,7 +256,7 @@ export function BookingsPage({
             )}
           </div>
         </div>
-        {canSeeCourier && (
+        {canSeeCourier && !cleanKind && (
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Type
