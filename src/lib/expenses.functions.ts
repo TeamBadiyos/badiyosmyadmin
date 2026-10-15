@@ -17,7 +17,9 @@ export const getFinanceOverview = createServerFn({ method: "GET" })
   .inputValidator((i: { from: string; to: string }) => ({ from: String(i.from).slice(0, 10), to: String(i.to).slice(0, 10) }))
   .handler(async ({ data, context }) => {
     const r = await (context.supabase as any).rpc("fin_overview", { _from: data.from, _to: data.to }); chk(r);
-    return r.data as Record<string, any>;
+    const w = await (context.supabase as any).rpc("staff_wallet_overview", { _q: "__none__" });
+    const t = w.data?.totals;
+    return { ...(r.data as Record<string, any>), wallet_outstanding: t ? Number(t.cash) + Number(t.bonus) : null } as Record<string, any>;
   });
 
 export const listExpenses = createServerFn({ method: "GET" })
