@@ -11,7 +11,7 @@ import { CommerceKanban } from "@/components/commerce-kanban";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const SERVICE_LABEL: Record<string, string> = { clean: "Clean", store: "Store", food: "Food", courier: "Parcel", parcel: "Parcel" };
+const SERVICE_LABEL: Record<string, string> = { clean: "Clean Home", wash: "Clean Auto", store: "Store", food: "Food", courier: "Parcel", parcel: "Parcel" };
 
 function hhmm(t: string | null | undefined) {
   if (!t) return "";

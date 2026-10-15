@@ -156,7 +156,7 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
     const [ov, bk, cfg] = await Promise.all([
       sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", "clean").eq("slot_date", data.date).eq("status", "fully_booked"),
       sb.from("bookings").select("scheduled_time_slot, status").eq("scheduled_date", data.date).neq("slot_type", "now"),
-      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled"]),
+      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled"]),
     ]);
     if (ov.error) throw new Error(ov.error.message);
     const c: Record<string, string> = {};
@@ -177,6 +177,7 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
       last: Number(c["slot_last_start_hour"] ?? 18),
       step: Number(c["slot_step_minutes"] ?? 30) === 60 ? 60 : 30,
       instantOn: (c["instant_booking_enabled"] ?? "1") !== "0",
+      washInstantOn: (c["wash_instant_booking_enabled"] ?? "1") !== "0",
       full: ((ov.data ?? []) as Array<{ start_hour: number; start_minute: number | null; reason: string | null }>).map((f) => ({ ...f, key: f.start_hour * 60 + (f.start_minute ?? 0) })),
       counts,
     };
@@ -196,10 +197,10 @@ export const setSlotFull = createServerFn({ method: "POST" })
 
 export const setInstantBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { on: boolean }) => i)
+  .inputValidator((i: { on: boolean; group?: "clean" | "wash" }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", {
-      _key: "instant_booking_enabled", _value: data.on ? "1" : "0",
+      _key: data.group === "wash" ? "wash_instant_booking_enabled" : "instant_booking_enabled", _value: data.on ? "1" : "0",
     });
     if (error) throw new Error(error.message);
     return { ok: true };
