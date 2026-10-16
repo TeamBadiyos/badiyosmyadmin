@@ -23,7 +23,8 @@ async function staffRole(context: Ctx): Promise<"super_admin" | "ops_manager"> {
 /** Keys stored per city in city_ops_settings (no shared copy). */
 const CITY_KEYS = new Set(["slot_capacity_enabled", "slot_capacity_mode", "default_slot_capacity", "wash_default_slot_capacity",
   "clean_band_morning_end", "clean_band_day_end", "wash_band_morning_end", "wash_band_day_end",
-  "slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled"]);
+  "slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled",
+  "clean_auto_cancel_minutes", "wash_auto_cancel_minutes", "clean_last_slot_before_close_minutes", "wash_last_slot_before_close_minutes"]);
 
 /** City-wise keys come only from the city's own row; other keys from shared ops_settings. */
 async function readOps(sb: any, keys: string[], cityId?: string | null): Promise<Record<string, string>> {
@@ -319,9 +320,18 @@ export const getAutoCancelMinutes = createServerFn({ method: "GET" })
     const cid = data.cityId && data.cityId !== "all" ? data.cityId : null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rpc = (context as Ctx).supabase.rpc as any;
-    const { data: m, error } = await rpc("app_auto_cancel_minutes", { _service_key: data.group, _city_id: cid });
-    if (error) throw new Error(error.message);
-    return { minutes: Number(m ?? 120), canEdit: role === "super_admin" || role === "ops_manager" };
+    const key = `${data.group === "wash" ? "wash" : "clean"}_auto_cancel_minutes`;
+    let minutes: number | null = null;
+    if (cid) {
+      const c = await readOps((context as Ctx).supabase, [key], cid);
+      if (c[key] != null && c[key] !== "") minutes = Number(String(c[key]).replace(/"/g, ""));
+    }
+    if (minutes == null || !Number.isFinite(minutes)) {
+      const { data: m, error } = await rpc("app_auto_cancel_minutes", { _service_key: data.group, _city_id: cid });
+      if (error) throw new Error(error.message);
+      minutes = Number(m ?? 120);
+    }
+    return { minutes, canEdit: role === "super_admin" || role === "ops_manager" };
   });
 
 export const setAutoCancelMinutes = createServerFn({ method: "POST" })
@@ -360,4 +370,30 @@ export const listExpertsWithoutDevice = createServerFn({ method: "GET" })
     const { data, error } = await ((context as Ctx).supabase.rpc as any)("staff_experts_without_device");
     if (error) throw new Error(error.message);
     return ((data ?? []) as Array<{ id: string; name: string; is_online: boolean; city_id: string | null }>).map((e) => ({ id: e.id, name: e.name, online: !!e.is_online }));
+  });
+
+
+/** "Last slot before closing" (minutes) per city/service: last slot = closing time − this. */
+export const getLastSlotGap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { group?: CapGroup; cityId?: string | null }) => ({ group: grp(i?.group), cityId: i?.cityId ?? null }))
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context as Ctx);
+    const key = `${data.group}_last_slot_before_close_minutes`;
+    const c = await readOps((context as Ctx).supabase, [key], data.cityId);
+    const raw = c[key] != null ? Number(String(c[key]).replace(/"/g, "")) : 60;
+    return { minutes: Number.isFinite(raw) ? raw : 60, canEdit: role === "super_admin" || role === "ops_manager" };
+  });
+
+export const setLastSlotGap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { group?: CapGroup; minutes: number; cityId?: string | null }) => {
+    const n = Number(i.minutes);
+    if (!Number.isInteger(n) || n < 0 || n > 600) throw new Error("Minutes must be 0–600");
+    return { group: grp(i.group), minutes: n, cityId: i.cityId ?? null };
+  })
+  .handler(async ({ data, context }) => {
+    await staffRole(context as Ctx);
+    await writeOps((context as Ctx).supabase, `${data.group}_last_slot_before_close_minutes`, String(data.minutes), data.cityId);
+    return { ok: true };
   });
