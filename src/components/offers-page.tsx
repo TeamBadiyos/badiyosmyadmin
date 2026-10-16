@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { DateInput } from "@/components/date-input";
 import { FilterBar, FilterField, filterInputCls, countLabel, tableCls, StatusPill } from "@/components/section-chrome";
 import { useEffect, useMemo, useState } from "react";
@@ -269,6 +270,7 @@ function useOfferCategories() {
 }
 
 export function CouponsTab({ canWrite }: { canWrite: boolean }) {
+  const showCity = useShowCity();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CouponRow | "new" | null>(null);
   const [detail, setDetail] = useState<CouponRow | null>(null);
@@ -388,6 +390,7 @@ export function CouponsTab({ canWrite }: { canWrite: boolean }) {
                 title="View redemptions"
               >
                 <p className="font-bold text-foreground truncate">{c.code}</p>
+                {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={(c as { city_id?: string | null }).city_id} /></p>}
                 <p className="text-[12px] text-muted-foreground truncate">
                   {c.title}
                   {c.audience === "referral_reward" ? " · referral reward only" : ""}
@@ -1092,6 +1095,7 @@ export function CampaignsTab({
   role: string | null;
   city: string | null;
 }) {
+  const showCity = useShowCity();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CampaignRow | "new" | null>(null);
   const [detail, setDetail] = useState<CampaignRow | null>(null);
@@ -1187,6 +1191,7 @@ export function CampaignsTab({
                     <td className={`${tableCls.td} max-w-[360px]`}>
                       <p className="font-bold truncate">{c.title}</p>
                       <p className="text-[12px] text-muted-foreground truncate">{c.body}</p>
+                      {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={(c as { city_id?: string | null }).city_id} /></p>}
                     </td>
                     <td className={tableCls.td}><StatusPill status="confirmed" label="Push" /></td>
                     <td className={tableCls.td}>{audienceLabel(c)}</td>
