@@ -22,6 +22,7 @@ import {
   Power,
   Truck,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   COURIER_STATUSES,
@@ -60,7 +61,7 @@ import {
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
-import { ShareLocation } from "@/components/share-location";
+import { ShareLocation, ShareLocationIcons } from "@/components/share-location";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
