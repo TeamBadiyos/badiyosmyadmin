@@ -287,6 +287,55 @@ export function TimerRow({ startedAt, totalMinutes }: { startedAt: string; total
   );
 }
 
+export type Phase = "assign" | "assigned" | "done" | "bad";
+
+/** One clean stage banner per order phase (Need to assign · Assigned · Completed · Cancelled). */
+export function PhaseBanner({ phase, title, detail, steps, current }: {
+  phase: Phase;
+  title: string;
+  detail?: string | null;
+  steps?: Array<{ key: string; label: string }>;
+  current?: string;
+}) {
+  const tone = {
+    assign: "border-warning/40 bg-warning/10",
+    assigned: "border-primary/30 bg-primary/5",
+    done: "border-success/30 bg-success/10",
+    bad: "border-destructive/30 bg-destructive/10",
+  }[phase];
+  const dot = { assign: "bg-warning", assigned: "bg-primary", done: "bg-success", bad: "bg-destructive" }[phase];
+  const idx = steps && current ? steps.findIndex((s) => s.key === current) : -1;
+  return (
+    <div className={`mt-2 rounded-[12px] border px-3 py-2 ${tone}`}>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dot} ${phase === "assign" ? "animate-pulse" : ""}`} />
+        <p className="text-[13px] font-bold text-foreground truncate">{title}</p>
+        {detail && <p className="ml-auto shrink-0 text-[12px] font-semibold text-muted-foreground">{detail}</p>}
+      </div>
+      {steps && steps.length > 0 && (
+        <div className="mt-2 flex items-center gap-1">
+          {steps.map((s, i) => (
+            <div key={s.key} className="flex-1 min-w-0">
+              <div className={`h-1 rounded-full ${i <= idx ? "bg-primary" : "bg-border"}`} />
+              <p className={`mt-1 truncate text-[10px] font-semibold ${i === idx ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function waitText(fromIso: string | null | undefined, now = Date.now()): string | null {
+  if (!fromIso) return null;
+  const m = Math.max(0, Math.floor((now - new Date(fromIso).getTime()) / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`;
+}
+
+export function clockText(iso: string | null | undefined): string | null {
+  return iso ? clock(new Date(iso)) : null;
+}
+
 /** Status steps on one line. */
 export function StepLine({ steps, current, bad }: { steps: Array<{ key: string; label: string }>; current: string; bad?: string | null }) {
   const idx = steps.findIndex((s) => s.key === current);
