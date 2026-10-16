@@ -321,6 +321,16 @@ function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live:
             );
           })}
         </div>
+        {card && (
+          <div className="space-y-1 rounded-t-xl border border-border p-2 text-[10px]">
+            <div className="font-bold text-foreground">{t(m.details.included_title, m.details.included_title_mr)}</div>
+            {card.included.slice(0, 3).map((l, i) => <div key={i} className="text-muted-foreground">✓ {t(l.en, l.mr)}</div>)}
+            <div className="pt-1 font-bold text-foreground">{t(m.details.excluded_title, m.details.excluded_title_mr)}</div>
+            {card.not_included.slice(0, 3).map((l, i) => <div key={i} className="text-muted-foreground">✕ {t(l.en, l.mr)}</div>)}
+            {t(m.details.note, m.details.note_mr).trim() && <div className="mt-1 rounded bg-muted px-2 py-1 text-foreground">{NOTE_ICONS[m.details.note_icon] ?? ""} {t(m.details.note, m.details.note_mr)}</div>}
+            <div className="text-[8px] text-muted-foreground">{service === "wash" ? "Wash" : "Maid"} details sheet</div>
+          </div>
+        )}
       </div>
     </div>
   );

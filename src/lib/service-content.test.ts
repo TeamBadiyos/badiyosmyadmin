@@ -17,3 +17,14 @@ describe("service content", () => {
     expect(validateServiceContent(m, live)).toBeNull();
   });
 });
+
+import { badPlaceholder as bp, defaultExtras as de, normalizeServiceContent as nsc, validateServiceContent as vsc } from "./service-content";
+describe("banners & campaign", () => {
+  it("rejects unknown placeholder", () => { expect(bp("Hi {nam}")).toBe("nam"); expect(bp("{greeting}, {name}")).toBeNull(); });
+  it("defaults details note", () => { expect(de("clean").details.note).toBe("Please keep cleaning supplies ready at home"); });
+  it("campaign end must be after start", () => {
+    const m = nsc({ hero: { subline: "x" }, cards: [{ title: "a" }, { title: "b" }, { title: "c" }] }, "clean");
+    m.campaign = { ...m.campaign, enabled: true, title: "Sale", starts_at: "2026-11-02T10:00:00+05:30", ends_at: "2026-11-01T10:00:00+05:30" };
+    expect(vsc(m, [])).toBe("Campaign end must be after start");
+  });
+});
