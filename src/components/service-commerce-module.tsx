@@ -970,7 +970,7 @@ function ApprovalsTab({ service }: { service: Svc }) {
               ["Photo", imgUrl(p.image_path, p.image_url) ? <img src={imgUrl(p.image_path, p.image_url)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—",
                 n ? (n.image_path ? <img src={imgUrl(n.image_path)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—") : null],
               ["Variants", linesStr(p.variants), n ? linesStr(n.variants) : null],
-              ["Add-ons", <AddonGroups key="a" addons={p.addons} />, n ? <AddonGroups key="b" addons={n.addons} /> : null],
+              ["Add-ons", <AddonGroups key="a" addons={p.addons} />, n ? <AddonGroups key="b" addons={n.addons ?? p.addons} before={p.addons} /> : null],
             ];
             return (
               <div key={p.id} className="p-3 border-b last:border-0 space-y-2">
@@ -978,7 +978,9 @@ function ApprovalsTab({ service }: { service: Svc }) {
                 <table className="w-full text-sm">
                   <thead className="text-xs text-muted-foreground"><tr><th className="text-left w-28"></th><th className="text-left">{isNew ? "Submitted" : "Current"}</th>{!isNew && <th className="text-left">New</th>}</tr></thead>
                   <tbody>{fields.map(([k, a, b]) => {
-                    const changed = !isNew && String(typeof a === "string" ? a : "") !== String(typeof b === "string" ? b : "");
+                    const changed = !isNew && (k === "Add-ons"
+                      ? !!n?.addons && addonsChanged(p.addons, n.addons)
+                      : String(typeof a === "string" ? a : "") !== String(typeof b === "string" ? b : ""));
                     return <tr key={k}><td className="text-muted-foreground py-0.5">{k}</td><td>{a}</td>{!isNew && <td className={changed ? "font-semibold text-primary" : ""}>{b}</td>}</tr>;
                   })}</tbody>
                 </table>
