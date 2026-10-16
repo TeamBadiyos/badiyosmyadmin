@@ -1,3 +1,4 @@
+import { useCity } from "@/lib/city-scope";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -183,6 +184,7 @@ function CityCard({ cfg, onSaved }: { cfg: DispatchConfig; onSaved: () => void }
 export function DispatchAlertsPage() {
   const queryClient = useQueryClient();
   const fetchConfigs = useServerFn(getDispatchConfigs);
+  const { cityId } = useCity();
   const fetchEvents = useServerFn(listDispatchAlertEvents);
 
   const { data: configs } = useQuery({
@@ -208,7 +210,7 @@ export function DispatchAlertsPage() {
         </p>
       </div>
 
-      {(configs ?? []).map((c) => (
+      {(configs ?? []).filter((c) => cityId === "all" || c.city_id === cityId).map((c) => (
         <CityCard key={c.id} cfg={c} onSaved={refresh} />
       ))}
 

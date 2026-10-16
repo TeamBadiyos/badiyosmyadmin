@@ -1,3 +1,4 @@
+import { useCity } from "@/lib/city-scope";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -30,7 +31,8 @@ const primaryBtn = "h-10 rounded-[10px] bg-primary px-4 text-[13px] font-bold te
 
 function useCap(group: CapGroup, date: string) {
   const capFn = useServerFn(getSlotCapacity);
-  return useQuery({ queryKey: ["slot-cap", group, date], queryFn: () => capFn({ data: { date, group } }) });
+  const { cityId } = useCity();
+  return useQuery({ queryKey: ["slot-cap", group, date, cityId], queryFn: () => capFn({ data: { date, group, cityId } }) });
 }
 
 export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = {}) {
@@ -44,10 +46,11 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
   const cap = cq.data;
 
   const setFn = useServerFn(setCapacitySetting);
+  const { cityId } = useCity();
   const bandFn = useServerFn(setBandCapacity);
   const [defInput, setDefInput] = useState("");
   const defMut = useMutation({
-    mutationFn: (v: string) => setFn({ data: { key: isWash ? "wash_default_slot_capacity" : "default_slot_capacity", value: v } }),
+    mutationFn: (v: string) => setFn({ data: { key: isWash ? "wash_default_slot_capacity" : "default_slot_capacity", value: v, cityId } }),
     onSuccess: () => { toast.success("Saved"); setDefInput(""); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -146,8 +149,9 @@ function slotText(m: number) {
 function SlotGrid({ group, date, bands, autoOn }: { group: CapGroup; date: string; bands: Band[]; autoOn: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listSlotOverrides);
+  const { cityId } = useCity();
   const fullFn = useServerFn(setSlotFull);
-  const q = useQuery({ queryKey: ["slot-overrides", group, date], queryFn: () => listFn({ data: { date, group } }) });
+  const q = useQuery({ queryKey: ["slot-overrides", group, date, cityId], queryFn: () => listFn({ data: { date, group, cityId } }) });
   const mut = useMutation({
     mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, group, ...v } }),
     onSuccess: (_r, v) => { toast.success(v.full ? "Marked full" : "Re-opened"); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); qc.invalidateQueries({ queryKey: ["slot-cap", group] }); },
@@ -247,21 +251,22 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
   const isWash = group === "wash";
   const qc = useQueryClient();
   const listFn = useServerFn(listSlotOverrides);
+  const { cityId } = useCity();
   const instFn = useServerFn(setInstantBooking);
   const setFn = useServerFn(setCapacitySetting);
   const today = istDate();
-  const q = useQuery({ queryKey: ["slot-overrides", today], queryFn: () => listFn({ data: { date: today } }) });
+  const q = useQuery({ queryKey: ["slot-overrides", today, cityId], queryFn: () => listFn({ data: { date: today, cityId } }) });
   const cq = useCap(group, today);
   const cap = cq.data;
   const d = q.data;
   const instOn = isWash ? d?.washInstantOn : d?.instantOn;
   const refresh = () => { qc.invalidateQueries({ queryKey: ["slot-cap"] }); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); };
   const instMut = useMutation({
-    mutationFn: (on: boolean) => instFn({ data: { on, group } }),
+    mutationFn: (on: boolean) => instFn({ data: { on, group, cityId } }),
     onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
   });
   const setMut = useMutation({
-    mutationFn: (v: { key: CapKey; value: string }) => setFn({ data: v }),
+    mutationFn: (v: { key: CapKey; value: string }) => setFn({ data: { ...v, cityId } }),
     onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
   });
   const [me, setMe] = useState(""); const [de, setDe] = useState("");
