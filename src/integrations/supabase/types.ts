@@ -6267,6 +6267,72 @@ export type Database = {
           },
         ]
       }
+      merchant_referral_config: {
+        Row: {
+          id: number
+          reward_amount: number
+          rules: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          reward_amount?: number
+          rules?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          reward_amount?: number
+          rules?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      merchant_referral_invites: {
+        Row: {
+          created_at: string
+          id: string
+          merchant_id: string
+          name: string | null
+          phone: string
+          reward_amount: number | null
+          reward_earned_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          merchant_id: string
+          name?: string | null
+          phone: string
+          reward_amount?: number | null
+          reward_earned_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          merchant_id?: string
+          name?: string | null
+          phone?: string
+          reward_amount?: number | null
+          reward_earned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_referral_invites_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referral_invites_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_roles: {
         Row: {
           created_at: string
@@ -6656,6 +6722,7 @@ export type Database = {
           id: string
           merchant_id: string
           session_id: string | null
+          source: string
           user_id: string | null
           visited_at: string
         }
@@ -6663,6 +6730,7 @@ export type Database = {
           id?: string
           merchant_id: string
           session_id?: string | null
+          source?: string
           user_id?: string | null
           visited_at?: string
         }
@@ -6670,6 +6738,7 @@ export type Database = {
           id?: string
           merchant_id?: string
           session_id?: string | null
+          source?: string
           user_id?: string | null
           visited_at?: string
         }
@@ -6756,6 +6825,7 @@ export type Database = {
           bank_account_holder_name: string | null
           bank_account_number: string | null
           bank_ifsc: string | null
+          busy_until: string | null
           city: string | null
           city_id: string | null
           commission_mode: string
@@ -6785,6 +6855,7 @@ export type Database = {
           is_open: boolean
           latitude: number | null
           longitude: number | null
+          merchant_referral_code: string | null
           mrp_commission_pct: number
           offer_text: string | null
           onboarded_by: string | null
@@ -6801,6 +6872,7 @@ export type Database = {
           query_notes: string | null
           rating_avg: number
           rating_count: number
+          referred_by_merchant_id: string | null
           rejection_reason: string | null
           reuploaded_at: string | null
           segment_id: string | null
@@ -6828,6 +6900,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          busy_until?: string | null
           city?: string | null
           city_id?: string | null
           commission_mode?: string
@@ -6857,6 +6930,7 @@ export type Database = {
           is_open?: boolean
           latitude?: number | null
           longitude?: number | null
+          merchant_referral_code?: string | null
           mrp_commission_pct?: number
           offer_text?: string | null
           onboarded_by?: string | null
@@ -6873,6 +6947,7 @@ export type Database = {
           query_notes?: string | null
           rating_avg?: number
           rating_count?: number
+          referred_by_merchant_id?: string | null
           rejection_reason?: string | null
           reuploaded_at?: string | null
           segment_id?: string | null
@@ -6900,6 +6975,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          busy_until?: string | null
           city?: string | null
           city_id?: string | null
           commission_mode?: string
@@ -6929,6 +7005,7 @@ export type Database = {
           is_open?: boolean
           latitude?: number | null
           longitude?: number | null
+          merchant_referral_code?: string | null
           mrp_commission_pct?: number
           offer_text?: string | null
           onboarded_by?: string | null
@@ -6945,6 +7022,7 @@ export type Database = {
           query_notes?: string | null
           rating_avg?: number
           rating_count?: number
+          referred_by_merchant_id?: string | null
           rejection_reason?: string | null
           reuploaded_at?: string | null
           segment_id?: string | null
@@ -6982,6 +7060,20 @@ export type Database = {
             columns: ["fee_tier_id"]
             isOneToOne: false
             referencedRelation: "merchant_fee_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchants_referred_by_merchant_id_fkey"
+            columns: ["referred_by_merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchants_referred_by_merchant_id_fkey"
+            columns: ["referred_by_merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
             referencedColumns: ["id"]
           },
           {
@@ -12494,6 +12586,10 @@ export type Database = {
         Returns: number
       }
       merchant_access: { Args: { _store_id: string }; Returns: string }
+      merchant_add_referral_invite: {
+        Args: { _name: string; _phone: string }
+        Returns: string
+      }
       merchant_advance_order: {
         Args: { _new_status: string; _order_id: string }
         Returns: undefined
@@ -12513,6 +12609,7 @@ export type Database = {
         }
         Returns: string
       }
+      merchant_busy_release: { Args: never; Returns: number }
       merchant_caller_has_perm: { Args: { _perm: string }; Returns: boolean }
       merchant_claim_staff_invite: { Args: never; Returns: string }
       merchant_commission_invoices: {
@@ -12536,6 +12633,7 @@ export type Database = {
       merchant_get_order_rider: { Args: { _order_id: string }; Returns: Json }
       merchant_get_pickup_otp: { Args: { _order_id: string }; Returns: Json }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_insights: { Args: { _days?: number }; Returns: Json }
       merchant_instant_settlement_preview: {
         Args: { _store_id: string }
         Returns: Json
@@ -12556,10 +12654,12 @@ export type Database = {
         Returns: Json
       }
       merchant_my_context: { Args: never; Returns: Json }
+      merchant_my_referrals: { Args: never; Returns: Json }
       merchant_order_accept_deadlines: {
         Args: { _order_ids: string[] }
         Returns: Json
       }
+      merchant_referral_code: { Args: never; Returns: string }
       merchant_require: {
         Args: { _allow: string[]; _store_id: string }
         Returns: string
@@ -12569,6 +12669,7 @@ export type Database = {
         Args: { _accepting: boolean }
         Returns: boolean
       }
+      merchant_set_busy: { Args: { _minutes: number }; Returns: string }
       merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
       merchant_settlement_statement: {
         Args: { _settlement_id: string }
@@ -12826,7 +12927,7 @@ export type Database = {
         Returns: string
       }
       record_merchant_store_visit: {
-        Args: { _merchant_id: string; _session_id?: string }
+        Args: { _merchant_id: string; _session_id?: string; _source?: string }
         Returns: boolean
       }
       redeem_event_offer: {
