@@ -155,14 +155,31 @@ export const listActiveExperts = createServerFn({ method: "POST" })
       // (no GPS-staleness or radius limit). Automatic broadcast keeps strict rules.
       const { data: bk } = await db
         .from("bookings")
-        .select("booking_lat, booking_lng")
+        .select("booking_lat, booking_lng, service_category_id, service_label")
         .eq("id", data.bookingId)
         .maybeSingle();
+      // Only experts with an APPROVED skill for this booking's service.
+      const { data: grp } = await db.rpc("booking_capacity_group", {
+        _category_id: (bk?.service_category_id as string | null) ?? null,
+        _label: (bk?.service_label as string | null) ?? null,
+      } as never);
+      const slugs = grp === "wash" ? ["car-bike-wash"] : ["home-cleaning", "festival-special-cleaning"];
+      const { data: cats } = await db.from("service_categories").select("id").in("slug", slugs);
+      const catIds = new Set<string>((cats ?? []).map((c) => c.id as string));
+      if (bk?.service_category_id) catIds.add(bk.service_category_id as string);
+      const { data: skills } = await db
+        .from("partner_skills")
+        .select("expert_id")
+        .eq("status", "approved")
+        .in("service_category_id", [...catIds]);
+      const skilled = [...new Set((skills ?? []).map((s) => s.expert_id as string))];
+      if (!skilled.length) return [];
       const { data: experts, error } = await db
         .from("experts")
         .select("id, name, phone, current_lat, current_lng, is_busy")
         .eq("status", "active")
-        .eq("is_online", true);
+        .eq("is_online", true)
+        .in("id", skilled);
       if (error) throw new Error(error.message);
       const bLat = bk?.booking_lat == null ? null : Number(bk.booking_lat);
       const bLng = bk?.booking_lng == null ? null : Number(bk.booking_lng);
