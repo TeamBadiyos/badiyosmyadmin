@@ -283,6 +283,17 @@ export function LiveTrackingMap({
   }, [mapReady, data, follow, agentPos, stops, routePath]);
 
   const agent = data?.agent ?? null;
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const hasFix = agent?.lat != null && agent?.lng != null;
+  const ageMs = agent?.updatedAt ? Date.now() - new Date(agent.updatedAt).getTime() : null;
+  const fresh = hasFix && ageMs != null && ageMs < 60_000;
+  const atTime = agent?.updatedAt
+    ? new Date(agent.updatedAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
+    : null;
 
   return (
     <div className="rounded-[12px] border border-border overflow-hidden">
@@ -292,6 +303,14 @@ export function LiveTrackingMap({
           <span className="text-[13px] font-bold text-foreground truncate">
             {data?.phaseLabel ?? "Live tracking"}
           </span>
+          {agent && (
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
+              !hasFix ? "bg-muted text-muted-foreground" : fresh ? "bg-success/10 text-success" : "bg-warning/15 text-warning"
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${!hasFix ? "bg-muted-foreground" : fresh ? "bg-success animate-pulse" : "bg-warning"}`} />
+              {!hasFix ? "No GPS yet" : `${fresh ? "Live" : "Stale"} · ${agoLabel(agent.updatedAt)}${atTime ? ` (${atTime})` : ""}`}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
