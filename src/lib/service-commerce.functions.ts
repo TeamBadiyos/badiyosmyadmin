@@ -207,7 +207,7 @@ type StoreAct =
   | { kind: "approve"; reason: string }
   | { kind: "suspend"; reason: string }
   | { kind: "storeType"; storeCategoryId: string | null }
-  | { kind: "commercials"; commission_pct: number | null; instant_settlement_fee_pct: number; accept_timeout_minutes: number | null; gstin?: string; pan?: string }
+  | { kind: "commercials"; commission_pct: number | null; instant_settlement_fee_pct: number; gstin?: string; pan?: string }
   | { kind: "reorderCategories"; ids: string[] }
   | { kind: "reorderProducts"; categoryId: string | null; ids: string[] }
   | { kind: "recommended"; ids: string[] }
@@ -248,11 +248,11 @@ export const storeAction = createServerFn({ method: "POST" })
         break;
       }
       case "commercials": {
+        // Accept timeout is city-wise only (city_service_settings); the merchant column is legacy and never written.
         const c = a.commission_pct == null ? null : Number(a.commission_pct), f = Number(a.instant_settlement_fee_pct);
-        const t = a.accept_timeout_minutes == null ? null : Math.round(Number(a.accept_timeout_minutes));
-        if ((c != null && !(c >= 0 && c <= 100)) || !(f >= 0 && f <= 100) || (t != null && !(t >= 1 && t <= 120))) throw new Error("Check the values");
-        const b = await db.from("merchants").select("commission_pct, instant_settlement_fee_pct, accept_timeout_minutes").eq("id", sid).maybeSingle();
-        const after = { commission_pct: c, instant_settlement_fee_pct: f, accept_timeout_minutes: t };
+        if ((c != null && !(c >= 0 && c <= 100)) || !(f >= 0 && f <= 100)) throw new Error("Check the values");
+        const b = await db.from("merchants").select("commission_pct, instant_settlement_fee_pct").eq("id", sid).maybeSingle();
+        const after = { commission_pct: c, instant_settlement_fee_pct: f };
         chk(await db.from("merchants").update(after as any).eq("id", sid));
         await audit(context, "merchant_commercials_updated", "merchants", sid, b.data, after);
         if (a.gstin !== undefined || a.pan !== undefined) {
