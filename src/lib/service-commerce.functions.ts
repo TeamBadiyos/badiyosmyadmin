@@ -118,7 +118,7 @@ export const getServiceOrder = createServerFn({ method: "POST" })
 
 export const listServiceStores = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: Svc }) => ({ service: svcOk(i?.service) }))
+  .inputValidator((i: { service: Svc; cityId?: string | null }) => ({ service: svcOk(i?.service), cityId: i?.cityId ?? null }))
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
@@ -487,6 +487,10 @@ export const getServiceSettings = createServerFn({ method: "POST" })
       db.rpc("staff_notify_summary", { _from: d(from), _to: d(to) }),
     ]);
     chk(s);
+    if (data.cityId && data.cityId !== "all") {
+      const c = await (db as any).from("city_service_settings").select("delivery_min_fare, delivery_per_km, default_accept_timeout_minutes").eq("city_id", data.cityId).eq("service_key", data.service).maybeSingle();
+      if (c.data) for (const [k, v] of Object.entries(c.data)) if (v != null) (s.data as any)[k] = v;
+    }
     const rows = ((n.data ?? []) as any[]).filter((r) => r.service_type === data.service);
     const sum = (k: string) => rows.reduce((a, r) => a + Number(r[k] ?? 0), 0);
     return { settings: s.data, notify: { tried: sum("tried"), notified: sum("notified"), converted: sum("converted"), error: n.error?.message ?? null } };
@@ -494,7 +498,7 @@ export const getServiceSettings = createServerFn({ method: "POST" })
 
 export const saveServiceSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: Svc; delivery_min_fare?: number; delivery_per_km?: number; rider_share_pct?: number; default_accept_timeout_minutes: number }) => i)
+  .inputValidator((i: { service: Svc; delivery_min_fare?: number; delivery_per_km?: number; rider_share_pct?: number; default_accept_timeout_minutes: number; cityId?: string | null }) => i)
   .handler(async ({ data, context }) => {
     const svc = svcOk(data.service);
     const patch: Record<string, number> = {};
@@ -507,6 +511,14 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
       Object.assign(patch, { delivery_min_fare: a, delivery_per_km: b, rider_share_pct: c });
     }
     const db = context.supabase;
+    if (!data.cityId || data.cityId === "all") throw new Error("Pick a city to edit");
+    const cityPatch: Record<string, number> = { default_accept_timeout_minutes: patch.default_accept_timeout_minutes! };
+    if (patch.delivery_min_fare != null) { cityPatch.delivery_min_fare = patch.delivery_min_fare; cityPatch.delivery_per_km = patch.delivery_per_km!; }
+    const cr = await (db as any).rpc("staff_set_city_service", { _city_id: data.cityId, _service_key: svc, _patch: cityPatch });
+    if (cr.error) throw new Error(cr.error.message);
+    // Rider share is a global value; it stays on the shared row.
+    if (patch.rider_share_pct == null) return { ok: true as const };
+    for (const k of ["default_accept_timeout_minutes", "delivery_min_fare", "delivery_per_km"]) delete patch[k];
     const b = await db.from("service_settings").select("*").eq("service_key", svc).maybeSingle();
     const r = await db.from("service_settings").update({ ...patch, updated_at: new Date().toISOString(), updated_by: context.userId }).eq("service_key", svc).select("service_key");
     chk(r);

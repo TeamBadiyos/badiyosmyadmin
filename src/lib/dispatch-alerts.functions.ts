@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type DispatchConfig = {
   id: string;
+  city_id?: string | null;
   city: string;
   broadcast_radius_km: number;
   no_accept_alert_threshold_seconds: number;
@@ -20,13 +21,16 @@ export const getDispatchConfigs = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("dispatch_config")
       .select(
-        "id,city,broadcast_radius_km,no_accept_alert_threshold_seconds,no_accept_minutes,aisensy_template_name,ops_alert_whatsapp_numbers,almost_available_window_minutes",
+        "id,city,city_id,broadcast_radius_km,no_accept_alert_threshold_seconds,no_accept_minutes,aisensy_template_name,ops_alert_whatsapp_numbers,almost_available_window_minutes",
       )
       .order("city", { ascending: true });
     if (error) throw new Error(error.message);
-    const { data: ss } = await context.supabase.from("service_settings").select("service_key, default_accept_timeout_minutes").in("service_key", ["store", "food"]);
-    const t = (k: string) => ((ss ?? []) as Array<{ service_key: string; default_accept_timeout_minutes: number }>).find((r) => r.service_key === k)?.default_accept_timeout_minutes ?? null;
-    return ((data ?? []) as unknown as DispatchConfig[]).map((c) => ({ ...c, accept_timeouts: { store: t("store"), food: t("food") } }));
+    const { data: ss } = await (context.supabase as any).from("city_service_settings").select("city_id, service_key, default_accept_timeout_minutes").in("service_key", ["store", "food"]);
+    type R = { city_id: string; service_key: string; default_accept_timeout_minutes: number };
+    return ((data ?? []) as unknown as Array<DispatchConfig & { city_id: string }>).map((c) => {
+      const t = (k: string) => ((ss ?? []) as R[]).find((r) => r.service_key === k && r.city_id === c.city_id)?.default_accept_timeout_minutes ?? null;
+      return { ...c, accept_timeouts: { store: t("store"), food: t("food") } };
+    });
   });
 
 export const updateDispatchConfig = createServerFn({ method: "POST" })

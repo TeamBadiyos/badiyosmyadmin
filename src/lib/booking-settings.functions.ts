@@ -19,6 +19,24 @@ async function staffRole(context: Ctx): Promise<"super_admin" | "ops_manager"> {
   return data.role;
 }
 
+
+/** City-wise values (city_ops_settings) layered over the legacy shared rows. */
+async function readOps(sb: any, keys: string[], cityId?: string | null): Promise<Record<string, string>> {
+  const c: Record<string, string> = {};
+  const base = await sb.from("ops_settings").select("key, value").in("key", keys);
+  for (const r of (base.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = String(r.value);
+  if (cityId && cityId !== "all") {
+    const cr = await sb.from("city_ops_settings").select("key, value").eq("city_id", cityId).in("key", keys);
+    for (const r of (cr.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = String(r.value);
+  }
+  return c;
+}
+async function writeOps(sb: any, key: string, value: string, cityId?: string | null) {
+  if (!cityId || cityId === "all") throw new Error("Pick a city to edit");
+  const { error } = await sb.rpc("staff_set_city_ops", { _city_id: cityId, _values: { [key]: value } });
+  if (error) throw new Error(error.message);
+}
+
 /** ops_settings keys that drive booking dispatch timing + the journey-steps switch. */
 export const BOOKING_TIMING_KEYS = [
   "booking_dispatch_lead_minutes",
@@ -146,21 +164,20 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
 
 export const listSlotOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; group?: "clean" | "wash" }) => {
+  .inputValidator((i: { date: string; group?: "clean" | "wash"; cityId?: string | null }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
-    return { date: i.date, group: i.group === "wash" ? "wash" : "clean" } as const;
+    return { date: i.date, group: i.group === "wash" ? "wash" : "clean", cityId: i.cityId ?? null } as const;
   })
   .handler(async ({ data, context }) => {
     const role = await staffRole(context as Ctx);
     const sb = (context as Ctx).supabase;
     const [ov, bk, cfg] = await Promise.all([
       sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", data.group).eq("slot_date", data.date).eq("status", "fully_booked"),
-      sb.from("bookings").select("scheduled_time_slot, status, service_duration_minutes, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"),
-      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled", "booking_buffer_minutes"]),
+      (() => { let q = sb.from("bookings").select("scheduled_time_slot, status, service_duration_minutes, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"); if (data.cityId && data.cityId !== "all") q = q.eq("city_id", data.cityId); return q; })(),
+      readOps(sb, ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled", "booking_buffer_minutes"], data.cityId),
     ]);
     if (ov.error) throw new Error(ov.error.message);
-    const c: Record<string, string> = {};
-    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
+    const c = cfg;
     const buffer = Number(c["booking_buffer_minutes"] ?? 5);
     const counts: Record<number, number> = {};
     for (const b of (bk.data ?? []) as unknown as Array<{ scheduled_time_slot: string | null; status: string; service_duration_minutes: number | null; service_categories: { slug: string } | null }>) {
@@ -204,12 +221,9 @@ export const setSlotFull = createServerFn({ method: "POST" })
 
 export const setInstantBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { on: boolean; group?: "clean" | "wash" }) => i)
+  .inputValidator((i: { on: boolean; group?: "clean" | "wash"; cityId?: string | null }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", {
-      _key: data.group === "wash" ? "wash_instant_booking_enabled" : "instant_booking_enabled", _value: data.on ? "1" : "0",
-    });
-    if (error) throw new Error(error.message);
+    await writeOps((context as Ctx).supabase, data.group === "wash" ? "wash_instant_booking_enabled" : "instant_booking_enabled", data.on ? "1" : "0", data.cityId);
     return { ok: true };
   });
 
@@ -218,9 +232,9 @@ const grp = (g?: string): CapGroup => (g === "wash" ? "wash" : "clean");
 
 export const getSlotCapacity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; group?: CapGroup }) => {
+  .inputValidator((i: { date: string; group?: CapGroup; cityId?: string | null }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
-    return { date: i.date, group: grp(i.group) };
+    return { date: i.date, group: grp(i.group), cityId: i.cityId ?? null };
   })
   .handler(async ({ data, context }) => {
     const sb = (context as Ctx).supabase;
@@ -228,19 +242,19 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
     const anySb = sb as any;
     const defKey = data.group === "wash" ? "wash_default_slot_capacity" : "default_slot_capacity";
     const [cfg, sum] = await Promise.all([
-      sb.from("ops_settings").select("key, value").in("key", ["slot_capacity_enabled", "slot_capacity_mode", defKey, `${data.group}_band_morning_end`, `${data.group}_band_day_end`]),
+      readOps(sb, ["slot_capacity_enabled", "slot_capacity_mode", defKey, `${data.group}_band_morning_end`, `${data.group}_band_day_end`], data.cityId),
       anySb.rpc("staff_slot_band_summary", { _service_key: data.group, _date: data.date }),
     ]);
     if (sum.error) throw new Error(sum.error.message);
     const c: Record<string, string> = {};
-    for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = String(r.value).replace(/"/g, "");
+    for (const [k, v] of Object.entries(cfg)) c[k] = String(v).replace(/"/g, "");
     const s = sum.data as { bands: Band[]; default_cap: number; morning_end: number; day_end: number };
     return {
       enabled: c["slot_capacity_enabled"] === "1",
       mode: (c["slot_capacity_mode"] === "live" ? "live" : "manual") as "live" | "manual",
       defaultCap: Number(c[defKey] ?? 5),
-      morningEnd: Number(s.morning_end),
-      dayEnd: Number(s.day_end),
+      morningEnd: Number(c[`${data.group}_band_morning_end`] ?? s.morning_end),
+      dayEnd: Number(c[`${data.group}_band_day_end`] ?? s.day_end),
       bands: s.bands,
     };
   });
@@ -266,7 +280,7 @@ export type CapKey = "slot_capacity_enabled" | "default_slot_capacity" | "wash_d
 
 export const setCapacitySetting = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { key: CapKey; value: string }) => {
+  .inputValidator((i: { key: CapKey; value: string; cityId?: string | null }) => {
     if (i.key === "slot_capacity_enabled" && !["0", "1"].includes(i.value)) throw new Error("Invalid");
     if (i.key === "slot_capacity_mode" && !["manual", "live"].includes(i.value)) throw new Error("Invalid");
     if (i.key.endsWith("default_slot_capacity")) { const n = Number(i.value); if (!Number.isInteger(n) || n < 0 || n > 500) throw new Error("Count must be 0–500"); }
@@ -274,7 +288,6 @@ export const setCapacitySetting = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data, context }) => {
-    const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", { _key: data.key, _value: data.value });
-    if (error) throw new Error(error.message);
+    await writeOps((context as Ctx).supabase, data.key, data.value, data.cityId);
     return { ok: true };
   });
