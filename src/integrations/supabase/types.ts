@@ -10873,6 +10873,10 @@ export type Database = {
         Args: { _agreement_id: string }
         Returns: Json
       }
+      app_auto_cancel_minutes: {
+        Args: { _city_id?: string; _service_key: string }
+        Returns: number
+      }
       app_city_for_location: {
         Args: { _lat: number; _lng: number }
         Returns: string
@@ -10891,7 +10895,15 @@ export type Database = {
       }
       app_my_agreements: { Args: never; Returns: Json }
       apply_referral_code: { Args: { _code: string }; Returns: string }
+      auto_cancel_minutes: {
+        Args: { _city_id: string; _service_key: string }
+        Returns: number
+      }
       award_referral_milestones: { Args: { _user_id: string }; Returns: number }
+      booking_auto_cancel_minutes: {
+        Args: { _booking_id: string }
+        Returns: number
+      }
       booking_capacity_group: {
         Args: { _category_id: string; _label: string }
         Returns: string
@@ -11931,10 +11943,15 @@ export type Database = {
           phone: string
         }[]
       }
+      expert_has_push_device: { Args: { _expert_id: string }; Returns: boolean }
       expert_mark_arrived: { Args: { p_booking_id: string }; Returns: string }
       expert_mark_on_the_way: {
         Args: { p_booking_id: string }
         Returns: string
+      }
+      expert_matches_group: {
+        Args: { _expert_id: string; _g: string }
+        Returns: boolean
       }
       expert_register_device: {
         Args: { _device_id: string; _device_label?: string }
@@ -12159,6 +12176,10 @@ export type Database = {
               start_minute: number
             }[]
           }
+      live_expert_counts: {
+        Args: { _city_id: string; _service_key: string }
+        Returns: Json
+      }
       lucky_draw_audit: {
         Args: { _action: string; _after: Json; _before: Json; _id: string }
         Returns: undefined
@@ -13063,6 +13084,15 @@ export type Database = {
         Args: { _decision: string; _expert_id: string; _reason: string }
         Returns: undefined
       }
+      staff_experts_without_device: {
+        Args: never
+        Returns: {
+          city_id: string
+          id: string
+          is_online: boolean
+          name: string
+        }[]
+      }
       staff_export_raw_pan_tds_report: {
         Args: { _fy_start_year: number }
         Returns: {
@@ -13135,6 +13165,10 @@ export type Database = {
       staff_list_refunds_all: { Args: { _status: string }; Returns: Json }
       staff_list_unassigned_business_trips: { Args: never; Returns: Json }
       staff_list_unsigned_agreements: { Args: never; Returns: Json }
+      staff_live_expert_counts: {
+        Args: { _city_id: string; _service_key: string }
+        Returns: Json
+      }
       staff_lucky_draw_delete_campaign: {
         Args: { _id: string }
         Returns: undefined
@@ -14258,8 +14292,10 @@ export type Database = {
           broadcast_started_at: string
           created_at: string
           id: string
+          minutes: number
           price: number
           razorpay_payment_id: string
+          total_amount: number
         }[]
       }
       system_mark_dispatch_whatsapp: {
