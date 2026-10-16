@@ -21,9 +21,20 @@ export function customerInvoiceDoc(inv: CustomerInvoice & { status?: string; pay
   const totals = [{ label: "Taxable value", value: taxable }];
   if (ig > 0) totals.push({ label: mixed ? "IGST" : `IGST ${rate}%`, value: ig });
   else totals.push({ label: mixed ? "CGST" : `CGST ${half(rate)}`, value: cg }, { label: mixed ? "SGST" : `SGST ${half(rate)}`, value: sg });
-  if (disc > 0) totals.push({ label: "Discount", value: -disc });
+  if (disc > 0) totals.push({ label: inv.payments ? "Coupon discount (by badiyos)" : "Discount", value: -disc });
   const paid = Number(inv.total);
   totals.push({ label: "Round off", value: roundOff(paid, taxable + cg + sg + ig - disc) });
+  const p = inv.payments;
+  if (p) {
+    // Whole-order payment summary: wallet is a payment method, not a discount
+    if (inv.service === "store") {
+      totals.push({ label: "Order total (goods + delivery)", value: Number(p.bill_total) });
+      if (Number(p.coupon) > 0) totals.push({ label: "Coupon discount (by badiyos)", value: -Number(p.coupon) });
+    }
+    totals.push({ label: "Amount due", value: Number(p.amount_due) });
+    if (Number(p.wallet) > 0) totals.push({ label: "Paid from wallet", value: Number(p.wallet) });
+    totals.push({ label: "Paid online", value: Number(p.online) });
+  }
   const g = inv.merchant_goods;
   return {
     title: "TAX INVOICE", number: inv.invoice_no, draft: inv.status === "draft", company,
