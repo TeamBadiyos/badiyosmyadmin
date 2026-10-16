@@ -109,7 +109,7 @@ export function CleanAppContent() {
             </div>
             <div className="grid gap-2 rounded-lg border border-border bg-card p-3 sm:grid-cols-2">
               <div className="sm:col-span-2 text-sm font-semibold">Section heading</div>
-              <Input value={m.heading_en} maxLength={80} placeholder="English" onChange={(e) => setM({ ...m, heading_en: e.target.value })} />
+              <Input value={m.heading} maxLength={80} placeholder="English" onChange={(e) => setM({ ...m, heading: e.target.value })} />
               <Input value={m.heading_mr} maxLength={80} placeholder="मराठी" onChange={(e) => setM({ ...m, heading_mr: e.target.value })} />
             </div>
             <div className="rounded-lg border border-border bg-card">
@@ -124,7 +124,7 @@ export function CleanAppContent() {
                     {t.url ? <img src={t.url} alt="" className="h-full w-full object-cover" /> : "Upload"}
                   </button>
                   {t.url && <button className="text-xs text-muted-foreground underline" onClick={() => setTile(i, { url: null })}>Remove</button>}
-                  <Input className="w-40" value={t.title_en} maxLength={40} placeholder="English" onChange={(e) => setTile(i, { title_en: e.target.value })} />
+                  <Input className="w-40" value={t.title} maxLength={40} placeholder="English" onChange={(e) => setTile(i, { title: e.target.value })} />
                   <Input className="w-40" value={t.title_mr} maxLength={40} placeholder="मराठी" onChange={(e) => setTile(i, { title_mr: e.target.value })} />
                   <Switch checked={t.enabled} onCheckedChange={(v) => setTile(i, { enabled: v })} />
                 </div>
@@ -154,12 +154,12 @@ function Preview({ m, lang, setLang }: { m: CleanMedia; lang: "en" | "mr"; setLa
           <div className="z-10 text-sm font-bold text-primary-foreground">Instant</div>
           {m.maid_url && <img src={m.maid_url} alt="" className="absolute bottom-0 right-1 h-[115px] object-contain" />}
         </div>
-        <div className="text-sm font-bold text-foreground">{lang === "en" ? m.heading_en : m.heading_mr || m.heading_en}</div>
+        <div className="text-sm font-bold text-foreground">{lang === "en" ? m.heading : m.heading_mr || m.heading}</div>
         <div className="grid grid-cols-3 gap-2">
           {m.tiles.filter((t) => t.enabled).map((t, i) => (
             <div key={i} className="text-center">
               <div className="aspect-square overflow-hidden rounded-lg bg-muted">{t.url && <img src={t.url} alt="" className="h-full w-full object-cover" />}</div>
-              <div className="mt-1 text-[10px] leading-tight text-foreground">{lang === "en" ? t.title_en : t.title_mr || t.title_en}</div>
+              <div className="mt-1 text-[10px] leading-tight text-foreground">{lang === "en" ? t.title : t.title_mr || t.title}</div>
             </div>
           ))}
         </div>
