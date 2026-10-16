@@ -95,7 +95,7 @@ export const listCoupons = createServerFn({ method: "GET" })
     const { data, error } = await db
       .from("coupons")
       .select(
-        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids, show_in_list",
+        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids, show_in_list, city_id",
       )
       .order("created_at", { ascending: false })
       .limit(500);

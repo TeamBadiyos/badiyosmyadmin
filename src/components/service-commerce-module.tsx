@@ -325,6 +325,7 @@ const todayHours = (h: any): string => {
 };
 
 function StoresTab({ service, role }: { service: Svc; role: string }) {
+  const showCity = useShowCity();
   const L = useLabels(service);
   const qc = useQueryClient();
   const fn = useServerFn(listServiceStores);
@@ -402,6 +403,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
                     <Badge variant={c === "live" ? "default" : c === "suspended" ? "destructive" : "secondary"} className="whitespace-nowrap">{CHIP_LABEL[c]}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{s.store_type || (service === "food" ? "Restaurant" : "Store type not set")}</p>
+                  {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={s.city_id} /></p>}
                   <p className="text-xs text-muted-foreground">{todayHours(s.store_hours)} · {s.live_items} live items</p>
                   {review && noComm(s) && <p className="text-xs text-muted-foreground">Commission will be {defPct}% (default)</p>}
                 </div>

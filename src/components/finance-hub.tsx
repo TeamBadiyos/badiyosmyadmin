@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { fetchPartnerFees } from "@/components/partner-payments";
 import { Fragment, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -118,7 +119,7 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
             {rows.map((r) => (
               <Fragment key={r.id}>
                 <tr className="border-b hover:bg-muted/40 cursor-pointer" onClick={() => setOpen(open === r.id ? null : r.id)}>
-                  <td className="p-2 font-medium">{r.merchant?.store_name ?? "—"}</td>
+                  <td className="p-2 font-medium">{r.merchant?.store_name ?? "—"}{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={r.city_id} /></p>}</td>
                   <td className="p-2 capitalize">{r.merchant?.service_type ?? "—"}{r.type === "instant" && <Badge variant="outline" className="ml-1">instant</Badge>}</td>
                   <td className="p-2 whitespace-nowrap">{r.period_from} → {r.period_to}</td>
                   <td className="p-2 text-right">{inr(r.gross_amount)}</td>
@@ -200,7 +201,7 @@ export function RefundsTab({ canEdit }: { canEdit: boolean }) {
             {!q.isLoading && !rows.length && <tr><td colSpan={9} className="p-3 text-muted-foreground">Nothing here.</td></tr>}
             {rows.map((r) => (
               <tr key={r.kind + r.id} className="border-b last:border-0">
-                <td className="p-2">{r.order_number}</td><td className="p-2">{r.service}</td><td className="p-2">{r.store_name}</td>
+                <td className="p-2">{r.order_number}{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={r.city_id} /></p>}</td><td className="p-2">{r.service}</td><td className="p-2">{r.store_name}</td>
                 <td className="p-2 text-right">{inr(r.refund_amount)}</td><td className="p-2">{r.refunded_to}</td><td className="p-2 text-xs">{r.refund_error ?? r.refund_reason ?? "—"}</td>
                 <td className="p-2 text-right">{r.refund_attempts ?? 0}</td><td className="p-2 text-xs">{r.refund_id ?? "—"}</td>
                 <td className="p-2">{canEdit && s === "failed" && <Button size="sm" disabled={retry.isPending} onClick={() => retry.mutate({ id: r.id, kind: r.kind })}>Retry</Button>}</td>
@@ -236,7 +237,7 @@ export function InvoicesTab() {
             {!q.isLoading && !rows.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No invoices yet.</td></tr>}
             {rows.map((r) => (
               <tr key={r.kind + r.id} className="border-b last:border-0">
-                <td className="p-2 font-medium">{r.invoice_no}</td><td className="p-2">{r.merchant?.store_name}</td>
+                <td className="p-2 font-medium">{r.invoice_no}</td><td className="p-2">{r.merchant?.store_name}{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={r.city_id} /></p>}</td>
                 <td className="p-2">{r.period_from} → {r.period_to}</td><td className="p-2 text-right">{inr(r.commission_total)}</td>
                 <td className="p-2 text-right">{inr(r.commission_gst_total)}</td><td className="p-2">{r.status}</td>
                 <td className="p-2"><Button size="sm" variant="outline" onClick={() => dl(r.id)}>PDF</Button></td>

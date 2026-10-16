@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ export function useApplicationsCount() {
 }
 
 export function ExpertApplicationsPanel() {
+  const showCity = useShowCity();
   const [status, setStatus] = useState("submitted");
   const q = useQuery({ queryKey: ["expert-apps", status], queryFn: async () => { const { data, error } = await db.rpc("staff_list_expert_applications", { _status: status || null }); if (error) throw error; return data as App[]; } });
   const [open, setOpen] = useState<App | null>(null);
@@ -53,7 +55,7 @@ export function ExpertApplicationsPanel() {
               const [l, c] = STATUS[viewStatus(a)] ?? [a.status, "bg-muted"];
               return (
                 <tr key={a.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/50" onClick={() => setOpen(a)}>
-                  <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{a.phone} · {a.zone_name ?? "No zone"}</div></td>
+                  <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{a.phone} · {a.zone_name ?? "No zone"}</div>{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={(a as { city_id?: string }).city_id} /></p>}</td>
                   <td className="p-3">{a.work_types.map((w) => WORK[w]).join(", ")}</td>
                   <td className="p-3">{dt(a.submitted_at)}</td>
                   <td className="p-3"><Checklist a={a} /></td>

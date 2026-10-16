@@ -122,7 +122,7 @@ export const listServiceStores = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
-      db.from("merchants").select("id, store_name, owner_name, phone, city, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number").is("deleted_at", null),
+      db.from("merchants").select("id, store_name, owner_name, phone, city, city_id, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number").is("deleted_at", null),
       data.service,
     ).order("store_name"); chk(r);
     const rows = r.data ?? [];
