@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { PipelineKanban, SERVICE_META, type BoardService } from "@/components/pipeline-kanban";
 import type { StaffRole } from "@/lib/staff.functions";
 import { listExpertsWithoutDevice } from "@/lib/booking-settings.functions";
+import { getFssaiAlerts } from "@/lib/dashboard.functions";
 
 type Range = "today" | "yesterday" | "7d" | "30d";
 const ist = (d: Date) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -86,6 +87,8 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
 
   const noDevFn = useServerFn(listExpertsWithoutDevice);
   const noDev = useQuery({ queryKey: ["experts-no-device"], queryFn: () => noDevFn(), refetchInterval: 60_000 }).data ?? [];
+  const fssaiFn = useServerFn(getFssaiAlerts);
+  const fssai = useQuery({ queryKey: ["fssai-alerts"], queryFn: () => fssaiFn(), refetchInterval: 300_000 }).data ?? [];
   const d = q.data as { services?: Record<string, Record<string, number | null>>; alerts?: Record<string, number> } | undefined;
   const a = d?.alerts ?? {};
   const approvals = Number(a.pending_products_store ?? 0) + Number(a.pending_products_food ?? 0);
@@ -94,6 +97,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
     { n: Number(a.refunds_failed ?? 0), label: "Refunds failed", nav: "fin-refunds" },
     { n: Number(a.instant_to_pay ?? 0), label: "Instant pay today", nav: "fin-instant" },
     { n: Number(a.carry_forward_merchants ?? 0), label: "Carry-forward merchants", nav: "fin-settlements" },
+    { n: fssai.length, label: "Restaurant FSSAI expiring/expired", nav: "food-orders" },
     { n: noDev.length, label: `Experts not receiving job alerts${noDev.some((x) => x.online) ? ` (${noDev.filter((x) => x.online).length} online)` : ""}`, nav: "clean-experts" },
   ].filter((x) => x.n > 0);
 

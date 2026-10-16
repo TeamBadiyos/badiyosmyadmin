@@ -41,6 +41,12 @@ export type MerchantRow = {
   updatedAt: string;
   docs: MerchantDoc[];
   pendingItems: number;
+  serviceType: string | null;
+  email: string | null;
+  upiId: string | null;
+  fssaiNumber: string | null;
+  fssaiExpiry: string | null;
+  udyamNumber: string | null;
 };
 
 async function assertStaff(
@@ -67,7 +73,7 @@ export const listMerchants = createServerFn({ method: "GET" })
     let q = db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, bank_account_holder_name, bank_account_number, bank_ifsc, pan, rejection_reason, query_notes, query_doc_types, queried_at, awaiting_reupload, reuploaded_at, created_at, updated_at",
+        "id, store_name, owner_name, phone, status, is_gst_registered, gstin, gst_legal_name, gst_status, store_category_id, segment_id, address, city, pincode, onboarding_step, commission_value, bank_account_holder_name, bank_account_number, bank_ifsc, pan, rejection_reason, query_notes, query_doc_types, queried_at, awaiting_reupload, reuploaded_at, created_at, updated_at, service_type, email, upi_id, fssai_number, fssai_expiry, udyam_number",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -166,6 +172,12 @@ export const listMerchants = createServerFn({ method: "GET" })
       updatedAt: r.updated_at,
       docs: docsByMerchant.get(r.id) ?? [],
       pendingItems: pendingByMerchant.get(r.id) ?? 0,
+      serviceType: r.service_type ?? null,
+      email: r.email ?? null,
+      upiId: r.upi_id ?? null,
+      fssaiNumber: r.fssai_number ?? null,
+      fssaiExpiry: r.fssai_expiry ?? null,
+      udyamNumber: r.udyam_number ?? null,
     }));
   });
 

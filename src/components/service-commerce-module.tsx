@@ -1,6 +1,7 @@
 import { useCity, CityName, useShowCity } from "@/lib/city-scope";
 import { PartyAgreementCard } from "@/components/agreements";
 import { MerchantLedgerPane } from "@/components/merchant-ledger-pane";
+import { fssaiState, isFssaiDoc, type FssaiState } from "@/lib/fssai";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
 import { ClipboardList, Store as StoreIcon, CheckCircle2, Tags, Megaphone, Settings } from "lucide-react";
@@ -406,12 +407,13 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
                   <p className="text-xs text-muted-foreground truncate">{s.store_type || (service === "food" ? "Restaurant" : "Store type not set")}</p>
                   {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={s.city_id} /></p>}
                   <p className="text-xs text-muted-foreground">{todayHours(s.store_hours)} · {s.live_items} live items</p>
+                  {service === "food" && <FssaiBadge st={fssaiState(s)} />}
                   {review && noComm(s) && <p className="text-xs text-muted-foreground">Commission will be {defPct}% (default)</p>}
                 </div>
               </button>
               {review && canManage && (
                 <div className="px-4 pb-4 flex gap-2">
-                  <Button size="sm" onClick={() => { setApproveFor(s); setCommission(noComm(s) ? "" : String(s.commission_pct)); }}>Approve</Button>
+                  <Button size="sm" disabled={service === "food" && fssaiState(s).problems.length > 0} title={service === "food" ? fssaiState(s).problems.join(" · ") : undefined} onClick={() => { setApproveFor(s); setCommission(noComm(s) ? "" : String(s.commission_pct)); }}>Approve</Button>
                   <Button size="sm" variant="outline" onClick={() => setQueryFor(s)}>Raise query</Button>
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectFor(s)}>Reject</Button>
                 </div>
@@ -562,7 +564,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
             ))}
           </div>
-          {t === "profile" && <ProfilePane s={s} act={act} storeTypes={service === "store" ? r.data?.storeTypes : undefined} />}
+          {t === "profile" && <ProfilePane s={s} act={act} service={service} docs={(r.data as any)?.documents ?? []} storeTypes={service === "store" ? r.data?.storeTypes : undefined} />}
           {t === "commercials" && <CommercialsPane s={s} act={act} />}
           {t === "agreement" && <PartyAgreementCard partyType="merchant" partyId={storeId} canManage={role === "super_admin" || role === "ops_manager"} />}
           {t === "products" && <ProductsPane data={r.data} act={act} service={service} storeId={storeId} />}
@@ -581,7 +583,40 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
   );
 }
 
-function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { id: string; name: string; is_active: boolean }[] }) {
+function FssaiBadge({ st }: { st: FssaiState }) {
+  if (st.kind === "ok") return null;
+  const label = st.kind === "expired" ? "FSSAI expired" : st.kind === "expiring" ? `FSSAI expires in ${st.days}d` : "FSSAI incomplete";
+  return <Badge variant={st.kind === "expiring" ? "secondary" : "destructive"} className="whitespace-nowrap">{label}</Badge>;
+}
+
+function DocLink({ docs, match }: { docs: { docType: string; url: string | null }[]; match: (t: string) => boolean }) {
+  const d = docs.find((x) => match(x.docType) && x.url);
+  return d ? <a href={d.url!} target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-1">View file <ExternalLink size={12} /></a> : <span className="text-destructive">No file</span>;
+}
+
+function ComplianceCard({ s, service, docs }: { s: any; service: Svc; docs: { docType: string; url: string | null }[] }) {
+  const st = fssaiState({ ...s, has_fssai_doc: docs.some((d) => isFssaiDoc(d.docType)) });
+  const fmtD = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-1 text-sm md:col-span-2">
+      <p className="font-semibold mb-1">Business details & licences</p>
+      <Row k="Email" v={s.email || "—"} /><Row k="UPI ID" v={s.upi_id || "—"} />
+      <Row k="FSSAI licence no." v={s.fssai_number || "—"} />
+      <Row k="FSSAI expiry" v={<span className="inline-flex items-center gap-2">{fmtD(s.fssai_expiry)} <FssaiBadge st={st} /></span>} />
+      <Row k="FSSAI file" v={<DocLink docs={docs} match={isFssaiDoc} />} />
+      <Row k="Udyam / Shop Act no." v={s.udyam_number || "—"} />
+      <Row k="Udyam / Shop Act file" v={<DocLink docs={docs} match={(t) => /udyam|shop/i.test(t)} />} />
+      <Row k="GSTIN" v={s.gstin || "—"} />
+      <Row k="GST certificate" v={<DocLink docs={docs} match={(t) => /gst/i.test(t)} />} />
+      {service === "food" && st.problems.length > 0 && s.status !== "approved" && (
+        <p className="text-xs text-destructive pt-2">Cannot approve: {st.problems.join(" · ")}</p>
+      )}
+    </div>
+  );
+}
+
+function ProfilePane({ s, act, storeTypes, service, docs }: { s: any; act: any; service: Svc; docs: { docType: string; url: string | null }[]; storeTypes?: { id: string; name: string; is_active: boolean }[] }) {
+  const fssaiBlock = service === "food" && fssaiState({ ...s, has_fssai_doc: docs.some((d) => isFssaiDoc(d.docType)) }).problems.length > 0;
   const [offer, setOffer] = useState(s.offer_text ?? "");
   const [reason, setReason] = useState("");
   useEffect(() => setOffer(s.offer_text ?? ""), [s.offer_text]);
@@ -593,6 +628,7 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
         <Row k="GSTIN" v={s.gstin || "—"} /><Row k="PAN" v={s.pan || "—"} /><Row k="Bank" v={s.bank_account_number ? `${s.bank_account_holder_name || "—"} · ••••${String(s.bank_account_number).slice(-4)}` : <span className="text-destructive font-semibold">Bank details pending</span>} /><Row k="Approval" v={<Badge variant="outline">{s.status}</Badge>} />
         <Row k="Rating" v={Number(s.rating_count) >= 3 ? `${Number(s.rating_avg).toFixed(1)} (${s.rating_count})` : ""} />
       </div>
+      <ComplianceCard s={s} service={service} docs={docs} />
       <div className="rounded-lg border bg-card p-4 space-y-4">
         {storeTypes && (
           <div className="space-y-1">
@@ -612,7 +648,7 @@ function ProfilePane({ s, act, storeTypes }: { s: any; act: any; storeTypes?: { 
         <div className="space-y-2 border-t pt-3">
           <Input placeholder="Reason (required to approve or suspend)" value={reason} onChange={(e) => setReason(e.target.value)} />
           <div className="flex gap-2">
-            {s.status !== "approved" && <Button size="sm" disabled={!reason.trim()} onClick={() => act.mutate({ kind: "approve", reason }, { onSuccess: () => setReason("") })}>Approve</Button>}
+            {s.status !== "approved" && <Button size="sm" disabled={!reason.trim() || fssaiBlock} onClick={() => act.mutate({ kind: "approve", reason }, { onSuccess: () => setReason("") })}>Approve</Button>}
             {s.status !== "suspended" && <Button size="sm" variant="destructive" disabled={!reason.trim()} onClick={() => act.mutate({ kind: "suspend", reason }, { onSuccess: () => setReason("") })}>Suspend</Button>}
           </div>
         </div>

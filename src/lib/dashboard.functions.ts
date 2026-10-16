@@ -445,3 +445,14 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     };
   });
 
+
+/** Restaurants whose FSSAI licence has expired or expires within 30 days. */
+export const getFssaiAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const limit = new Date(Date.now() + 5.5 * 3600_000 + 30 * 86_400_000).toISOString().slice(0, 10);
+    const { data, error } = await context.supabase.from("merchants").select("id, store_name, fssai_expiry")
+      .eq("service_type", "food").is("deleted_at", null).not("fssai_expiry", "is", null).lte("fssai_expiry", limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; store_name: string | null; fssai_expiry: string }[];
+  });
