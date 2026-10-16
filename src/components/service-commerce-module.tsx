@@ -33,7 +33,7 @@ import {
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
   listBankChanges, decideBankChange,
   listStoreTypes, saveStoreType, reorderStoreTypes,
-  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, createDraftMerchant,
+  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, saveHideLowItemSections, createDraftMerchant,
 } from "@/lib/service-commerce.functions";
 import { cancelStoreOrderWithRefund, reassignStoreRider } from "@/lib/commerce.functions";
 
@@ -1298,6 +1298,12 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
     onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); },
     onError: (e) => toast.error(errMsg(e)),
   });
+  const hideFn = useServerFn(saveHideLowItemSections);
+  const hideSave = useMutation({
+    mutationFn: (value: boolean) => hideFn({ data: { service, value } }),
+    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
   const n = r.data?.notify;
   const defFn = useServerFn(getStoreCommissionSettings);
   const def = useQuery({ queryKey: ["store", "commission-settings"], queryFn: () => defFn(), enabled: service === "food" });
@@ -1313,6 +1319,19 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
         </div>
         {canEdit ? <Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : <p className="text-xs text-muted-foreground">Only super admin can change these.</p>}
       </div>
+      {(service === "store" || service === "food") && (
+        <div className="rounded-lg border bg-card p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold">Hide sections with too few items</p>
+            <p className="text-xs text-muted-foreground">On the {service === "food" ? "Food" : "Store"} home screen in the Customer App. Default off.</p>
+          </div>
+          <Switch
+            checked={!!(r.data?.settings as any)?.hide_low_item_sections}
+            disabled={!canEdit || hideSave.isPending}
+            onCheckedChange={(v) => hideSave.mutate(v)}
+          />
+        </div>
+      )}
       {service === "store" && <StoreSettingsPage hideGst />}
       <ServiceHoursPanel serviceKey={service} title="Opening hours" />
       <div className="rounded-lg border bg-card p-4">
