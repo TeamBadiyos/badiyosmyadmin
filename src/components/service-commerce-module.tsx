@@ -1,3 +1,4 @@
+import { useCity } from "@/lib/city-scope";
 import { PartyAgreementCard } from "@/components/agreements";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
@@ -1061,7 +1062,8 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
   const qc = useQueryClient();
   const fn = useServerFn(getServiceSettings);
   const saveFn = useServerFn(saveServiceSettings);
-  const r = useQuery({ queryKey: ["svc", service, "settings"], queryFn: () => fn({ data: { service } }) });
+  const { cityId } = useCity();
+  const r = useQuery({ queryKey: ["svc", service, "settings", cityId], queryFn: () => fn({ data: { service, cityId } }) });
   const [v, setV] = useState({ min: "", km: "", share: "", timeout: "" });
   useEffect(() => {
     const s: any = r.data?.settings; if (!s) return;
@@ -1069,7 +1071,7 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
   }, [r.data]);
   const canEdit = role === "super_admin";
   const save = useMutation({
-    mutationFn: () => saveFn({ data: { service, delivery_min_fare: Number(v.min), delivery_per_km: Number(v.km), rider_share_pct: Number(v.share), default_accept_timeout_minutes: Number(v.timeout) } }),
+    mutationFn: () => saveFn({ data: { service, delivery_min_fare: Number(v.min), delivery_per_km: Number(v.km), rider_share_pct: Number(v.share), default_accept_timeout_minutes: Number(v.timeout), cityId } }),
     onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); },
     onError: (e) => toast.error(errMsg(e)),
   });
