@@ -1306,11 +1306,13 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
   const r = useQuery({ queryKey: ["svc", service, "settings", cityId], queryFn: () => fn({ data: { service, cityId } }) });
   const [v, setV] = useState<DeliveryRateDraft>({ baseFare: "", includedKm: "", perKm: "", minFare: "", platformFee: "", riderSharePct: "" });
   const [timeout, setTimeoutV] = useState("");
+  const [launch, setLaunch] = useState("");
   useEffect(() => {
     const s: any = r.data?.settings; if (!s) return;
     const st = (x: any) => String(x ?? 0);
     setV({ baseFare: st(s.delivery_base_fare), includedKm: st(s.delivery_included_km), perKm: st(s.delivery_per_km), minFare: st(s.delivery_min_fare), platformFee: st(s.delivery_platform_fee), riderSharePct: st(s.rider_share_pct) });
     setTimeoutV(String(s.default_accept_timeout_minutes ?? ""));
+    setLaunch(s.launch_progress_pct == null ? "" : String(s.launch_progress_pct));
   }, [r.data]);
   const canEdit = role === "super_admin";
   const done = { onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); }, onError: (e: unknown) => toast.error(errMsg(e)) };
@@ -1319,6 +1321,7 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
     ...done,
   });
   const saveRules = useMutation({ mutationFn: () => saveFn({ data: { service, cityId, default_accept_timeout_minutes: Number(timeout) } }), ...done });
+  const saveLaunch = useMutation({ mutationFn: () => saveFn({ data: { service, cityId, launch_progress_pct: launch.trim() === "" ? null : Number(launch) } }), ...done });
   const hideFn = useServerFn(saveHideLowItemSections);
   const hideSave = useMutation({
     mutationFn: (value: boolean) => hideFn({ data: { service, value } }),
@@ -1341,6 +1344,14 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
           <p className="mt-1 text-xs text-muted-foreground">Store must accept the order within this time.</p></div>
         {canEdit && <Button onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>Save</Button>}
       </div>
+      {service === "food" && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <p className="font-semibold">Launch progress %</p>
+          <div className="max-w-xs"><Input type="number" min={0} max={100} placeholder="Hidden" disabled={!canEdit} value={launch} onChange={(e) => setLaunch(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">0–100, shown in the Customer App for this city. Leave blank to hide.</p></div>
+          {canEdit && <Button onClick={() => saveLaunch.mutate()} disabled={saveLaunch.isPending}>Save</Button>}
+        </div>
+      )}
       {(service === "store" || service === "food") && (
         <div className="rounded-lg border bg-card p-4 flex items-center justify-between gap-4">
           <div>

@@ -5,6 +5,7 @@ import { MapPin, BellRing, Download, ChevronDown, ChevronRight } from "lucide-re
 import { FilterBar, FilterField, filterSelectCls, countLabel } from "@/components/section-chrome";
 import { toast } from "sonner";
 import { getWaitlistOverview, notifyWaitlistArea, DEMAND_LABEL, type DemandRow } from "@/lib/waitlist.functions";
+import { DemandTopNames } from "@/components/demand-top-names";
 
 type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 const SOURCE_LABEL: Record<string, string> = { "outside-city": "Outside city", "coming-soon": "Coming soon tab", website: "Website" };
@@ -29,6 +30,7 @@ function csv(rows: DemandRow[]) {
 export function WaitlistPage({ role }: { role: StaffRole | null }) {
   const canView = role === null || role === "super_admin" || role === "ops_manager";
   const [service, setService] = useState("");
+  const [view, setView] = useState<"requests" | "names">("requests");
   const [source, setSource] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [notifying, setNotifying] = useState<string | null>(null);
@@ -55,8 +57,21 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
 
   if (!canView) return <p className="text-[14px] text-muted-foreground">You do not have access to Demand.</p>;
 
+  const tabs = (
+    <div className="inline-flex rounded-[10px] border border-border bg-card p-1 text-[13px] font-semibold">
+      {(["requests", "names"] as const).map((t) => (
+        <button key={t} onClick={() => setView(t)}
+          className={`px-3 py-1.5 rounded-[8px] ${view === t ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+          {t === "requests" ? "Requests" : "Most requested"}
+        </button>
+      ))}
+    </div>
+  );
+  if (view === "names") return <div className="space-y-4">{tabs}<DemandTopNames /></div>;
+
   return (
     <div className="space-y-4">
+      {tabs}
       <div className="grid gap-3 grid-cols-3">
         {[
           { l: "Total", v: allRows.length },

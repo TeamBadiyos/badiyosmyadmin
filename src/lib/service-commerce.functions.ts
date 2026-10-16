@@ -549,7 +549,7 @@ export const getServiceSettings = createServerFn({ method: "POST" })
     ]);
     chk(s);
     if (data.cityId && data.cityId !== "all") {
-      const c = await (db as any).from("city_service_settings").select("delivery_min_fare, delivery_per_km, delivery_base_fare, delivery_included_km, delivery_platform_fee, rider_share_pct, default_accept_timeout_minutes").eq("city_id", data.cityId).eq("service_key", data.service).maybeSingle();
+      const c = await (db as any).from("city_service_settings").select("delivery_min_fare, delivery_per_km, delivery_base_fare, delivery_included_km, delivery_platform_fee, rider_share_pct, default_accept_timeout_minutes, launch_progress_pct").eq("city_id", data.cityId).eq("service_key", data.service).maybeSingle();
       if (c.data) for (const [k, v] of Object.entries(c.data)) if (v != null) (s.data as any)[k] = v;
     }
     const rows = ((n.data ?? []) as any[]).filter((r) => r.service_type === data.service);
@@ -562,12 +562,22 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
   .inputValidator((i: {
     service: Svc; cityId?: string | null;
     default_accept_timeout_minutes?: number;
+    launch_progress_pct?: number | null;
     rate?: { delivery_base_fare: number; delivery_included_km: number; delivery_per_km: number; delivery_min_fare: number; delivery_platform_fee: number; rider_share_pct: number };
   }) => i)
   .handler(async ({ data, context }) => {
     const svc = svcOk(data.service);
     if (!data.cityId || data.cityId === "all") throw new Error("Pick a city to edit");
-    const patch: Record<string, number> = {};
+    const patch: Record<string, number | string> = {};
+    if (data.launch_progress_pct !== undefined) {
+      if (svc !== "food") throw new Error("Only for Food");
+      if (data.launch_progress_pct === null) patch.launch_progress_pct = "";
+      else {
+        const p = Math.round(Number(data.launch_progress_pct));
+        if (!(p >= 0 && p <= 100)) throw new Error("Launch progress must be 0–100");
+        patch.launch_progress_pct = p;
+      }
+    }
     if (data.default_accept_timeout_minutes != null) {
       const t = Math.round(Number(data.default_accept_timeout_minutes));
       if (!(t >= 1 && t <= 120)) throw new Error("Accept timeout must be 1–120 minutes");
