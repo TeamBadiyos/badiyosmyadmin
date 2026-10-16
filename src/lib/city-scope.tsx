@@ -42,11 +42,10 @@ export function CityProvider({ children }: { children: ReactNode }) {
   const synced = useRef<string | null>(null);
   useEffect(() => {
     if (!q.data || synced.current === effective) return;
-    const first = synced.current === null;
     synced.current = effective;
     db.rpc("staff_set_view_city", { _city_id: effective === "all" ? null : effective }).then(({ error }: { error: unknown }) => {
       if (error) return;
-      if (!first || true) qc.invalidateQueries({ predicate: (x) => x.queryKey[1] !== "my-cities" });
+      qc.invalidateQueries({ predicate: (x) => x.queryKey[1] !== "my-cities" });
     });
   }, [effective, q.data, qc]);
   const value = useMemo<Ctx>(
