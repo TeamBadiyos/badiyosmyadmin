@@ -290,6 +290,12 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
     onSuccess: () => { toast.success("Saved"); setAcIn(""); qc.invalidateQueries({ queryKey: ["auto-cancel"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const [scIn, setScIn] = useState("");
+  const scMut = useMutation({
+    mutationFn: (m: number) => acSet({ data: { group, minutes: m, cityId, kind: "scheduled" } }),
+    onSuccess: () => { toast.success("Saved"); setScIn(""); qc.invalidateQueries({ queryKey: ["auto-cancel"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
   const row = "flex items-center justify-between gap-4 py-4";
@@ -301,10 +307,17 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
           onClick={() => d && confirm(instOn ? "Pause Book Now?" : "Turn Book Now ON?") && instMut.mutate(!instOn)} />
       </div>
       <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Auto-cancel and refund if no expert accepts within X minutes</p><p className="text-[12px] text-muted-foreground">Full refund of what the customer paid · Now: {ac.data?.minutes ?? "–"} min</p></div>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Book Now: auto-cancel and refund if no expert accepts within X minutes</p><p className="text-[12px] text-muted-foreground">Counted from search start · Full refund · Now: {ac.data?.minutes ?? "–"} min</p></div>
         <div className="flex items-center gap-2">
           <input type="number" min={5} max={1440} placeholder={String(ac.data?.minutes ?? "")} value={acIn} onChange={(e) => setAcIn(e.target.value)} className={inputCls} />
           <button disabled={!acIn || acMut.isPending || ac.data?.canEdit === false} className={primaryBtn} onClick={() => acMut.mutate(Number(acIn))}>Save</button>
+        </div>
+      </div>
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Scheduled: auto-cancel X minutes after slot start</p><p className="text-[12px] text-muted-foreground">Only if no expert is assigned · Full refund · Now: {ac.data?.scheduledMinutes ?? "–"} min</p></div>
+        <div className="flex items-center gap-2">
+          <input type="number" min={0} max={1440} placeholder={String(ac.data?.scheduledMinutes ?? "")} value={scIn} onChange={(e) => setScIn(e.target.value)} className={inputCls} />
+          <button disabled={!scIn || scMut.isPending || ac.data?.canEdit === false} className={primaryBtn} onClick={() => scMut.mutate(Number(scIn))}>Save</button>
         </div>
       </div>
       <div className={row}>
