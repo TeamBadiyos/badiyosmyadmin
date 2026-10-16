@@ -72,3 +72,19 @@ export const saveBonusRule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id?: string | null; p: Record<string, unknown> }) => ({ id: i.id ?? null, p: i.p }))
   .handler(async ({ data, context }) => rpc(context.supabase, "staff_save_wallet_bonus_rule", { _id: data.id, _p: data.p }));
+
+export const getWalletBonusDays = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const r = await (context.supabase as any).from("ops_settings").select("value").eq("key", "wallet_bonus_expiry_days").maybeSingle();
+    return { days: Number(r.data?.value ?? 30) || 30 };
+  });
+
+export const setWalletBonusDays = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { days: number }) => ({ days: Math.round(Number(i?.days)) }))
+  .handler(async ({ data, context }) => {
+    if (!(data.days >= 1 && data.days <= 365)) throw new Error("Days must be 1–365");
+    await rpc(context.supabase, "staff_set_wallet_bonus_days", { _days: data.days });
+    return { ok: true };
+  });
