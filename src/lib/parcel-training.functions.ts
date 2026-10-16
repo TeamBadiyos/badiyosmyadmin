@@ -39,7 +39,7 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
       db.from("courier_types").select("id, name").order("name"),
       db.from("experts").select("id, name").eq("mode", "TRAINING").order("name"),
       db.from("courier_orders")
-        .select("id, order_number, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
+        .select("id, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
         .eq("is_training", true).order("created_at", { ascending: false }).limit(100),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +47,7 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
     const nameOf = new Map(experts.map((e) => [e.id, e.name]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orders: ParcelTrainingOrder[] = ((os.data ?? []) as any[]).map((o) => ({
-      id: o.id, orderNumber: o.order_number ?? null, status: o.status, pickup: o.pickup_address, drop: o.drop_address,
+      id: o.id, orderNumber: null, status: o.status, pickup: o.pickup_address, drop: o.drop_address,
       totalAmount: Number(o.total_amount) || 0, createdAt: o.created_at,
       riderName: o.assigned_expert_id ? nameOf.get(o.assigned_expert_id) ?? "Rider" : null,
     }));
