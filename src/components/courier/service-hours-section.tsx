@@ -1,5 +1,5 @@
 import { DateInput } from "@/components/date-input";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarOff, ChevronDown, Eye, PowerOff, RotateCcw } from "lucide-react";
@@ -27,13 +27,13 @@ import {
 } from "./service-status-section";
 
 const WEEKDAYS = [
-  { n: 1, label: "Somvar (Mon)" },
-  { n: 2, label: "Mangalvar (Tue)" },
-  { n: 3, label: "Budhvar (Wed)" },
-  { n: 4, label: "Guruvar (Thu)" },
-  { n: 5, label: "Shukravar (Fri)" },
-  { n: 6, label: "Shanivar (Sat)" },
-  { n: 0, label: "Ravivar (Sun)" },
+  { n: 1, label: "Monday" },
+  { n: 2, label: "Tuesday" },
+  { n: 3, label: "Wednesday" },
+  { n: 4, label: "Thursday" },
+  { n: 5, label: "Friday" },
+  { n: 6, label: "Saturday" },
+  { n: 0, label: "Sunday" },
 ];
 
 type HourDraft = { weekday: number; openTime: string; closeTime: string; isClosed: boolean };
@@ -52,8 +52,8 @@ function toDraft(hours: ServiceHourRow[], flagId: string): HourDraft[] {
 
 function cutoffLabel(flag: ServiceFlagControl): string {
   const min = flag.last_order_buffer_minutes ?? 0;
-  const base = flag.service_key === "courier" ? "Last order time" : "Last slot ka end";
-  return `${base}: close se ${min} min pehle`;
+  const base = flag.service_key === "courier" ? "Last order time" : "Last slot ends";
+  return `${base}: ${min} min before closing`;
 }
 
 export function ServiceHoursEditor({
@@ -62,7 +62,9 @@ export function ServiceHoursEditor({
   holidays,
   canWrite,
   onSaved,
+  afterHours,
 }: {
+  afterHours?: ReactNode;
   flag: ServiceFlagControl;
   hours: ServiceHourRow[];
   holidays: ServiceHolidayRow[];
@@ -111,7 +113,7 @@ export function ServiceHoursEditor({
   function validate(): boolean {
     for (const r of rows) {
       if (!r.isClosed && r.closeTime <= r.openTime) {
-        setError(`Close time open time ke baad hona chahiye (${WEEKDAYS.find((d) => d.n === r.weekday)?.label})`);
+        setError(`Closing time must be after opening time (${WEEKDAYS.find((d) => d.n === r.weekday)?.label})`);
         return false;
       }
     }
@@ -123,7 +125,7 @@ export function ServiceHoursEditor({
     const mon = rows.find((r) => r.weekday === 1);
     if (!mon) return;
     setRows(rows.map((r) => ({ ...r, openTime: mon.openTime, closeTime: mon.closeTime, isClosed: mon.isClosed })));
-    toast.success("Somvar ka time sab din copy ho gaya — Save karna mat bhooliye");
+    toast.success("Monday's time copied to all days — remember to Save");
   }
 
   async function onSaveHours() {
@@ -146,7 +148,7 @@ export function ServiceHoursEditor({
     setBusy(true);
     try {
       await toggleEnabled({ data: { serviceKey: flag.service_key, enabled: next } });
-      toast.success(next ? "Hours rule on" : "Hours rule off — service hamesha open rahegi status ke hisaab se");
+      toast.success(next ? "Opening hours on" : "Opening hours off — the service now follows its status only");
       onSaved();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -157,11 +159,11 @@ export function ServiceHoursEditor({
 
   async function onSaveHoliday() {
     if (!holStart) {
-      toast.error("Start date chuniye");
+      toast.error("Pick a start date");
       return;
     }
     if (holEnd && holEnd < holStart) {
-      toast.error("End date start date se pehle nahi ho sakti");
+      toast.error("End date cannot be before the start date");
       return;
     }
     setBusy(true);
@@ -205,7 +207,7 @@ export function ServiceHoursEditor({
           until: istInputToIso(closeUntil),
         },
       });
-      toast.success("Aaj ke liye band kar diya — raat 12 baje IST apne aap clear hoga");
+      toast.success("Closed for today — reopens automatically at midnight IST");
       setShowCloseForm(false);
       onSaved();
     } catch (e) {
@@ -219,7 +221,7 @@ export function ServiceHoursEditor({
     setBusy(true);
     try {
       await reopenToday({ data: { serviceKey: flag.service_key } });
-      toast.success("Service wapas khol di");
+      toast.success("Service reopened");
       onSaved();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -228,19 +230,116 @@ export function ServiceHoursEditor({
     }
   }
 
+  const openRows = rows.filter((r) => !r.isClosed);
+  const everyFrom = openRows[0]?.openTime ?? "09:00";
+  const everyTo = openRows[0]?.closeTime ?? "19:00";
+  const mixed = openRows.some((r) => r.openTime !== everyFrom || r.closeTime !== everyTo);
+  const SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
     <div className="mt-3 space-y-4 border-t border-border pt-4">
+      {/* weekly hours */}
+      <div className="space-y-4">
+        <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <input type="checkbox" checked={flag.hours_enabled} disabled={!canWrite || busy}
+            onChange={(e) => void onToggleEnabled(e.target.checked)} />
+          Use opening hours
+          <span className="text-[11px]">· When off, the service follows its status only.</span>
+        </label>
+
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Open every day</p>
+          <p className="text-[12px] text-muted-foreground">One time used for all open days. The first slot starts at opening time.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+            <span className="text-muted-foreground">from</span>
+            <input type="time" value={everyFrom} disabled={!canWrite}
+              onChange={(e) => setRows(rows.map((x) => (x.isClosed ? x : { ...x, openTime: e.target.value })))}
+              className={controlInputCls + " w-auto"} />
+            <span className="text-muted-foreground">to</span>
+            <input type="time" value={everyTo} disabled={!canWrite}
+              onChange={(e) => setRows(rows.map((x) => (x.isClosed ? x : { ...x, closeTime: e.target.value })))}
+              className={controlInputCls + " w-auto"} />
+            {mixed ? <span className="text-[12px] text-warning">Some days have a different time (see below)</span> : null}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[13px] font-semibold text-foreground">Weekly off</p>
+          <p className="text-[12px] text-muted-foreground">Tap the days the service is closed every week.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {rows.map((r, i) => (
+              <button key={r.weekday} type="button" disabled={!canWrite}
+                onClick={() => setRows(rows.map((x, j) => (j === i ? { ...x, isClosed: !x.isClosed, openTime: everyFrom, closeTime: everyTo } : x)))}
+                className={`h-9 min-w-[52px] rounded-full px-3 text-[12px] font-semibold disabled:opacity-50 ${r.isClosed ? "bg-destructive/10 text-destructive border border-destructive/40" : "border border-border text-foreground"}`}>
+                {SHORT[r.weekday]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <details className="rounded-[12px] border border-border" open={mixed || undefined}>
+          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[13px] font-semibold text-foreground">
+            <ChevronDown size={14} /> Different time on some days
+            <span className="text-[12px] font-normal text-muted-foreground">· Only needed if a day has its own hours.</span>
+          </summary>
+          <div className="overflow-x-auto border-t border-border">
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2">Day</th>
+                <th className="px-3 py-2">Open (IST)</th>
+                <th className="px-3 py-2">Close (IST)</th>
+                <th className="px-3 py-2">Closed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.weekday} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 font-semibold text-foreground">{WEEKDAYS.find((d) => d.n === r.weekday)?.label}</td>
+                  <td className="px-3 py-2">
+                    <input type="time" value={r.openTime} disabled={!canWrite || r.isClosed}
+                      onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, openTime: e.target.value } : x)))}
+                      className={controlInputCls + " w-auto"} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="time" value={r.closeTime} disabled={!canWrite || r.isClosed}
+                      onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, closeTime: e.target.value } : x)))}
+                      className={controlInputCls + " w-auto"} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={r.isClosed} disabled={!canWrite}
+                      onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, isClosed: e.target.checked } : x)))} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </details>
+        {error ? <p className="mt-1 text-[12px] font-semibold text-destructive">{error}</p> : null}
+        {canWrite ? (
+          <div className="flex justify-end">
+            <button onClick={() => void onSaveHours()} disabled={busy || !dirty}
+              className="rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-50">
+              Save hours
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {afterHours}
+
       {/* closed today banner */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border bg-muted/40 px-4 py-3">
         <div className="text-[12px] text-foreground">
           {closedToday ? (
             <>
-              <strong className="text-destructive">Aaj band hai</strong>
+              <strong className="text-destructive">Closed today</strong>
               {flag.closed_today_reason ? ` — ${flag.closed_today_reason}` : ""}
-              {flag.closed_until ? ` · ${fmtIst(flag.closed_until)} tak` : " · aaj raat 12 baje IST tak"}
+              {flag.closed_until ? ` · until ${fmtIst(flag.closed_until)}` : " · until midnight IST"}
             </>
           ) : (
-            "Aaj ke liye turant band karna ho to:"
+            "Close today: stop new bookings for the rest of today."
           )}
         </div>
         {closedToday ? (
@@ -249,7 +348,7 @@ export function ServiceHoursEditor({
             disabled={!canWrite || busy}
             className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
           >
-            <RotateCcw size={13} /> Wapas kholo
+            <RotateCcw size={13} /> Reopen
           </button>
         ) : (
           <button
@@ -257,7 +356,7 @@ export function ServiceHoursEditor({
             disabled={!canWrite || busy}
             className="inline-flex items-center gap-1.5 rounded-[10px] border border-destructive/40 px-3 py-1.5 text-[12px] font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
           >
-            <PowerOff size={13} /> Aaj band rakho
+            <PowerOff size={13} /> Close today
           </button>
         )}
       </div>
@@ -284,7 +383,7 @@ export function ServiceHoursEditor({
           </label>
           <label className="block">
             <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
-              Kab tak (optional, IST) — khaali = aaj raat 12 baje tak
+              Until (optional, IST) — empty means midnight tonight
             </span>
             <input
               type="datetime-local"
@@ -300,102 +399,11 @@ export function ServiceHoursEditor({
               disabled={!canWrite || busy}
               className="rounded-[10px] bg-destructive px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
             >
-              Band karo
+              Close now
             </button>
           </div>
         </div>
       ) : null}
-
-      {/* weekly hours */}
-      <div>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] font-bold text-foreground">Weekly hours</span>
-            <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={flag.hours_enabled}
-                disabled={!canWrite || busy}
-                onChange={(e) => void onToggleEnabled(e.target.checked)}
-              />
-              Hours rule on
-            </label>
-          </div>
-          <button
-            onClick={copyMonday}
-            disabled={!canWrite}
-            className="rounded-[10px] border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-50"
-          >
-            Somvar ka time sab din copy karo
-          </button>
-        </div>
-
-        <div className="overflow-x-auto rounded-[12px] border border-border">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2">Din</th>
-                <th className="px-3 py-2">Open (IST)</th>
-                <th className="px-3 py-2">Close (IST)</th>
-                <th className="px-3 py-2">Band</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={r.weekday} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2 font-semibold text-foreground">
-                    {WEEKDAYS.find((d) => d.n === r.weekday)?.label}
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="time"
-                      value={r.openTime}
-                      disabled={!canWrite || r.isClosed}
-                      onChange={(e) =>
-                        setRows(rows.map((x, j) => (j === i ? { ...x, openTime: e.target.value } : x)))
-                      }
-                      className={controlInputCls + " w-auto"}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="time"
-                      value={r.closeTime}
-                      disabled={!canWrite || r.isClosed}
-                      onChange={(e) =>
-                        setRows(rows.map((x, j) => (j === i ? { ...x, closeTime: e.target.value } : x)))
-                      }
-                      className={controlInputCls + " w-auto"}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={r.isClosed}
-                      disabled={!canWrite}
-                      onChange={(e) =>
-                        setRows(rows.map((x, j) => (j === i ? { ...x, isClosed: e.target.checked } : x)))
-                      }
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">{cutoffLabel(flag)}</p>
-        {error ? <p className="mt-1 text-[12px] font-semibold text-destructive">{error}</p> : null}
-        {canWrite && dirty ? (
-          <div className="mt-2 flex justify-end">
-            <button
-              onClick={() => void onSaveHours()}
-              disabled={busy}
-              className="rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-50"
-            >
-              Save hours
-            </button>
-          </div>
-        ) : null}
       </div>
 
       {/* holidays */}
@@ -415,7 +423,7 @@ export function ServiceHoursEditor({
         </div>
 
         {myHolidays.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">Koi upcoming holiday nahi.</p>
+          <p className="text-[12px] text-muted-foreground">No upcoming holidays.</p>
         ) : (
           <ul className="space-y-2">
             {myHolidays.map((h) => (
@@ -456,7 +464,7 @@ export function ServiceHoursEditor({
                       setBusy(true);
                       try {
                         await delHol({ data: { holidayId: h.id } });
-                        toast.success("Holiday hatayi");
+                        toast.success("Holiday removed");
                         onSaved();
                       } catch (e) {
                         toast.error(e instanceof Error ? e.message : "Failed");
@@ -467,7 +475,7 @@ export function ServiceHoursEditor({
                     disabled={!canWrite || busy}
                     className="rounded-[8px] border border-destructive/40 px-2.5 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
                   >
-                    Hatao
+                    Remove
                   </button>
                 </div>
               </li>
