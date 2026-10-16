@@ -89,7 +89,8 @@ export function ZonesPage({ role }: { role: StaffRole | null }) {
   });
 
   const [drawOpen, setDrawOpen] = useState(false);
-  const zones = data ?? [];
+  const { cityId } = useCity();
+  const zones = (data ?? []).filter((z) => cityId === "all" || z.cityId === cityId);
 
   const cols = canManage
     ? "grid-cols-[40px_minmax(0,1.6fr)_minmax(0,1.2fr)_100px_136px]"
@@ -460,7 +461,8 @@ function DrawZoneModal({ onClose }: { onClose: () => void }) {
   const [pointCount, setPointCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const [name, setName] = useState("");
-  const [city, setCity] = useState("");
+  const { city: selCity } = useCity();
+  const [city, setCity] = useState(selCity?.name ?? "");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locateError, setLocateError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
