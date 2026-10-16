@@ -588,6 +588,23 @@ export const saveServiceSettings = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Store/Food home: hide sections with too few items (global per service, read by the Customer App). */
+export const saveHideLowItemSections = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: Svc; value: boolean }) => ({ service: svcOk(i?.service), value: !!i?.value }))
+  .handler(async ({ data, context }) => {
+    if (data.service !== "store" && data.service !== "food") throw new Error("Only for Store/Food");
+    const db = context.supabase;
+    const b = await db.from("service_settings").select("hide_low_item_sections").eq("service_key", data.service).maybeSingle();
+    const r = await db.from("service_settings")
+      .update({ hide_low_item_sections: data.value, updated_at: new Date().toISOString(), updated_by: context.userId } as any)
+      .eq("service_key", data.service).select("service_key");
+    chk(r);
+    if (!r.data?.length) throw new Error("Only super admin can change this.");
+    await audit(context, "service_settings_updated", "service_settings", null, b.data, { service: data.service, hide_low_item_sections: data.value });
+    return { ok: true as const };
+  });
+
 /* ---------------- Add restaurant (draft) ---------------- */
 
 export const createDraftMerchant = createServerFn({ method: "POST" })
