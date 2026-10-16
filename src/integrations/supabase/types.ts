@@ -502,6 +502,24 @@ export type Database = {
           },
         ]
       }
+      booking_broadcast_pings: {
+        Row: {
+          booking_id: string
+          expert_id: string
+          last_pinged_at: string
+        }
+        Insert: {
+          booking_id: string
+          expert_id: string
+          last_pinged_at?: string
+        }
+        Update: {
+          booking_id?: string
+          expert_id?: string
+          last_pinged_at?: string
+        }
+        Relationships: []
+      }
       booking_expert_handovers: {
         Row: {
           booking_id: string
@@ -12471,6 +12489,10 @@ export type Database = {
       reactivate_customer_after_otp: {
         Args: { _phone: string; _user_id: string }
         Returns: undefined
+      }
+      rebroadcast_open_bookings: {
+        Args: { _expert_id?: string; _min_gap_minutes?: number }
+        Returns: number
       }
       rebroadcast_pending_advance_to_expert: {
         Args: { _expert_id: string }
