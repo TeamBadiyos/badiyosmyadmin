@@ -12129,6 +12129,10 @@ export type Database = {
       instant_free_expert_count:
         | { Args: never; Returns: number }
         | { Args: { _city: string }; Returns: number }
+      instant_slot_full: {
+        Args: { _cid: string; _duration_minutes: number; _service_key: string }
+        Returns: boolean
+      }
       is_active_staff:
         | { Args: { _uid: string }; Returns: boolean }
         | { Args: { _roles: string[]; _uid: string }; Returns: boolean }
@@ -12580,10 +12584,6 @@ export type Database = {
       run_expert_referral_reward_job: { Args: never; Returns: number }
       run_reward_period_jobs: {
         Args: { _force_period_start?: string }
-        Returns: number
-      }
-      scheduled_cancel_after_slot_minutes: {
-        Args: { _city_id: string; _service_key: string }
         Returns: number
       }
       seal_code_for_serial: { Args: { _serial: number }; Returns: string }
