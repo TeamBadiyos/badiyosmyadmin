@@ -41,8 +41,8 @@ export function useLiveTracking(kind: "booking" | "courier", id: string) {
       kind === "courier"
         ? fetchCourier({ data: { orderId: id } })
         : fetchBooking({ data: { bookingId: id } }),
-    // Safety net only — realtime below does the real work.
-    refetchInterval: 20_000,
+    // Refresh every 10s on top of realtime below.
+    refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
 
