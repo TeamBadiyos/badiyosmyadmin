@@ -358,6 +358,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       db
         .from("courier_orders")
         .select("*", countOnly)
+        .eq("is_training", false)
         .or("status.neq.REQUESTED,payment_status.neq.pending")
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
@@ -366,20 +367,23 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .select(
           "total_amount, discount_amount, gst_amount, refund_amount, refund_status, razorpay_payment_id",
         )
+        .eq("is_training", false)
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
         .limit(1000),
-      db.from("courier_orders").select("*", countOnly).in("status", COURIER_ACTIVE),
+      db.from("courier_orders").select("*", countOnly).eq("is_training", false).in("status", COURIER_ACTIVE),
       db
         .from("courier_orders")
         .select("*", countOnly)
+        .eq("is_training", false)
         .in("status", COURIER_DONE)
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay),
       db
         .from("courier_orders")
         .select("*", countOnly)
+        .eq("is_training", false)
         .in("status", ["REQUESTED", "SEARCHING"])
         .or("status.neq.REQUESTED,payment_status.neq.pending"),
     ]);

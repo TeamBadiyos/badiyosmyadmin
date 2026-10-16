@@ -162,8 +162,8 @@ export function ExpertsPage({
       const weekStart = new Date(dayStart.getTime() - dow * 86400_000);
       const [{ data: vt }, { data: orders }, { data: today }, { data: led }] = await Promise.all([
         supabase.from("courier_vehicle_types").select("id, name"),
-        supabase.from("courier_orders").select("assigned_expert_id, vehicle_type_id, created_at").not("assigned_expert_id", "is", null).order("created_at", { ascending: false }).limit(1000),
-        supabase.from("courier_orders").select("assigned_expert_id").eq("status", "delivered").gte("delivered_at", dayStart.toISOString()),
+        supabase.from("courier_orders").select("assigned_expert_id, vehicle_type_id, created_at").eq("is_training", false).not("assigned_expert_id", "is", null).order("created_at", { ascending: false }).limit(1000),
+        supabase.from("courier_orders").select("assigned_expert_id").eq("is_training", false).eq("status", "delivered").gte("delivered_at", dayStart.toISOString()),
         supabase.from("wallet_ledger").select("owner_id, amount").eq("owner_type", "expert").eq("type", "credit").gte("created_at", weekStart.toISOString()),
       ]);
       const vName = new Map(((vt ?? []) as Array<{ id: string; name: string }>).map((v) => [v.id, v.name]));

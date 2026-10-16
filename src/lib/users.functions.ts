@@ -316,6 +316,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .select(
           "id, order_code, created_at, status, payment_status, total_amount, distance_km, pickup_address, drop_address, assigned_expert_id",
         )
+        .eq("is_training", false)
         .eq("customer_id", uid)
         .order("created_at", { ascending: false })
         .limit(200),
