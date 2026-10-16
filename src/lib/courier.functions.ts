@@ -627,8 +627,8 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       .from("courier_orders")
       .select(
         "id, order_code, city, status, base_amount, extra_fee, discount_amount, gst_amount, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id, customer_phone",
-        .eq("is_training", false)
       )
+        .eq("is_training", false)
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status) q = q.eq("status", data.status);

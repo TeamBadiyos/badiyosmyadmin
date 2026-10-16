@@ -366,8 +366,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .from("courier_orders")
         .select(
           "total_amount, discount_amount, gst_amount, refund_amount, refund_status, razorpay_payment_id",
-        .eq("is_training", false)
         )
+        .eq("is_training", false)
         .in("payment_status", ["paid", "PAID"])
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
