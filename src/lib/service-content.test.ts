@@ -28,3 +28,10 @@ describe("banners & campaign", () => {
     expect(vsc(m, [])).toBe("Campaign end must be after start");
   });
 });
+
+describe("hero card title", () => {
+  it("defaults per service", () => {
+    expect(nsc({}, "clean").hero.card_title_mr).toBe("मेड");
+    expect(nsc({}, "wash").hero.card_title).toBe("Car Wash");
+  });
+});
