@@ -331,6 +331,52 @@ export const reviewProduct = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/* ---------------- Bank changes ---------------- */
+
+export const listBankChanges = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: Svc }) => ({ service: svcOk(i?.service) }))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as any;
+    const st = await db.from("staff_users").select("status, role").eq("auth_user_id", context.userId).maybeSingle();
+    const canDecide = st.data?.status === "active" && ["super_admin", "finance"].includes(st.data?.role);
+    const ids = await serviceMerchantIds(db, data.service);
+    if (!ids.length) return { canDecide, requests: [] };
+    const r = await db.from("merchant_bank_change_requests").select("*").eq("status", "pending").in("merchant_id", ids).order("created_at");
+    chk(r);
+    const reqs = (r.data ?? []) as any[];
+    if (!reqs.length) return { canDecide, requests: [] };
+    const m = await db.from("merchants").select("id, store_name, owner_name, phone, bank_account_holder_name, bank_account_number, bank_ifsc").in("id", reqs.map((x) => x.merchant_id));
+    const mm = new Map(((m.data ?? []) as any[]).map((x) => [x.id, x]));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const requests = await Promise.all(reqs.map(async (x) => {
+      let proofUrl: string | null = null;
+      const p: string = x.proof_path ?? "";
+      if (/^https?:\/\//i.test(p)) proofUrl = p;
+      else if (p) {
+        const { data: sg } = await supabaseAdmin.storage.from("merchant-documents").createSignedUrl(p.replace(/^merchant-documents\//, ""), 600);
+        proofUrl = sg?.signedUrl ?? null;
+      }
+      const mer: any = mm.get(x.merchant_id) ?? {};
+      return {
+        id: x.id, merchantId: x.merchant_id, storeName: mer.store_name ?? "—", ownerName: mer.owner_name ?? null,
+        submittedAt: x.created_at, verifiedPhone: x.verified_phone, proofUrl,
+        old: { holder: mer.bank_account_holder_name ?? null, account: mer.bank_account_number ?? null, ifsc: mer.bank_ifsc ?? null },
+        next: { holder: x.account_holder_name, account: x.account_number, ifsc: x.ifsc },
+      };
+    }));
+    return { canDecide, requests };
+  });
+
+export const decideBankChange = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { id: string; approve: boolean; reason?: string | null }) => ({ id: String(i.id), approve: !!i.approve, reason: i.reason?.trim() || null }))
+  .handler(async ({ data, context }) => {
+    if (!data.approve && !data.reason) throw new Error("Please add a reason when rejecting.");
+    chk(await (context.supabase.rpc as any)("admin_decide_bank_change", { _request_id: data.id, _approve: data.approve, _reason: data.reason }));
+    return { ok: true as const };
+  });
+
 /* ---------------- Categories ---------------- */
 
 export const listCatalogCategories = createServerFn({ method: "POST" })
