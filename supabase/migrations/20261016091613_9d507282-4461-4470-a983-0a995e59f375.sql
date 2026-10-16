@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.merchants_fssai_approval_guard() FROM PUBLIC, anon, authenticated;
