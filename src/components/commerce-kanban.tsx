@@ -214,7 +214,7 @@ export function OrderSheet({
   const canReassign = order.paymentStatus === "paid";
   const now = Date.now();
 
-  const steps: CommerceStatus[] = ["pending", "accepted", "preparing", "ready", "picked_up", "out_for_delivery", "completed"];
+  const steps: CommerceStatus[] = ["pending", "accepted", "preparing", "ready", "completed"];
   const curIdx = steps.indexOf(order.status);
   const paidLabel = order.paymentStatus === "paid" ? "Paid" : order.paymentStatus ?? "—";
 
