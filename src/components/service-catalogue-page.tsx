@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { toast } from "sonner";
+import { useCity, RequireCity } from "@/lib/city-scope";
 import {
   listCatalogueTree,
   upsertCategory,
@@ -62,11 +63,20 @@ const PRICING_LABELS: Record<PricingType, string> = {
   quantity: "Quantity-based",
 };
 
-export function ServiceCataloguePage({ kind = null }: { kind?: "maid" | "wash" | null } = {}) {
+export function ServiceCataloguePage(props: { kind?: "maid" | "wash" | null } = {}) {
+  return (
+    <RequireCity>
+      <ServiceCataloguePageInner {...props} />
+    </RequireCity>
+  );
+}
+
+function ServiceCataloguePageInner({ kind = null }: { kind?: "maid" | "wash" | null } = {}) {
   const fetchTree = useServerFn(listCatalogueTree);
+  const { cityId } = useCity();
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["catalogue", "tree"],
-    queryFn: () => fetchTree(),
+    queryKey: ["catalogue", "tree", cityId],
+    queryFn: () => fetchTree({ data: { cityId } }),
     staleTime: 15_000,
   });
 
@@ -866,6 +876,7 @@ function PriceOptionModal({
 }) {
   const queryClient = useQueryClient();
   const save = useServerFn(upsertPriceOption);
+  const { cityId: editCityId } = useCity();
   const saveLinks = useServerFn(setItemTaskTypes);
   const [selectedTaskTypes, setSelectedTaskTypes] =
     useState<string[]>(linkedTaskTypeIds);
@@ -901,6 +912,7 @@ function PriceOptionModal({
       const res = await save({
         data: {
           id: option?.id ?? null,
+          city_id: editCityId,
           service_id: service.id,
           label,
           duration_minutes:

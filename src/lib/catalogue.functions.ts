@@ -101,7 +101,8 @@ function num(v: unknown): number | null {
 
 export const listCatalogueTree = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<CatalogueTree> => {
+  .inputValidator((input: { cityId?: string | null } | undefined) => ({ cityId: input?.cityId ?? null }))
+  .handler(async ({ data: input, context }): Promise<CatalogueTree> => {
     const staff = await requireCatalogueStaff(context.supabase, context.userId);
     const [segs, cats, svcs, opts] = await Promise.all([
       context.supabase
@@ -125,6 +126,23 @@ export const listCatalogueTree = createServerFn({ method: "GET" })
     ]);
     for (const r of [segs, cats, svcs, opts]) {
       if (r.error) throw new Error(r.error.message);
+    }
+    // Prices always come from the selected city's price rows (one source for every city).
+    let cityQ = context.supabase
+      .from("city_price_options")
+      .select("city_id,price_option_id,customer_price,strikethrough_price,expert_payout,partner_commission,cities!inner(is_default)");
+    cityQ = input.cityId ? cityQ.eq("city_id", input.cityId) : cityQ.eq("cities.is_default", true);
+    const cp = await cityQ;
+    if (cp.error) throw new Error(cp.error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cpMap = new Map<string, any>(((cp.data ?? []) as any[]).map((r) => [r.price_option_id, r]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const o of (opts.data ?? []) as any[]) {
+      const c = cpMap.get(o.id);
+      o.customer_price = c?.customer_price ?? null;
+      o.strikethrough_price = c?.strikethrough_price ?? null;
+      o.expert_payout = c?.expert_payout ?? null;
+      o.partner_commission = c?.partner_commission ?? null;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mapOpt = (r: any): CataloguePriceOption => ({
@@ -355,6 +373,8 @@ export type UpsertPriceOptionInput = {
   description?: string | null;
   inclusions?: string[];
   exclusions?: string[];
+  /** City whose prices are being edited; required when editing an existing option. */
+  city_id?: string | null;
 };
 
 export const upsertPriceOption = createServerFn({ method: "POST" })
@@ -435,11 +455,21 @@ export const upsertPriceOption = createServerFn({ method: "POST" })
       exclusions: (data.exclusions ?? []).map((t) => t.trim()).filter(Boolean),
     };
     if (data.id) {
+      if (!data.city_id) throw new Error("Pick a city to edit prices");
+      // Legacy price columns are read-only; prices are written to the city's row.
+      const { customer_price, strikethrough_price, expert_payout, partner_commission, ...rest } = row;
       const { error } = await context.supabase
         .from("service_price_options")
-        .update(row)
+        .update(rest)
         .eq("id", data.id);
       if (error) throw new Error(error.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: cpErr } = await (context.supabase as any).rpc("staff_set_city_price", {
+        _city_id: data.city_id,
+        _opt: data.id,
+        _patch: { customer_price, strikethrough_price, expert_payout: expert_payout ?? 0, partner_commission: partner_commission ?? 0 },
+      });
+      if (cpErr) throw new Error(cpErr.message);
       if (estimateChanged) {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error: auditError } = await supabaseAdmin.from("audit_logs").insert({
