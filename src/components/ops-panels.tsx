@@ -46,7 +46,7 @@ function useServiceControl() {
   return { access, control };
 }
 
-export function ServiceHoursPanel({ serviceKey, title }: { serviceKey: string; title?: string }) {
+export function ServiceHoursPanel({ serviceKey, title, afterHours }: { serviceKey: string; title?: string; afterHours?: import("react").ReactNode }) {
   const qc = useQueryClient();
   const { access, control } = useServiceControl();
   if (control.isLoading || access.isLoading) return <p className="text-[13px] text-muted-foreground">Loading hours…</p>;
@@ -66,7 +66,7 @@ export function ServiceHoursPanel({ serviceKey, title }: { serviceKey: string; t
             {title ?? "Opening hours"} <span className="ml-1 rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info">{flag.city}</span>
           </p>
           {!canWrite ? <p className="mb-2 text-[12px] text-muted-foreground">Read-only — only a super admin can change hours.</p> : null}
-          <ServiceHoursEditor flag={flag} hours={control.data!.hours} holidays={control.data!.holidays} canWrite={canWrite} onSaved={refresh} />
+          <ServiceHoursEditor flag={flag} hours={control.data!.hours} holidays={control.data!.holidays} canWrite={canWrite} onSaved={refresh} afterHours={afterHours} />
         </section>
       ))}
     </div>
