@@ -91,6 +91,14 @@ export const getTaxReport = createServerFn({ method: "GET" })
     return r.data as any;
   });
 
+export const getDeliveryGstCheck = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { from: string; to: string }) => ({ from: String(i.from).slice(0, 10), to: String(i.to).slice(0, 10) }))
+  .handler(async ({ data, context }) => {
+    const r = await rpc(context.supabase, "staff_delivery_gst_check", { _from: data.from, _to: data.to }); chk(r);
+    return (r.data ?? []) as any[];
+  });
+
 export const getCompanyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
