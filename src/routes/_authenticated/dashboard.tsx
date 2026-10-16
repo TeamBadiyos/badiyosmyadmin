@@ -56,7 +56,7 @@ import { ServicesPage } from "@/components/services-page";
 import { CourierPage } from "@/components/courier-page";
 import { StoreFoodLiveBoard, ServiceHoursPanel } from "@/components/ops-panels";
 import { SlotAvailabilityTab, CleanCapacitySettings } from "@/components/slot-availability-tab";
-import { BookingTimingsTab } from "@/components/booking-timings-tab";
+import { CleanSettingsPage } from "@/components/clean-settings-page";
 import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
@@ -140,11 +140,13 @@ const NAV_ITEMS = [
   { key: "maid-slots", label: "Slots", icon: ListChecks },
   { key: "clean-experts", label: "Team", icon: UserCog },
   { key: "clean-training", label: "Training", icon: GraduationCap },
+  { key: "maid-app-content", label: "App content", icon: LayoutTemplate },
   { key: "maid-settings", label: "Settings", icon: Settings },
   { key: "wash-bookings", label: "Bookings", icon: CalendarCheck },
   { key: "wash-catalogue", label: "Services", icon: BookOpen },
   { key: "wash-slots", label: "Slots", icon: ListChecks },
   { key: "wash-team", label: "Team", icon: UserCog },
+  { key: "wash-app-content", label: "App content", icon: LayoutTemplate },
   { key: "wash-settings", label: "Settings", icon: Settings },
   { key: "courier-riders", label: "Riders", icon: Users },
   { key: "zones", label: "Zones", icon: Map },
@@ -222,13 +224,13 @@ const NAV_GROUPS = [
     id: "clean",
     label: "Clean Home",
     icon: Boxes,
-    keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "clean-training", "maid-settings"],
+    keys: ["maid-bookings", "maid-catalogue", "maid-slots", "clean-experts", "clean-training", "maid-app-content", "maid-settings"],
   },
   {
     id: "wash",
     label: "Clean Auto",
     icon: Boxes,
-    keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-team", "wash-settings"],
+    keys: ["wash-bookings", "wash-catalogue", "wash-slots", "wash-team", "wash-app-content", "wash-settings"],
   },
   {
     id: "store",
@@ -790,9 +792,9 @@ function Shell() {
             <ServiceCataloguePage kind={active === "wash-catalogue" ? "wash" : "maid"} />
           </div>
         ) : active === "maid-slots" ? (
-          <RequireCity><SlotAvailabilityTab group="clean" /></RequireCity>
+          <RequireCity><div className="space-y-6"><div className="max-w-4xl"><CleanCapacitySettings group="clean" /></div><SlotAvailabilityTab group="clean" /></div></RequireCity>
         ) : active === "wash-slots" ? (
-          <RequireCity><SlotAvailabilityTab group="wash" /></RequireCity>
+          <RequireCity><div className="space-y-6"><div className="max-w-4xl"><CleanCapacitySettings group="wash" /></div><SlotAvailabilityTab group="wash" /></div></RequireCity>
         ) : active === "clean-experts" ? (
           <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} skill="maid" />
         ) : active === "wash-team" ? (
@@ -803,14 +805,10 @@ function Shell() {
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Skill approvals</h2><SkillApprovalsPage role={role} /></section>
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training address</h2><TrainingAddressTab /></section>
           </div>
+        ) : active === "maid-app-content" || active === "wash-app-content" ? (
+          <RequireCity><ServiceAppContent key={active} service={active === "wash-app-content" ? "wash" : "clean"} /></RequireCity>
         ) : active === "maid-settings" || active === "wash-settings" ? (
-          <RequireCity><div className="space-y-6 max-w-4xl">
-            <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
-            <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
-            <BookingTimingsTab />
-            <CapacityMessagesPage />
-            <ServiceAppContent key={active} service={active === "wash-settings" ? "wash" : "clean"} />
-          </div></RequireCity>
+          <RequireCity><CleanSettingsPage key={active} group={active === "wash-settings" ? "wash" : "clean"} /></RequireCity>
         ) : active === "courier-settings" ? (
           <RequireCity><CourierPage section="settings" /></RequireCity>
         ) : active === "store-orders" ? (
