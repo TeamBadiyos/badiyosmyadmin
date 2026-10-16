@@ -559,7 +559,11 @@ export function PipelineKanban({
                       const sv = svcOfBooking(b);
                       const w = m(b.broadcastStartedAt ?? b.createdAt);
                       const urgent = isNew && (w >= (lim[sv === "wash" ? "wash" : "maid"] ?? 1e9) || !!b.dispatchExhaustedAt) ? 1 : 0;
-                      const t = col.key === "confirmed" ? (slotStartMs(b) ?? Number.MAX_SAFE_INTEGER) : Date.parse(b.broadcastStartedAt ?? b.createdAt);
+                      const endMs = b.serviceEndAt ? Date.parse(b.serviceEndAt)
+                        : b.startedAt && b.serviceDurationMinutes ? Date.parse(b.startedAt) + b.serviceDurationMinutes * 60_000 : NaN;
+                      const t = col.key === "confirmed" ? (slotStartMs(b) ?? Number.MAX_SAFE_INTEGER)
+                        : col.key === "in_progress" ? (Number.isFinite(endMs) ? endMs : Number.MAX_SAFE_INTEGER)
+                        : Date.parse(b.broadcastStartedAt ?? b.createdAt);
                       rows.push({ key: b.id, urgent, t, node: (
                         <Strip key={b.id} svc={sv}>
                           <CompactBookingCard b={b} svc={sv === "wash" ? "wash" : "maid"} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />

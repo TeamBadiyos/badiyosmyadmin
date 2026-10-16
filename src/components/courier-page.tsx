@@ -1174,11 +1174,12 @@ export function OrderDetail({
         {canWrite && (["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status)) && (
           <div className="mt-1.5 max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
             {(riders ?? []).length === 0 && <p className="px-3 py-2 text-[12px] text-muted-foreground">No eligible riders.</p>}
-            {(riders ?? [])
+            {[...(riders ?? [])]
+              .sort((a, b) => ({ free: 0, busy: 1, offline: 2 }[a.status] - { free: 0, busy: 1, offline: 2 }[b.status]) || (a.distance_km ?? 1e9) - (b.distance_km ?? 1e9))
               .map((r) => (
-                <button key={r.id} type="button" disabled={busy || r.status === "busy"}
+                <button key={r.id} type="button" disabled={busy || r.status === "offline"}
                   onClick={() => {
-                    if (!confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
+                    if (r.status === "busy" ? !confirm("Rider is on another job — assign anyway?") : !confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
                     void run(async () => { await doReassign({ data: { orderId: order.id, expertId: r.id } }); await refetchRiders(); }, "Rider assigned and notified");
                   }}
                   className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
