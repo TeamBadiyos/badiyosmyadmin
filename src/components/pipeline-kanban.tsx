@@ -63,15 +63,9 @@ function commerceColumn(s: CommerceStatus): PipelineStatus {
   if (s === "completed") return "completed";
   return "in_progress";
 }
-function Strip({ svc, children }: { svc: BoardService; children: React.ReactNode }) {
-  return (
-    <div className="rounded-[12px] overflow-hidden shadow-sm">
-      <div className={`${SERVICE_META[svc].strip} text-svc-foreground px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide`}>
-        {SERVICE_META[svc].label}
-      </div>
-      <div className="[&>*]:rounded-t-none">{children}</div>
-    </div>
-  );
+// Cards draw their own coloured service strip (with the key time).
+function Strip({ children }: { svc: BoardService; children: React.ReactNode }) {
+  return <>{children}</>;
 }
 
 const COLUMNS: Array<{ key: PipelineStatus; label: string }> = [

@@ -39,17 +39,40 @@ const ALERT_LABEL: Record<string, string> = {
   pickup_delayed: "Pickup delayed",
 };
 
-/** Fixed 4-line card. `late` turns the whole card red (over the wait limit). */
-function Shell({ onOpen, late, children }: { onOpen: () => void; late?: boolean; children: React.ReactNode }) {
+type Svc = "maid" | "wash" | "store" | "food" | "parcel";
+const SVC: Record<Svc, { label: string; strip: string }> = {
+  maid: { label: "Maid", strip: "bg-svc-maid" },
+  wash: { label: "Clean Auto", strip: "bg-svc-wash" },
+  store: { label: "Store", strip: "bg-svc-store" },
+  food: { label: "Food", strip: "bg-svc-food" },
+  parcel: { label: "Parcel", strip: "bg-svc-parcel" },
+};
+const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`);
+
+/** Fixed-height card: coloured service strip (name + key time) on top, 4 lines below.
+ *  `late` turns the body red (over the wait limit); the strip keeps the service colour. */
+function Shell({ onOpen, late, svc, time, over, children }: {
+  onOpen: () => void; late?: boolean; svc: Svc; time?: React.ReactNode; over?: string | null; children: React.ReactNode;
+}) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className={`relative h-[100px] flex flex-col justify-between rounded-[12px] px-3 py-2 shadow-sm border cursor-pointer ${late ? "bg-destructive/10 border-destructive" : "bg-card border-border hover:border-primary/60"}`}
+      className={`h-[124px] flex flex-col rounded-[12px] overflow-hidden shadow-sm border cursor-pointer ${late ? "border-destructive" : "border-border hover:border-primary/60"}`}
     >
-      {children}
+      <div className={`${SVC[svc].strip} text-svc-foreground h-[20px] shrink-0 px-3 flex items-center justify-between gap-2`}>
+        <span className="text-[10px] font-bold uppercase tracking-wide truncate">{SVC[svc].label}</span>
+        {over ? (
+          <span className="shrink-0 rounded-full bg-destructive text-destructive-foreground px-1.5 text-[11px] font-bold leading-4">{over}</span>
+        ) : time ? (
+          <span className="shrink-0 text-[12px] font-bold">{time}</span>
+        ) : null}
+      </div>
+      <div className={`flex-1 min-h-0 flex flex-col justify-between px-3 py-1.5 ${late ? "bg-destructive/10" : "bg-card"}`}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -79,9 +102,6 @@ function Top({ name, flag, onOpen }: { name: string; flag?: string | null; onOpe
 
 const line = "text-[12px] text-muted-foreground truncate leading-4";
 
-function Timer({ wait, late }: { wait: number; late: boolean }) {
-  return <span className={late ? "text-destructive font-semibold" : "text-muted-foreground"}>⏱ Waiting {wait} min</span>;
-}
 
 function Bottom({ left, action }: { left: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -202,27 +222,30 @@ export function CompactBookingCard({ b, col, now, onOpen, svc }: { b: PipelineBo
   const late = isNew && wait >= limit;
   const service = b.serviceLabel ?? (b.serviceDurationMinutes ? `${b.serviceDurationMinutes} min` : "Service");
   const expert = b.assignedExpertName?.trim() || "Not assigned";
-  const third =
-    isNew ? <Timer wait={wait} late={late} />
-    : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)} · ${expert}`
-    : `Expert: ${expert}`;
-  const status =
-    col === "in_progress" ? (() => {
-      const base = b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}` : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}` : "In progress";
-      const startIso = b.startedAt ?? b.arrivedAt;
-      const dur = (b.serviceDurationMinutes ?? 0) + (b.extMinutes ?? 0);
-      if (!startIso || !dur) return base;
+  const slotT = (b.scheduledTimeSlot ?? "").split(/\s*[-–(]/)[0].trim();
+  let time: React.ReactNode = null;
+  let over: string | null = null;
+  if (col === "confirmed") time = dayTime(b.scheduledDate, b.scheduledTimeSlot, b.slotType);
+  else if (isNew) time = `⏱ ${wait} min`;
+  else if (col === "expert_assigned") time = slotT ? `Starts ${slotT}` : "Starts now";
+  else if (col === "in_progress") {
+    const startIso = b.startedAt ?? b.arrivedAt;
+    const dur = (b.serviceDurationMinutes ?? 0) + (b.extMinutes ?? 0);
+    if (startIso && dur) {
       const left = Math.round((new Date(startIso).getTime() + dur * 60000 - now) / 60000);
-      const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`);
-      return <>{base} · <span className={left < 0 ? "text-destructive" : "text-primary"}>⏱ {left >= 0 ? `${fmt(left)} left` : `${fmt(-left)} over`}</span></>;
-    })()
+      if (left >= 0) time = `⏱ ${fmtDur(left)} left`;
+      else over = `+${fmtDur(-left).replace(" min", "m")} over`;
+    }
+  } else if (col === "completed") time = `✓ ${clock(b.serviceEndAt ?? b.updatedAt)}`;
+  const status = col === "in_progress"
+    ? (b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}` : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}` : "In progress")
     : inr(b.totalAmount);
   const flag = b.dispatchExhaustedAt && isNew ? "No Expert found" : null;
   return (
-    <Shell onOpen={onOpen} late={late}>
+    <Shell onOpen={onOpen} late={late} svc={svc ?? "maid"} time={time} over={over}>
       <Top name={b.customerName} flag={flag} onOpen={onOpen} />
-      <p className={line}>{dayTime(b.scheduledDate, b.scheduledTimeSlot, b.slotType)} : {service}</p>
-      <p className={line}>{third}</p>
+      <p className={line}>{service}</p>
+      <p className={line}>Expert: {expert}</p>
       <Bottom
         left={status}
         action={isNew ? (
@@ -252,17 +275,18 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
   const limit = useWaitLimit(svc ?? "store");
   const isNew = col === "accepted";
   const late = isNew && wait >= limit;
-  const third =
-    isNew ? <Timer wait={wait} late={late} />
+  const time = isNew ? `⏱ ${wait} min`
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
-    : `Rider: ${o.riderName?.trim() || "—"}`;
+    : col === "expert_assigned" ? `Placed ${clock(o.createdAt)}`
+    : `⏱ ${wait} min`;
+  const third = `Rider: ${o.riderName?.trim() || "—"}`;
   const flag = o.alerts.length ? o.alerts.map((a) => ALERT_LABEL[a] ?? a).join(" · ") : null;
   const fetchRiders = useServerFn(listCourierRiders);
   const assignFn = useServerFn(reassignRider);
   const canAssign = !!o.courierOrderId && (o.riderState === "searching" || o.riderState === "assigned") && col !== "completed";
   const cid = o.courierOrderId as string;
   return (
-    <Shell onOpen={onOpen} late={late}>
+    <Shell onOpen={onOpen} late={late} svc={svc ?? "store"} time={time}>
       <Top name={o.customerName} flag={flag} onOpen={onOpen} />
       <p className={line}>{o.merchantName}</p>
       <p className={line}>{third}</p>
@@ -299,14 +323,12 @@ export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow
   const assignFn = useServerFn(reassignRider);
   const isNew = col === "accepted";
   const late = isNew && wait >= limit;
-  const third =
-    isNew ? <Timer wait={wait} late={late} />
-    : col === "completed" ? "✓ Delivered"
-    : `Rider: ${o.riderName?.trim() || "—"}`;
+  const time = col === "completed" ? "✓ Delivered" : col === "confirmed" ? clock(o.created_at) : `⏱ ${wait} min`;
+  const third = `Rider: ${o.riderName?.trim() || "—"}`;
   return (
-    <Shell onOpen={onOpen} late={late}>
+    <Shell onOpen={onOpen} late={late} svc="parcel" time={time}>
       <Top name={o.customerName ?? "Customer"} flag={o.needs_ops_attention ? "Needs attention" : null} onOpen={onOpen} />
-      <p className={line}>Parcel</p>
+      <p className={line}>{isNew ? "Looking for rider" : "Parcel delivery"}</p>
       <p className={line}>{third}</p>
       <Bottom
         left={col === "in_progress" || col === "expert_assigned" ? COURIER_STATUS[o.status] ?? o.status : inr(o.total_amount)}
