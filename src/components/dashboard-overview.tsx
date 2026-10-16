@@ -96,7 +96,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
     { n: Number(a.refunds_failed ?? 0), label: "Refunds failed", nav: "fin-refunds" },
     { n: Number(a.instant_to_pay ?? 0), label: "Instant pay today", nav: "fin-instant" },
     { n: Number(a.carry_forward_merchants ?? 0), label: "Carry-forward merchants", nav: "fin-settlements" },
-    { n: fssai.length, label: "Restaurant FSSAI expiring/expired", nav: "food-stores" },
+    { n: fssai.length, label: "Restaurant FSSAI expiring/expired", nav: "food-orders" },
     { n: noDev.length, label: `Experts not receiving job alerts${noDev.some((x) => x.online) ? ` (${noDev.filter((x) => x.online).length} online)` : ""}`, nav: "clean-experts" },
   ].filter((x) => x.n > 0);
 
