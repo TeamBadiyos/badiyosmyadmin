@@ -24,7 +24,12 @@ import {
   Truck,
   X,
   MoreHorizontal,
+  UserPlus,
+  IndianRupee,
+  Ban,
+  AlertTriangle,
 } from "lucide-react";
+import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine } from "@/components/detail-panel";
 import {
   COURIER_STATUSES,
   confirmRate,
@@ -1147,8 +1152,8 @@ export function OrderDetail({
         <CustomerBlock
           name={order.customerName}
           phone={order.customerPhone}
-          masked={order.phoneMasked}
-          contact={order.customerPhone && !order.phoneMasked ? <ContactButtons phone={order.customerPhone} /> : null}
+          masked={!!order.customerPhone && /[^\d+\s-]/.test(order.customerPhone)}
+          contact={order.customerPhone && !/[^\d+\s-]/.test(order.customerPhone) ? <ContactButtons phone={order.customerPhone} /> : null}
         />
         <div className="grid gap-3 md:grid-cols-2">
           <PanelSection title="Pickup"><p className="text-[12px] text-foreground">{order.pickup_address ?? "—"}</p></PanelSection>
