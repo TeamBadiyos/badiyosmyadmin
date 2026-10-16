@@ -166,9 +166,10 @@ function SlotGrid({ group, date, bands, autoOn }: { group: CapGroup; date: strin
         {slots.map((m) => {
           const band = bands.find((b) => m >= b.start_min && m < b.end_min);
           const isManual = manual.has(m);
-          const isAuto = !isManual && autoOn && !!band?.full;
-          const full = isManual || isAuto;
           const n = (d?.counts[m] ?? 0) + (step === 60 ? d?.counts[m + 30] ?? 0 : 0);
+          // A slot is auto-full when the maids/washers busy in it reach the band capacity.
+          const isAuto = !isManual && autoOn && !!band && n >= band.capacity;
+          const full = isManual || isAuto;
           return (
             <div key={m} className={`rounded-[12px] border p-3 ${full ? "border-destructive/40 bg-destructive/10" : "border-border"}`}>
               <div className="flex items-center justify-between gap-2">
