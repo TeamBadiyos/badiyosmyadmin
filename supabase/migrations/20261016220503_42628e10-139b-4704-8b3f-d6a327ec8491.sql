@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.slot_window(text,uuid,date) FROM authenticated;
