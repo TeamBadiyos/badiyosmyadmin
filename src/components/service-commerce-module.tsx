@@ -201,7 +201,7 @@ function OrdersTab({ service }: { service: Svc }) {
             {rows.map((o: any) => (
               <tr key={o.id} onClick={() => setOpenId(o.id)} className={tableCls.tr}>
                 <td className={tableCls.td}><p className="font-semibold">{o.customer_name || "Customer"}</p><p className="text-xs text-muted-foreground">{o.order_number}</p></td>
-                <td className={tableCls.td}>{o.store_name}</td>
+                <td className={tableCls.td}>{o.store_name}{showCity && <p className="text-[11px] text-muted-foreground"><CityName id={o.city_id} /></p>}</td>
                 <td className={`${tableCls.td} text-right`}>{o.item_count ?? o.items_count ?? "—"}</td>
                 <td className={`${tableCls.td} text-right font-semibold`}>{inr(o.total_payable ?? o.total_amount)}</td>
                 <td className={tableCls.td}><StatusPill status={o.refund_status === "done" ? "refunded" : o.status} /></td>

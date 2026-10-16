@@ -588,6 +588,7 @@ function BookingRowItem({
       </td>
       <td className="px-4 py-3 text-muted-foreground">
         {row.zoneName ?? <span className="italic">—</span>}
+        {showCity && <p className="text-[11px] font-semibold text-foreground"><CityName id={row.cityId} /></p>}
       </td>
       <td className="px-4 py-3">
         {row.assignedExpertName ? (

@@ -491,6 +491,7 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       </span>
       <span className="font-mono text-[12px] text-muted-foreground">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
+        {showCity && <span className="mr-1 font-semibold text-foreground"><CityName id={expert.cityId} /> ·</span>}
         {expert.zoneNames?.length ? (
           <span className="inline-flex flex-wrap gap-1">
             {expert.zoneNames.slice(0, 2).map((n) => (

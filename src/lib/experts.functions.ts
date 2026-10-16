@@ -356,7 +356,7 @@ export const listExperts = createServerFn({ method: "POST" })
         photoUrl: p ? (/^https?:\/\//i.test(p) ? p : (signedMap.get(p) ?? null)) : null,
         zoneId: primary?.id ?? r.zone_id ?? null,
         zoneName: primary?.name ?? null,
-        cityId: e.city_id ?? null,
+        cityId: r.city_id ?? null,
         zoneIds: list.map((z) => z.id),
         zoneNames: list.map((z) => z.name),
         level: r.level as ExpertLevel,
