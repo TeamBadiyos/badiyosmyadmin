@@ -188,9 +188,10 @@ export function AssignPopover({
               type="button"
               onClick={() => {
                 if (c.rider && c.tag === "Busy" && !window.confirm("Rider is on another job — assign anyway?")) return;
+                if (!c.rider && c.tag.startsWith("Busy") && !window.confirm("Expert is on another job — assign as next order?")) return;
                 pick(c);
               }}
-              disabled={c.rider ? c.tag === "Offline" : c.tag === "Busy"}
+              disabled={c.tag === "Offline"}
               className="w-full flex disabled:opacity-50 disabled:cursor-not-allowed items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
             >
               <span className="text-[13px] font-semibold text-foreground truncate">{c.name}</span>
@@ -253,7 +254,7 @@ export function CompactBookingCard({ b, col, now, onOpen, svc }: { b: PipelineBo
             queryKey={["bookings", "assignable-experts", b.id]}
             load={async () => (await fetchExperts({ data: { bookingId: b.id } })).map((e) => {
               const busy = !!(e as { busy?: boolean }).busy;
-              return { id: e.id, name: e.name, distanceKm: e.distanceKm ?? null, tag: busy ? "Busy" : "Free", good: !busy };
+              return { id: e.id, name: e.name, distanceKm: e.distanceKm ?? null, tag: busy ? "Busy · Next order" : "Free", good: !busy };
             })}
             assign={(id) => assignFn({ data: { bookingId: b.id, expertId: id } })}
             onSeeAll={onOpen}
