@@ -1078,6 +1078,17 @@ function ItemApprovals({ service }: { service: Svc }) {
 /* ================= Categories ================= */
 
 function CategoriesTab({ service, role }: { service: Svc; role: string }) {
+  if (service === "food") return <CategoryManager kind="food" role={role} usedLabel="dish" title="Food categories" help="Food home row and menu sections (pure veg), in this order." />;
+  return (
+    <div className="space-y-8">
+      <CategoryManager kind="store_type" role={role} usedLabel="store" title="Store types (Store home row)" help="Customers see these on the Store home row in this order." />
+      <CategoryManager kind="store_product" role={role} usedLabel="item" title="Product categories (items inside a store)" help="Merchants pick one for each item." />
+      <ProductCategoryReview role={role} />
+    </div>
+  );
+}
+
+function OldCategoriesTab({ service, role }: { service: Svc; role: string }) {
   const qc = useQueryClient();
   const fn = useServerFn(listCatalogCategories);
   const saveFn = useServerFn(saveCatalogCategory);
