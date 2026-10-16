@@ -181,6 +181,10 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
           </Box>
 
           <Box title="Top banner" hint="1080×600">
+            <label className="mb-2 flex items-center gap-2 text-xs">Morning switch time
+              <Input type="time" className="w-28" value={m.hero.morning_switch_time} onChange={(e) => setHero({ morning_switch_time: e.target.value })} />
+              <span className="text-muted-foreground">Night shows from closing until this time; Sunrise from this time until opening.</span>
+            </label>
             <p className="mb-2 text-xs text-muted-foreground">Placeholders: {PLACEHOLDERS.map((p) => `{${p}}`).join(" ")}</p>
             {BANNER_STATES.map(({ key, label }) => (
               <BannerFields key={key} label={label} b={m.banners[key]} busy={busy}
