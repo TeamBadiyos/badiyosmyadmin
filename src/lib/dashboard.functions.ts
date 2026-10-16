@@ -372,7 +372,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .gte("created_at", startOfDay)
         .lt("created_at", endOfDay)
         .limit(1000),
-      db.from("courier_orders").select("*", countOnly).in("status", COURIER_ACTIVE),
+      db.from("courier_orders").select("*", countOnly).eq("is_training", false).in("status", COURIER_ACTIVE),
       db
         .from("courier_orders")
         .select("*", countOnly)
