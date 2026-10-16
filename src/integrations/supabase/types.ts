@@ -13101,6 +13101,10 @@ export type Database = {
         Args: { _payload: Json }
         Returns: string
       }
+      staff_dashboard_drill: {
+        Args: { _from: string; _metric: string; _service: string; _to: string }
+        Returns: Json
+      }
       staff_dashboard_money: {
         Args: { _from: string; _to: string }
         Returns: Json
