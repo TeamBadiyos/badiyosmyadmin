@@ -6704,7 +6704,10 @@ export type Database = {
           delivery_fee_payer: string
           delivery_status: string
           delivery_wallet_balance: number
+          email: string | null
           fee_tier_id: string | null
+          fssai_expiry: string | null
+          fssai_number: string | null
           fulfillment_mode: string
           gst_legal_name: string | null
           gst_status: string | null
@@ -6744,7 +6747,9 @@ export type Database = {
           store_hours: Json | null
           store_name: string | null
           store_slug: string | null
+          udyam_number: string | null
           updated_at: string
+          upi_id: string | null
           zone_id: string | null
         }
         Insert: {
@@ -6771,7 +6776,10 @@ export type Database = {
           delivery_fee_payer?: string
           delivery_status?: string
           delivery_wallet_balance?: number
+          email?: string | null
           fee_tier_id?: string | null
+          fssai_expiry?: string | null
+          fssai_number?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
           gst_status?: string | null
@@ -6811,7 +6819,9 @@ export type Database = {
           store_hours?: Json | null
           store_name?: string | null
           store_slug?: string | null
+          udyam_number?: string | null
           updated_at?: string
+          upi_id?: string | null
           zone_id?: string | null
         }
         Update: {
@@ -6838,7 +6848,10 @@ export type Database = {
           delivery_fee_payer?: string
           delivery_status?: string
           delivery_wallet_balance?: number
+          email?: string | null
           fee_tier_id?: string | null
+          fssai_expiry?: string | null
+          fssai_number?: string | null
           fulfillment_mode?: string
           gst_legal_name?: string | null
           gst_status?: string | null
@@ -6878,7 +6891,9 @@ export type Database = {
           store_hours?: Json | null
           store_name?: string | null
           store_slug?: string | null
+          udyam_number?: string | null
           updated_at?: string
+          upi_id?: string | null
           zone_id?: string | null
         }
         Relationships: [
@@ -11052,6 +11067,7 @@ export type Database = {
         Args: { _city_id: string; _tab: string }
         Returns: Json
       }
+      app_merchant_issue_signup_agreement: { Args: never; Returns: string }
       app_my_agreements: { Args: never; Returns: Json }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       auto_cancel_minutes: {
