@@ -99,7 +99,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
-          <Box title="Hero card">
+          <Box title="Hero & cards" help="The big card at the top and the 3 cards under it.">
             <div className="grid gap-2 sm:grid-cols-2">
               <Input value={m.hero.card_title} maxLength={30} placeholder="Card title (small card on Clean tab)" onChange={(e) => setHero({ card_title: e.target.value })} />
               <Input value={m.hero.card_title_mr} maxLength={30} placeholder="कार्ड शीर्षक (मराठी)" onChange={(e) => setHero({ card_title_mr: e.target.value })} />
@@ -120,9 +120,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
                 <Input className="w-24" value={m.hero.bg_color} maxLength={7} onChange={(e) => setHero({ bg_color: e.target.value })} />
               </label>
             </div>
-          </Box>
-
-          <Box title="Cards under the hero" hint="square 500×500">
+            <div className="mt-4 border-t border-border pt-3 text-sm font-semibold">Cards under the hero <span className="text-xs font-normal text-muted-foreground">· square 500×500, saved as WebP</span></div>
             {m.cards.map((c, i) => (
               <div key={i} className="space-y-2 border-b border-border py-3 last:border-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +148,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
             ))}
           </Box>
 
-          <Box title="Price options" hint="current price comes from the price list">
+          <Box title="Price options" help="Name, photo and was-price shown for each option. The price itself comes from Services.">
             {live.length === 0 && <p className="py-2 text-sm text-muted-foreground">No active price options in this city.</p>}
             {live.map((o) => {
               const x = { ...emptyExtra, ...m.options[o.price_option_id] };
@@ -166,7 +164,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
               );
             })}
           </Box>
-          <Box title="Details sheet">
+          <Box title="Details sheet" help="The sheet that opens when a customer taps a card.">
             <div className="grid gap-2 sm:grid-cols-2">
               <Input value={m.details.included_title} maxLength={40} placeholder="Included section title" onChange={(e) => setDet({ included_title: e.target.value })} />
               <Input value={m.details.included_title_mr} maxLength={40} placeholder="मराठी" onChange={(e) => setDet({ included_title_mr: e.target.value })} />
@@ -182,7 +180,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
             </div>
           </Box>
 
-          {service === "clean" && <Box title="Top banner" hint="1080×600">
+          {service === "clean" && <Box title="Top banner" hint="1080×600" help="Images by time of day, text by state, and an optional campaign.">
             <div className="mb-1 text-xs font-semibold">Banner images by time</div>
             <div className="overflow-x-auto">
             <div className="min-w-[640px]">
@@ -235,18 +233,24 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
           }
           <Button disabled={busy} onClick={onSave}>Save app content</Button>
         </div>
-        <Preview m={m} live={live} lang={lang} setLang={setLang} service={service} />
+        <div className="lg:sticky lg:top-4 lg:self-start"><Preview m={m} live={live} lang={lang} setLang={setLang} service={service} /></div>
       </div>
     </section>
   );
 }
 
-function Box({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Box({ title, hint, help, children }: { title: string; hint?: string; help?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
-      <div className="mb-2 text-sm font-semibold">{title}{hint && <span className="font-normal text-xs text-muted-foreground"> · {hint}, saved as WebP</span>}</div>
-      {children}
-    </div>
+    <details className="group rounded-lg border border-border bg-card">
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-3 [&::-webkit-details-marker]:hidden">
+        <span className="text-xs text-muted-foreground transition-transform group-open:rotate-90">▶</span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">{title}{hint && <span className="font-normal text-xs text-muted-foreground"> · {hint}, saved as WebP</span>}</span>
+          {help && <span className="block text-xs text-muted-foreground">{help}</span>}
+        </span>
+      </summary>
+      <div className="border-t border-border p-3">{children}</div>
+    </details>
   );
 }
 
