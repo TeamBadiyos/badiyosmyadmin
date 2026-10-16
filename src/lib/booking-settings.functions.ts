@@ -20,10 +20,16 @@ async function staffRole(context: Ctx): Promise<"super_admin" | "ops_manager"> {
 }
 
 
-/** City-wise values (city_ops_settings) layered over the legacy shared rows. */
+/** Keys stored per city in city_ops_settings (no shared copy). */
+const CITY_KEYS = new Set(["slot_capacity_enabled", "slot_capacity_mode", "default_slot_capacity", "wash_default_slot_capacity",
+  "clean_band_morning_end", "clean_band_day_end", "wash_band_morning_end", "wash_band_day_end",
+  "slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled"]);
+
+/** City-wise keys come only from the city's own row; other keys from shared ops_settings. */
 async function readOps(sb: any, keys: string[], cityId?: string | null): Promise<Record<string, string>> {
   const c: Record<string, string> = {};
-  const base = await sb.from("ops_settings").select("key, value").in("key", keys);
+  const shared = keys.filter((k) => !CITY_KEYS.has(k));
+  const base = shared.length ? await sb.from("ops_settings").select("key, value").in("key", shared) : { data: [] };
   for (const r of (base.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = String(r.value);
   if (cityId && cityId !== "all") {
     const cr = await sb.from("city_ops_settings").select("key, value").eq("city_id", cityId).in("key", keys);
@@ -80,7 +86,8 @@ const DEFAULTS: Record<BookingTimingKey, string> = {
 
 export const getBookingTimingSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<BookingTimingSettings> => {
+  .inputValidator((i: { cityId?: string | null } | undefined) => ({ cityId: i?.cityId ?? null }))
+  .handler(async ({ data: inp, context }): Promise<BookingTimingSettings> => {
     const role = await staffRole(context as Ctx);
     const { data, error } = await (context as Ctx).supabase
       .from("ops_settings")
@@ -95,6 +102,12 @@ export const getBookingTimingSettings = createServerFn({ method: "GET" })
       const key = row.key as BookingTimingKey;
       if (key in values) values[key] = String(row.value ?? "");
       updatedAt[key] = (row.updated_at as string | null) ?? null;
+    }
+    if (inp.cityId && inp.cityId !== "all") {
+      const cr = await (context as Ctx).supabase.from("city_ops_settings").select("key, value, updated_at").eq("city_id", inp.cityId)
+        .in("key", (BOOKING_TIMING_KEYS as readonly string[]).filter((k) => CITY_KEYS.has(k)));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const row of (cr.data ?? []) as any[]) { values[row.key as BookingTimingKey] = String(row.value ?? ""); updatedAt[row.key] = row.updated_at ?? null; }
     }
     return { canEdit: role === "super_admin", values, updatedAt };
   });
@@ -115,7 +128,7 @@ const NUMERIC_BOUNDS: Partial<Record<BookingTimingKey, [number, number]>> = {
 
 export const saveBookingTimingSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { values: Partial<Record<BookingTimingKey, string>> }) => {
+  .inputValidator((input: { values: Partial<Record<BookingTimingKey, string>>; cityId?: string | null }) => {
     const entries = Object.entries(input?.values ?? {}) as Array<[BookingTimingKey, string]>;
     if (entries.length === 0) throw new Error("Nothing to save");
     for (const [key, raw] of entries) {
@@ -137,7 +150,7 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
         );
       }
     }
-    return { values: Object.fromEntries(entries) as Record<BookingTimingKey, string> };
+    return { values: Object.fromEntries(entries) as Record<BookingTimingKey, string>, cityId: input.cityId ?? null };
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const role = await staffRole(context as Ctx);
@@ -153,6 +166,7 @@ export const saveBookingTimingSettings = createServerFn({ method: "POST" })
 
     // staff_set_ops_setting is super-admin gated and writes its own audit_logs row.
     for (const [key, value] of Object.entries(data.values)) {
+      if (CITY_KEYS.has(key)) { await writeOps((context as Ctx).supabase, key, value, data.cityId); continue; }
       const { error } = await (context as Ctx).supabase.rpc("staff_set_ops_setting", {
         _key: key,
         _value: value,
@@ -172,7 +186,7 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
     const role = await staffRole(context as Ctx);
     const sb = (context as Ctx).supabase;
     const [ov, bk, cfg] = await Promise.all([
-      sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", data.group).eq("slot_date", data.date).eq("status", "fully_booked"),
+      (() => { let q = sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", data.group).eq("slot_date", data.date).eq("status", "fully_booked"); if (data.cityId && data.cityId !== "all") q = q.eq("city_id", data.cityId); return q; })(),
       (() => { let q = sb.from("bookings").select("scheduled_time_slot, status, service_duration_minutes, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"); if (data.cityId && data.cityId !== "all") q = q.eq("city_id", data.cityId); return q; })(),
       readOps(sb, ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled", "booking_buffer_minutes"], data.cityId),
     ]);
@@ -209,11 +223,14 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
 
 export const setSlotFull = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; hour: number; minute?: number; full: boolean; reason?: string; group?: "clean" | "wash" }) => i)
+  .inputValidator((i: { date: string; hour: number; minute?: number; full: boolean; reason?: string; group?: "clean" | "wash"; cityId?: string | null }) => {
+    if (!i.cityId || i.cityId === "all") throw new Error("Pick a city to edit");
+    return i;
+  })
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_slot_full", {
-      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null, _service_key: data.group === "wash" ? "wash" : "clean", _start_minute: data.minute === 30 ? 30 : 0,
+      _date: data.date, _start_hour: data.hour, _full: data.full, _reason: data.reason ?? null, _service_key: data.group === "wash" ? "wash" : "clean", _start_minute: data.minute === 30 ? 30 : 0, _city_id: data.cityId,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -243,7 +260,7 @@ export const getSlotCapacity = createServerFn({ method: "GET" })
     const defKey = data.group === "wash" ? "wash_default_slot_capacity" : "default_slot_capacity";
     const [cfg, sum] = await Promise.all([
       readOps(sb, ["slot_capacity_enabled", "slot_capacity_mode", defKey, `${data.group}_band_morning_end`, `${data.group}_band_day_end`], data.cityId),
-      anySb.rpc("staff_slot_band_summary", { _service_key: data.group, _date: data.date }),
+      anySb.rpc("staff_slot_band_summary", { _service_key: data.group, _date: data.date, _city_id: data.cityId && data.cityId !== "all" ? data.cityId : null }),
     ]);
     if (sum.error) throw new Error(sum.error.message);
     const c: Record<string, string> = {};
@@ -263,14 +280,15 @@ export type Band = { band: "morning" | "day" | "evening"; start_min: number; end
 
 export const setBandCapacity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { date: string; group?: CapGroup; morning: number | null; day: number | null; evening: number | null }) => {
+  .inputValidator((i: { date: string; group?: CapGroup; morning: number | null; day: number | null; evening: number | null; cityId?: string | null }) => {
+    if (!i.cityId || i.cityId === "all") throw new Error("Pick a city to edit");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(i?.date ?? "")) throw new Error("Invalid date");
     for (const v of [i.morning, i.day, i.evening]) if (v != null && (!Number.isInteger(v) || v < 0 || v > 500)) throw new Error("Count must be 0–500");
     return { ...i, group: grp(i.group) };
   })
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_band_capacity", { _service_key: data.group, _date: data.date, _morning: data.morning, _day: data.day, _evening: data.evening });
+    const { error } = await ((context as Ctx).supabase.rpc as any)("staff_set_band_capacity", { _service_key: data.group, _date: data.date, _morning: data.morning, _day: data.day, _evening: data.evening, _city_id: data.cityId });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

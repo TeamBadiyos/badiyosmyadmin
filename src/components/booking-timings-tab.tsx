@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Clock } from "lucide-react";
 import { toast } from "sonner";
+import { useCity } from "@/lib/city-scope";
 import {
   getBookingTimingSettings,
   saveBookingTimingSettings,
@@ -122,13 +123,15 @@ const GROUPS: Array<{ title: string; blurb: string; fields: FieldDef[] }> = [
 const ALL_FIELDS = GROUPS.flatMap((g) => g.fields);
 
 export function BookingTimingsTab() {
+  const { city } = useCity();
+  const cityId = city?.id ?? null;
   const queryClient = useQueryClient();
   const fetchSettings = useServerFn(getBookingTimingSettings);
   const saveSettings = useServerFn(saveBookingTimingSettings);
 
   const settingsQuery = useQuery({
-    queryKey: ["booking-timings"],
-    queryFn: () => fetchSettings(),
+    queryKey: ["booking-timings", cityId],
+    queryFn: () => fetchSettings({ data: { cityId } }),
     retry: false,
   });
 
@@ -147,7 +150,7 @@ export function BookingTimingsTab() {
 
   const saveMut = useMutation({
     mutationFn: (values: Record<string, string>) =>
-      saveSettings({ data: { values: values as Record<BookingTimingKey, string> } }),
+      saveSettings({ data: { values: values as Record<BookingTimingKey, string>, cityId } }),
     onSuccess: () => {
       toast.success("Booking timings saved");
       queryClient.invalidateQueries({ queryKey: ["booking-timings"] });
