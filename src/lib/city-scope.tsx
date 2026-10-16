@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CityOpt = { id: string; name: string; state: string; status: string; is_default: boolean };
@@ -36,6 +36,19 @@ export function CityProvider({ children }: { children: ReactNode }) {
   const canAll = !!q.data?.can_all;
   const valid = cityId === "all" ? canAll : cities.some((c) => c.id === cityId);
   const effective = valid ? cityId : canAll ? "all" : cities[0]?.id ?? "all";
+  // The database filters every staff read by the city saved here (RLS + report functions),
+  // so save the pick, then refresh every page's data.
+  const qc = useQueryClient();
+  const synced = useRef<string | null>(null);
+  useEffect(() => {
+    if (!q.data || synced.current === effective) return;
+    const first = synced.current === null;
+    synced.current = effective;
+    db.rpc("staff_set_view_city", { _city_id: effective === "all" ? null : effective }).then(({ error }: { error: unknown }) => {
+      if (error) return;
+      if (!first || true) qc.invalidateQueries({ predicate: (x) => x.queryKey[1] !== "my-cities" });
+    });
+  }, [effective, q.data, qc]);
   const value = useMemo<Ctx>(
     () => ({
       cities,
