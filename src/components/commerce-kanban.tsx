@@ -23,6 +23,9 @@ import {
   type CommerceStatus,
 } from "@/lib/commerce.functions";
 import { OrderPaymentSummary } from "@/components/order-payment-summary";
+import { ContactButtons } from "@/components/booking-details-modal";
+import { AssignPopover, riderOpt } from "@/components/compact-board-cards";
+import { listCourierRiders, reassignRider } from "@/lib/courier.functions";
 
 const COLUMNS: Array<{ key: CommerceStatus; label: string }> = [
   { key: "pending", label: "Pending" },
@@ -185,6 +188,8 @@ export function OrderSheet({
 }) {
   const qc = useQueryClient();
   const reassign = useServerFn(reassignStoreRider);
+  const fetchRiders = useServerFn(listCourierRiders);
+  const assignRider = useServerFn(reassignRider);
   const cancel = useServerFn(cancelStoreOrderWithRefund);
   const [mode, setMode] = useState<"none" | "rider" | "cancel">("none");
   const [reason, setReason] = useState("");
@@ -244,7 +249,7 @@ export function OrderSheet({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem disabled={!canReassign} onSelect={() => setMode("rider")}>Reassign rider</DropdownMenuItem>
+                    <DropdownMenuItem disabled={!canReassign} onSelect={() => setMode("rider")}>Restart rider search</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-destructive" onSelect={() => setMode("cancel")}>Cancel + refund…</DropdownMenuItem>
                   </DropdownMenuContent>
@@ -286,11 +291,28 @@ export function OrderSheet({
             <div className="space-y-3 min-w-0">
               <div className="rounded-[14px] border border-border px-3 py-2.5">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Customer</p>
-                <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName}</p>
+                    {order.customerPhone && <p className="text-[12px] text-muted-foreground">{order.customerPhone}</p>}
+                  </div>
+                  {order.customerPhone && !order.phoneMasked && <ContactButtons phone={order.customerPhone} />}
+                </div>
               </div>
               <div className="rounded-[14px] border border-border px-3 py-2.5">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Rider</p>
-                <p className="text-[13px]"><RiderLine o={order} /></p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[13px] min-w-0"><RiderLine o={order} /></p>
+                  {canManage && !closed && order.courierOrderId && (order.riderState === "searching" || order.riderState === "assigned") && (
+                    <AssignPopover
+                      queryKey={["courier", "riders", order.courierOrderId]}
+                      load={async () => (await fetchRiders({ data: { orderId: order.courierOrderId as string } })).map(riderOpt)}
+                      assign={(id) => assignRider({ data: { orderId: order.courierOrderId as string, expertId: id } })}
+                      onSeeAll={() => {}}
+                      invalidate={[["commerce"], ["pipeline"], ["courier"]]}
+                    />
+                  )}
+                </div>
               </div>
             </div>
             <div className="min-w-0">

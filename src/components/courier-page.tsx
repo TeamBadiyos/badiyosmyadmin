@@ -1,3 +1,4 @@
+import { ContactButtons } from "@/components/booking-details-modal";
 import { TripLeftBehind } from "@/components/left-behind";
 import {
   DropdownMenu,

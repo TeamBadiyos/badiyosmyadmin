@@ -96,7 +96,7 @@ function Bottom({ left, action }: { left: React.ReactNode; action?: React.ReactN
 type Candidate = { id: string; name: string; distanceKm: number | null; tag: string; good: boolean };
 
 /** Small on-card picker: nearest first, one click assigns with a 5s undo. */
-function AssignPopover({
+export function AssignPopover({
   queryKey,
   load,
   assign,
