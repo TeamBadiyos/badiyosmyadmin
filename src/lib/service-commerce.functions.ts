@@ -166,7 +166,7 @@ export const getStoreDetail = createServerFn({ method: "POST" })
       db.from("merchants").select("*").eq("id", data.storeId).maybeSingle(),
       db.from("catalog_categories").select("id, name, sort_order, is_active").eq("service_type", data.service).order("sort_order"),
       db.from("store_category_order").select("category_id, sort_order").eq("store_id", data.storeId),
-      db.from("products").select("id, name, description, price, image_path, image_url, category_id, is_available, is_active, sort_order, is_recommended, recommended_order, approval_status, pending_changes")
+      db.from("products").select("id, name, description, price, original_price, image_path, image_url, category_id, is_available, is_active, sort_order, is_recommended, recommended_order, approval_status, pending_changes")
         .eq("merchant_id", data.storeId).order("sort_order", { ascending: true, nullsFirst: false }).limit(1000),
       db.from("merchant_staff").select("id, name, phone, status, created_at").eq("merchant_id", data.storeId),
       db.from("merchant_settlements").select("id, type, period_from, period_to, gross_amount, net_amount, instant_fee, adjustment_total, status, paid_at, invoice_no, created_at")
@@ -296,7 +296,7 @@ export const listProductApprovals = createServerFn({ method: "POST" })
     const ids = (ms.data ?? []).map((m: any) => m.id);
     if (!ids.length) return { stores: [], categories: [] };
     const p = await db.from("products")
-      .select("id, merchant_id, name, description, price, image_path, image_url, category_id, approval_status, pending_changes, pending_submitted_at")
+      .select("id, merchant_id, name, description, price, original_price, image_path, image_url, category_id, approval_status, pending_changes, pending_submitted_at")
       .in("merchant_id", ids).or("pending_changes.not.is.null,approval_status.eq.pending").limit(500);
     chk(p);
     const rows = (p.data ?? []) as any[];

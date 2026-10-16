@@ -764,6 +764,7 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   const [name, setName] = useState(product.name ?? "");
   const [desc, setDesc] = useState(product.description ?? "");
   const [price, setPrice] = useState(product.price != null ? String(product.price) : "");
+  const [mrp, setMrp] = useState(product.original_price != null ? String(product.original_price) : "");
   const [cat, setCat] = useState(product.category_id ?? "");
   const [img, setImg] = useState<string | null>(product.image_path ?? null);
   const [vars, setVars] = useState<Line[]>((product.variants ?? []).map((v: any) => ({ name: v.name, price: String(v.price), is_default: v.is_default })));
@@ -785,6 +786,7 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   );
   const submit = () => {
     if (!name.trim() || price === "") return toast.error("Name and price are required");
+    if (mrp !== "" && Number(mrp) <= Number(price)) return toast.error("Original price (MRP) must be more than the price");
     for (const g of groups) {
       const count = g.items.filter((i) => i.name.trim()).length;
       const mn = Number(g.min || 0), mx = Number(g.max || 1);
@@ -792,7 +794,7 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
         return toast.error(`Check the limits for "${g.name || "Add-ons"}": min ≤ max ≤ number of items`);
     }
     onSave({
-      name: name.trim(), description: desc.trim() || null, price: Number(price), category_id: cat || null, image_path: img,
+      name: name.trim(), description: desc.trim() || null, price: Number(price), original_price: mrp === "" ? null : Number(mrp), category_id: cat || null, image_path: img,
       variants: vars.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price: Number(v.price || 0), is_default: !!v.is_default })),
       addons: serializeAddonGroups(groups),
     });
@@ -806,6 +808,7 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
           <div><Label>Short description</Label><Textarea rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-2">
             <div><Label>Price (₹)</Label><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
+            <div><Label>Original price (MRP) ₹</Label><Input type="number" placeholder="Optional" value={mrp} onChange={(e) => setMrp(e.target.value)} /></div>
             <div><Label>Category</Label>
               <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={cat} onChange={(e) => setCat(e.target.value)}>
                 <option value="">No category</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1044,7 +1047,8 @@ function ItemApprovals({ service }: { service: Svc }) {
             const isNew = !n;
             const fields: [string, React.ReactNode, React.ReactNode][] = [
               ["Name", p.name, n?.name], ["Description", p.description || "—", n?.description || "—"],
-              ["Price", inr(p.price), n ? inr(n.price) : null], ["Category", catName(p.category_id), n ? catName(n.category_id) : null],
+              ["Price", inr(p.price), n ? inr(n.price) : null],
+              ["Original price (MRP)", p.original_price != null ? inr(p.original_price) : "—", n ? (n.original_price != null && n.original_price !== "" ? inr(n.original_price) : "—") : null], ["Category", catName(p.category_id), n ? catName(n.category_id) : null],
               ["Photo", imgUrl(p.image_path, p.image_url) ? <img src={imgUrl(p.image_path, p.image_url)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—",
                 n ? (n.image_path ? <img src={imgUrl(n.image_path)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—") : null],
               ["Variants", linesStr(p.variants), n ? linesStr(n.variants) : null],
