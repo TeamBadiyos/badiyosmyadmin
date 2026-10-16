@@ -1173,10 +1173,9 @@ export function OrderDetail({
         {canWrite && (["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status)) && (
           <div className="mt-1.5 max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
             {(riders ?? []).length === 0 && <p className="px-3 py-2 text-[12px] text-muted-foreground">No eligible riders.</p>}
-            {[...(riders ?? [])]
-              .sort((x, y) => Number(y.is_online) - Number(x.is_online) || (x.distance_km ?? 1e9) - (y.distance_km ?? 1e9))
+            {(riders ?? [])
               .map((r) => (
-                <button key={r.id} type="button" disabled={busy}
+                <button key={r.id} type="button" disabled={busy || r.status === "busy"}
                   onClick={() => {
                     if (!confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
                     void run(async () => { await doReassign({ data: { orderId: order.id, expertId: r.id } }); await refetchRiders(); }, "Rider assigned and notified");
@@ -1185,7 +1184,7 @@ export function OrderDetail({
                   <span className="text-[13px] font-semibold text-foreground truncate">{r.name}</span>
                   <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
                     <span className="text-muted-foreground">{r.distance_km != null ? `${r.distance_km} km` : "— km"}</span>
-                    <span className={`rounded-full px-1.5 py-0.5 font-bold ${r.is_online ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{r.is_online ? "Free" : "Offline"}</span>
+                    <span className={`rounded-full px-1.5 py-0.5 font-bold ${r.status === "free" ? "bg-primary/10 text-primary" : r.status === "busy" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}>{r.status === "free" ? "Free" : r.status === "busy" ? "Busy" : "Offline"}</span>
                   </span>
                 </button>
               ))}
