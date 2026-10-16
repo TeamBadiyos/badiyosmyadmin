@@ -13,6 +13,7 @@ import {
   listCustomerInvoices, setFinanceFlag, getWalletOverview, getWalletLedger, findCustomer, adjustWallet, saveBonusRule,
   type BonusRule, type WalletRow,
 } from "@/lib/customer-finance.functions";
+import { getWalletBonusDays, setWalletBonusDays } from "@/lib/customer-finance.functions";
 import { downloadCustomerInvoicePdf, downloadCreditNotePdf } from "@/lib/customer-invoice-pdf";
 
 const inr = (n: unknown) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -134,6 +135,7 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
   const t = data.data?.totals;
   return (
     <div className="space-y-4">
+      <WalletBonusDaysCard isSuperAdmin={isSuperAdmin} />
       <div className="grid grid-cols-3 gap-3">
         {[["Outstanding (cash)", inr(t?.cash)], ["Bonus balance", inr(t?.bonus)], ["Wallets with balance", String(t?.wallets ?? 0)]].map(([l, v]) => (
           <div key={l} className="bg-card border border-border rounded-[18px] p-4">
@@ -296,5 +298,29 @@ function RuleSheet({ row, onClose }: { row: Partial<BonusRule>; onClose: () => v
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function WalletBonusDaysCard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const qc = useQueryClient();
+  const get = useServerFn(getWalletBonusDays);
+  const set = useServerFn(setWalletBonusDays);
+  const q = useQuery({ queryKey: ["wallet-bonus-days"], queryFn: () => get() });
+  const [v, setV] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () => set({ data: { days: Number(v) } }),
+    onSuccess: () => { toast.success("Saved"); setV(null); qc.invalidateQueries({ queryKey: ["wallet-bonus-days"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Save failed"),
+  });
+  return (
+    <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
+      <div>
+        <div className="text-[13px] font-bold">Wallet settings</div>
+        <p className="text-[12px] text-muted-foreground">Referral and reward bonus expires this many days after it is credited. Reminders go out 15, 10 and 5 days before. Changes apply to new bonus only.</p>
+      </div>
+      <div className="w-40"><Label>Bonus expires after (days)</Label>
+        <Input type="number" min={1} max={365} disabled={!isSuperAdmin} value={v ?? String(q.data?.days ?? 30)} onChange={(e) => setV(e.target.value)} /></div>
+      {isSuperAdmin && <Button size="sm" disabled={v == null || save.isPending} onClick={() => save.mutate()}>Save</Button>}
+    </div>
   );
 }
