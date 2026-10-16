@@ -257,64 +257,79 @@ function Switch({ on, disabled, onClick, label }: { on: boolean; disabled?: bool
   );
 }
 
-/** Settings tab: Book Now, automatic capacity, count source, band times. */
-export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup }) {
+/** Settings → Booking rules: 'Now' slot switch and auto-cancel minutes. */
+export function NowAndAutoCancelRows({ group = "clean" }: { group?: CapGroup }) {
   const isWash = group === "wash";
   const qc = useQueryClient();
   const listFn = useServerFn(listSlotOverrides);
   const { cityId } = useCity();
   const instFn = useServerFn(setInstantBooking);
-  const setFn = useServerFn(setCapacitySetting);
   const today = istDate();
   const q = useQuery({ queryKey: ["slot-overrides", today, cityId], queryFn: () => listFn({ data: { date: today, cityId } }) });
-  const cq = useCap(group, today);
-  const cap = cq.data;
   const d = q.data;
   const instOn = isWash ? d?.washInstantOn : d?.instantOn;
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["slot-cap"] }); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); };
   const instMut = useMutation({
     mutationFn: (on: boolean) => instFn({ data: { on, group, cityId } }),
-    onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); }, onError: (e: Error) => toast.error(e.message),
   });
+  const acGet = useServerFn(getAutoCancelMinutes);
+  const acSet = useServerFn(setAutoCancelMinutes);
+  const ac = useQuery({ queryKey: ["auto-cancel", group, cityId], queryFn: () => acGet({ data: { group, cityId } }) });
+  const [acIn, setAcIn] = useState<string | null>(null);
+  const acVal = acIn ?? (ac.data ? String(ac.data.minutes) : "");
+  const acMut = useMutation({
+    mutationFn: (m: number) => acSet({ data: { group, minutes: m, cityId } }),
+    onSuccess: () => { toast.success("Saved"); setAcIn(null); qc.invalidateQueries({ queryKey: ["auto-cancel"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const row = "flex items-center justify-between gap-4 py-4";
+  return (
+    <>
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">'Now' slot</p><p className="text-[12px] text-muted-foreground">Shows a 'Now' option as the first slot when an expert is free.</p></div>
+        <Switch label="'Now' slot" on={!!instOn} disabled={!d || instMut.isPending}
+          onClick={() => d && confirm(instOn ? "Pause the 'Now' slot?" : "Turn the 'Now' slot ON?") && instMut.mutate(!instOn)} />
+      </div>
+      <div className={row}>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Auto-cancel if no expert accepts</p><p className="text-[12px] text-muted-foreground">Cancel and fully refund after this many minutes of searching ('Now' and scheduled).{ac.isError ? ` Could not load: ${(ac.error as Error).message}` : ""}</p></div>
+        <div className="flex items-center gap-2">
+          <input type="number" min={5} max={1440} value={acVal} onChange={(e) => setAcIn(e.target.value)} className={inputCls} aria-label="Auto-cancel minutes" />
+          <span className="text-[12px] text-muted-foreground">min</span>
+          <button disabled={acIn == null || acIn === "" || Number(acIn) === ac.data?.minutes || acMut.isPending || ac.data?.canEdit === false} className={primaryBtn} onClick={() => acMut.mutate(Number(acIn))}>Save</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Slots tab (top): automatic capacity, count source, time bands. */
+export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup }) {
+  const isWash = group === "wash";
+  const qc = useQueryClient();
+  const { cityId } = useCity();
+  const setFn = useServerFn(setCapacitySetting);
+  const today = istDate();
+  const cq = useCap(group, today);
+  const cap = cq.data;
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["slot-cap"] }); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); };
   const setMut = useMutation({
     mutationFn: (v: { key: CapKey; value: string }) => setFn({ data: { ...v, cityId } }),
     onSuccess: () => { toast.success("Saved"); refresh(); }, onError: (e: Error) => toast.error(e.message),
   });
   const [me, setMe] = useState(""); const [de, setDe] = useState("");
-  const acGet = useServerFn(getAutoCancelMinutes);
-  const acSet = useServerFn(setAutoCancelMinutes);
-  const ac = useQuery({ queryKey: ["auto-cancel", group, cityId], queryFn: () => acGet({ data: { group, cityId } }) });
-  const [acIn, setAcIn] = useState("");
-  const acMut = useMutation({
-    mutationFn: (m: number) => acSet({ data: { group, minutes: m, cityId } }),
-    onSuccess: () => { toast.success("Saved"); setAcIn(""); qc.invalidateQueries({ queryKey: ["auto-cancel"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
   const row = "flex items-center justify-between gap-4 py-4";
   return (
     <section className={`${card} divide-y divide-border py-1`}>
       <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">'Now' slot</p><p className="text-[12px] text-muted-foreground">When ON, customers see a 'Now' option as the first time slot (only when an expert is free). Scheduled slots work either way.</p></div>
-        <Switch label="'Now' slot" on={!!instOn} disabled={!d || instMut.isPending}
-          onClick={() => d && confirm(instOn ? "Pause the 'Now' slot?" : "Turn the 'Now' slot ON?") && instMut.mutate(!instOn)} />
-      </div>
-      <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Auto-cancel and refund if no expert accepts within X minutes</p><p className="text-[12px] text-muted-foreground">'Now' slot and Scheduled · Counted from when the expert search starts · Full refund · Now: {ac.data?.minutes ?? "–"} min</p></div>
-        <div className="flex items-center gap-2">
-          <input type="number" min={5} max={1440} placeholder={String(ac.data?.minutes ?? "")} value={acIn} onChange={(e) => setAcIn(e.target.value)} className={inputCls} />
-          <button disabled={!acIn || acMut.isPending || ac.data?.canEdit === false} className={primaryBtn} onClick={() => acMut.mutate(Number(acIn))}>Save</button>
-        </div>
-      </div>
-      <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Automatic capacity</p><p className="text-[12px] text-muted-foreground">Slots close by themselves when full</p></div>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Automatic capacity</p><p className="text-[12px] text-muted-foreground">Slots close by themselves when all experts are booked.</p></div>
         <Switch label="Automatic capacity" on={!!cap?.enabled} disabled={!cap || setMut.isPending}
           onClick={() => cap && confirm(cap.enabled ? "Turn automatic capacity OFF?" : "Turn automatic capacity ON?") && setMut.mutate({ key: "slot_capacity_enabled", value: cap.enabled ? "0" : "1" })} />
       </div>
       {!isWash && (
         <div className={row}>
-          <p className="text-[14px] font-semibold text-foreground">Count source</p>
+          <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Count source</p><p className="text-[12px] text-muted-foreground">Manual uses the number you set; Live online uses experts online now.</p></div>
           <div className="flex gap-2">
             {(["manual", "live"] as const).map((m) => (
               <button key={m} disabled={setMut.isPending} onClick={() => cap && cap.mode !== m && setMut.mutate({ key: "slot_capacity_mode", value: m })}
@@ -326,7 +341,7 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
         </div>
       )}
       <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Time bands</p><p className="text-[12px] text-muted-foreground">Morning ends · Day ends</p></div>
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Time bands</p><p className="text-[12px] text-muted-foreground">When Morning ends and when Day ends; Evening runs to closing.</p></div>
         <div className="flex items-center gap-2">
           <input type="time" step={1800} value={me || (cap ? hm(cap.morningEnd) : "")} onChange={(e) => setMe(e.target.value)}
             className="h-10 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
