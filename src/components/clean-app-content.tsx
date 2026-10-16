@@ -21,10 +21,10 @@ async function toWebp(file: File, w: number, h: number): Promise<{ b64: string; 
   let warn: string | null = null;
   if (nw < w || nh < h) warn = `Picture is ${nw}×${nh}; recommended ${w}×${h}.`;
   else if (Math.abs(nw / nh - w / h) > 0.05) warn = `Picture shape is ${nw}×${nh}; recommended ${w}×${h}.`;
-  const scale = Math.min(1, w / nw, h / nh) || 1;
+  const scale = Math.min(1, w / nw, h / nh);
   const c = document.createElement("canvas");
-  c.width = Math.round(nw * Math.max(scale, Math.min(1, (w * 1.0) / nw)));
-  c.height = Math.round((c.width / nw) * nh);
+  c.width = Math.max(1, Math.round(nw * scale));
+  c.height = Math.max(1, Math.round(nh * scale));
   c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height); // transparent background kept
   return { b64: c.toDataURL("image/webp", 0.85), warn };
 }
