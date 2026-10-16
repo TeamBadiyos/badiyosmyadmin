@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.fill_city_id_extra() FROM public, anon, authenticated;
