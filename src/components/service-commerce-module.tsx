@@ -764,7 +764,8 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   const [cat, setCat] = useState(product.category_id ?? "");
   const [img, setImg] = useState<string | null>(product.image_path ?? null);
   const [vars, setVars] = useState<Line[]>((product.variants ?? []).map((v: any) => ({ name: v.name, price: String(v.price), is_default: v.is_default })));
-  const [adds, setAdds] = useState<Line[]>((product.addons ?? []).map((v: any) => ({ name: v.name, price: String(v.price) })));
+  const [groups, setGroups] = useState<GroupDraft[]>(parseAddonGroups(product.addons ?? []));
+  const setG = (i: number, patch: Partial<GroupDraft>) => setGroups(groups.map((g, j) => (j === i ? { ...g, ...patch } : g)));
   const [busy, setBusy] = useState(false);
   const lines = (arr: Line[], set: (x: Line[]) => void, title: string, withDefault?: boolean) => (
     <div className="space-y-1">
@@ -781,10 +782,16 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   );
   const submit = () => {
     if (!name.trim() || price === "") return toast.error("Name and price are required");
+    for (const g of groups) {
+      const count = g.items.filter((i) => i.name.trim()).length;
+      const mn = Number(g.min || 0), mx = Number(g.max || 1);
+      if (count && (mn < 0 || mx < 1 || mn > mx || mx > count))
+        return toast.error(`Check the limits for "${g.name || "Add-ons"}": min ≤ max ≤ number of items`);
+    }
     onSave({
       name: name.trim(), description: desc.trim() || null, price: Number(price), category_id: cat || null, image_path: img,
       variants: vars.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price: Number(v.price || 0), is_default: !!v.is_default })),
-      addons: adds.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price: Number(v.price || 0), is_active: true })),
+      addons: serializeAddonGroups(groups),
     });
   };
   return (
@@ -811,10 +818,31 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
             <SizeHint text="Square 800×800 px recommended" />
           </div>
           {lines(vars, setVars, "Variants (e.g. Half / Full)", true)}
-          {(product.addons ?? []).length > 0 && (
-            <div className="rounded-md border p-2"><p className="text-xs text-muted-foreground mb-1">Add-on groups (saved)</p><AddonGroups addons={product.addons} /></div>
-          )}
-          {lines(adds, setAdds, "Add-ons")}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center"><Label>Add-on groups</Label>
+              <Button size="sm" variant="ghost" onClick={() => setGroups([...groups, { name: "", min: "0", max: "1", items: [{ name: "", price: "" }] }])}><Plus size={14} /> Add group</Button></div>
+            {groups.map((g, gi) => (
+              <div key={gi} className="rounded-md border p-2 space-y-1.5">
+                <div className="flex gap-2 items-center">
+                  <Input placeholder="Group name (e.g. Extra toppings)" value={g.name} onChange={(e) => setG(gi, { name: e.target.value })} />
+                  <Button size="sm" variant="ghost" onClick={() => setGroups(groups.filter((_, j) => j !== gi))}>✕</Button>
+                </div>
+                <div className="flex gap-2 items-center text-xs">
+                  <span className="text-muted-foreground">Min</span><Input className="w-16 h-8" type="number" min={0} value={g.min} onChange={(e) => setG(gi, { min: e.target.value })} />
+                  <span className="text-muted-foreground">Max</span><Input className="w-16 h-8" type="number" min={1} value={g.max} onChange={(e) => setG(gi, { max: e.target.value })} />
+                  <Badge variant="outline" className="text-[10px]">{addonRule(Number(g.min || 0), Number(g.max || 1))}</Badge>
+                </div>
+                {g.items.map((it, ii) => (
+                  <div key={ii} className="flex gap-2 items-center">
+                    <Input placeholder="Item" value={it.name} onChange={(e) => setG(gi, { items: g.items.map((x, j) => (j === ii ? { ...x, name: e.target.value } : x)) })} />
+                    <Input className="w-24" type="number" placeholder="₹" value={it.price} onChange={(e) => setG(gi, { items: g.items.map((x, j) => (j === ii ? { ...x, price: e.target.value } : x)) })} />
+                    <Button size="sm" variant="ghost" onClick={() => setG(gi, { items: g.items.filter((_, j) => j !== ii) })}>✕</Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setG(gi, { items: [...g.items, { name: "", price: "" }] })}><Plus size={14} /> Add item</Button>
+              </div>
+            ))}
+          </div>
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={busy} onClick={submit}>Save</Button></DialogFooter>
       </DialogContent>
@@ -831,21 +859,82 @@ export function addonRule(min?: number | null, max?: number | null) {
   return mx != null && mx > 0 ? `Optional · up to ${mx}` : "Optional · choose any";
 }
 
-function AddonGroups({ addons }: { addons: any[] | null | undefined }) {
-  const list = Array.isArray(addons) ? addons : [];
-  if (!list.length) return <span>—</span>;
-  const groups = new Map<string, any[]>();
-  for (const a of list) {
-    const k = a.group_name?.trim() || "Add-ons";
-    groups.set(k, [...(groups.get(k) ?? []), a]);
+/* Same storage model as the Merchant App: one product_addons row per item, "Group: Item" name + group_name/min/max. */
+const GROUP_SEP = ": ";
+type GroupDraft = { name: string; min: string; max: string; items: { name: string; price: string }[] };
+type AGroup = { name: string; min: number; max: number; items: { name: string; price: number }[] };
+
+function groupAddons(addons: any[] | null | undefined): AGroup[] {
+  const out: AGroup[] = [];
+  for (const a of Array.isArray(addons) ? addons : []) {
+    const raw = String(a.name ?? "");
+    const i = raw.indexOf(GROUP_SEP);
+    const gname = (a.group_name ?? (i > 0 ? raw.slice(0, i) : "")) || "";
+    const iname = gname && raw.startsWith(gname + GROUP_SEP) ? raw.slice(gname.length + GROUP_SEP.length) : raw;
+    let g = out.find((x) => x.name === gname);
+    if (!g) out.push((g = { name: gname, min: Number(a.min_select ?? 0), max: Number(a.max_select ?? 1), items: [] }));
+    g.items.push({ name: iname, price: Number(a.price ?? 0) });
   }
+  return out;
+}
+function parseAddonGroups(addons: any[]): GroupDraft[] {
+  return groupAddons(addons).map((g) => ({ name: g.name, min: String(g.min), max: String(g.max), items: g.items.map((i) => ({ name: i.name, price: String(i.price) })) }));
+}
+function serializeAddonGroups(groups: GroupDraft[]) {
+  return groups.flatMap((g) => g.items.filter((i) => i.name.trim()).map((i) => ({
+    name: g.name.trim() ? `${g.name.trim()}${GROUP_SEP}${i.name.trim()}` : i.name.trim(),
+    price: Number(i.price || 0), is_active: true,
+    group_name: g.name.trim() || null, min_select: Number(g.min || 0), max_select: Number(g.max || 1),
+  })));
+}
+function addonsChanged(a: any[] | null | undefined, b: any[] | null | undefined) {
+  return JSON.stringify(groupAddons(a)) !== JSON.stringify(groupAddons(b));
+}
+
+/** Renders add-on groups; when `before` is given, highlights added / removed / price or rule changes. */
+function AddonGroups({ addons, before }: { addons: any[] | null | undefined; before?: any[] | null }) {
+  const gs = groupAddons(addons);
+  const old = before === undefined ? null : groupAddons(before);
+  const removedGroups = old ? old.filter((o) => !gs.some((g) => g.name === o.name)) : [];
+  if (!gs.length && !removedGroups.length) return <span>—</span>;
+  const hi = "font-semibold text-primary";
   return (
     <div className="space-y-1.5">
-      {Array.from(groups.entries()).map(([g, xs]) => (
-        <div key={g}>
-          <p className="text-xs font-medium">{g} <Badge variant="outline" className="ml-1 text-[10px]">{addonRule(xs[0]?.min_select, xs[0]?.max_select)}</Badge></p>
-          <p className="text-xs text-muted-foreground">{xs.map((x) => `${x.name} +₹${x.price ?? 0}`).join(", ")}</p>
-        </div>
+      {gs.map((g) => {
+        const o = old?.find((x) => x.name === g.name);
+        const newGroup = !!old && !o;
+        const ruleChanged = !!o && (o.min !== g.min || o.max !== g.max);
+        return (
+          <div key={g.name}>
+            <p className="text-xs font-medium">
+              <span className={newGroup ? hi : ""}>{g.name || "Add-ons"}</span>
+              {newGroup && <Badge className="ml-1 text-[10px]">Added</Badge>}
+              <Badge variant="outline" className={`ml-1 text-[10px] ${ruleChanged ? "border-primary text-primary" : ""}`}>
+                {ruleChanged ? `${addonRule(o!.min, o!.max)} → ` : ""}{addonRule(g.min, g.max)}
+              </Badge>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {g.items.map((x, k) => {
+                const oi = o?.items.find((y) => y.name === x.name);
+                const added = !!old && !newGroup && !oi;
+                const priceCh = !!oi && oi.price !== x.price;
+                return (
+                  <span key={k}>{k > 0 && ", "}
+                    <span className={added || priceCh || newGroup ? hi : ""}>
+                      {added && "+ "}{x.name} +₹{priceCh ? <><s>{oi!.price}</s> {x.price}</> : x.price}
+                    </span>
+                  </span>
+                );
+              })}
+              {o?.items.filter((y) => !g.items.some((x) => x.name === y.name)).map((y, k) => (
+                <span key={`r${k}`}>, <s className="text-destructive">{y.name} +₹{y.price}</s></span>
+              ))}
+            </p>
+          </div>
+        );
+      })}
+      {removedGroups.map((o) => (
+        <p key={`rg${o.name}`} className="text-xs text-destructive"><s>{o.name || "Add-ons"}</s> <Badge variant="destructive" className="ml-1 text-[10px]">Removed</Badge></p>
       ))}
     </div>
   );
@@ -881,7 +970,7 @@ function ApprovalsTab({ service }: { service: Svc }) {
               ["Photo", imgUrl(p.image_path, p.image_url) ? <img src={imgUrl(p.image_path, p.image_url)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—",
                 n ? (n.image_path ? <img src={imgUrl(n.image_path)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—") : null],
               ["Variants", linesStr(p.variants), n ? linesStr(n.variants) : null],
-              ["Add-ons", <AddonGroups key="a" addons={p.addons} />, n ? <AddonGroups key="b" addons={n.addons} /> : null],
+              ["Add-ons", <AddonGroups key="a" addons={p.addons} />, n ? <AddonGroups key="b" addons={n.addons ?? p.addons} before={p.addons} /> : null],
             ];
             return (
               <div key={p.id} className="p-3 border-b last:border-0 space-y-2">
@@ -889,7 +978,9 @@ function ApprovalsTab({ service }: { service: Svc }) {
                 <table className="w-full text-sm">
                   <thead className="text-xs text-muted-foreground"><tr><th className="text-left w-28"></th><th className="text-left">{isNew ? "Submitted" : "Current"}</th>{!isNew && <th className="text-left">New</th>}</tr></thead>
                   <tbody>{fields.map(([k, a, b]) => {
-                    const changed = !isNew && String(typeof a === "string" ? a : "") !== String(typeof b === "string" ? b : "");
+                    const changed = !isNew && (k === "Add-ons"
+                      ? !!n?.addons && addonsChanged(p.addons, n.addons)
+                      : String(typeof a === "string" ? a : "") !== String(typeof b === "string" ? b : ""));
                     return <tr key={k}><td className="text-muted-foreground py-0.5">{k}</td><td>{a}</td>{!isNew && <td className={changed ? "font-semibold text-primary" : ""}>{b}</td>}</tr>;
                   })}</tbody>
                 </table>
