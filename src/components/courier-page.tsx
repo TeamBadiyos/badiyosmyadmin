@@ -24,7 +24,12 @@ import {
   Truck,
   X,
   MoreHorizontal,
+  UserPlus,
+  IndianRupee,
+  Ban,
+  AlertTriangle,
 } from "lucide-react";
+import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine } from "@/components/detail-panel";
 import {
   COURIER_STATUSES,
   confirmRate,
@@ -1113,85 +1118,81 @@ export function OrderDetail({
     }
   }
 
+  const [assignOpen, setAssignOpen] = useState(false);
+  const canAssign = canWrite && ["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status);
+  const PARCEL_STEPS = [
+    { key: "SEARCHING", label: "Searching" },
+    { key: "DRIVER_ASSIGNED", label: "Rider assigned" },
+    { key: "ARRIVED_PICKUP", label: "At pickup" },
+    { key: "PICKED_UP", label: "Picked up" },
+    { key: "DELIVERED", label: "Delivered" },
+  ];
+  const stepKey = order.status === "REQUESTED" ? "SEARCHING" : ["IN_TRANSIT", "ARRIVED_DROP"].includes(order.status) ? "PICKED_UP" : order.status;
+
   return (
     <Modal title={`Order ${order.order_code}`} onClose={onClose} wide>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Pill tone="info">{order.status}</Pill>
-          <Pill tone="off">Parcel</Pill>
-          {order.city ? <Pill tone="off">{order.city}</Pill> : null}
-          {order.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
-          <span className="text-[13px] font-bold text-foreground">₹{order.total_amount}</span>
-          <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.payment_status === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-            {order.payment_status ?? "—"}
-          </span>
-        </div>
-        {canWrite && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button aria-label="More actions" className="shrink-0 w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
-                <MoreHorizontal size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onSelect={() => setPanel("history")}>Event history</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setPanel("refund")}>Refund…</DropdownMenuItem>
-              {order.status === "FAILED_DELIVERY" && <DropdownMenuItem onSelect={() => setPanel("resolve")}>Resolve failed delivery</DropdownMenuItem>}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onSelect={() => setPanel("cancel")}>Cancel order…</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Pill tone="info">{order.status}</Pill>
+        <Pill tone="off">Parcel</Pill>
+        {order.city ? <Pill tone="off">{order.city}</Pill> : null}
+        {order.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+        <span className="text-[13px] font-bold text-foreground">₹{order.total_amount}</span>
+        <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.payment_status === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+          {order.payment_status ?? "—"}
+        </span>
       </div>
       <p className="mt-1 text-[12px] text-muted-foreground truncate">
         Placed {new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
         {order.refund_status ? ` · Refund ${order.refund_status}` : ""}
         {order.incident_code ? ` · Incident ${order.incident_code}${order.incident_resolution ? ` (resolved: ${order.incident_resolution})` : ""}` : ""}
       </p>
+      <StepLine steps={PARCEL_STEPS} current={stepKey} bad={isCancelled ? "Cancelled" : order.status === "FAILED_DELIVERY" ? "Failed delivery" : null} />
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <div className="space-y-3 min-w-0">
-          <div className="rounded-[14px] border border-border px-3 py-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Customer</p>
-            <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName ?? "—"}</p>
-          </div>
-          <div className="rounded-[14px] border border-border px-3 py-2.5 text-[12px] space-y-1">
-            <p><span className="font-semibold text-foreground">Pick-up: </span><span className="text-muted-foreground">{order.pickup_address ?? "—"}</span></p>
-            <p><span className="font-semibold text-foreground">Drop: </span><span className="text-muted-foreground">{order.drop_address ?? "—"}</span></p>
-          </div>
+      <div className="mt-3 space-y-3">
+        <CustomerBlock
+          name={order.customerName}
+          phone={order.customerPhone}
+          masked={!!order.customerPhone && /[^\d+\s-]/.test(order.customerPhone)}
+          contact={order.customerPhone && !/[^\d+\s-]/.test(order.customerPhone) ? <ContactButtons phone={order.customerPhone} /> : null}
+        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <PanelSection title="Pickup"><p className="text-[12px] text-foreground">{order.pickup_address ?? "—"}</p></PanelSection>
+          <PanelSection title="Drop"><p className="text-[12px] text-foreground">{order.drop_address ?? "—"}</p></PanelSection>
         </div>
-        <div className="min-w-0">
-          <LiveTrackingMap kind="courier" id={order.id} compact />
-          <ShareLocationIcons kind="courier" id={order.id} />
+        <div>
+          <LiveTrackingMap kind="courier" id={order.id} panel />
+          <MapActionBar kind="courier" id={order.id} parcel />
         </div>
-      </div>
 
-      <div className="mt-3 rounded-[14px] border border-border px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Rider</p>
-          <p className="text-[13px] font-semibold text-foreground truncate">{order.riderName ?? "Not assigned"}</p>
-        </div>
-        {canWrite && (["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status)) && (
-          <div className="mt-1.5 max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
-            {(riders ?? []).length === 0 && <p className="px-3 py-2 text-[12px] text-muted-foreground">No eligible riders.</p>}
-            {[...(riders ?? [])]
-              .sort((a, b) => ({ free: 0, busy: 1, offline: 2 }[a.status] - { free: 0, busy: 1, offline: 2 }[b.status]) || (a.distance_km ?? 1e9) - (b.distance_km ?? 1e9))
-              .map((r) => (
-                <button key={r.id} type="button" disabled={busy || r.status === "offline"}
-                  onClick={() => {
-                    if (r.status === "busy" ? !confirm("Rider is on another job — assign anyway?") : !confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
-                    void run(async () => { await doReassign({ data: { orderId: order.id, expertId: r.id } }); await refetchRiders(); }, "Rider assigned and notified");
-                  }}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
-                  <span className="text-[13px] font-semibold text-foreground truncate">{r.name}</span>
-                  <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
-                    <span className="text-muted-foreground">{r.distance_km != null ? `${r.distance_km} km` : "— km"}</span>
-                    <span className={`rounded-full px-1.5 py-0.5 font-bold ${r.status === "free" ? "bg-primary/10 text-primary" : r.status === "busy" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}>{r.status === "free" ? "Free" : r.status === "busy" ? "Busy" : "Offline"}</span>
-                  </span>
-                </button>
-              ))}
+        <PanelSection title="Assigned rider">
+          <div className="flex items-center justify-between gap-2">
+            {order.riderName ? <p className="text-[14px] font-semibold text-foreground truncate">{order.riderName}</p> : <p className="text-[13px] italic text-muted-foreground">Not assigned</p>}
+            {canAssign && !assignOpen && (
+              <ActionBtn icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>{order.riderName ? "Reassign" : "Assign"}</ActionBtn>
+            )}
           </div>
-        )}
+          {canAssign && assignOpen && (
+            <div className="mt-1.5 max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
+              {(riders ?? []).length === 0 && <p className="px-3 py-2 text-[12px] text-muted-foreground">No eligible riders.</p>}
+              {[...(riders ?? [])]
+                .sort((a, b) => ({ free: 0, busy: 1, offline: 2 }[a.status] - { free: 0, busy: 1, offline: 2 }[b.status]) || (a.distance_km ?? 1e9) - (b.distance_km ?? 1e9))
+                .map((r) => (
+                  <button key={r.id} type="button" disabled={busy || r.status === "offline"}
+                    onClick={() => {
+                      if (r.status === "busy" ? !confirm("Rider is on another job — assign anyway?") : !confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
+                      void run(async () => { await doReassign({ data: { orderId: order.id, expertId: r.id } }); await refetchRiders(); setAssignOpen(false); }, "Rider assigned and notified");
+                    }}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
+                    <span className="text-[13px] font-semibold text-foreground truncate">{r.name}</span>
+                    <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
+                      <span className="text-muted-foreground">{r.distance_km != null ? `${r.distance_km} km` : "— km"}</span>
+                      <span className={`rounded-full px-1.5 py-0.5 font-bold ${r.status === "free" ? "bg-primary/10 text-primary" : r.status === "busy" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}>{r.status === "free" ? "Free" : r.status === "busy" ? "Busy" : "Offline"}</span>
+                    </span>
+                  </button>
+                ))}
+            </div>
+          )}
+        </PanelSection>
       </div>
 
       {isCancelled && cancelFee ? (
@@ -1207,23 +1208,18 @@ export function OrderDetail({
 
       <MultiStopSections order={order} fetchStops={fetchStops} onChanged={onChanged} />
 
-      {panel === "history" && (
-        <div className="mt-3 rounded-[12px] border border-border p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
-              <History size={14} className="text-primary" /> Event history
-            </div>
-            <button onClick={() => setPanel(null)} className="text-[12px] font-semibold text-muted-foreground">Close</button>
-          </div>
-          <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
-            {(events ?? []).map((ev) => (
-              <div key={ev.id} className="text-[12px]">
-                <span className="font-semibold text-foreground">{ev.from_status ? `${ev.from_status} → ` : ""}{ev.to_status}</span>
-                <span className="ml-2 text-muted-foreground">{new Date(ev.created_at).toLocaleString()} · {ev.actor_type ?? "system"}</span>
-              </div>
-            ))}
-            {(events ?? []).length === 0 ? <p className="text-[12px] text-muted-foreground">No events yet.</p> : null}
-          </div>
+      {canWrite && (
+        <div className="mt-3">
+          <ActionBar
+            normal={canAssign ? <ActionBtn icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>{order.riderName ? "Reassign" : "Assign"}</ActionBtn> : undefined}
+            danger={
+              <>
+                {order.status === "FAILED_DELIVERY" && <ActionBtn variant="danger" icon={<AlertTriangle size={13} />} onClick={() => setPanel("resolve")}>Resolve failed delivery</ActionBtn>}
+                <ActionBtn variant="danger" icon={<IndianRupee size={13} />} onClick={() => setPanel(panel === "refund" ? null : "refund")}>Refund</ActionBtn>
+                {!isCancelled && order.status !== "DELIVERED" && <ActionBtn variant="danger" icon={<Ban size={13} />} onClick={() => setPanel(panel === "cancel" ? null : "cancel")}>Cancel</ActionBtn>}
+              </>
+            }
+          />
         </div>
       )}
 
@@ -1364,6 +1360,9 @@ export function OrderDetail({
           You have read-only access to courier orders.
         </p>
       )}
+      <div className="mt-3">
+        <HistorySection items={(events ?? []).map((ev) => ({ at: ev.created_at, what: `${ev.from_status ? `${ev.from_status} → ` : ""}${ev.to_status}`, who: ev.actor_type ?? null }))} />
+      </div>
     </Modal>
   );
 }

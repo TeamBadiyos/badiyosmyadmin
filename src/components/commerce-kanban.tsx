@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Bike, MoreHorizontal, Store, User, Volume2, VolumeX, X } from "lucide-react";
+import { AlertTriangle, Ban, Bike, MoreHorizontal, RefreshCw, Store, User, Volume2, VolumeX, X } from "lucide-react";
+import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine } from "@/components/detail-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
-import { ShareLocationIcons } from "@/components/share-location";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -223,10 +223,18 @@ export function OrderSheet({
   const curIdx = steps.indexOf(order.status);
   const paidLabel = order.paymentStatus === "paid" ? "Paid" : order.paymentStatus ?? "—";
 
+  const history = [
+    { at: order.createdAt, what: "Order placed", who: order.customerName },
+    ...(order.acceptedAt ? [{ at: order.acceptedAt, what: "Accepted by store", who: order.merchantName }] : []),
+    ...(order.readyAt ? [{ at: order.readyAt, what: "Ready for pickup", who: order.merchantName }] : []),
+    ...(order.pickedUpAt ? [{ at: order.pickedUpAt, what: "Picked up by rider", who: order.riderName }] : []),
+  ];
+  const canAssignRider = canManage && !closed && !!order.courierOrderId && (order.riderState === "searching" || order.riderState === "assigned");
+
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50" onClick={onClose}>
       <div
-        className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
+        className="bg-card w-full sm:max-w-[880px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[94dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-4 sm:px-5 py-3 border-b border-border shrink-0">
@@ -240,45 +248,16 @@ export function OrderSheet({
               <span className="text-[13px] font-bold text-foreground">{inr.format(order.paidAmount || order.totalAmount)}</span>
               <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>{paidLabel}</span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {canManage && !closed && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button aria-label="More actions" className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
-                      <MoreHorizontal size={16} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem disabled={!canReassign} onSelect={() => setMode("rider")}>Restart rider search</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onSelect={() => setMode("cancel")}>Cancel + refund…</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
-                <X size={18} />
-              </button>
-            </div>
+            <button onClick={onClose} aria-label="Close" className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
+              <X size={18} />
+            </button>
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground truncate">
             Placed {ago(order.createdAt, now)}{order.readyAt ? ` · Ready ${ago(order.readyAt, now)}` : ""} · {order.paymentMode ?? "—"}
           </p>
-        </header>
-
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 pt-3 pb-16 sm:pb-4 space-y-3">
-          <ol className="flex items-center gap-0.5 w-full min-w-0">
-            {steps.map((st, i) => (
-              <li key={st} className="flex items-center gap-0.5 min-w-0 flex-1 last:flex-none">
-                <span title={STATUS_LABEL[st]} className={`truncate px-1.5 py-1 rounded-full text-[11px] font-semibold ${i === curIdx ? "bg-primary-tint text-primary" : i < curIdx ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                  {STATUS_LABEL[st]}
-                </span>
-                {i < steps.length - 1 && <span className="flex-1 min-w-[4px] h-px bg-border" />}
-              </li>
-            ))}
-          </ol>
-
+          <StepLine steps={steps.map((k) => ({ key: k, label: STATUS_LABEL[k] }))} current={order.status} />
           {order.alerts.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {order.alerts.map((a) => (
                 <span key={a} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold px-2 py-1">
                   <AlertTriangle size={11} /> {ALERT_LABEL[a]}
@@ -286,68 +265,72 @@ export function OrderSheet({
               ))}
             </div>
           )}
+        </header>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 pt-3 pb-16 sm:pb-4 space-y-3">
+          <CustomerBlock
+            name={order.customerName}
+            phone={order.customerPhone}
+            masked={order.phoneMasked}
+            contact={order.customerPhone && !order.phoneMasked ? <ContactButtons phone={order.customerPhone} /> : null}
+          />
+
+          {order.courierOrderId ? (
+            <div>
+              <LiveTrackingMap kind="courier" id={order.courierOrderId} panel />
+              <MapActionBar kind="courier" id={order.courierOrderId} />
+            </div>
+          ) : (
+            <div className="h-[200px] rounded-[12px] border border-border bg-muted grid place-items-center text-[12px] text-muted-foreground">
+              Map shows once a delivery is created
+            </div>
+          )}
 
           <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-3 min-w-0">
-              <div className="rounded-[14px] border border-border px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Customer</p>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName}</p>
-                    {order.customerPhone && <p className="text-[12px] text-muted-foreground">{order.customerPhone}</p>}
-                  </div>
-                  {order.customerPhone && !order.phoneMasked && <ContactButtons phone={order.customerPhone} />}
-                </div>
+            <PanelSection title="Assigned rider">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[13px] min-w-0">{order.riderName ? <span className="font-semibold text-foreground">{order.riderName}</span> : <span className="italic text-muted-foreground">Not assigned</span>}</p>
+                {canAssignRider && (
+                  <AssignPopover
+                    queryKey={["courier", "riders", order.courierOrderId as string]}
+                    load={async () => (await fetchRiders({ data: { orderId: order.courierOrderId as string } })).map(riderOpt)}
+                    assign={(id) => assignRider({ data: { orderId: order.courierOrderId as string, expertId: id } })}
+                    onSeeAll={() => {}}
+                    invalidate={[["commerce"], ["pipeline"], ["courier"]]}
+                  />
+                )}
               </div>
-              <div className="rounded-[14px] border border-border px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Rider</p>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] min-w-0"><RiderLine o={order} /></p>
-                  {canManage && !closed && order.courierOrderId && (order.riderState === "searching" || order.riderState === "assigned") && (
-                    <AssignPopover
-                      queryKey={["courier", "riders", order.courierOrderId]}
-                      load={async () => (await fetchRiders({ data: { orderId: order.courierOrderId as string } })).map(riderOpt)}
-                      assign={(id) => assignRider({ data: { orderId: order.courierOrderId as string, expertId: id } })}
-                      onSeeAll={() => {}}
-                      invalidate={[["commerce"], ["pipeline"], ["courier"]]}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="min-w-0">
-              {order.courierOrderId ? (
-                <>
-                  <LiveTrackingMap kind="courier" id={order.courierOrderId} compact />
-                  <ShareLocationIcons kind="courier" id={order.courierOrderId} />
-                </>
-              ) : (
-                <div className="h-[220px] rounded-[12px] border border-border bg-muted grid place-items-center text-[12px] text-muted-foreground">
-                  Map shows once a delivery is created
-                </div>
+              <p className="text-[12px] text-muted-foreground"><RiderLine o={order} /></p>
+            </PanelSection>
+            <PanelSection
+              title="Payment"
+              right={<button type="button" onClick={() => setShowSplit((v) => !v)} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground">Split {showSplit ? "▾" : "▸"}</button>}
+            >
+              <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Items</span><span>{inr2.format(order.itemsTotal)}</span></div>
+              <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Delivery</span><span>{inr2.format(order.deliveryFee)}</span></div>
+              {order.discountAmount > 0 && <div className="flex justify-between text-[13px]"><span className="text-muted-foreground">Discount</span><span>− {inr2.format(order.discountAmount)}</span></div>}
+              <div className="flex justify-between border-t border-border pt-1 text-[13px] font-bold"><span>Total</span><span>{inr.format(order.paidAmount || order.totalAmount)}</span></div>
+              <p className="text-[12px] text-muted-foreground">{paidLabel} · {order.paymentMode ?? "—"}</p>
+              {showSplit && (
+                <p className="text-[12px] text-muted-foreground">
+                  Commission ({order.commissionPct}%) − {inr2.format(order.commissionAmount)} · GST on commission − {inr2.format(order.commissionGstAmount)} · Merchant gets {inr2.format(order.merchantNet)}
+                </p>
               )}
-            </div>
+            </PanelSection>
           </section>
 
-          <div className="rounded-[14px] border border-border px-3 py-2">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Payment</span>
-              <span className="font-semibold text-foreground">
-                Items {inr2.format(order.itemsTotal)} + delivery {inr2.format(order.deliveryFee)} = {inr.format(order.paidAmount || order.totalAmount)}
-              </span>
-              <span className="text-muted-foreground">· {paidLabel} · {order.paymentMode ?? "—"}</span>
-              <button type="button" onClick={() => setShowSplit((v) => !v)} className="ml-auto text-[11px] font-semibold text-muted-foreground hover:text-foreground">
-                Split {showSplit ? "▾" : "▸"}
-              </button>
-            </div>
-            {showSplit && (
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Commission ({order.commissionPct}%) − {inr2.format(order.commissionAmount)} · GST on commission − {inr2.format(order.commissionGstAmount)} · Merchant gets {inr2.format(order.merchantNet)}
-              </p>
-            )}
-          </div>
-
-          {!canManage && <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this order.</p>}
+          {canManage && !closed ? (
+            <ActionBar
+              normal={
+                <>
+                  {canReassign && <ActionBtn icon={<RefreshCw size={13} />} onClick={() => setMode(mode === "rider" ? "none" : "rider")}>Restart rider search</ActionBtn>}
+                </>
+              }
+              danger={<ActionBtn variant="danger" icon={<Ban size={13} />} onClick={() => setMode("cancel")}>Cancel</ActionBtn>}
+            />
+          ) : !canManage ? (
+            <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this order.</p>
+          ) : null}
 
           {canManage && !closed && mode === "rider" && (
             <div className="rounded-[14px] border border-border p-3 space-y-2">
@@ -380,6 +363,8 @@ export function OrderSheet({
               </div>
             </div>
           )}
+
+          <HistorySection items={history} />
         </div>
       </div>
     </div>
