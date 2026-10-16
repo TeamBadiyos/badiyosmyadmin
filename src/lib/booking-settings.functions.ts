@@ -310,7 +310,7 @@ export const setCapacitySetting = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Book Now: auto-cancel window from search start; Scheduled: minutes after slot start (city_ops_settings). */
+/** One auto-cancel window (Book Now + Scheduled), counted from search start (city_ops_settings). */
 export const getAutoCancelMinutes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { group?: CapGroup; cityId?: string | null }) => ({ group: grp(i?.group), cityId: i?.cityId ?? null }))
@@ -321,24 +321,19 @@ export const getAutoCancelMinutes = createServerFn({ method: "GET" })
     const rpc = (context as Ctx).supabase.rpc as any;
     const { data: m, error } = await rpc("app_auto_cancel_minutes", { _service_key: data.group, _city_id: cid });
     if (error) throw new Error(error.message);
-    const { data: s, error: e2 } = await rpc("scheduled_cancel_after_slot_minutes", { _service_key: data.group, _city_id: cid });
-    if (e2) throw new Error(e2.message);
-    return { minutes: Number(m ?? 120), scheduledMinutes: Number(s ?? 30), canEdit: role === "super_admin" || role === "ops_manager" };
+    return { minutes: Number(m ?? 120), canEdit: role === "super_admin" || role === "ops_manager" };
   });
 
 export const setAutoCancelMinutes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { group?: CapGroup; minutes: number; cityId?: string | null; kind?: "now" | "scheduled" }) => {
+  .inputValidator((i: { group?: CapGroup; minutes: number; cityId?: string | null }) => {
     const n = Number(i.minutes);
-    const kind = i.kind === "scheduled" ? "scheduled" : "now";
-    if (kind === "now" && (!Number.isInteger(n) || n < 5 || n > 1440)) throw new Error("Minutes must be 5–1440");
-    if (kind === "scheduled" && (!Number.isInteger(n) || n < 0 || n > 1440)) throw new Error("Minutes must be 0–1440");
-    return { group: grp(i.group), minutes: n, cityId: i.cityId ?? null, kind };
+    if (!Number.isInteger(n) || n < 5 || n > 1440) throw new Error("Minutes must be 5–1440");
+    return { group: grp(i.group), minutes: n, cityId: i.cityId ?? null };
   })
   .handler(async ({ data, context }) => {
     await staffRole(context as Ctx);
-    const pre = data.group === "wash" ? "wash" : "clean";
-    const key = data.kind === "scheduled" ? `${pre}_scheduled_cancel_after_slot_minutes` : `${pre}_auto_cancel_minutes`;
+    const key = `${data.group === "wash" ? "wash" : "clean"}_auto_cancel_minutes`;
     await writeOps((context as Ctx).supabase, key, String(data.minutes), data.cityId);
     return { ok: true };
   });
