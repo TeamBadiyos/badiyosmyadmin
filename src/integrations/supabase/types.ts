@@ -12582,6 +12582,10 @@ export type Database = {
         Args: { _force_period_start?: string }
         Returns: number
       }
+      scheduled_cancel_after_slot_minutes: {
+        Args: { _city_id: string; _service_key: string }
+        Returns: number
+      }
       seal_code_for_serial: { Args: { _serial: number }; Returns: string }
       seal_code_normalize: { Args: { _raw: string }; Returns: string }
       seal_luhn_digit: { Args: { _serial6: string }; Returns: number }
