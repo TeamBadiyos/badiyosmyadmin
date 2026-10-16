@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Remove Clean Auto banner controls and public output while preserving unused saved data; verify Clean Home remains unchanged.
+
 - [x] Add Seal Sticker batch PDF generation and download dialog.
 - [x] Verify 3-label samples visually and decode both colour modes exactly.
 - [x] Standardize order-card paid breakdowns across Clean, Car Wash, Courier, and Store.
