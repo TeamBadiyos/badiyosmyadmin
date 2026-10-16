@@ -1287,17 +1287,21 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
   const saveFn = useServerFn(saveServiceSettings);
   const { cityId } = useCity();
   const r = useQuery({ queryKey: ["svc", service, "settings", cityId], queryFn: () => fn({ data: { service, cityId } }) });
-  const [v, setV] = useState({ min: "", km: "", share: "", timeout: "" });
+  const [v, setV] = useState<DeliveryRateDraft>({ baseFare: "", includedKm: "", perKm: "", minFare: "", platformFee: "", riderSharePct: "" });
+  const [timeout, setTimeoutV] = useState("");
   useEffect(() => {
     const s: any = r.data?.settings; if (!s) return;
-    setV({ min: String(s.delivery_min_fare ?? ""), km: String(s.delivery_per_km ?? ""), share: String(s.rider_share_pct ?? ""), timeout: String(s.default_accept_timeout_minutes ?? "") });
+    const st = (x: any) => String(x ?? 0);
+    setV({ baseFare: st(s.delivery_base_fare), includedKm: st(s.delivery_included_km), perKm: st(s.delivery_per_km), minFare: st(s.delivery_min_fare), platformFee: st(s.delivery_platform_fee), riderSharePct: st(s.rider_share_pct) });
+    setTimeoutV(String(s.default_accept_timeout_minutes ?? ""));
   }, [r.data]);
   const canEdit = role === "super_admin";
+  const done = { onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); }, onError: (e: unknown) => toast.error(errMsg(e)) };
   const save = useMutation({
-    mutationFn: () => saveFn({ data: { service, delivery_min_fare: Number(v.min), delivery_per_km: Number(v.km), rider_share_pct: Number(v.share), default_accept_timeout_minutes: Number(v.timeout), cityId } }),
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["svc", service, "settings"] }); },
-    onError: (e) => toast.error(errMsg(e)),
+    mutationFn: () => { const x = toRate(v); return saveFn({ data: { service, cityId, rate: { delivery_base_fare: x.baseFare, delivery_included_km: x.includedKm, delivery_per_km: x.perKm, delivery_min_fare: x.minFare, delivery_platform_fee: x.platformFee, rider_share_pct: x.riderSharePct } } }); },
+    ...done,
   });
+  const saveRules = useMutation({ mutationFn: () => saveFn({ data: { service, cityId, default_accept_timeout_minutes: Number(timeout) } }), ...done });
   const hideFn = useServerFn(saveHideLowItemSections);
   const hideSave = useMutation({
     mutationFn: (value: boolean) => hideFn({ data: { service, value } }),
@@ -1310,14 +1314,15 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
   return (
     <div className="space-y-5 max-w-3xl">
       <div className="rounded-lg border bg-card p-4 space-y-3">
-        <p className="font-semibold">Delivery & orders</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div><Label>Minimum fare (₹)</Label><Input type="number" disabled={!canEdit} value={v.min} onChange={(e) => setV({ ...v, min: e.target.value })} /></div>
-          <div><Label>Per km (₹)</Label><Input type="number" disabled={!canEdit} value={v.km} onChange={(e) => setV({ ...v, km: e.target.value })} /></div>
-          <div><Label>Rider share %</Label><Input type="number" disabled={!canEdit} value={v.share} onChange={(e) => setV({ ...v, share: e.target.value })} /></div>
-          <div><Label>Accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={v.timeout} onChange={(e) => setV({ ...v, timeout: e.target.value })} /></div>
-        </div>
+        <p className="font-semibold">Delivery rate</p>
+        <DeliveryRateFields vehicle="Bike" value={v} onChange={setV} disabled={!canEdit} />
         {canEdit ? <Button onClick={() => save.mutate()} disabled={save.isPending}>Save</Button> : <p className="text-xs text-muted-foreground">Only super admin can change these.</p>}
+      </div>
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <p className="font-semibold">Booking rules</p>
+        <div className="max-w-xs"><Label>Accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={timeout} onChange={(e) => setTimeoutV(e.target.value)} />
+          <p className="mt-1 text-xs text-muted-foreground">Store must accept the order within this time.</p></div>
+        {canEdit && <Button onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>Save</Button>}
       </div>
       {(service === "store" || service === "food") && (
         <div className="rounded-lg border bg-card p-4 flex items-center justify-between gap-4">
