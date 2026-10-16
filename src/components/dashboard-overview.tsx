@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getDashboardOverview, getDashboardTeam, getDashboardMoney } from "@/lib/finance.functions";
+import { getDashboardOverview, getDashboardTeam, getDashboardMoney, getDashboardDrill } from "@/lib/finance.functions";
 import { Info, Phone } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PipelineKanban, SERVICE_META, type BoardService } from "@/components/pipeline-kanban";
@@ -47,6 +47,18 @@ const TIPS: Record<string, string> = {
   "badiyos earning": "Our share (commission + delivery share + platform fee, without GST) of orders paid on these dates, minus our share of refunds made on these dates.",
 };
 
+type MKey = "orders" | "cancelled" | "gross" | "discount" | "refund" | "net" | "earning";
+const METRICS: [MKey, string][] = [["orders", "Orders"], ["cancelled", "Cancelled"], ["gross", "Gross"], ["discount", "Discount"], ["refund", "Refunds"], ["net", "Net revenue"], ["earning", "Badiyos earning"]];
+function NumCell({ v, money, ready, onOpen }: { v: number; money: boolean; ready: boolean; onOpen: (val: string) => void }) {
+  const txt = money ? inr(v) : ready ? String(v) : "—";
+  const live = ready && Math.round(Number(v || 0)) !== 0;
+  return (
+    <td className="px-4 py-3 text-right whitespace-nowrap">
+      {live ? <button type="button" onClick={() => onOpen(txt)} className="hover:underline hover:text-primary font-[inherit]">{txt}</button> : txt}
+    </td>
+  );
+}
+
 function Th({ label, right = true }: { label: string; right?: boolean }) {
   return (
     <th className={`px-4 py-2.5 font-semibold whitespace-nowrap ${right ? "text-right" : ""}`}>
@@ -60,10 +72,14 @@ function Th({ label, right = true }: { label: string; right?: boolean }) {
 export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null; onNavigate: (key: string) => void }) {
   const [range, setRange] = useState<Range>("today");
   const [panel, setPanel] = useState<{ group: TeamKey; busy: boolean } | null>(null);
+  const [drill, setDrill] = useState<{ service: string; metric: string; title: string; value: string } | null>(null);
   const { from, to } = useMemo(() => rangeDates(range), [range]);
   const fetch = useServerFn(getDashboardOverview);
   const fetchTeam = useServerFn(getDashboardTeam);
   const fetchMoney = useServerFn(getDashboardMoney);
+  const fetchDrill = useServerFn(getDashboardDrill);
+  const drillQ = useQuery({ queryKey: ["dash-drill", drill?.service, drill?.metric, from, to], enabled: !!drill,
+    queryFn: () => fetchDrill({ data: { service: drill!.service, metric: drill!.metric, from, to } }) });
   const q = useQuery({ queryKey: ["dash-overview", from, to], queryFn: () => fetch({ data: { from, to } }), refetchInterval: 60_000 });
   const money = useQuery({ queryKey: ["dash-money", from, to], queryFn: () => fetchMoney({ data: { from, to } }), refetchInterval: 60_000 }).data;
   const team = useQuery({ queryKey: ["dash-team"], queryFn: () => fetchTeam(), refetchInterval: 30_000 }).data;
@@ -127,28 +143,18 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
             </thead>
             <tbody>
               {rows.map((x) => (
-                <tr key={x.r.key} onClick={() => onNavigate(x.r.nav)} className="border-b border-border cursor-pointer hover:bg-muted/40">
-                  <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                <tr key={x.r.key} className="border-b border-border hover:bg-muted/40">
+                  <td className="px-4 py-3 font-semibold whitespace-nowrap cursor-pointer hover:underline" onClick={() => onNavigate(x.r.nav)}>
                     <span className="inline-flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${SERVICE_META[x.r.key].dot}`} />{SERVICE_META[x.r.key].label}</span>
                   </td>
-                  <td className={cell}>{ready ? x.orders : "—"}</td>
-                  <td className={cell}>{ready ? x.cancelled : "—"}</td>
-                  <td className={cell}>{inr(x.gross)}</td>
-                  <td className={cell}>{inr(x.discount)}</td>
-                  <td className={cell}>{inr(x.refund)}</td>
-                  <td className={cell}>{inr(x.net)}</td>
-                  <td className={cell}>{inr(x.earning)}</td>
+                  {METRICS.map(([k, l]) => <NumCell key={k} v={x[k]} money={k !== "orders" && k !== "cancelled"} ready={ready}
+                    onOpen={(val) => setDrill({ service: x.r.key, metric: k, title: `${SERVICE_META[x.r.key].label} · ${l}`, value: val })} />)}
                 </tr>
               ))}
               <tr className="bg-muted/40 font-bold">
                 <td className="px-4 py-3">Total</td>
-                <td className={cell}>{ready ? tot.orders : "—"}</td>
-                <td className={cell}>{ready ? tot.cancelled : "—"}</td>
-                <td className={cell}>{inr(tot.gross)}</td>
-                <td className={cell}>{inr(tot.discount)}</td>
-                <td className={cell}>{inr(tot.refund)}</td>
-                <td className={cell}>{inr(tot.net)}</td>
-                <td className={cell}>{inr(tot.earning)}</td>
+                {METRICS.map(([k, l]) => <NumCell key={k} v={tot[k]} money={k !== "orders" && k !== "cancelled"} ready={ready}
+                  onOpen={(val) => setDrill({ service: "all", metric: k, title: `All services · ${l}`, value: val })} />)}
               </tr>
             </tbody>
           </table>
@@ -164,6 +170,37 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
           ))}
         </div>
       )}
+
+      <Sheet open={!!drill} onOpenChange={(o) => !o && setDrill(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{drill?.title} · {drill?.value}</SheetTitle>
+            <p className="text-[12px] text-muted-foreground">{from === to ? from : `${from} → ${to}`} · {drillQ.data?.length ?? 0} {drill?.metric === "refund" ? "refunds" : "orders"}</p>
+          </SheetHeader>
+          <div className="mt-4 divide-y divide-border">
+            {drillQ.isLoading && <p className="py-6 text-[13px] text-muted-foreground">Loading…</p>}
+            {drillQ.isError && <p className="py-6 text-[13px] text-destructive">{(drillQ.error as Error).message}</p>}
+            {drillQ.data?.length === 0 && <p className="py-6 text-[13px] text-muted-foreground">No orders.</p>}
+            {drillQ.data?.map((o) => (
+              <button key={o.kind + o.id + o.at} type="button" onClick={() => { setDrill(null); onNavigate(ROWS.find((r) => r.key === o.svc)?.nav ?? "maid-bookings"); }}
+                className="w-full py-3 flex items-start justify-between gap-3 text-left hover:bg-muted/40 px-1 rounded">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-[14px] font-semibold text-foreground truncate">
+                    <span className={`inline-block h-2 w-2 rounded-full mr-2 ${SERVICE_META[o.svc as BoardService]?.dot ?? ""}`} />{o.num}
+                    <span className="ml-2 text-[11px] font-medium uppercase text-muted-foreground">{o.status?.replace(/_/g, " ")}</span>
+                  </p>
+                  <p className="text-[12px] text-muted-foreground truncate">{[o.name, o.phone, o.label].filter(Boolean).join(" · ") || "—"}</p>
+                  <p className="text-[11px] text-muted-foreground">{o.at ? new Date(o.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : ""}</p>
+                </div>
+                <p className={`text-[14px] font-bold whitespace-nowrap ${drill?.metric === "refund" ? "text-destructive" : "text-foreground"}`}>{drill?.metric === "refund" ? "−" : ""}{inr(o.amount)}</p>
+              </button>
+            ))}
+          </div>
+          {drill && drill.metric !== "orders" && drill.metric !== "cancelled" && (
+            <p className="mt-4 text-[11px] text-muted-foreground">Amounts shown are what the customer paid / was refunded (with GST). The Summary figure is without GST.</p>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
