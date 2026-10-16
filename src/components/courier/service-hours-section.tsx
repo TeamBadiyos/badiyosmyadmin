@@ -121,13 +121,6 @@ export function ServiceHoursEditor({
     return true;
   }
 
-  function copyMonday() {
-    const mon = rows.find((r) => r.weekday === 1);
-    if (!mon) return;
-    setRows(rows.map((r) => ({ ...r, openTime: mon.openTime, closeTime: mon.closeTime, isClosed: mon.isClosed })));
-    toast.success("Monday's time copied to all days — remember to Save");
-  }
-
   async function onSaveHours() {
     if (!validate()) return;
     setBusy(true);
