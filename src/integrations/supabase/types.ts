@@ -11082,6 +11082,30 @@ export type Database = {
           },
         ]
       }
+      wallet_migration_log: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          kind: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          kind: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          kind?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       wallet_topups: {
         Row: {
           amount: number
@@ -11558,6 +11582,11 @@ export type Database = {
         Returns: Json
       }
       app_svc_key: { Args: { _k: string }; Returns: string }
+      app_wallet_history: {
+        Args: { _before?: string; _limit?: number }
+        Returns: Json
+      }
+      app_wallet_summary: { Args: never; Returns: Json }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       auto_cancel_minutes: {
         Args: { _city_id: string; _service_key: string }
@@ -15365,6 +15394,28 @@ export type Database = {
           _bucket: string
           _by: string
           _expires: string
+          _reason: string
+          _ref_id: string
+          _ref_type: string
+          _type: string
+          _uid: string
+        }
+        Returns: Json
+      }
+      wallet_return: {
+        Args: {
+          _reason: string
+          _ref_id: string
+          _ref_type: string
+          _uid: string
+        }
+        Returns: number
+      }
+      wallet_spend: {
+        Args: {
+          _amount: number
+          _bonus_first?: boolean
+          _partial?: boolean
           _reason: string
           _ref_id: string
           _ref_type: string
