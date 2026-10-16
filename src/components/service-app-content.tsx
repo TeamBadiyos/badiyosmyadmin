@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useCity } from "@/lib/city-scope";
 import { getServiceContent, resetServiceContent, saveServiceContent, uploadServiceContentImage } from "@/lib/homepage.functions";
-import { BANNER_STATES, NOTE_ICONS, PLACEHOLDERS, normalizeServiceContent, validateServiceContent, type Banner, type BannerState, type Card, type Line, type LiveOption, type OptionExtra, type ServiceContent, type ServiceKey } from "@/lib/service-content";
+import { BANNER_STATES, NOTE_ICONS, PLACEHOLDERS, normalizeServiceContent, slabAt, slabError, uncoveredRanges, validateServiceContent, type Banner, type BannerState, type BannerText, type Slab, type Card, type Line, type LiveOption, type OptionExtra, type ServiceContent, type ServiceKey } from "@/lib/service-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -79,6 +79,8 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
   const moveCard = (i: number, d: number) => { const j = i + d; if (j < 0 || j > 2) return; const c = [...m.cards]; [c[i], c[j]] = [c[j], c[i]]; setM({ ...m, cards: c }); };
   const setOpt = (id: string, p: Partial<OptionExtra>) => setM({ ...m, options: { ...m.options, [id]: { ...emptyExtra, ...m.options[id], ...p } } });
   const setDet = (p: Partial<ServiceContent["details"]>) => setM({ ...m, details: { ...m.details, ...p } });
+  const setSlab = (i: number, p: Partial<Slab>) => setM({ ...m, banner: { ...m.banner, slabs: m.banner.slabs.map((x, k) => (k === i ? { ...x, ...p } : x)) } });
+  const moveSlab = (i: number, d: number) => { const j = i + d; const c = [...m.banner.slabs]; if (j < 0 || j >= c.length) return; [c[i], c[j]] = [c[j], c[i]]; setM({ ...m, banner: { ...m.banner, slabs: c } }); };
   const setCamp = (p: Partial<ServiceContent["campaign"]>) => setM({ ...m, campaign: { ...m.campaign, ...p } });
 
   return (
@@ -181,18 +183,35 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
           </Box>
 
           <Box title="Top banner" hint="1080×600">
-            <label className="mb-2 flex items-center gap-2 text-xs">Morning switch time
-              <Input type="time" className="w-28" value={m.hero.morning_switch_time} onChange={(e) => setHero({ morning_switch_time: e.target.value })} />
-              <span className="text-muted-foreground">Night shows from closing until this time; Sunrise from this time until opening.</span>
-            </label>
+            <div className="mb-1 text-xs font-semibold">Banner images by time</div>
+            {m.banner.slabs.map((x, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2 border-b border-border py-2">
+                <div className="flex flex-col">
+                  <button className="text-[10px] disabled:opacity-30" disabled={i === 0} onClick={() => moveSlab(i, -1)} aria-label="Move up">▲</button>
+                  <button className="text-[10px] disabled:opacity-30" disabled={i === m.banner.slabs.length - 1} onClick={() => moveSlab(i, 1)} aria-label="Move down">▼</button>
+                </div>
+                <button disabled={busy} onClick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, banner: { ...cur.banner, slabs: cur.banner.slabs.map((y, k) => (k === i ? { ...y, image_url: url } : y)) } })))}><Photo url={x.image_url} w={90} h={50} /></button>
+                {x.image_url && <button className="text-xs text-muted-foreground underline" onClick={() => setSlab(i, { image_url: null })}>Remove</button>}
+                <Input className="w-28" value={x.label} maxLength={30} placeholder="Label" onChange={(e) => setSlab(i, { label: e.target.value })} />
+                <label className="text-xs">From <Input type="time" className="w-28" value={x.from} onChange={(e) => setSlab(i, { from: e.target.value })} /></label>
+                <label className="text-xs">To <Input type="time" className="w-28" value={x.to} onChange={(e) => setSlab(i, { to: e.target.value })} /></label>
+                <select className="h-9 rounded-md border border-border bg-background px-2 text-xs" value={x.text_color} onChange={(e) => setSlab(i, { text_color: e.target.value as Slab["text_color"] })}>
+                  <option value="light">Light text</option><option value="dark">Dark text</option>
+                </select>
+                <button className="px-1 text-xs text-muted-foreground" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: m.banner.slabs.filter((_, k) => k !== i) } })} aria-label="Delete slab">✕</button>
+              </div>
+            ))}
+            {m.banner.slabs.length < 12 && <button className="mt-1 text-xs text-primary underline" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: [...m.banner.slabs, { from: "00:00", to: "01:00", label: "", image_url: null, text_color: "light" }] } })}>+ Add slab</button>}
+            {slabError(m.banner.slabs) && <p className="mt-1 text-xs text-destructive">{slabError(m.banner.slabs)}</p>}
+            {!slabError(m.banner.slabs) && uncoveredRanges(m.banner.slabs).length > 0 && <p className="mt-1 rounded bg-muted px-2 py-1 text-xs">⚠ No image for: {uncoveredRanges(m.banner.slabs).join(", ")}</p>}
+            <div className="mb-1 mt-3 text-xs font-semibold">Banner text by state</div>
             <p className="mb-2 text-xs text-muted-foreground">Placeholders: {PLACEHOLDERS.map((p) => `{${p}}`).join(" ")}</p>
             {BANNER_STATES.map(({ key, label }) => (
-              <BannerFields key={key} label={label} b={m.banners[key]} busy={busy}
-                onChange={(p) => setM({ ...m, banners: { ...m.banners, [key]: { ...m.banners[key], ...p } } })}
-                onPick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, banners: { ...cur.banners, [key]: { ...cur.banners[key], image_url: url } } })))} />
+              <TextFields key={key} label={label} b={m.banner.texts[key]}
+                onChange={(p) => setM({ ...m, banner: { ...m.banner, texts: { ...m.banner.texts, [key]: { ...m.banner.texts[key], ...p } } } })} />
             ))}
             <div className="mt-2 rounded-md border border-dashed border-border p-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">Campaign banner <span className="text-xs font-normal text-muted-foreground">replaces the open-state banners while active</span>
+              <div className="flex items-center gap-2 text-sm font-semibold">Campaign banner <span className="text-xs font-normal text-muted-foreground">replaces the time image and state text while active</span>
                 <Switch className="ml-auto" checked={m.campaign.enabled} onCheckedChange={(v) => setCamp({ enabled: v })} />
               </div>
               <BannerFields label="" b={m.campaign} busy={busy} onChange={setCamp}
@@ -270,10 +289,28 @@ function BannerFields({ label, b, busy, onChange, onPick }: { label: string; b: 
   );
 }
 
+function TextFields({ label, b, onChange }: { label: string; b: BannerText; onChange: (p: Partial<BannerText>) => void }) {
+  return (
+    <div className="space-y-1 border-b border-border py-2 last:border-0">
+      <div className="text-xs font-semibold text-muted-foreground">{label}</div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={b.title} maxLength={80} placeholder="Title" onChange={(e) => onChange({ title: e.target.value })} />
+        <Input value={b.title_mr} maxLength={80} placeholder="शीर्षक (मराठी)" onChange={(e) => onChange({ title_mr: e.target.value })} />
+        <Input value={b.subline} maxLength={120} placeholder="Sub-line" onChange={(e) => onChange({ subline: e.target.value })} />
+        <Input value={b.subline_mr} maxLength={120} placeholder="उप-ओळ (मराठी)" onChange={(e) => onChange({ subline_mr: e.target.value })} />
+      </div>
+    </div>
+  );
+}
+
 function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live: LiveOption[]; lang: "en" | "mr"; setLang: (l: "en" | "mr") => void; service: ServiceKey }) {
   const t = (en: string, mr: string) => (lang === "en" ? en : mr || en);
-  const [st, setSt] = useState<BannerState | "campaign">("open_available");
-  const b: Banner = st === "campaign" ? m.campaign : m.banners[st];
+  const [st, setSt] = useState<BannerState>("open_free");
+  const [time, setTime] = useState("09:00");
+  const [camp, setCampOn] = useState(false);
+  const slab = slabAt(m.banner.slabs, time);
+  const b: Banner = camp ? m.campaign : { ...m.banner.texts[st], image_url: slab?.image_url ?? null };
+  const dark = !camp && slab?.text_color === "dark";
   const card = m.cards.find((c) => c.enabled);
   return (
     <div className="space-y-2">
@@ -283,16 +320,19 @@ function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live:
           {(["en", "mr"] as const).map((l) => <button key={l} onClick={() => setLang(l)} className={`px-2 py-0.5 ${lang === l ? "bg-primary text-primary-foreground" : ""}`}>{l === "en" ? "EN" : "मराठी"}</button>)}
         </div>
       </div>
-      <select className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs" value={st} onChange={(e) => setSt(e.target.value as BannerState | "campaign")}>
-        {BANNER_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-        <option value="campaign">Campaign</option>
-      </select>
+      <div className="flex items-center gap-2 text-xs">
+        <Input type="time" className="h-8 w-28" value={time} onChange={(e) => setTime(e.target.value || "00:00")} />
+        <select className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-xs" value={st} onChange={(e) => setSt(e.target.value as BannerState)}>
+          {BANNER_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+      </div>
+      <label className="flex items-center gap-2 text-xs"><Switch checked={camp} onCheckedChange={setCampOn} /> Campaign active {!camp && <span className="text-muted-foreground">· image: {slab ? slab.label || `${slab.from}–${slab.to}` : "none"}</span>}</label>
       <div className="mx-auto w-[280px] space-y-3 rounded-[28px] border-4 border-foreground/80 bg-background p-3">
         <div className="relative flex aspect-[1080/600] flex-col justify-end overflow-hidden rounded-xl bg-muted p-2">
           {b.image_url && <img src={b.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-          <div className="relative rounded bg-background/80 px-2 py-1">
-            <div className="text-[12px] font-bold text-foreground">{fill(t(b.title, b.title_mr))}</div>
-            <div className="text-[10px] text-muted-foreground">{fill(t(b.subline, b.subline_mr))}</div>
+          <div className={`relative px-1 py-1 ${dark ? "text-foreground" : "text-primary-foreground"}`}>
+            <div className="text-[12px] font-bold drop-shadow">{fill(t(b.title, b.title_mr))}</div>
+            <div className="text-[10px] opacity-90 drop-shadow">{fill(t(b.subline, b.subline_mr))}</div>
           </div>
         </div>
         <div className="inline-block rounded-lg border border-border px-2 py-1 text-[10px] font-semibold">{t(m.hero.card_title, m.hero.card_title_mr)}</div>
