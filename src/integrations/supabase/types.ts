@@ -671,6 +671,59 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_time_adjustments: {
+        Row: {
+          booking_id: string
+          created_at: string
+          created_by: string | null
+          customer_amount: number
+          delta_minutes: number
+          expert_pay_delta: number
+          extension_id: string | null
+          id: string
+          money_mode: string
+          note: string | null
+          reason: string
+          refund_status: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_amount?: number
+          delta_minutes: number
+          expert_pay_delta?: number
+          extension_id?: string | null
+          id?: string
+          money_mode: string
+          note?: string | null
+          reason: string
+          refund_status?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_amount?: number
+          delta_minutes?: number
+          expert_pay_delta?: number
+          extension_id?: string | null
+          id?: string
+          money_mode?: string
+          note?: string | null
+          reason?: string
+          refund_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_time_adjustments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_tips: {
         Row: {
           amount: number
@@ -12803,6 +12856,16 @@ export type Database = {
       staff_add_support_note: {
         Args: { _body: string; _ticket_id: string }
         Returns: string
+      }
+      staff_adjust_booking_time: {
+        Args: {
+          _booking_id: string
+          _delta_minutes: number
+          _money_mode: string
+          _note: string
+          _reason: string
+        }
+        Returns: Json
       }
       staff_allowed_city_ids: { Args: never; Returns: string[] }
       staff_approve_settlement: {
