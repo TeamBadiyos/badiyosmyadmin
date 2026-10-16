@@ -11116,6 +11116,10 @@ export type Database = {
         Args: { _lat: number; _lng: number; _segment_id?: string }
         Returns: Json
       }
+      city_accept_timeout: {
+        Args: { _city_id: string; _svc: string }
+        Returns: number
+      }
       city_id_by_name: { Args: { _name: string }; Returns: string }
       city_ops_keys: { Args: never; Returns: string[] }
       city_opt: {
