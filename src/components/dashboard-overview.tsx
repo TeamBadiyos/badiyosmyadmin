@@ -40,9 +40,10 @@ const ago = (iso: string | null) => {
 const TIPS: Record<string, string> = {
   Orders: "Completed orders in the selected dates.",
   Cancelled: "Cancelled + rejected orders.",
-  Gross: "Price before discount, without GST (items + delivery + platform fee).",
+  Gross: "Money received from customers on these dates (counted when paid), without GST.",
   Discount: "Coupons and offers given.",
-  "Net revenue": "Gross − Discount, without GST.",
+  Refunds: "Money returned to customers on these dates, without GST.",
+  "Net revenue": "Gross − Discount − Refunds, without GST.",
   "badiyos earning": "Commission + delivery share + platform fee, without GST.",
 };
 
@@ -86,10 +87,10 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
   const rows = ROWS.map((r) => {
     const v = d?.services?.[r.key] ?? {};
     const m = money?.[r.key];
-    return { r, orders: Number(v.completed ?? 0), cancelled: Number(v.cancelled ?? 0), gross: m?.gross ?? 0, discount: m?.discount ?? 0, net: m?.net ?? 0, earning: Number(v.earning ?? 0) };
+    return { r, orders: Number(v.completed ?? 0), cancelled: Number(v.cancelled ?? 0), gross: m?.gross ?? 0, discount: m?.discount ?? 0, refund: m?.refund ?? 0, net: m?.net ?? 0, earning: Number(v.earning ?? 0) };
   });
-  const tot = rows.reduce((t, x) => ({ orders: t.orders + x.orders, cancelled: t.cancelled + x.cancelled, gross: t.gross + x.gross, discount: t.discount + x.discount, net: t.net + x.net, earning: t.earning + x.earning }),
-    { orders: 0, cancelled: 0, gross: 0, discount: 0, net: 0, earning: 0 });
+  const tot = rows.reduce((t, x) => ({ orders: t.orders + x.orders, cancelled: t.cancelled + x.cancelled, gross: t.gross + x.gross, discount: t.discount + x.discount, refund: t.refund + x.refund, net: t.net + x.net, earning: t.earning + x.earning }),
+    { orders: 0, cancelled: 0, gross: 0, discount: 0, refund: 0, net: 0, earning: 0 });
   const ready = !!q.data && !!money;
   const cell = "px-4 py-3 text-right whitespace-nowrap";
 
@@ -121,7 +122,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                <Th label="Service" right={false} /><Th label="Orders" /><Th label="Cancelled" /><Th label="Gross" /><Th label="Discount" /><Th label="Net revenue" /><Th label="badiyos earning" />
+                <Th label="Service" right={false} /><Th label="Orders" /><Th label="Cancelled" /><Th label="Gross" /><Th label="Discount" /><Th label="Refunds" /><Th label="Net revenue" /><Th label="badiyos earning" />
               </tr>
             </thead>
             <tbody>
@@ -134,6 +135,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
                   <td className={cell}>{ready ? x.cancelled : "—"}</td>
                   <td className={cell}>{inr(x.gross)}</td>
                   <td className={cell}>{inr(x.discount)}</td>
+                  <td className={cell}>{inr(x.refund)}</td>
                   <td className={cell}>{inr(x.net)}</td>
                   <td className={cell}>{inr(x.earning)}</td>
                 </tr>
@@ -144,6 +146,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
                 <td className={cell}>{ready ? tot.cancelled : "—"}</td>
                 <td className={cell}>{inr(tot.gross)}</td>
                 <td className={cell}>{inr(tot.discount)}</td>
+                <td className={cell}>{inr(tot.refund)}</td>
                 <td className={cell}>{inr(tot.net)}</td>
                 <td className={cell}>{inr(tot.earning)}</td>
               </tr>
