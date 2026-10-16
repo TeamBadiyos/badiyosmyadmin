@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  financeAction, getCompanyProfile, getSettlementDetail, getSettlementInvoice, getTaxReport,
+  financeAction, getCompanyProfile, getSettlementDetail, getSettlementInvoice, getTaxReport, getDeliveryGstCheck,
   listMerchantSettlements, listRefunds, saveCompanyProfile,
 } from "@/lib/finance.functions";
 import { downloadCommissionInvoicePdf } from "@/lib/commission-invoice-pdf";
@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const inr = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const fix2 = (v: any) => Number(v || 0).toFixed(2);
 
 function csvDownload(name: string, rows: (string | number | null | undefined)[][]) {
   const esc = (v: any) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -323,6 +324,37 @@ export function TaxTab() {
             {!rl.length && <tr><td colSpan={8} className="p-3 text-muted-foreground">No refunds completed this month.</td></tr>}
             {rl.map((x) => (
               <tr key={x.order_number} className="border-b last:border-0"><td className="p-2">{x.order_number}</td><td className="p-2">{x.merchant}</td><td className="p-2 text-xs">{String(x.refunded_at ?? "").slice(0, 10)}</td><td className="p-2 text-right">{inr(x.refund_amount)}</td><td className="p-2 text-right">{inr(Number(x.gst_items || 0) + Number(x.gst_delivery || 0) + Number(x.gst_platform || 0))}</td><td className="p-2 text-right">{inr(x.tcs)}</td><td className="p-2 text-right">{inr(x.tds)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <DeliveryGstCheck month={month} />
+    </div>
+  );
+}
+
+function DeliveryGstCheck({ month }: { month: string }) {
+  const fetch = useServerFn(getDeliveryGstCheck);
+  const [y, mo] = month.split("-").map(Number);
+  const to = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
+  const q = useQuery({ queryKey: ["fin-del-gst", month], queryFn: () => fetch({ data: { from: `${month}-01`, to } }) });
+  const rows = (q.data ?? []) as any[];
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold">Delivery GST check</h2>
+          <p className="text-xs text-muted-foreground">Store, Food and Parcel orders whose delivery GST differs from the Tax Settings rate. Report only.</p>
+        </div>
+        <Button size="sm" variant="outline" disabled={!rows.length} onClick={() => csvDownload(`delivery-gst-check-${month}.csv`, [["Service", "Order", "Date", "Delivery fee", "Rate charged %", "GST charged", "GST at setting", "Difference"], ...rows.map((x) => [x.service, x.order_no, x.date, fix2(x.delivery_fee), x.rate_charged ?? "", fix2(x.gst_charged), fix2(x.gst_at_rate), fix2(x.difference)])])}>Export CSV</Button>
+      </div>
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Service</th><th className="p-2 text-left">Order</th><th className="p-2 text-left">Date</th><th className="p-2 text-right">Delivery fee</th><th className="p-2 text-right">GST charged</th><th className="p-2 text-right">GST at setting</th><th className="p-2 text-right">Difference</th></tr></thead>
+          <tbody>
+            {!rows.length && <tr><td colSpan={7} className="p-3 text-muted-foreground">{q.isLoading ? "Loading…" : q.isError ? errMsg(q.error) : "All orders this month match the Tax Settings rate."}</td></tr>}
+            {rows.map((x) => (
+              <tr key={x.service + x.order_no} className="border-b last:border-0"><td className="p-2">{x.service}</td><td className="p-2">{x.order_no}</td><td className="p-2 text-xs">{x.date}</td><td className="p-2 text-right">{inr(x.delivery_fee)}</td><td className="p-2 text-right">{inr(x.gst_charged)}</td><td className="p-2 text-right">{inr(x.gst_at_rate)}</td><td className="p-2 text-right">{inr(x.difference)}</td></tr>
             ))}
           </tbody>
         </table>
