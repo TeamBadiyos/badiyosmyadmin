@@ -17,7 +17,14 @@ import {
   MoreHorizontal,
   Phone,
   MessageCircle,
+  UserPlus,
+  Send,
+  ListChecks,
+  CalendarClock,
+  Repeat,
+  Timer,
 } from "lucide-react";
+import { CustomerBlock, MapActionBar, ActionBar, ActionBtn, HistorySection, TimerRow, PanelSection, fmtPhone } from "@/components/detail-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +46,8 @@ import {
   listServiceDurations,
   listBookingCustomerAddresses,
   rescheduleBooking,
+  adjustBookingTime,
+  ADJUST_REASONS,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
   type BookingStatus,
@@ -132,7 +141,7 @@ export function BookingDetailsModal({
   const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
   const [cancelRefund, setCancelRefund] = useState(true);
   const [refundConfirm, setRefundConfirm] = useState(false);
-  const [panel, setPanel] = useState<null | "status" | "reschedule">(null);
+  const [panel, setPanel] = useState<null | "status" | "reschedule" | "handover">(null);
   const [showIds, setShowIds] = useState(false);
 
   const isDeleted = !!data?.deletedAt;
@@ -369,7 +378,7 @@ export function BookingDetailsModal({
           ),
         ),
       ]),
-    enabled: showAssign || reassignOpen,
+    enabled: assignOpen || reassignOpen,
     retry: 1,
     retryDelay: 500,
   });
@@ -430,6 +439,15 @@ export function BookingDetailsModal({
     maximumFractionDigits: 0,
   });
 
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const isWash = /wash/i.test(data?.serviceLabel ?? "");
+  const canAdjust = canEdit && !!data && !isDeleted && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
+  const canHandover = canEdit && !!data && !!data.expert.id && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
+  const totalMinutes = (data?.serviceDurationMinutes ?? 0) + (data?.extensionMinutes ?? 0) + (data?.adjustMinutes ?? 0);
+  const openPanel = (p: typeof panel) => { setPanel((cur) => (cur === p ? null : p)); };
+  void isWash;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
@@ -439,7 +457,7 @@ export function BookingDetailsModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
+        className="bg-card w-full sm:max-w-[880px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[94dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
         <header className="px-4 sm:px-5 py-3 border-b border-border shrink-0">
           <div className="flex items-start justify-between gap-3">
@@ -452,13 +470,12 @@ export function BookingDetailsModal({
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[data.status]}`}>
                     {STATUS_LABEL[data.status]}
                   </span>
-                  {data.serviceLabel && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-foreground">
-                      {data.serviceLabel}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-foreground">
+                    {/wash|car|bike/i.test(data.serviceLabel ?? "") ? "Clean Auto" : "Clean Home"}
+                  </span>
+                  {data.serviceLabel && <span className="text-[13px] font-semibold text-foreground">{data.serviceLabel}</span>}
                   <span className="text-[13px] font-bold text-foreground">
-                    {data.price != null ? inr.format(data.price + data.extensionAmount) : "—"}
+                    {inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)}
                   </span>
                   {data.paymentStatus === "paid" && (
                     <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">Paid</span>
@@ -466,219 +483,215 @@ export function BookingDetailsModal({
                 </>
               )}
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {data && showAssign && (
-                <button type="button" onClick={() => document.getElementById("bdm-expert")?.scrollIntoView({ behavior: "smooth" })}
-                  className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[12px] font-bold">
-                  Assign
-                </button>
-              )}
-              {data && !showAssign && canEdit && nextOptions.length > 0 && (
-                <button type="button" disabled={mutation.isPending}
-                  onClick={() => mutation.mutate({ newStatus: nextOptions[0] })}
-                  className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[12px] font-bold disabled:opacity-50">
-                  {mutation.isPending ? "Saving…" : `Mark ${STATUS_LABEL[nextOptions[0]]}`}
-                </button>
-              )}
-              {data && canEdit && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button aria-label="More actions" className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
-                      <MoreHorizontal size={16} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {nextOptions.length > 0 && <DropdownMenuItem onSelect={() => setPanel("status")}>Change status</DropdownMenuItem>}
-                    {canReschedule && <DropdownMenuItem onSelect={() => setPanel("reschedule")}>Reschedule</DropdownMenuItem>}
-                    {canEditFields && <DropdownMenuItem onSelect={() => { setPanel(null); setEditOpen(true); }}>Edit booking</DropdownMenuItem>}
-                    {canEdit && data.status === "confirmed" && !data.expert.id && (
-                      <DropdownMenuItem onSelect={() => { if (confirm("Is order ko abhi experts ko bhej dein (Needs Expert)?")) shootMutation.mutate(); }}>Shoot now</DropdownMenuItem>
-                    )}
-                    {canEdit && isTerminal && canRefund && <DropdownMenuItem onSelect={() => setRefundConfirm(true)}>Issue refund</DropdownMenuItem>}
-                    {(canCancel || canDelete) && <DropdownMenuSeparator />}
-                    {canCancel && <DropdownMenuItem className="text-destructive" onSelect={() => setCancelOpen(true)}>Cancel booking…</DropdownMenuItem>}
-                    {canDelete && <DropdownMenuItem className="text-destructive" onSelect={() => setDeleteOpen(true)}>Delete booking…</DropdownMenuItem>}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
-                <X size={18} />
-              </button>
-            </div>
+            <button onClick={onClose} aria-label="Close" className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
+              <X size={18} />
+            </button>
           </div>
           {data && (
-            <p className="mt-1 text-[12px] text-muted-foreground truncate">
-              {[
-                `Placed ${fmtDateTime(data.createdAt)}`,
-                (data.slotType ?? "").toLowerCase() === "now" && !data.scheduledDate
-                  ? "Now"
-                  : [data.scheduledDate, data.scheduledTimeSlot].filter(Boolean).join(" "),
-                [data.serviceLabel, data.serviceDurationMinutes ? `${data.serviceDurationMinutes} min` : null].filter(Boolean).join(" · "),
-                data.zone.name,
-              ].filter(Boolean).join(" · ")}
-            </p>
+            <>
+              <p className="mt-1 text-[12px] text-muted-foreground truncate">
+                {[
+                  `Placed ${fmtDateTime(data.createdAt)}`,
+                  (data.slotType ?? "").toLowerCase() === "now" && !data.scheduledDate
+                    ? "Book Now"
+                    : [data.scheduledDate, data.scheduledTimeSlot].filter(Boolean).join(" "),
+                  totalMinutes ? `${totalMinutes} min` : null,
+                  data.zone.name,
+                ].filter(Boolean).join(" · ")}
+              </p>
+              <Timeline current={data.status} />
+              {data.status === "in_progress" && data.startedAt && totalMinutes > 0 && (
+                <TimerRow startedAt={data.startedAt} totalMinutes={totalMinutes} />
+              )}
+            </>
           )}
         </header>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 pt-3 pb-16 sm:pb-4 space-y-3">
-          {isLoading && (
-            <p className="text-[14px] text-muted-foreground">Loading…</p>
-          )}
+          {isLoading && <p className="text-[14px] text-muted-foreground">Loading…</p>}
           {isError && (
-            <p className="text-[14px] text-destructive">
-              {(error as Error)?.message ?? "Failed to load booking."}
-            </p>
+            <p className="text-[14px] text-destructive">{(error as Error)?.message ?? "Failed to load booking."}</p>
           )}
           {data && (
             <>
-              <Timeline current={data.status} />
-
-              <ServiceTimerCard
-                booking={{
-                  status: data.status,
-                  startedAt: data.startedAt,
-                  serviceEndAt: data.serviceEndAt,
-                  serviceDurationMinutes: data.serviceDurationMinutes,
-                }}
-                extensionMinutes={data.extensionMinutes}
+              <CustomerBlock
+                name={data.customer.name}
+                phone={data.customer.phone}
+                bookingCount={data.customerStats.bookingCount}
+                avgRatingGiven={data.customerStats.avgRatingGiven}
+                address={data.address}
+                contact={data.customer.phone ? <ContactButtons phone={data.customer.phone} /> : null}
               />
 
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-3 min-w-0">
-                  <Card title="Customer">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-semibold text-foreground truncate">{data.customer.name ?? "—"}</p>
-                        <p className="text-[12px] font-mono text-muted-foreground">{data.customer.phone ?? "—"}</p>
-                      </div>
-                      {data.customer.phone && <ContactButtons phone={data.customer.phone} />}
-                    </div>
-                  </Card>
-                  <Card title="Address">
-                    {data.address ? (
-                      <div className="space-y-0.5">
-                        <p className="text-[13px] font-semibold text-foreground">
-                          {[data.address.label, [data.address.area, data.address.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground">{data.address.fullAddress ?? "—"}</p>
-                      </div>
-                    ) : (
-                      <p className="text-[13px] text-muted-foreground">No address on booking.</p>
-                    )}
-                    {canEditFields && (
-                      <button type="button" onClick={() => setLocOpen(true)}
-                        className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline">
-                        <Pencil size={12} /> Change location
-                      </button>
-                    )}
-                    {locOpen && (
-                      <JobLocationDialog bookingId={bookingId} initial={data.address} onClose={() => setLocOpen(false)} />
-                    )}
-                  </Card>
-                </div>
-                <div className="min-w-0">
-                  <LiveTrackingMap kind="booking" id={bookingId} compact />
-                  <ShareLocationIcons kind="booking" id={bookingId} />
-                </div>
-              </section>
-
-              <div id="bdm-expert">
-                <Card title="Expert">
-                  {data.expert.id ? (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-semibold text-foreground truncate">{data.expert.name ?? "—"}</p>
-                        <p className="text-[12px] font-mono text-muted-foreground">{data.expert.phone ?? "—"}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {data.expert.phone && <ContactButtons phone={data.expert.phone} whatsapp={false} />}
-                        {canReassign && !reassignOpen && (
-                          <button onClick={() => setReassignOpen(true)}
-                            className="h-8 px-3 rounded-full border border-border text-[12px] font-bold text-primary inline-flex items-center gap-1">
-                            <RefreshCw size={12} /> Reassign
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ) : !showAssign ? (
-                    <p className="text-[13px] text-muted-foreground italic">No expert assigned.</p>
-                  ) : null}
-                  {(showAssign || (canReassign && reassignOpen)) && (
-                    <NearestList
-                      experts={filteredExperts}
-                      loading={expertsQuery.isLoading}
-                      error={expertsQuery.isError ? (expertsQuery.error instanceof Error ? expertsQuery.error.message : "Couldn't load experts") : null}
-                      onRetry={() => expertsQuery.refetch()}
-                      search={expertSearch}
-                      onSearch={setExpertSearch}
-                      pending={showAssign ? assignMutation.isPending : reassignMutation.isPending}
-                      onPick={(id) => (showAssign ? assignMutation.mutate(id) : reassignMutation.mutate(id))}
-                      onCancel={showAssign ? undefined : () => { setReassignOpen(false); setExpertSearch(""); }}
-                    />
-                  )}
-                </Card>
-              </div>
-
-              <div className="rounded-[14px] border border-border px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Payment</span>
-                  <span className="font-semibold text-foreground">
-                    {data.price != null ? inr.format(data.price) : "—"}
-                    {data.extensionMinutes > 0 ? ` + ext ${inr.format(data.extensionAmount)} = ${inr.format((data.price ?? 0) + data.extensionAmount)}` : ""}
-                  </span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                    data.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700"
-                    : data.paymentStatus === "refunded" ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground"}`}>
-                    {data.paymentStatus}
-                  </span>
-                  <span className="text-muted-foreground">· {data.razorpayPaymentId ? "Online (Razorpay)" : "—"}</span>
-                  {data.extensions.some((e) => e.approvalStatus === "pending") && (
-                    <span className="text-[11px] font-bold text-amber-700">· Extension awaiting expert</span>
-                  )}
-                  {(data.razorpayPaymentId || data.razorpayOrderId) && (
-                    <button type="button" onClick={() => setShowIds((v) => !v)} className="ml-auto text-[11px] font-semibold text-muted-foreground hover:text-foreground">
-                      IDs {showIds ? "▾" : "▸"}
-                    </button>
-                  )}
-                </div>
-                {showIds && (
-                  <p className="mt-1 text-[11px] font-mono text-muted-foreground break-all">
-                    Payment {data.razorpayPaymentId ?? "—"} · Order {data.razorpayOrderId ?? "—"}
-                  </p>
+              <div>
+                <LiveTrackingMap kind="booking" id={bookingId} panel />
+                <MapActionBar
+                  kind="booking"
+                  id={bookingId}
+                  onUpdatePin={canEditFields ? () => setLocOpen(true) : undefined}
+                  onEditAddress={canEditFields ? () => { setPanel(null); setEditOpen(true); } : undefined}
+                />
+                {locOpen && (
+                  <JobLocationDialog bookingId={bookingId} initial={data.address} onClose={() => setLocOpen(false)} />
                 )}
               </div>
 
-              <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3 min-w-0">
+                  <div id="bdm-expert">
+                    <PanelSection title="Assigned expert">
+                      {data.expert.id ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-semibold text-foreground truncate">{data.expert.name ?? "—"}</p>
+                            <p className="text-[12px] text-muted-foreground">{fmtPhone(data.expert.phone)}</p>
+                          </div>
+                          {data.expert.phone && <ContactButtons phone={data.expert.phone} whatsapp={false} />}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[13px] text-muted-foreground italic">Not assigned</p>
+                          {showAssign && !assignOpen && (
+                            <ActionBtn variant="normal" icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>Assign</ActionBtn>
+                          )}
+                        </div>
+                      )}
+                      {((showAssign && assignOpen) || (canReassign && reassignOpen)) && (
+                        <NearestList
+                          experts={filteredExperts}
+                          loading={expertsQuery.isLoading}
+                          error={expertsQuery.isError ? (expertsQuery.error instanceof Error ? expertsQuery.error.message : "Couldn't load experts") : null}
+                          onRetry={() => expertsQuery.refetch()}
+                          search={expertSearch}
+                          onSearch={setExpertSearch}
+                          pending={showAssign ? assignMutation.isPending : reassignMutation.isPending}
+                          onPick={(id) => (showAssign ? assignMutation.mutate(id) : reassignMutation.mutate(id))}
+                          onCancel={() => { setAssignOpen(false); setReassignOpen(false); setExpertSearch(""); }}
+                        />
+                      )}
+                    </PanelSection>
+                  </div>
 
-              {data.rating != null && (
-                <Card title="Customer rating">
-                  <p className="text-[15px] font-bold text-foreground">
-                    <span className="text-warning">{"★".repeat(Math.round(data.rating))}</span>
-                    <span className="text-muted-foreground">{"★".repeat(Math.max(0, 5 - Math.round(data.rating)))}</span>
-                    <span className="ml-2 text-[13px]">{data.rating}/5</span>
-                  </p>
-                  {data.reviewText && <p className="text-[12px] text-muted-foreground">“{data.reviewText}”</p>}
-                </Card>
+                  <PanelSection
+                    title="Payment"
+                    right={(data.razorpayPaymentId || data.razorpayOrderId) ? (
+                      <button type="button" onClick={() => setShowIds((v) => !v)} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground">
+                        IDs {showIds ? "▾" : "▸"}
+                      </button>
+                    ) : null}
+                  >
+                    <PayRow label="Price" value={data.price != null ? inr.format(data.price) : "—"} />
+                    {data.gstAmount > 0 && <PayRow label={`GST${data.gstPercent ? ` (${data.gstPercent}%)` : ""}`} value={inr.format(data.gstAmount)} />}
+                    {data.discountAmount > 0 && <PayRow label={`Coupon${data.couponCode ? ` ${data.couponCode}` : ""}`} value={`− ${inr.format(data.discountAmount)}`} />}
+                    {data.extensionAmount > 0 && <PayRow label={`Extra time (${data.extensionMinutes} min)`} value={inr.format(data.extensionAmount)} />}
+                    <PayRow bold label="Total" value={inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)} />
+                    <p className="pt-1 text-[12px] text-muted-foreground">
+                      <span className={`mr-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                        data.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700"
+                        : data.paymentStatus === "refunded" ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground"}`}>
+                        {data.paymentStatus}
+                      </span>
+                      {data.razorpayPaymentId ? "Online (Razorpay)" : "—"}
+                      {data.extensions.some((e) => e.approvalStatus === "pending") && <span className="ml-1 font-bold text-amber-700">· Extra time awaiting payment</span>}
+                    </p>
+                    {data.adjustments.some((a) => a.refundStatus === "due") && (
+                      <p className="text-[12px] font-semibold text-amber-700">
+                        Refund due for shorter job: {inr.format(data.adjustments.filter((a) => a.refundStatus === "due").reduce((x, a) => x + a.customerAmount, 0))}
+                      </p>
+                    )}
+                    {showIds && (
+                      <p className="text-[11px] font-mono text-muted-foreground break-all">
+                        Payment {data.razorpayPaymentId ?? "—"} · Order {data.razorpayOrderId ?? "—"}
+                      </p>
+                    )}
+                  </PanelSection>
+
+                  {data.rating != null && (
+                    <PanelSection title="Customer rating">
+                      <p className="text-[14px] font-bold text-foreground">
+                        <span className="text-warning">{"★".repeat(Math.round(data.rating))}</span>
+                        <span className="text-muted-foreground">{"★".repeat(Math.max(0, 5 - Math.round(data.rating)))}</span>
+                        <span className="ml-2 text-[13px]">{data.rating}/5</span>
+                      </p>
+                      {data.reviewText && <p className="text-[12px] text-muted-foreground">“{data.reviewText}”</p>}
+                    </PanelSection>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
+                </div>
+              </section>
+
+              {canEdit && !isDeleted && (
+                <ActionBar
+                  primary={
+                    data.status === "confirmed" && !data.expert.id ? (
+                      <ActionBtn variant="primary" icon={<Send size={14} />} disabled={shootMutation.isPending}
+                        onClick={() => { if (confirm("Send this booking to experts now (Needs Expert)?")) shootMutation.mutate(); }}>
+                        Send to experts now
+                      </ActionBtn>
+                    ) : !showAssign && nextOptions.length > 0 && nextOptions[0] !== "cancelled" ? (
+                      <ActionBtn variant="primary" icon={<Check size={14} />} disabled={mutation.isPending}
+                        onClick={() => { if (confirm(`Mark ${STATUS_LABEL[nextOptions[0]]}?`)) mutation.mutate({ newStatus: nextOptions[0] }); }}>
+                        {mutation.isPending ? "Saving…" : `Mark ${STATUS_LABEL[nextOptions[0]].toLowerCase()}`}
+                      </ActionBtn>
+                    ) : undefined
+                  }
+                  normal={
+                    <>
+                      {nextOptions.length > 0 && <ActionBtn icon={<ListChecks size={13} />} onClick={() => openPanel("status")}>Change status</ActionBtn>}
+                      {showAssign && <ActionBtn icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>Assign</ActionBtn>}
+                      {canReassign && <ActionBtn icon={<RefreshCw size={13} />} onClick={() => setReassignOpen(true)}>Reassign</ActionBtn>}
+                      {canReschedule && <ActionBtn icon={<CalendarClock size={13} />} onClick={() => openPanel("reschedule")}>Reschedule</ActionBtn>}
+                      {canHandover && <ActionBtn icon={<Repeat size={13} />} onClick={() => openPanel("handover")}>Handover</ActionBtn>}
+                      {canAdjust && <ActionBtn icon={<Timer size={13} />} onClick={() => setAdjustOpen(true)}>Adjust time</ActionBtn>}
+                      {canEditFields && <ActionBtn icon={<Pencil size={13} />} onClick={() => { setPanel(null); setEditOpen((v) => !v); }}>Edit booking</ActionBtn>}
+                    </>
+                  }
+                  danger={
+                    (canRefund && (isTerminal || data.status === "cancelled")) || canCancel || canDelete ? (
+                      <>
+                        {canRefund && isTerminal && <ActionBtn variant="danger" icon={<IndianRupee size={13} />} onClick={() => setRefundConfirm(true)}>Refund</ActionBtn>}
+                        {canCancel && <ActionBtn variant="danger" icon={<Ban size={13} />} onClick={() => setCancelOpen(true)}>Cancel</ActionBtn>}
+                        {canDelete && <ActionBtn variant="danger" icon={<Trash2 size={13} />} onClick={() => setDeleteOpen(true)}>Delete</ActionBtn>}
+                      </>
+                    ) : undefined
+                  }
+                />
+              )}
+              {!canEdit && <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this booking.</p>}
+
+              {adjustOpen && (
+                <AdjustTimeDialog
+                  bookingId={bookingId}
+                  price={data.price ?? 0}
+                  baseMinutes={data.serviceDurationMinutes ?? 60}
+                  currentMinutes={totalMinutes}
+                  paidOnline={!!data.razorpayPaymentId}
+                  onClose={() => setAdjustOpen(false)}
+                  onDone={() => { setAdjustOpen(false); invalidateBooking(); queryClient.invalidateQueries({ queryKey: ["pipeline"] }); }}
+                />
               )}
 
-              <ExpertHandoverPanel
-                bookingId={bookingId}
-                status={data.status}
-                startedAt={data.startedAt ?? null}
-                durationMinutes={data.serviceDurationMinutes ?? null}
-                currentExpertName={data.expert.name ?? null}
-                canEdit={canEdit}
-              />
-
-              <TransferWorkPanel
-                bookingId={bookingId}
-                status={data.status}
-                currentExpertId={data.expert.id ?? null}
-                currentExpertName={data.expert.name ?? null}
-                canEdit={canEdit}
-              />
-
+              {canHandover && panel === "handover" && (
+                <>
+                  <ExpertHandoverPanel
+                    bookingId={bookingId}
+                    status={data.status}
+                    startedAt={data.startedAt ?? null}
+                    durationMinutes={data.serviceDurationMinutes ?? null}
+                    currentExpertName={data.expert.name ?? null}
+                    canEdit={canEdit}
+                  />
+                  <TransferWorkPanel
+                    bookingId={bookingId}
+                    status={data.status}
+                    currentExpertId={data.expert.id ?? null}
+                    currentExpertName={data.expert.name ?? null}
+                    canEdit={canEdit}
+                  />
+                </>
+              )}
 
               {canReschedule && panel === "reschedule" && (
                 <RescheduleSection
@@ -1134,11 +1147,106 @@ export function BookingDetailsModal({
                 </section>
               )}
 
+
+              <HistorySection items={data.history} />
             </>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function PayRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-2 text-[13px] ${bold ? "font-bold text-foreground border-t border-border pt-1" : "text-foreground"}`}>
+      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function AdjustTimeDialog({
+  bookingId, price, baseMinutes, currentMinutes, paidOnline, onClose, onDone,
+}: {
+  bookingId: string; price: number; baseMinutes: number; currentMinutes: number; paidOnline: boolean;
+  onClose: () => void; onDone: () => void;
+}) {
+  const adjust = useServerFn(adjustBookingTime);
+  const [dir, setDir] = useState<"increase" | "decrease">("increase");
+  const [mins, setMins] = useState("30");
+  const [reason, setReason] = useState<string>("");
+  const [note, setNote] = useState("");
+  const [money, setMoney] = useState<"charge" | "no_charge" | "refund" | "no_refund">("charge");
+  useEffect(() => { setMoney(dir === "increase" ? "charge" : paidOnline ? "refund" : "no_refund"); }, [dir, paidOnline]);
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  const amount = Math.round((price / Math.max(baseMinutes, 1)) * m);
+  const after = currentMinutes + (dir === "increase" ? m : -m);
+  const mutation = useMutation({
+    mutationFn: () => adjust({ data: { bookingId, deltaMinutes: dir === "increase" ? m : -m, reason, note: note.trim() || null, moneyMode: money } }),
+    onSuccess: (r) => {
+      toast.success(
+        money === "charge" ? `Extra time of ₹${r.customer_amount} sent to the customer to pay`
+        : money === "refund" ? `Time reduced · refund of ₹${r.customer_amount} marked due`
+        : "Job time updated",
+      );
+      onDone();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not adjust time"),
+  });
+  const radio = (v: typeof money, label: string, hint: string) => (
+    <label className="flex items-start gap-2 text-[13px] text-foreground">
+      <input type="radio" className="mt-1" checked={money === v} onChange={() => setMoney(v)} />
+      <span>{label}<span className="block text-[11px] text-muted-foreground">{hint}</span></span>
+    </label>
+  );
+  return (
+    <section className="rounded-[14px] border border-border bg-background p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[13px] font-bold text-foreground">Adjust time</h3>
+        <button onClick={onClose} className="text-[12px] font-semibold text-muted-foreground">Close</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {(["increase", "decrease"] as const).map((d) => (
+          <button key={d} type="button" onClick={() => setDir(d)}
+            className={`h-8 px-3 rounded-full border text-[12px] font-bold ${dir === d ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
+            {d === "increase" ? "+ Increase" : "− Decrease"}
+          </button>
+        ))}
+        <input type="number" min={5} step={5} value={mins} onChange={(e) => setMins(e.target.value)}
+          className="h-8 w-24 rounded-full border border-border bg-card px-3 text-[13px]" />
+        <span className="text-[12px] text-muted-foreground">minutes · job becomes {after} min</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 rounded-[10px] border border-border bg-card px-2 text-[13px]">
+          <option value="">Reason (required)…</option>
+          {ADJUST_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={reason === "Other" ? "Note (required)" : "Note (optional)"}
+          className="h-9 rounded-[10px] border border-border bg-card px-3 text-[13px]" />
+      </div>
+      <div className="space-y-1.5">
+        {dir === "increase" ? (
+          <>
+            {radio("charge", `Charge customer ₹${amount}`, "Sent to the customer to pay in the app; time and expert pay apply once paid.")}
+            {radio("no_charge", "No charge", "Expert's pay increases for the extra time.")}
+          </>
+        ) : (
+          <>
+            {paidOnline && radio("refund", `Refund the difference ₹${amount}`, "Marked as refund due; expert's pay reduces.")}
+            {radio("no_refund", "No refund", "Expert's pay reduces for the shorter job.")}
+          </>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button type="button" disabled={!m || !reason || (reason === "Other" && !note.trim()) || after < 15 || mutation.isPending}
+          onClick={() => mutation.mutate()}
+          className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
+          {mutation.isPending ? "Saving…" : "Save time change"}
+        </button>
+        <button type="button" onClick={onClose} className="h-9 px-4 rounded-full border border-border text-[13px] font-semibold">Back</button>
+      </div>
+    </section>
   );
 }
 
@@ -1527,7 +1635,7 @@ function NearestList({
         <div className="max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
           {experts.map((e) => (
             <button key={e.id} type="button" disabled={pending}
-              onClick={() => { if (confirm(`Assign ${e.name}?`)) onPick(e.id); }}
+              onClick={() => { if (confirm(e.busy ? "Expert is on another job — assign anyway?" : `Assign ${e.name}?`)) onPick(e.id); }}
               className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
               <span className="text-[13px] font-semibold text-foreground truncate">{e.name}</span>
               <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
