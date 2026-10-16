@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { PipelineKanban } from "@/components/pipeline-kanban";
 import { ServiceCommerceModule } from "@/components/service-commerce-module";
 
-import { ZonesPage } from "@/components/zones-page";
+import { ZonesV2Page } from "@/components/zones-v2-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
 import { usePageTabLabel } from "@/lib/page-tab";
@@ -682,7 +682,7 @@ function Shell() {
             )}
           </div>
         ) : active === "zones" ? (
-          <RequireCity><ZonesPage role={role} /></RequireCity>
+          <RequireCity><ZonesV2Page role={role} /></RequireCity>
         ) : active === "bookings" ? (
           <BookingsPage
             key={`bookings-${navNonce}`}
