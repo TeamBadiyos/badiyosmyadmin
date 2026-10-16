@@ -9,6 +9,7 @@ import {
   type BookingTimingKey,
 } from "@/lib/booking-settings.functions";
 import { NowAndAutoCancelRows } from "@/components/slot-availability-tab";
+import { CancelFeeRows } from "@/components/cancel-rules";
 import type { CapGroup } from "@/lib/booking-settings.functions";
 
 type NumField = { key: BookingTimingKey; label: string; help: string; unit: string; min: number; max: number };
@@ -109,7 +110,7 @@ function RulesPanel({ nums, switches, extraTop }: { nums: NumField[]; switches: 
 }
 
 export function BookingRulesPanel({ group }: { group: CapGroup }) {
-  return <RulesPanel nums={BOOKING_NUM} switches={BOOKING_SW} extraTop={<NowAndAutoCancelRows group={group} />} />;
+  return <RulesPanel nums={BOOKING_NUM} switches={BOOKING_SW} extraTop={<><NowAndAutoCancelRows group={group} /><CancelFeeRows group={group} /></>} />;
 }
 
 export function ExpertRulesPanel() {
