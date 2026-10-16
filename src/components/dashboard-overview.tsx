@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { PipelineKanban, SERVICE_META, type BoardService } from "@/components/pipeline-kanban";
 import type { StaffRole } from "@/lib/staff.functions";
 import { listExpertsWithoutDevice } from "@/lib/booking-settings.functions";
+import { getFssaiAlerts } from "@/lib/dashboard.functions";
 
 type Range = "today" | "yesterday" | "7d" | "30d";
 const ist = (d: Date) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
