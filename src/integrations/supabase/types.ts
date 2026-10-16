@@ -8143,8 +8143,11 @@ export type Database = {
       product_addons: {
         Row: {
           created_at: string
+          group_name: string | null
           id: string
           is_active: boolean
+          max_select: number
+          min_select: number
           name: string
           price: number
           product_id: string
@@ -8152,8 +8155,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          group_name?: string | null
           id?: string
           is_active?: boolean
+          max_select?: number
+          min_select?: number
           name: string
           price?: number
           product_id: string
@@ -8161,8 +8167,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          group_name?: string | null
           id?: string
           is_active?: boolean
+          max_select?: number
+          min_select?: number
           name?: string
           price?: number
           product_id?: string
@@ -12458,6 +12467,10 @@ export type Database = {
         Returns: Json
       }
       merchant_my_context: { Args: never; Returns: Json }
+      merchant_order_accept_deadlines: {
+        Args: { _order_ids: string[] }
+        Returns: Json
+      }
       merchant_require: {
         Args: { _allow: string[]; _store_id: string }
         Returns: string
