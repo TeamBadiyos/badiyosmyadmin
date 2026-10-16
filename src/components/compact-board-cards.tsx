@@ -244,12 +244,27 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
     : `Rider: ${o.riderName ? first(o.riderName) : "—"}`;
   const flag = o.alerts.length ? o.alerts.map((a) => ALERT_LABEL[a] ?? a).join(" · ") : null;
+  const fetchRiders = useServerFn(listCourierRiders);
+  const assignFn = useServerFn(reassignRider);
+  const canAssign = !!o.courierOrderId && (o.riderState === "searching" || o.riderState === "assigned") && col !== "completed";
+  const cid = o.courierOrderId as string;
   return (
     <Shell onOpen={onOpen} late={late}>
       <Top name={o.customerName} flag={flag} onOpen={onOpen} />
       <p className={line}>{o.merchantName}</p>
       <p className={line}>{third}</p>
-      <Bottom left={isNew || col === "completed" ? inr(o.paidAmount || o.totalAmount) : COMMERCE_STATUS[o.status] ?? o.status} />
+      <Bottom
+        left={isNew || col === "completed" ? inr(o.paidAmount || o.totalAmount) : COMMERCE_STATUS[o.status] ?? o.status}
+        action={canAssign && o.riderState === "searching" ? (
+          <AssignPopover
+            queryKey={["courier", "riders", cid]}
+            load={async () => (await fetchRiders({ data: { orderId: cid } })).map(riderOpt)}
+            assign={(id) => assignFn({ data: { orderId: cid, expertId: id } })}
+            onSeeAll={onOpen}
+            invalidate={[["pipeline"], ["commerce"], ["courier"]]}
+          />
+        ) : undefined}
+      />
     </Shell>
   );
 }
@@ -257,6 +272,11 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
 const COURIER_STATUS: Record<string, string> = {
   DRIVER_ASSIGNED: "Rider assigned", ARRIVED_PICKUP: "At pickup", PICKED_UP: "Picked up", IN_TRANSIT: "On the way",
 };
+
+export const riderOpt = (r: { id: string; name: string; distance_km: number | null; status: "free" | "busy" | "offline" }) => ({
+  id: r.id, name: r.name, distanceKm: r.distance_km,
+  tag: r.status === "busy" ? "Busy" : r.status === "free" ? "Free" : "Offline", good: r.status === "free",
+});
 
 export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(o.created_at, now);
@@ -280,8 +300,7 @@ export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow
           <AssignPopover
             queryKey={["courier", "riders", o.id]}
             load={async () => (await fetchRiders({ data: { orderId: o.id } }))
-              .map((r) => ({ id: r.id, name: r.name, distanceKm: r.distance_km, tag: r.is_online ? "Free" : "Offline", good: r.is_online }))
-              .sort((a, b) => Number(b.good) - Number(a.good) || (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9))}
+              .map(riderOpt)}
             assign={(id) => assignFn({ data: { orderId: o.id, expertId: id } })}
             onSeeAll={onOpen}
             invalidate={[["pipeline"], ["courier"]]}

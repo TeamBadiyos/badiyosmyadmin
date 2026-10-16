@@ -771,6 +771,7 @@ export type AssignableRider = {
   phone: string;
   is_online: boolean;
   distance_km: number | null;
+  status: "free" | "busy" | "offline";
 };
 
 export const listCourierRiders = createServerFn({ method: "POST" })
@@ -795,6 +796,7 @@ export const listCourierRiders = createServerFn({ method: "POST" })
       phone: (r["phone"] as string) ?? "",
       is_online: Boolean(r["is_online"]),
       distance_km: r["distance_km"] == null ? null : Number(r["distance_km"]),
+      status: ((r["rider_status"] as string) ?? (r["is_online"] ? "free" : "offline")) as AssignableRider["status"],
     }));
   });
 
