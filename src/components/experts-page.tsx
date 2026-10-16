@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { useUrlState } from "@/components/ui/data-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -460,6 +461,7 @@ function Filter({
 }
 
 function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => void }) {
+  const showCity = useShowCity();
   return (
     <button
       onClick={onOpen}

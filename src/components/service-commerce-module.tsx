@@ -1,4 +1,4 @@
-import { useCity } from "@/lib/city-scope";
+import { useCity, CityName, useShowCity } from "@/lib/city-scope";
 import { PartyAgreementCard } from "@/components/agreements";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
@@ -106,6 +106,7 @@ const ORDER_STATUS: { v: string; l: string }[] = [
 type OSort = "customer" | "store" | "items" | "amount" | "status" | "rider" | "placed";
 
 function OrdersTab({ service }: { service: Svc }) {
+  const showCity = useShowCity();
   const fn = useServerFn(listServiceOrders);
   const storesFn = useServerFn(listServiceStores);
   const [status, setStatus] = useState("");

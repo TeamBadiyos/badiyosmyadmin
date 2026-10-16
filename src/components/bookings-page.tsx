@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { DateInput } from "@/components/date-input";
 import { ExpertRatingPill } from "@/components/expert-rating";
 import { useEffect, useMemo, useState } from "react";
@@ -543,6 +544,7 @@ function BookingRowItem({
   row: BookingRow;
   onSelect?: (bookingId: string) => void;
 }) {
+  const showCity = useShowCity();
   return (
     <tr
       onClick={() => onSelect?.(row.id)}
