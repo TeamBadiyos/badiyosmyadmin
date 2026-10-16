@@ -11242,6 +11242,7 @@ export type Database = {
         Args: { _audience: string; _targets: string[]; _uid: string }
         Returns: boolean
       }
+      cc_uid: { Args: never; Returns: string }
       cc_visible_cities: { Args: never; Returns: string[] }
       check_booking_capacity: { Args: { _booking_id: string }; Returns: Json }
       check_serviceability: {
