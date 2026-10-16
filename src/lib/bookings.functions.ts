@@ -46,6 +46,7 @@ export type BookingRow = {
   scheduledTimeSlot: string | null;
   zoneId: string | null;
   zoneName: string | null;
+  cityId?: string | null;
   assignedExpertId: string | null;
   assignedExpertName: string | null;
   status: BookingStatus;
@@ -287,6 +288,7 @@ export const listBookings = createServerFn({ method: "POST" })
         scheduledTimeSlot: r.scheduled_time_slot ?? null,
         zoneId: r.zone_id ?? null,
         zoneName: r.zone_id ? zoneMap.get(r.zone_id) ?? null : null,
+        cityId: r.city_id ?? null,
         assignedExpertId: r.assigned_expert_id ?? null,
         assignedExpertName: r.assigned_expert_id
           ? expertMap.get(r.assigned_expert_id) ?? null
