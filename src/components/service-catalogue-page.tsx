@@ -284,6 +284,13 @@ function ServiceCataloguePageInner({ kind = null }: { kind?: "maid" | "wash" | n
                             <span className="ml-1.5 text-[12px] text-muted-foreground line-through">{inr.format(o.strikethrough_price)}</span>
                           )}
                         </span>
+                        <span className="w-28 text-right text-[12px] whitespace-nowrap">
+                          {o.expert_payout != null && o.expert_payout > 0 ? (
+                            <span className="text-muted-foreground">Expert {inr.format(o.expert_payout)}</span>
+                          ) : (
+                            <span className="font-semibold text-destructive">Set expert pay</span>
+                          )}
+                        </span>
                         <ActiveSwitch
                           active={o.is_active}
                           label={`${o.label} on/off`}
@@ -893,6 +900,12 @@ function PriceOptionModal({
     option?.strikethrough_price != null ? String(option.strikethrough_price) : "",
   );
   const [order, setOrder] = useState(String(option?.display_order ?? 0));
+  const [expertPay, setExpertPay] = useState(
+    option?.expert_payout != null ? String(option.expert_payout) : "",
+  );
+  const [partnerShare, setPartnerShare] = useState(
+    option?.partner_commission != null ? String(option.partner_commission) : "0",
+  );
   const [active, setActive] = useState(option?.is_active ?? true);
   const [image, setImage] = useState<string | null>(option?.image_url ?? null);
   const [gallery, setGallery] = useState<string[]>(option?.gallery_urls ?? []);
@@ -924,8 +937,8 @@ function PriceOptionModal({
           unit_label: service.pricing_type === "quantity" ? unit : null,
           customer_price: Number(price) || 0,
           strikethrough_price: optNum(wasPrice),
-          expert_payout: null,
-          partner_commission: null,
+          expert_payout: optNum(expertPay),
+          partner_commission: optNum(partnerShare) ?? 0,
           hq_share: null,
           display_order: Number(order) || 0,
           is_active: active,
@@ -1025,7 +1038,31 @@ function PriceOptionModal({
             onChange={(e) => setOrder(e.target.value)}
           />
         </Field>
+        <Field label="Expert pay (₹, this city)">
+          <input
+            className={inputCls}
+            value={expertPay}
+            inputMode="decimal"
+            onChange={(e) => setExpertPay(e.target.value)}
+          />
+          {!(Number(expertPay) > 0) && (
+            <span className="mt-1 block text-[11px] font-semibold text-destructive">
+              Set expert pay — this option can't be switched on without it
+            </span>
+          )}
+        </Field>
+        <Field label="Partner share (₹, this city)">
+          <input
+            className={inputCls}
+            value={partnerShare}
+            inputMode="decimal"
+            onChange={(e) => setPartnerShare(e.target.value)}
+          />
+        </Field>
       </div>
+      <p className="text-[12px] text-muted-foreground">
+        badiyos share: {inr.format((Number(price) || 0) - (Number(expertPay) || 0) - (Number(partnerShare) || 0))}
+      </p>
 
       <div className="border-t border-border pt-4 space-y-4">
         <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
