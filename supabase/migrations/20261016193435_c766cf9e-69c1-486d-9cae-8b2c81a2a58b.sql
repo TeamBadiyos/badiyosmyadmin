@@ -1,0 +1,1 @@
+alter function public.service_content_check_key(text) set search_path = public;

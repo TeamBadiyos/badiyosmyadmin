@@ -82,7 +82,7 @@ export function CleanAppContent() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-[16px] font-bold text-foreground">App content</h2>
+        <h2 className="text-[16px] font-bold text-foreground">App content (old app version)</h2>
         <div className="ml-auto inline-flex rounded-md border border-border p-0.5 text-xs">
           <button onClick={() => setTarget("city")} className={`rounded px-2 py-1 ${target === "city" ? "bg-primary text-primary-foreground" : ""}`}>{city?.name ?? "City"}</button>
           <button onClick={() => setTarget("default")} className={`rounded px-2 py-1 ${target === "default" ? "bg-primary text-primary-foreground" : ""}`}>Default</button>

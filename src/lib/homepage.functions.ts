@@ -164,3 +164,58 @@ export const uploadCleanMediaImage = createServerFn({ method: "POST" })
     });
     return { url: catalogImageUrl(path) as string };
   });
+
+// ---- Clean Home / Clean Auto app content ("<service>_content") ----
+type SvcKey = "clean" | "wash";
+const svc = (k: unknown): SvcKey => { if (k !== "clean" && k !== "wash") throw new Error("Invalid service"); return k; };
+
+export const getServiceContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: SvcKey; cityId: string | null }) => ({ service: svc(i?.service), cityId: i?.cityId ?? null }))
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_get_service_content" as never, { _service_key: data.service, _city: data.cityId } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+export const saveServiceContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: SvcKey; cityId: string | null; payload: JsonRecord }) => ({ service: svc(i?.service), cityId: i?.cityId ?? null, payload: i.payload }))
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_save_service_content" as never, { _service_key: data.service, _city: data.cityId, _payload: data.payload } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+export const resetServiceContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: SvcKey; cityId: string }) => { if (!i?.cityId) throw new Error("city required"); return { service: svc(i?.service), cityId: i.cityId }; })
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_reset_service_content" as never, { _service_key: data.service, _city: data.cityId } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+export const uploadServiceContentImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: SvcKey; cityId: string | null; kind: "hero" | "card" | "option"; base64: string }) => {
+    if (!["hero", "card", "option"].includes(i?.kind)) throw new Error("Invalid kind");
+    const b64 = String(i?.base64 ?? "").replace(/^data:image\/webp;base64,/, "");
+    if (!b64 || b64.length > 4_000_000) throw new Error("Image too large (max ~3 MB)");
+    if (i.cityId && !/^[0-9a-f-]{36}$/i.test(i.cityId)) throw new Error("Invalid city");
+    return { service: svc(i?.service), cityId: i.cityId ?? null, kind: i.kind, b64 };
+  })
+  .handler(async ({ data, context }) => {
+    await requireHomepageStaff(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { CATALOG_BUCKET, catalogImageUrl } = await import("@/lib/catalog-images");
+    const bytes = Uint8Array.from(atob(data.b64), (c) => c.charCodeAt(0));
+    const path = `service-content/${data.service}/${data.cityId ?? "default"}/${data.kind}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webp`;
+    const { error } = await supabaseAdmin.storage.from(CATALOG_BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: false });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId, action: `upload_${data.service}_content_image`, target_table: "homepage_sections",
+      target_id: data.cityId, before_state: null, after_state: { path, kind: data.kind },
+    });
+    return { url: catalogImageUrl(path) as string };
+  });
