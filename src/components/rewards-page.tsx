@@ -23,6 +23,7 @@ import {
   type RewardLedgerRow,
 } from "@/lib/rewards.functions";
 import { IncentiveProgramModal, groupProgramsByTier } from "@/components/incentive-program-modal";
+import { MerchantReferralProgram } from "@/components/merchant-referral-program";
 
 const ACTORS = [
   { key: "customer", label: "Customer" },
@@ -135,6 +136,11 @@ export function RewardsPage() {
                   </button>
                 );
               })}
+              <button onClick={() => { setActor("merchant_referral"); setShowArchived(false); }} className={`h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 ${
+                !showArchived && actor === "merchant_referral" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}>
+                Merchant referral
+              </button>
               {(() => {
                 const on = showArchived;
                 return (
@@ -179,7 +185,9 @@ export function RewardsPage() {
         </div>
       </div>
 
-      {tab === "programs" ? (
+      {actor === "merchant_referral" && !showArchived && tab === "programs" ? (
+        <MerchantReferralProgram isSuper />
+      ) : tab === "programs" ? (
         <div className="bg-card border border-border rounded-[18px] overflow-hidden">
           <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_120px_120px_150px] gap-4 px-6 py-3 border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <span>Program</span>
