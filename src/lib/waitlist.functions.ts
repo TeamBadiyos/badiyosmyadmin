@@ -2,33 +2,41 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type WaitlistGroup = {
-  key: string;
+export const DEMAND_SERVICES = ["maid", "clean_auto", "grocery", "food", "parcel"] as const;
+export const DEMAND_LABEL: Record<string, string> = {
+  maid: "Maid", clean_auto: "Clean Auto", grocery: "Grocery", food: "Food", parcel: "Parcel", website: "Website request",
+};
+
+export type DemandRow = {
+  id: string;
   city: string;
-  area: string;
-  count: number;
+  area: string | null;
+  services: string[];
+  phone: string | null;
+  source: string;
+  latitude: number | null;
+  longitude: number | null;
+  status: string;
+  notified: boolean;
+  createdAt: string;
+};
+
+export type DemandCity = {
+  city: string;
+  total: number;
   waiting: number;
   notified: number;
   latestAt: string;
-  segments: { id: string; name: string; count: number }[];
+  services: Record<string, number>;
+  rows: DemandRow[];
 };
 
-export type WaitlistData = {
-  total: number;
-  totalNotified: number;
-  groups: WaitlistGroup[];
-  segments: { id: string; name: string }[];
-};
+export type WaitlistData = { total: number; totalNotified: number; cities: DemandCity[] };
 
 export const notifyWaitlistArea = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) =>
-    z
-      .object({
-        city: z.string().trim().min(1).max(80).nullable().optional(),
-        segmentId: z.string().uuid().nullable().optional(),
-      })
-      .parse(raw),
+    z.object({ city: z.string().trim().min(1).max(80).nullable().optional(), segmentId: z.string().uuid().nullable().optional() }).parse(raw),
   )
   .handler(async ({ data, context }): Promise<{ notified: number }> => {
     const { data: count, error } = await context.supabase.rpc("staff_notify_waitlist_area", {
@@ -42,83 +50,49 @@ export const notifyWaitlistArea = createServerFn({ method: "POST" })
 
 export const getWaitlistOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { segmentId?: string | null } | undefined) => input ?? {})
-  .handler(async ({ data, context }): Promise<WaitlistData> => {
+  .handler(async ({ context }): Promise<WaitlistData> => {
     const db = context.supabase;
-
-    const { data: segRows, error: segErr } = await db
-      .from("segments")
-      .select("id, name")
-      .order("rank", { ascending: true });
-    if (segErr) throw new Error(segErr.message);
-    const segments = ((segRows ?? []) as { id: string; name: string }[]).map((s) => ({
-      id: s.id,
-      name: s.name,
+    const [w, l] = await Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (db.from("waitlist_requests") as any)
+        .select("id, city, area, address_text, services, phone, source, latitude, longitude, status, notified_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      db.from("city_interest_leads").select("id, city, phone, created_at").order("created_at", { ascending: false }).limit(2000),
+    ]);
+    if (w.error) throw new Error(w.error.message);
+    const rows: DemandRow[] = ((w.data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      city: (r.city ?? "").trim() || "Unknown city",
+      area: r.area ?? (r.address_text ? String(r.address_text).replace(/\s*\[wants:[^\]]*\]/, "").trim() || null : null),
+      services: (r.services ?? []) as string[],
+      phone: r.phone ?? null,
+      source: r.source ?? "outside-city",
+      latitude: r.latitude == null ? null : Number(r.latitude),
+      longitude: r.longitude == null ? null : Number(r.longitude),
+      status: r.status,
+      notified: !!r.notified_at,
+      createdAt: r.created_at,
     }));
-    const segMap = new Map(segments.map((s) => [s.id, s.name]));
-
-    let q = db
-      .from("waitlist_requests")
-      .select("id, segment_id, city, address_text, created_at, notified_at")
-      .order("created_at", { ascending: false })
-      .limit(2000);
-    if (data.segmentId) q = q.eq("segment_id", data.segmentId);
-
-    const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
-
-    const raw = (rows ?? []) as {
-      id: string;
-      segment_id: string | null;
-      city: string | null;
-      address_text: string | null;
-      created_at: string;
-      notified_at: string | null;
-    }[];
-
-    const map = new Map<string, WaitlistGroup & { segCounts: Map<string, number> }>();
-    for (const r of raw) {
-      const city = (r.city ?? "").trim() || "Unknown city";
-      const area = (r.address_text ?? "").trim() || "Unspecified area";
-      const key = `${city}||${area}`;
-      const existing = map.get(key);
-      const g: WaitlistGroup & { segCounts: Map<string, number> } = existing ?? {
-        key,
-        city,
-        area,
-        count: 0,
-        waiting: 0,
-        notified: 0,
-        latestAt: r.created_at,
-        segments: [],
-        segCounts: new Map<string, number>(),
-      };
-      if (!existing) map.set(key, g);
-      g.count += 1;
-      if (r.notified_at) g.notified += 1;
-      else g.waiting += 1;
-      if (r.created_at > g.latestAt) g.latestAt = r.created_at;
-      const sid = r.segment_id ?? "none";
-      g.segCounts.set(sid, (g.segCounts.get(sid) ?? 0) + 1);
+    for (const x of (l.data ?? []) as any[]) {
+      rows.push({
+        id: x.id, city: (x.city ?? "").trim() || "Unknown city", area: null, services: ["website"], phone: x.phone ?? null,
+        source: "website", latitude: null, longitude: null, status: "pending", notified: false, createdAt: x.created_at,
+      });
     }
-
-    const groups = Array.from(map.values())
-      .map(({ segCounts, ...g }) => ({
-        ...g,
-        segments: Array.from(segCounts.entries())
-          .map(([id, count]) => ({
-            id,
-            name: segMap.get(id) ?? "No segment",
-            count,
-          }))
-          .sort((a, b) => b.count - a.count),
-      }))
-      .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
-
-    return {
-      total: raw.length,
-      totalNotified: raw.filter((r) => r.notified_at).length,
-      groups,
-      segments,
-    };
+    const map = new Map<string, DemandCity>();
+    for (const r of rows) {
+      const k = r.city.toLowerCase();
+      const g = map.get(k) ?? { city: r.city, total: 0, waiting: 0, notified: 0, latestAt: r.createdAt, services: {}, rows: [] };
+      map.set(k, g);
+      g.total += 1;
+      if (r.notified) g.notified += 1; else g.waiting += 1;
+      if (r.createdAt > g.latestAt) g.latestAt = r.createdAt;
+      for (const s of r.services) g.services[s] = (g.services[s] ?? 0) + 1;
+      g.rows.push(r);
+    }
+    const cities = [...map.values()]
+      .map((g) => ({ ...g, rows: g.rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) }))
+      .sort((a, b) => b.latestAt.localeCompare(a.latestAt));
+    return { total: rows.length, totalNotified: rows.filter((r) => r.notified).length, cities };
   });
