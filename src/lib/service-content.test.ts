@@ -35,3 +35,7 @@ describe("hero card title", () => {
     expect(nsc({}, "wash").hero.card_title).toBe("Car Wash");
   });
 });
+
+describe("morning switch time", () => {
+  it("defaults to 05:00", () => { expect(nsc({}, "clean").hero.morning_switch_time).toBe("05:00"); });
+});
