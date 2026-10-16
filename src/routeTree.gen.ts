@@ -26,6 +26,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
+import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as ApiPublicBannersRouteImport } from './routes/api/public/banners'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
@@ -121,6 +122,11 @@ const MyadminLoginRoute = MyadminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => MyadminRoute,
 } as any)
+const StoreSlugRoute = StoreSlugRouteImport.update({
+  id: '/store/$slug',
+  path: '/store/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBannersRoute = ApiPublicBannersRouteImport.update({
   id: '/api/public/banners',
   path: '/api/public/banners',
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/myadmin/login': typeof MyadminLoginRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
+    | '/store/$slug'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/myadmin/login'
+    | '/store/$slug'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/_authenticated/dashboard'
     | '/myadmin/login'
+    | '/store/$slug'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  StoreSlugRoute: typeof StoreSlugRoute
   ApiPublicBannersRoute: typeof ApiPublicBannersRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
@@ -490,6 +503,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyadminLoginRouteImport
       parentRoute: typeof MyadminRoute
     }
+    '/store/$slug': {
+      id: '/store/$slug'
+      path: '/store/$slug'
+      fullPath: '/store/$slug'
+      preLoaderRoute: typeof StoreSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/banners': {
       id: '/api/public/banners'
       path: '/api/public/banners'
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  StoreSlugRoute: StoreSlugRoute,
   ApiPublicBannersRoute: ApiPublicBannersRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
   ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,
