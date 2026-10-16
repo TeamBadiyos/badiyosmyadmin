@@ -31,6 +31,7 @@ import {
   type Svc,
   listServiceOrders, getServiceOrder, listServiceStores, getStoreDetail, storeAction,
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
+  listBankChanges, decideBankChange,
   listStoreTypes, saveStoreType, reorderStoreTypes,
   listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, createDraftMerchant,
 } from "@/lib/service-commerce.functions";
@@ -941,6 +942,81 @@ function AddonGroups({ addons, before }: { addons: any[] | null | undefined; bef
 }
 
 function ApprovalsTab({ service }: { service: Svc }) {
+  const [view, setView] = useState<"items" | "bank">("items");
+  const bankFn = useServerFn(listBankChanges);
+  const bank = useQuery({ queryKey: ["svc", service, "bank-changes"], queryFn: () => bankFn({ data: { service } }) });
+  const n = bank.data?.requests.length ?? 0;
+  const chip = (k: "items" | "bank", label: string, count?: number) => (
+    <button type="button" onClick={() => setView(k)}
+      className={`rounded-full border px-3 py-1 text-sm ${view === k ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}>
+      {label}{count ? <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[11px] text-destructive-foreground">{count}</span> : null}
+    </button>
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">{chip("items", "Items")}{chip("bank", "Bank changes", n)}</div>
+      {view === "items" ? <ItemApprovals service={service} /> : <BankChanges service={service} q={bank} />}
+    </div>
+  );
+}
+
+function BankChanges({ service, q }: { service: Svc; q: any }) {
+  const qc = useQueryClient();
+  const decide = useServerFn(decideBankChange);
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const m = useMutation({
+    mutationFn: (v: { id: string; approve: boolean }) => decide({ data: { ...v, reason: reasons[v.id] ?? null } }),
+    onSuccess: (_r, v) => { toast.success(v.approve ? "Bank details updated" : "Bank change rejected"); qc.invalidateQueries({ queryKey: ["svc", service] }); qc.invalidateQueries({ queryKey: ["fin-settlements"] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.error) return <p className="text-sm text-destructive">{errMsg(q.error)}</p>;
+  const reqs = (q.data?.requests ?? []) as any[];
+  const canDecide = !!q.data?.canDecide;
+  if (!reqs.length) return <p className="text-sm text-muted-foreground">No bank changes waiting.</p>;
+  return (
+    <div className="space-y-3">
+      {!canDecide && <p className="text-xs text-muted-foreground">Only Super Admin or Finance can approve bank changes.</p>}
+      {reqs.map((r) => {
+        const rows: [string, string | null, string | null][] = [
+          ["Account holder", r.old.holder, r.next.holder], ["Account number", r.old.account, r.next.account], ["IFSC", r.old.ifsc, r.next.ifsc],
+        ];
+        return (
+          <div key={r.id} className="rounded-lg border bg-card p-3 space-y-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-semibold">{r.storeName}{r.ownerName && <span className="ml-2 text-xs font-normal text-muted-foreground">{r.ownerName}</span>}</p>
+              <p className="text-xs text-muted-foreground">Submitted {dt(r.submittedAt)}{r.verifiedPhone ? ` · OTP verified ${r.verifiedPhone}` : ""}</p>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <table className="flex-1 min-w-[280px] text-sm">
+                <thead className="text-xs text-muted-foreground"><tr><th className="text-left w-32"></th><th className="text-left">Current</th><th className="text-left">New</th></tr></thead>
+                <tbody>{rows.map(([k, a, b]) => (
+                  <tr key={k}><td className="py-0.5 text-muted-foreground">{k}</td><td>{a || "—"}</td>
+                    <td className={(a ?? "") !== (b ?? "") ? "font-semibold text-primary" : ""}>{b || "—"}</td></tr>
+                ))}</tbody>
+              </table>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Cheque / passbook</p>
+                {r.proofUrl
+                  ? <a href={r.proofUrl} target="_blank" rel="noreferrer"><img src={r.proofUrl} alt="Cheque or passbook" className="h-28 w-44 rounded border object-cover" /></a>
+                  : <p className="text-sm text-muted-foreground">No file</p>}
+              </div>
+            </div>
+            {canDecide && (
+              <div className="flex gap-2">
+                <Input placeholder="Reason (required to reject)" value={reasons[r.id] ?? ""} onChange={(e) => setReasons({ ...reasons, [r.id]: e.target.value })} />
+                <Button size="sm" disabled={m.isPending} onClick={() => { if (confirm(`Change ${r.storeName}'s payout account to ••••${String(r.next.account).slice(-4)}?`)) m.mutate({ id: r.id, approve: true }); }}>Approve</Button>
+                <Button size="sm" variant="destructive" disabled={m.isPending} onClick={() => m.mutate({ id: r.id, approve: false })}>Reject</Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ItemApprovals({ service }: { service: Svc }) {
   const qc = useQueryClient();
   const fn = useServerFn(listProductApprovals);
   const rev = useServerFn(reviewProduct);
