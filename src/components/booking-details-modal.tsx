@@ -9,7 +9,6 @@ import {
   CircleDot,
   XCircle,
   Ban,
-  UserPlus,
   RefreshCw,
   Pencil,
   Trash2,
@@ -1297,118 +1296,6 @@ function Timeline({ current }: { current: BookingStatus }) {
     </ol>
   );
 }
-
-function ExpertAssignSection({
-  mode,
-  experts,
-  loading,
-  errorMessage,
-  onRetry,
-  search,
-  onSearch,
-  selected,
-  onSelect,
-  pending,
-  onConfirm,
-  onCancel,
-}: {
-  mode: "assign" | "reassign";
-  experts: Array<{ id: string; name: string; phone: string; distanceKm?: number | null }>;
-  loading: boolean;
-  errorMessage?: string | null;
-  onRetry?: () => void;
-  search: string;
-  onSearch: (v: string) => void;
-  selected: string;
-  onSelect: (v: string) => void;
-  pending: boolean;
-  onConfirm: () => void;
-  onCancel?: () => void;
-}) {
-  const isReassign = mode === "reassign";
-  return (
-    <section
-      className={`border rounded-[18px] p-4 ${
-        isReassign
-          ? "bg-amber-50/50 border-amber-200"
-          : "bg-primary-tint/40 border-primary/20"
-      }`}
-    >
-      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3 inline-flex items-center gap-2">
-        {isReassign ? <RefreshCw size={14} /> : <UserPlus size={14} />}
-        {isReassign ? "Reassign expert" : "Assign expert"}
-      </h3>
-      <div className="space-y-3">
-        {errorMessage ? (
-          <div className="rounded-[14px] border border-destructive bg-destructive/5 p-3 space-y-2">
-            <p className="text-[13px] text-destructive font-semibold">
-              Couldn't load experts
-            </p>
-            <p className="text-[12px] text-destructive/80">{errorMessage}</p>
-            {onRetry && (
-              <button
-                onClick={onRetry}
-                className="h-9 px-4 rounded-[10px] border border-destructive text-destructive text-[13px] font-bold"
-              >
-                Retry
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <input
-              type="text"
-              placeholder="Search by name or phone…"
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-            />
-            <select
-              value={selected}
-              onChange={(e) => onSelect(e.target.value)}
-              disabled={loading}
-              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] disabled:opacity-60"
-            >
-              <option value="">
-                {loading
-                  ? "Loading experts…"
-                  : experts.length === 0
-                    ? "No experts nearby (within broadcast radius)"
-                    : "Select expert…"}
-              </option>
-              {experts.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name} — {e.phone}
-                  {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
-                  {(e as { busy?: boolean }).busy ? " · Busy (assign as next order)" : ""}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            disabled={!selected || pending}
-            onClick={onConfirm}
-            className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
-          >
-            <Check size={16} />
-            {pending ? "Saving…" : isReassign ? "Confirm reassignment" : "Confirm assignment"}
-          </button>
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 
 const RESCHEDULE_SLOTS = Array.from({ length: 27 }, (_, i) => {
   const m = 7 * 60 + i * 30; // 7:00 AM … 8:00 PM, every 30 min
