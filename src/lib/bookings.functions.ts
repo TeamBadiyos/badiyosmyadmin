@@ -370,6 +370,10 @@ export type BookingDetails = {
   updatedAt: string | null;
   rating: number | null;
   staffNote: string | null;
+  customerNote: string | null;
+  refundDestination: string | null;
+  refundWalletAmount: number | null;
+  cancellationFee: number | null;
   reviewText: string | null;
   customer: { id: string | null; name: string | null; phone: string | null };
   address: {
