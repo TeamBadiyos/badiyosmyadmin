@@ -59,7 +59,7 @@ export const listServiceOrders = createServerFn({ method: "POST" })
     const ids = await serviceMerchantIds(db, data.service);
     if (!ids.length) return [];
     let q = db.from("merchant_orders")
-      .select("id, order_number, status, merchant_id, customer_name, customer_phone, total_amount, total_payable, payment_mode, payment_status, created_at, courier_order_id, refund_status")
+      .select("id, order_number, city_id, status, merchant_id, customer_name, customer_phone, total_amount, total_payable, payment_mode, payment_status, created_at, courier_order_id, refund_status")
       .in("merchant_id", ids).eq("is_training", false)
       .or("payment_mode.neq.online,payment_status.eq.paid")
       .order("created_at", { ascending: false }).limit(300);
