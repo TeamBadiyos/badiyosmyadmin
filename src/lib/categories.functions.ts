@@ -125,3 +125,56 @@ export const applyProductCategoryMap = createServerFn({ method: "POST" })
     fail(r);
     return { updated: r.data as number };
   });
+
+/* ---------- Merchant category suggestions ---------- */
+export type CatSuggestion = {
+  id: string; merchant_id: string; merchant: string | null; label: string; items: number; latest_at: string;
+  legacy: boolean; city_id: string | null; guess_id: string | null; guess_name: string | null;
+};
+const svcOf = (k: CatKind) => (k === "food" ? "food" : "store");
+const uuidOk = (v: unknown) => { if (typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v)) return v; throw new Error("Bad id"); };
+
+export const listCategorySuggestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { kind: CatKind }) => ({ kind: kindOk(i?.kind) }))
+  .handler(async ({ data, context }): Promise<CatSuggestion[]> => {
+    const r = await (context.supabase as any).rpc("staff_list_category_suggestions", { _service: svcOf(data.kind) });
+    fail(r);
+    return (r.data ?? []) as CatSuggestion[];
+  });
+
+export const resolveCategorySuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { id: string; mode: "create" | "map"; targetId?: string | null; nameEn?: string; nameMr?: string; imagePath?: string | null }) => ({
+    id: uuidOk(i?.id), mode: i?.mode === "create" ? "create" : "map",
+    targetId: i?.targetId ? uuidOk(i.targetId) : null,
+    nameEn: String(i?.nameEn ?? "").slice(0, 60), nameMr: String(i?.nameMr ?? "").slice(0, 60), imagePath: i?.imagePath ?? null,
+  }))
+  .handler(async ({ data, context }) => {
+    const r = await (context.supabase as any).rpc("staff_resolve_category_suggestion", {
+      _id: data.id, _mode: data.mode, _target_id: data.targetId, _name_en: data.nameEn || null, _name_mr: data.nameMr || null, _image_path: data.imagePath,
+    });
+    fail(r);
+    return { moved: Number(r.data?.moved ?? 0) };
+  });
+
+export const rejectCategorySuggestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { id: string; reason: string }) => ({ id: uuidOk(i?.id), reason: String(i?.reason ?? "").trim().slice(0, 300) }))
+  .handler(async ({ data, context }) => {
+    if (!data.reason) throw new Error("Reason required");
+    const r = await (context.supabase as any).rpc("staff_reject_category_suggestion", { _id: data.id, _reason: data.reason });
+    fail(r);
+    return { ok: true as const };
+  });
+
+export const applyLabelMapping = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { rows: { id: string; target_id: string }[] }) => ({
+    rows: (i?.rows ?? []).slice(0, 500).map((x) => ({ id: uuidOk(x.id), target_id: uuidOk(x.target_id) })),
+  }))
+  .handler(async ({ data, context }) => {
+    const r = await (context.supabase as any).rpc("staff_apply_label_mapping", { _rows: data.rows });
+    fail(r);
+    return { suggestions: Number(r.data?.suggestions ?? 0), moved: Number(r.data?.moved ?? 0) };
+  });

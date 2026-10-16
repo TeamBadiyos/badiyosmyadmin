@@ -15,6 +15,7 @@ import {
   listCategories, saveCategory, reorderCategories, deleteCategory, copyDefaultCategories,
   listUnmappedProductLabels, applyProductCategoryMap, type CatKind,
 } from "@/lib/categories.functions";
+import { CategorySuggestionsChip } from "@/components/category-suggestions";
 
 const err = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
@@ -74,8 +75,10 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
           <p className="text-xs text-muted-foreground">{help}</p>
           <p className="text-xs text-muted-foreground">Showing: {r.data?.hasCityList ? "this city's own list" : "Default list"} · Customer App shows only categories with at least one live {usedLabel}.</p>
         </div>
+        {kind !== "store_type" && !canEdit && role === "ops_manager" && <CategorySuggestionsChip kind={kind} canAct upload={upload} />}
         {canEdit && (
           <div className="flex gap-2">
+            {kind !== "store_type" && <CategorySuggestionsChip kind={kind} canAct upload={upload} />}
             {city && r.data && !r.data.hasCityList && <Button size="sm" variant="outline" disabled={copy.isPending} onClick={() => copy.mutate()}>Make a list for this city</Button>}
             <Button size="sm" onClick={() => setEdit({ is_active: true })}><Plus size={14} /> Add category</Button>
           </div>
