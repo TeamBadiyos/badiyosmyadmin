@@ -167,7 +167,9 @@ export const listBookings = createServerFn({ method: "POST" })
     const search = (data.search ?? "").trim();
     const bnum = /^(ch|ca)-?\d+$/i.test(search) ? search.toUpperCase().replace(/^(CH|CA)-?/, "$1-") : null;
     const hex = search.replace(/-/g, "").toLowerCase();
-    const idPrefix = /^[0-9a-f]{6,32}$/.test(hex) && !bnum ? hex : null;
+    // All-digit input (e.g. "+91 98765…") is a phone search, not an ID prefix.
+    const looksLikePhone = /^\+?[\d\s]+$/.test(search.trim());
+    const idPrefix = /^[0-9a-f]{6,32}$/.test(hex) && !bnum && !looksLikePhone ? hex : null;
     if (bnum) {
       q = q.ilike("booking_number", `${bnum}%`);
     } else if (idPrefix) {
