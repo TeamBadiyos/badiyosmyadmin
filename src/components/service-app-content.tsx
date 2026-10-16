@@ -61,7 +61,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
   }
   async function onSave() {
     if (!m) return;
-    const err = validateServiceContent(m, live); if (err) return toast.error(err);
+    const err = validateServiceContent(m, live, service); if (err) return toast.error(err);
     setBusy(true);
     try { load(await save({ data: { service, cityId, payload: m } })); toast.success("App content saved"); }
     catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
@@ -182,7 +182,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
             </div>
           </Box>
 
-          <Box title="Top banner" hint="1080×600">
+          {service === "clean" && <Box title="Top banner" hint="1080×600">
             <div className="mb-1 text-xs font-semibold">Banner images by time</div>
             <div className="overflow-x-auto">
             <div className="min-w-[640px]">
@@ -232,6 +232,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
               </div>
             </div>
           </Box>
+          }
           <Button disabled={busy} onClick={onSave}>Save app content</Button>
         </div>
         <Preview m={m} live={live} lang={lang} setLang={setLang} service={service} />
@@ -329,21 +330,22 @@ function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live:
           {(["en", "mr"] as const).map((l) => <button key={l} onClick={() => setLang(l)} className={`px-2 py-0.5 ${lang === l ? "bg-primary text-primary-foreground" : ""}`}>{l === "en" ? "EN" : "मराठी"}</button>)}
         </div>
       </div>
-      <div className="flex items-center gap-2 text-xs">
+      {service === "clean" && <><div className="flex items-center gap-2 text-xs">
         <Input type="time" className="h-8 w-28" value={time} onChange={(e) => setTime(e.target.value || "00:00")} />
         <select className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-xs" value={st} onChange={(e) => setSt(e.target.value as BannerState)}>
           {BANNER_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </div>
-      <label className="flex items-center gap-2 text-xs"><Switch checked={camp} onCheckedChange={setCampOn} /> Campaign active {!camp && <span className="text-muted-foreground">· image: {slab ? slab.label || `${slab.from}–${slab.to}` : "none"}</span>}</label>
+      <label className="flex items-center gap-2 text-xs"><Switch checked={camp} onCheckedChange={setCampOn} /> Campaign active {!camp && <span className="text-muted-foreground">· image: {slab ? slab.label || `${slab.from}–${slab.to}` : "none"}</span>}</label></>}
       <div className="mx-auto w-[280px] space-y-3 rounded-[28px] border-4 border-foreground/80 bg-background p-3">
-        <div className="relative flex aspect-[1080/600] flex-col justify-end overflow-hidden rounded-xl bg-muted p-2">
+        {service === "clean" && <div className="relative flex aspect-[1080/600] flex-col justify-end overflow-hidden rounded-xl bg-muted p-2">
           {b.image_url && <img src={b.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           <div className={`relative px-1 py-1 ${dark ? "text-foreground" : "text-primary-foreground"}`}>
             <div className="text-[12px] font-bold drop-shadow">{fill(t(b.title, b.title_mr))}</div>
             <div className="text-[10px] opacity-90 drop-shadow">{fill(t(b.subline, b.subline_mr))}</div>
           </div>
         </div>
+        }
         <div className="inline-block rounded-lg border border-border px-2 py-1 text-[10px] font-semibold">{t(m.hero.card_title, m.hero.card_title_mr)}</div>
         {/* Hero colour is staff-chosen content, so it is applied inline. */}
         <div className="relative flex h-[130px] flex-col justify-end overflow-hidden rounded-xl p-3" style={{ backgroundColor: m.hero.bg_color }}>

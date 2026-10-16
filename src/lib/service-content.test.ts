@@ -20,6 +20,13 @@ describe("service content", () => {
 
 import { badPlaceholder as bp, defaultExtras as de, normalizeServiceContent as nsc, validateServiceContent as vsc } from "./service-content";
 describe("banners & campaign", () => {
+  it("ignores unused Auto banner and campaign validation while Home still validates", () => {
+    const m = nsc({ hero: { subline: "x" }, cards: [{ title: "a" }, { title: "b" }, { title: "c" }] }, "wash");
+    m.banner.texts.closed.subline = "Open {unknown}";
+    m.campaign = { ...m.campaign, enabled: true, title: "", starts_at: "", ends_at: "" };
+    expect(vsc(m, [], "wash")).toBeNull();
+    expect(vsc(m, [], "clean")).toMatch(/unknown placeholder/);
+  });
   it("rejects unknown placeholder", () => { expect(bp("Hi {nam}")).toBe("nam"); expect(bp("{greeting}, {name}")).toBeNull(); });
   it("defaults details note", () => { expect(de("clean").details.note).toBe("Please keep cleaning supplies ready at home"); });
   it("campaign end must be after start", () => {
