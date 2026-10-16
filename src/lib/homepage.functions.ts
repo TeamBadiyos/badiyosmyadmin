@@ -198,8 +198,8 @@ export const resetServiceContent = createServerFn({ method: "POST" })
 
 export const uploadServiceContentImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: SvcKey; cityId: string | null; kind: "hero" | "card" | "option"; base64: string }) => {
-    if (!["hero", "card", "option"].includes(i?.kind)) throw new Error("Invalid kind");
+  .inputValidator((i: { service: SvcKey; cityId: string | null; kind: "hero" | "card" | "option" | "banner"; base64: string }) => {
+    if (!["hero", "card", "option", "banner"].includes(i?.kind)) throw new Error("Invalid kind");
     const b64 = String(i?.base64 ?? "").replace(/^data:image\/webp;base64,/, "");
     if (!b64 || b64.length > 4_000_000) throw new Error("Image too large (max ~3 MB)");
     if (i.cityId && !/^[0-9a-f-]{36}$/i.test(i.cityId)) throw new Error("Invalid city");
