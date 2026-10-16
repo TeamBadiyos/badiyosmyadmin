@@ -118,7 +118,7 @@ export const getServiceOrder = createServerFn({ method: "POST" })
 
 export const listServiceStores = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: Svc; cityId?: string | null }) => ({ service: svcOk(i?.service), cityId: i?.cityId ?? null }))
+  .inputValidator((i: { service: Svc }) => ({ service: svcOk(i?.service) }))
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
@@ -476,7 +476,7 @@ export const deleteSponsoredSlot = createServerFn({ method: "POST" })
 
 export const getServiceSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: Svc }) => ({ service: svcOk(i?.service) }))
+  .inputValidator((i: { service: Svc; cityId?: string | null }) => ({ service: svcOk(i?.service), cityId: i?.cityId ?? null }))
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const to = new Date(Date.now() + 5.5 * 3600e3);
