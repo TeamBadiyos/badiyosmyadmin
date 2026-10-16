@@ -818,10 +818,31 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
             <SizeHint text="Square 800×800 px recommended" />
           </div>
           {lines(vars, setVars, "Variants (e.g. Half / Full)", true)}
-          {(product.addons ?? []).length > 0 && (
-            <div className="rounded-md border p-2"><p className="text-xs text-muted-foreground mb-1">Add-on groups (saved)</p><AddonGroups addons={product.addons} /></div>
-          )}
-          {lines(adds, setAdds, "Add-ons")}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center"><Label>Add-on groups</Label>
+              <Button size="sm" variant="ghost" onClick={() => setGroups([...groups, { name: "", min: "0", max: "1", items: [{ name: "", price: "" }] }])}><Plus size={14} /> Add group</Button></div>
+            {groups.map((g, gi) => (
+              <div key={gi} className="rounded-md border p-2 space-y-1.5">
+                <div className="flex gap-2 items-center">
+                  <Input placeholder="Group name (e.g. Extra toppings)" value={g.name} onChange={(e) => setG(gi, { name: e.target.value })} />
+                  <Button size="sm" variant="ghost" onClick={() => setGroups(groups.filter((_, j) => j !== gi))}>✕</Button>
+                </div>
+                <div className="flex gap-2 items-center text-xs">
+                  <span className="text-muted-foreground">Min</span><Input className="w-16 h-8" type="number" min={0} value={g.min} onChange={(e) => setG(gi, { min: e.target.value })} />
+                  <span className="text-muted-foreground">Max</span><Input className="w-16 h-8" type="number" min={1} value={g.max} onChange={(e) => setG(gi, { max: e.target.value })} />
+                  <Badge variant="outline" className="text-[10px]">{addonRule(Number(g.min || 0), Number(g.max || 1))}</Badge>
+                </div>
+                {g.items.map((it, ii) => (
+                  <div key={ii} className="flex gap-2 items-center">
+                    <Input placeholder="Item" value={it.name} onChange={(e) => setG(gi, { items: g.items.map((x, j) => (j === ii ? { ...x, name: e.target.value } : x)) })} />
+                    <Input className="w-24" type="number" placeholder="₹" value={it.price} onChange={(e) => setG(gi, { items: g.items.map((x, j) => (j === ii ? { ...x, price: e.target.value } : x)) })} />
+                    <Button size="sm" variant="ghost" onClick={() => setG(gi, { items: g.items.filter((_, j) => j !== ii) })}>✕</Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setG(gi, { items: [...g.items, { name: "", price: "" }] })}><Plus size={14} /> Add item</Button>
+              </div>
+            ))}
+          </div>
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={busy} onClick={submit}>Save</Button></DialogFooter>
       </DialogContent>
