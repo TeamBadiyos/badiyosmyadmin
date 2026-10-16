@@ -8711,6 +8711,7 @@ export type Database = {
         Row: {
           cap_date: string
           capacity: number
+          city_id: string
           created_at: string
           day_cap: number | null
           evening_cap: number | null
@@ -8723,6 +8724,7 @@ export type Database = {
         Insert: {
           cap_date: string
           capacity: number
+          city_id?: string
           created_at?: string
           day_cap?: number | null
           evening_cap?: number | null
@@ -8735,6 +8737,7 @@ export type Database = {
         Update: {
           cap_date?: string
           capacity?: number
+          city_id?: string
           created_at?: string
           day_cap?: number | null
           evening_cap?: number | null
@@ -8744,7 +8747,15 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_daily_capacity_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_flags: {
         Row: {
@@ -9092,6 +9103,7 @@ export type Database = {
       }
       service_slot_overrides: {
         Row: {
+          city_id: string
           created_at: string
           created_by: string | null
           id: string
@@ -9103,6 +9115,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          city_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -9114,6 +9127,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          city_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -9124,7 +9138,15 @@ export type Database = {
           start_minute?: number
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_slot_overrides_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
@@ -11198,7 +11220,16 @@ export type Database = {
         Returns: number
       }
       city_id_by_name: { Args: { _name: string }; Returns: string }
+      city_name_of: { Args: { _city: string }; Returns: string }
       city_ops_keys: { Args: never; Returns: string[] }
+      city_ops_num: {
+        Args: { _city: string; _default: number; _key: string }
+        Returns: number
+      }
+      city_ops_text: {
+        Args: { _city: string; _default: string; _key: string }
+        Returns: string
+      }
       city_opt: {
         Args: { _city: string; _opt: string }
         Returns: {
@@ -12073,7 +12104,10 @@ export type Database = {
       instant_booking_enabled:
         | { Args: never; Returns: boolean }
         | { Args: { _g: string }; Returns: boolean }
-      instant_free_expert_count: { Args: never; Returns: number }
+        | { Args: { _city: string; _g: string }; Returns: boolean }
+      instant_free_expert_count:
+        | { Args: never; Returns: number }
+        | { Args: { _city: string }; Returns: number }
       is_active_staff:
         | { Args: { _uid: string }; Returns: boolean }
         | { Args: { _roles: string[]; _uid: string }; Returns: boolean }
@@ -12099,14 +12133,28 @@ export type Database = {
         Returns: boolean
       }
       link_referral: { Args: { _code: string }; Returns: undefined }
-      list_fully_booked_slots: {
-        Args: { _from: string; _service_key: string; _to: string }
-        Returns: {
-          slot_date: string
-          start_hour: number
-          start_minute: number
-        }[]
-      }
+      list_fully_booked_slots:
+        | {
+            Args: { _from: string; _service_key: string; _to: string }
+            Returns: {
+              slot_date: string
+              start_hour: number
+              start_minute: number
+            }[]
+          }
+        | {
+            Args: {
+              _city_id: string
+              _from: string
+              _service_key: string
+              _to: string
+            }
+            Returns: {
+              slot_date: string
+              start_hour: number
+              start_minute: number
+            }[]
+          }
       lucky_draw_audit: {
         Args: { _action: string; _after: Json; _before: Json; _id: string }
         Returns: undefined
@@ -12527,23 +12575,43 @@ export type Database = {
       service_holiday_notify: { Args: { _phase: string }; Returns: undefined }
       service_hours_autooffline: { Args: never; Returns: undefined }
       service_hours_bypass: { Args: never; Returns: boolean }
-      service_instant_allowed: {
-        Args: { _duration_minutes?: number; _service_key: string }
-        Returns: Json
-      }
+      service_instant_allowed:
+        | {
+            Args: { _duration_minutes?: number; _service_key: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _city_id: string
+              _duration_minutes: number
+              _service_key: string
+            }
+            Returns: Json
+          }
       service_next_open: {
         Args: { _flag_id: string; _from: string }
         Returns: string
       }
-      service_slot_allowed: {
-        Args: {
-          _date: string
-          _duration_minutes?: number
-          _service_key: string
-          _slot: string
-        }
-        Returns: Json
-      }
+      service_slot_allowed:
+        | {
+            Args: {
+              _date: string
+              _duration_minutes?: number
+              _service_key: string
+              _slot: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _city_id: string
+              _date: string
+              _duration_minutes: number
+              _service_key: string
+              _slot: string
+            }
+            Returns: Json
+          }
       service_window: {
         Args: { _city?: string; _service_key: string }
         Returns: Json
@@ -12579,21 +12647,41 @@ export type Database = {
         Returns: string
       }
       settlement_next_invoice: { Args: { _d: string }; Returns: string[] }
-      slot_band_capacity: {
-        Args: { _date: string; _min: number; _service_key: string }
-        Returns: number
-      }
-      slot_band_of: {
-        Args: { _min: number; _service_key: string }
-        Returns: string
-      }
-      slot_busy_by_half: {
-        Args: { _date: string; _service_key: string }
-        Returns: {
-          busy: number
-          start_min: number
-        }[]
-      }
+      slot_band_capacity:
+        | {
+            Args: { _date: string; _min: number; _service_key: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              _city: string
+              _date: string
+              _min: number
+              _service_key: string
+            }
+            Returns: number
+          }
+      slot_band_of:
+        | { Args: { _min: number; _service_key: string }; Returns: string }
+        | {
+            Args: { _city: string; _min: number; _service_key: string }
+            Returns: string
+          }
+      slot_busy_by_half:
+        | {
+            Args: { _date: string; _service_key: string }
+            Returns: {
+              busy: number
+              start_min: number
+            }[]
+          }
+        | {
+            Args: { _city: string; _date: string; _service_key: string }
+            Returns: {
+              busy: number
+              start_min: number
+            }[]
+          }
       slot_busy_by_hour: {
         Args: { _date: string; _service_key: string }
         Returns: {
@@ -12601,10 +12689,12 @@ export type Database = {
           start_hour: number
         }[]
       }
-      slot_capacity_for: {
-        Args: { _date: string; _service_key: string }
-        Returns: number
-      }
+      slot_capacity_for:
+        | { Args: { _date: string; _service_key: string }; Returns: number }
+        | {
+            Args: { _city: string; _date: string; _service_key: string }
+            Returns: number
+          }
       slot_is_fully_booked:
         | {
             Args: { _date: string; _service_key: string; _slot: string }
@@ -12619,11 +12709,23 @@ export type Database = {
             }
             Returns: boolean
           }
+        | {
+            Args: {
+              _city: string
+              _date: string
+              _duration_minutes: number
+              _service_key: string
+              _slot: string
+            }
+            Returns: boolean
+          }
       slot_start_ist: {
         Args: { _date: string; _slot: string }
         Returns: string
       }
-      slot_step: { Args: never; Returns: number }
+      slot_step:
+        | { Args: never; Returns: number }
+        | { Args: { _city: string }; Returns: number }
       staff_accept_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -13394,6 +13496,7 @@ export type Database = {
       }
       staff_set_band_capacity: {
         Args: {
+          _city_id: string
           _date: string
           _day: number
           _evening: number
@@ -13474,10 +13577,6 @@ export type Database = {
       }
       staff_set_coupon_categories: {
         Args: { _category_ids: string[]; _id: string }
-        Returns: undefined
-      }
-      staff_set_daily_capacity: {
-        Args: { _capacity: number; _date: string; _service_key?: string }
         Returns: undefined
       }
       staff_set_delivery_status: {
@@ -13620,12 +13719,13 @@ export type Database = {
       }
       staff_set_slot_full: {
         Args: {
+          _city_id: string
           _date: string
           _full: boolean
-          _reason?: string
-          _service_key?: string
+          _reason: string
+          _service_key: string
           _start_hour: number
-          _start_minute?: number
+          _start_minute: number
         }
         Returns: undefined
       }
@@ -13646,10 +13746,12 @@ export type Database = {
         Returns: boolean
       }
       staff_set_view_city: { Args: { _city_id: string }; Returns: undefined }
-      staff_slot_band_summary: {
-        Args: { _date: string; _service_key: string }
-        Returns: Json
-      }
+      staff_slot_band_summary:
+        | { Args: { _date: string; _service_key: string }; Returns: Json }
+        | {
+            Args: { _city_id: string; _date: string; _service_key: string }
+            Returns: Json
+          }
       staff_soft_delete_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined

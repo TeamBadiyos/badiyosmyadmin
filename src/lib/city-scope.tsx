@@ -98,3 +98,14 @@ export function RequireCity({ children }: { children: ReactNode }) {
     );
   return <>{children}</>;
 }
+
+/** Shows the record's city only while "All cities" is selected (nothing when one city is picked). */
+export function useShowCity() {
+  const { cityId } = useCity();
+  return cityId === "all";
+}
+export function CityName({ id }: { id?: string | null }) {
+  const { cities } = useCity();
+  if (!id) return <>All cities</>;
+  return <>{cities.find((c) => c.id === id)?.name ?? "—"}</>;
+}

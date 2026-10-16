@@ -1,4 +1,4 @@
-import { useCity } from "@/lib/city-scope";
+import { useCity, CityName, useShowCity } from "@/lib/city-scope";
 import { PartyAgreementCard } from "@/components/agreements";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
@@ -106,6 +106,7 @@ const ORDER_STATUS: { v: string; l: string }[] = [
 type OSort = "customer" | "store" | "items" | "amount" | "status" | "rider" | "placed";
 
 function OrdersTab({ service }: { service: Svc }) {
+  const showCity = useShowCity();
   const fn = useServerFn(listServiceOrders);
   const storesFn = useServerFn(listServiceStores);
   const [status, setStatus] = useState("");
@@ -201,7 +202,7 @@ function OrdersTab({ service }: { service: Svc }) {
             {rows.map((o: any) => (
               <tr key={o.id} onClick={() => setOpenId(o.id)} className={tableCls.tr}>
                 <td className={tableCls.td}><p className="font-semibold">{o.customer_name || "Customer"}</p><p className="text-xs text-muted-foreground">{o.order_number}</p></td>
-                <td className={tableCls.td}>{o.store_name}</td>
+                <td className={tableCls.td}>{o.store_name}{showCity && <p className="text-[11px] text-muted-foreground"><CityName id={o.city_id} /></p>}</td>
                 <td className={`${tableCls.td} text-right`}>{o.item_count ?? o.items_count ?? "—"}</td>
                 <td className={`${tableCls.td} text-right font-semibold`}>{inr(o.total_payable ?? o.total_amount)}</td>
                 <td className={tableCls.td}><StatusPill status={o.refund_status === "done" ? "refunded" : o.status} /></td>

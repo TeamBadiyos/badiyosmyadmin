@@ -13,6 +13,7 @@ export type ExpertRow = {
   photoUrl: string | null;
   zoneId: string | null;
   zoneName: string | null;
+  cityId?: string | null;
   zoneIds: string[];
   zoneNames: string[];
   level: ExpertLevel;
@@ -289,7 +290,7 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at",
+        "id, name, phone, photo_url, zone_id, city_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at",
       );
     if (data.onlineOnly) {
       q = q.eq("is_online", true).order("is_busy", { ascending: true });
@@ -355,6 +356,7 @@ export const listExperts = createServerFn({ method: "POST" })
         photoUrl: p ? (/^https?:\/\//i.test(p) ? p : (signedMap.get(p) ?? null)) : null,
         zoneId: primary?.id ?? r.zone_id ?? null,
         zoneName: primary?.name ?? null,
+        cityId: r.city_id ?? null,
         zoneIds: list.map((z) => z.id),
         zoneNames: list.map((z) => z.name),
         level: r.level as ExpertLevel,

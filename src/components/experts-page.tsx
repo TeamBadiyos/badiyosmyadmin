@@ -1,3 +1,4 @@
+import { CityName, useShowCity } from "@/lib/city-scope";
 import { useUrlState } from "@/components/ui/data-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -460,6 +461,7 @@ function Filter({
 }
 
 function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => void }) {
+  const showCity = useShowCity();
   return (
     <button
       onClick={onOpen}
@@ -491,6 +493,7 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
       </span>
       <span className="font-mono text-[12px] text-muted-foreground">{expert.phone}</span>
       <span className="text-muted-foreground truncate">
+        {showCity && <span className="mr-1 font-semibold text-foreground"><CityName id={expert.cityId} /> ·</span>}
         {expert.zoneNames?.length ? (
           <span className="inline-flex flex-wrap gap-1">
             {expert.zoneNames.slice(0, 2).map((n) => (

@@ -64,7 +64,7 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
         const v = ovIn[k] ?? String(ov.data?.bands.find((b) => b.band === k)?.override ?? "");
         return clear || v === "" ? null : Number(v);
       };
-      return bandFn({ data: { date: ovDate, group, morning: n("morning"), day: n("day"), evening: n("evening") } });
+      return bandFn({ data: { date: ovDate, group, morning: n("morning"), day: n("day"), evening: n("evening"), cityId } });
     },
     onSuccess: () => { toast.success("Date saved"); setOvIn({}); refresh(); },
     onError: (e: Error) => toast.error(e.message),
@@ -153,7 +153,7 @@ function SlotGrid({ group, date, bands, autoOn }: { group: CapGroup; date: strin
   const fullFn = useServerFn(setSlotFull);
   const q = useQuery({ queryKey: ["slot-overrides", group, date, cityId], queryFn: () => listFn({ data: { date, group, cityId } }) });
   const mut = useMutation({
-    mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, group, ...v } }),
+    mutationFn: (v: { hour: number; minute: number; full: boolean }) => fullFn({ data: { date, group, ...v, cityId } }),
     onSuccess: (_r, v) => { toast.success(v.full ? "Marked full" : "Re-opened"); qc.invalidateQueries({ queryKey: ["slot-overrides"] }); qc.invalidateQueries({ queryKey: ["slot-cap", group] }); },
     onError: (e: Error) => toast.error(e.message),
   });
