@@ -1,0 +1,1 @@
+alter function public.app_svc_key(text) set search_path = public;
