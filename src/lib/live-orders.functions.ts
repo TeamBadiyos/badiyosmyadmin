@@ -218,7 +218,10 @@ export const listActiveExperts = createServerFn({ method: "POST" })
 export type DispatchConfig = {
   broadcastRadiusKm: number;
   broadcastTimeoutSeconds: number;
+  /** Clean Home auto-cancel window (city_ops_settings clean_auto_cancel_minutes). */
   noExpertTimeoutMinutes: number;
+  /** Clean Auto auto-cancel window (city_ops_settings wash_auto_cancel_minutes). */
+  washAutoCancelMinutes: number;
   noAcceptMinutes: number;
   /** Per-service no-accept limit (Settings → Alerts). */
   noAcceptByService: Record<string, number>;
@@ -231,17 +234,24 @@ export const getDispatchConfig = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("dispatch_config")
       .select(
-        "broadcast_radius_km, broadcast_timeout_seconds, no_expert_timeout_minutes, no_accept_alert_threshold_seconds, no_accept_minutes",
+        "broadcast_radius_km, broadcast_timeout_seconds, no_accept_alert_threshold_seconds, no_accept_minutes",
       )
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = (data ?? null) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpc = context.supabase.rpc as any;
+    const [cm, wm] = await Promise.all([
+      rpc("app_auto_cancel_minutes", { _service_key: "clean", _city_id: null }),
+      rpc("app_auto_cancel_minutes", { _service_key: "wash", _city_id: null }),
+    ]);
     return {
       broadcastRadiusKm: Number(row?.broadcast_radius_km ?? 5),
       broadcastTimeoutSeconds: Number(row?.broadcast_timeout_seconds ?? 90),
-      noExpertTimeoutMinutes: Number(row?.no_expert_timeout_minutes ?? 30),
+      noExpertTimeoutMinutes: Number(cm.data ?? 120),
+      washAutoCancelMinutes: Number(wm.data ?? 120),
       noAcceptMinutes: Math.max(1, Math.round(Number(row?.no_accept_alert_threshold_seconds ?? 600) / 60)),
       noAcceptByService: (row?.no_accept_minutes ?? {}) as Record<string, number>,
     };

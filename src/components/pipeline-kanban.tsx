@@ -250,7 +250,9 @@ export function PipelineKanban({
   const broadcastTimeoutSeconds =
     dispatchConfigQuery.data?.broadcastTimeoutSeconds ?? 90;
   const noExpertTimeoutMinutes =
-    dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 30;
+    dispatchConfigQuery.data?.noExpertTimeoutMinutes ?? 120;
+  const washAutoCancelMinutes =
+    dispatchConfigQuery.data?.washAutoCancelMinutes ?? 120;
 
   const journeyConfigQuery = useQuery({
     queryKey: ["pipeline", "journey-config"],
@@ -706,7 +708,7 @@ export function PipelineKanban({
                     booking={b}
                     role={role}
                     broadcastTimeoutSeconds={broadcastTimeoutSeconds}
-                    noExpertTimeoutMinutes={noExpertTimeoutMinutes}
+                    noExpertTimeoutMinutes={b.serviceGroup === "wash" ? washAutoCancelMinutes : noExpertTimeoutMinutes}
                     journeyConfig={journeyConfig}
 
 
@@ -901,10 +903,9 @@ function BoardCard({
   const dispatchStartMs = booking.broadcastStartedAt
     ? new Date(booking.broadcastStartedAt).getTime()
     : new Date(booking.createdAt).getTime();
-  const refundAtMs =
-    refundSlot != null
-      ? refundSlot + journeyConfig.noExpertRefundAfterSlotMinutes * 60_000
-      : dispatchStartMs + noExpertTimeoutMinutes * 60_000;
+  // One rule for ASAP and scheduled: search start + the city's auto-cancel minutes.
+  void refundSlot;
+  const refundAtMs = dispatchStartMs + noExpertTimeoutMinutes * 60_000;
   const autoCancelMinsLeft = isBroadcasting
     ? Math.max(0, Math.ceil((refundAtMs - nowMs) / 60_000))
     : null;
