@@ -11075,6 +11075,25 @@ export type Database = {
         Returns: Json
       }
       city_id_by_name: { Args: { _name: string }; Returns: string }
+      city_opt: {
+        Args: { _city: string; _opt: string }
+        Returns: {
+          city_id: string
+          customer_price: number
+          expert_payout: number
+          is_active: boolean
+          partner_commission: number
+          price_option_id: string
+          strikethrough_price: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "city_price_options"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       claim_booking_as_expert: {
         Args: { p_booking_id: string }
         Returns: {
@@ -13299,6 +13318,10 @@ export type Database = {
       }
       staff_set_city_access: {
         Args: { _city_ids: string[]; _staff_user_id: string }
+        Returns: undefined
+      }
+      staff_set_city_price: {
+        Args: { _city_id: string; _opt: string; _patch: Json }
         Returns: undefined
       }
       staff_set_city_status: {
