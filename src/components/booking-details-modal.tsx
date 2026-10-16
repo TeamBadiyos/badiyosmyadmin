@@ -24,7 +24,7 @@ import {
   Repeat,
   Timer,
 } from "lucide-react";
-import { CustomerBlock, MapActionBar, ActionBar, ActionBtn, HistorySection, TimerRow, PanelSection, fmtPhone } from "@/components/detail-panel";
+import { CustomerBlock, MapActionBar, ActionBar, ActionBtn, HistorySection, TimerRow, PanelSection, MoreMenu, fmtPhone } from "@/components/detail-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -459,27 +459,37 @@ export function BookingDetailsModal({
         onClick={(e) => e.stopPropagation()}
         className="bg-card w-full sm:max-w-[880px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[94dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
-        <header className="px-4 sm:px-5 py-3 border-b border-border shrink-0">
+        <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h2 className="text-[17px] font-bold text-foreground">
-                {data?.bookingNumber ?? `#${bookingId.slice(0, 8)}`}
-              </h2>
-              {data && (
-                <>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[data.status]}`}>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[20px] font-bold tracking-tight text-foreground">
+                  {data?.bookingNumber ?? `#${bookingId.slice(0, 8)}`}
+                </h2>
+                {data && (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${STATUS_STYLES[data.status]}`}>
                     {STATUS_LABEL[data.status]}
                   </span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-foreground">
-                    {/wash|car|bike/i.test(data.serviceLabel ?? "") ? "Clean Auto" : "Clean Home"}
-                  </span>
-                  {data.serviceLabel && <span className="text-[13px] font-semibold text-foreground">{data.serviceLabel}</span>}
-                  <span className="text-[13px] font-bold text-foreground">
-                    {inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)}
-                  </span>
-                  {data.paymentStatus === "paid" && (
-                    <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">Paid</span>
-                  )}
+                )}
+              </div>
+              {data && (
+                <>
+                  <p className="mt-0.5 text-[13px] text-foreground">
+                    <span className="font-semibold">{data.serviceLabel ?? (/wash|car|bike/i.test(data.serviceLabel ?? "") ? "Clean Auto" : "Clean Home")}</span>
+                    <span className="text-muted-foreground"> · </span>
+                    <span className="font-semibold">{inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)}</span>
+                    {data.paymentStatus === "paid" && <span className="ml-1 text-[12px] font-semibold text-emerald-700">Paid</span>}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground truncate">
+                    {[
+                      (data.slotType ?? "").toLowerCase() === "now" && !data.scheduledDate
+                        ? "Book Now"
+                        : data.scheduledDate
+                          ? `${new Date(`${data.scheduledDate}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}${data.scheduledTimeSlot ? `, ${data.scheduledTimeSlot}` : ""}`
+                          : null,
+                      data.zone.name,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
                 </>
               )}
             </div>
@@ -488,22 +498,9 @@ export function BookingDetailsModal({
             </button>
           </div>
           {data && (
-            <>
-              <p className="mt-1 text-[12px] text-muted-foreground truncate">
-                {[
-                  `Placed ${fmtDateTime(data.createdAt)}`,
-                  (data.slotType ?? "").toLowerCase() === "now" && !data.scheduledDate
-                    ? "Book Now"
-                    : [data.scheduledDate, data.scheduledTimeSlot].filter(Boolean).join(" "),
-                  totalMinutes ? `${totalMinutes} min` : null,
-                  data.zone.name,
-                ].filter(Boolean).join(" · ")}
-              </p>
-              <Timeline current={data.status} />
-              {data.status === "in_progress" && data.startedAt && totalMinutes > 0 && (
-                <TimerRow startedAt={data.startedAt} totalMinutes={totalMinutes} />
-              )}
-            </>
+            data.status === "in_progress" && data.startedAt && totalMinutes > 0
+              ? <TimerRow startedAt={data.startedAt} totalMinutes={totalMinutes} />
+              : <Timeline current={data.status} />
           )}
         </header>
 
@@ -639,23 +636,23 @@ export function BookingDetailsModal({
                   }
                   normal={
                     <>
-                      {nextOptions.length > 0 && <ActionBtn icon={<ListChecks size={13} />} onClick={() => openPanel("status")}>Change status</ActionBtn>}
                       {showAssign && <ActionBtn icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>Assign</ActionBtn>}
-                      {canReassign && <ActionBtn icon={<RefreshCw size={13} />} onClick={() => setReassignOpen(true)}>Reassign</ActionBtn>}
-                      {canReschedule && <ActionBtn icon={<CalendarClock size={13} />} onClick={() => openPanel("reschedule")}>Reschedule</ActionBtn>}
-                      {canHandover && <ActionBtn icon={<Repeat size={13} />} onClick={() => openPanel("handover")}>Handover</ActionBtn>}
                       {canAdjust && <ActionBtn icon={<Timer size={13} />} onClick={() => setAdjustOpen(true)}>Adjust time</ActionBtn>}
-                      {canEditFields && <ActionBtn icon={<Pencil size={13} />} onClick={() => { setPanel(null); setEditOpen((v) => !v); }}>Edit booking</ActionBtn>}
+                      {nextOptions.length > 0 && <ActionBtn icon={<ListChecks size={13} />} onClick={() => openPanel("status")}>Change status</ActionBtn>}
                     </>
                   }
                   danger={
-                    (canRefund && (isTerminal || data.status === "cancelled")) || canCancel || canDelete ? (
-                      <>
-                        {canRefund && isTerminal && <ActionBtn variant="danger" icon={<IndianRupee size={13} />} onClick={() => setRefundConfirm(true)}>Refund</ActionBtn>}
-                        {canCancel && <ActionBtn variant="danger" icon={<Ban size={13} />} onClick={() => setCancelOpen(true)}>Cancel</ActionBtn>}
-                        {canDelete && <ActionBtn variant="danger" icon={<Trash2 size={13} />} onClick={() => setDeleteOpen(true)}>Delete</ActionBtn>}
-                      </>
-                    ) : undefined
+                    <MoreMenu
+                      items={[
+                        ...(canReassign ? [{ label: "Reassign", icon: <RefreshCw size={14} />, onClick: () => setReassignOpen(true) }] : []),
+                        ...(canReschedule ? [{ label: "Reschedule", icon: <CalendarClock size={14} />, onClick: () => openPanel("reschedule") }] : []),
+                        ...(canHandover ? [{ label: "Handover", icon: <Repeat size={14} />, onClick: () => openPanel("handover") }] : []),
+                        ...(canEditFields ? [{ label: "Edit booking", icon: <Pencil size={14} />, onClick: () => { setPanel(null); setEditOpen((v) => !v); } }] : []),
+                        ...(canRefund && isTerminal ? [{ label: "Refund", icon: <IndianRupee size={14} />, onClick: () => setRefundConfirm(true), danger: true }] : []),
+                        ...(canCancel ? [{ label: "Cancel booking", icon: <Ban size={14} />, onClick: () => setCancelOpen(true), danger: true }] : []),
+                        ...(canDelete ? [{ label: "Delete", icon: <Trash2 size={14} />, onClick: () => setDeleteOpen(true), danger: true }] : []),
+                      ]}
+                    />
                   }
                 />
               )}

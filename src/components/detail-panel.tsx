@@ -5,7 +5,7 @@
  * (assigned person + payment | staff note) → action bar → History ▸.
  */
 import { useEffect, useState } from "react";
-import { Copy, MapPin, MessageCircle, Bike, Pencil, ChevronRight, ChevronDown } from "lucide-react";
+import { Copy, MapPin, MessageCircle, Bike, Pencil, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useLiveTracking } from "@/lib/use-live-tracking";
 
@@ -186,6 +186,40 @@ export function ActionBar({ primary, normal, danger }: { primary?: React.ReactNo
       {normal && <div className="flex flex-wrap items-center gap-1.5">{normal}</div>}
       {danger && <div className="ml-auto flex flex-wrap items-center gap-1.5">{danger}</div>}
     </section>
+  );
+}
+
+export type MoreItem = { label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean };
+
+/** "⋯ More" overflow menu for less-used and destructive actions. */
+export function MoreMenu({ items }: { items: MoreItem[] }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  const normal = items.filter((i) => !i.danger);
+  const danger = items.filter((i) => i.danger);
+  const row = (i: MoreItem) => (
+    <button key={i.label} type="button" onClick={() => { setOpen(false); i.onClick(); }}
+      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-semibold hover:bg-muted ${i.danger ? "text-destructive" : "text-foreground"}`}>
+      {i.icon}{i.label}
+    </button>
+  );
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="More actions"
+        className="inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card px-3 text-[12px] font-semibold text-foreground hover:bg-muted">
+        <MoreHorizontal size={15} /> More
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full right-0 z-50 mb-2 w-52 rounded-xl border border-border bg-card p-1 shadow-lg">
+            {normal.map(row)}
+            {normal.length > 0 && danger.length > 0 && <div className="my-1 h-px bg-border" />}
+            {danger.map(row)}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
