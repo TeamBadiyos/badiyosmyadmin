@@ -243,8 +243,32 @@ function Lines({ label, items, onChange }: { label: string; items: Line[]; onCha
   );
 }
 
-function Preview({ m, live, lang, setLang }: { m: ServiceContent; live: LiveOption[]; lang: "en" | "mr"; setLang: (l: "en" | "mr") => void }) {
+const SAMPLE: Record<string, string> = { greeting: "Good evening", name: "Priya", open_time: "8:00 AM", day: "Tomorrow", next_slot: "4:30 PM" };
+const fill = (x: string) => x.replace(/\{(\w+)\}/g, (_, k) => SAMPLE[k] ?? `{${k}}`);
+
+function BannerFields({ label, b, busy, onChange, onPick }: { label: string; b: Banner; busy: boolean; onChange: (p: Partial<Banner>) => void; onPick: () => void }) {
+  return (
+    <div className="space-y-2 border-b border-border py-2 last:border-0">
+      {label && <div className="text-xs font-semibold text-muted-foreground">{label}</div>}
+      <div className="flex flex-wrap items-start gap-2">
+        <button disabled={busy} onClick={onPick}><Photo url={b.image_url} w={90} h={50} /></button>
+        {b.image_url && <button className="text-xs text-muted-foreground underline" onClick={() => onChange({ image_url: null })}>Remove</button>}
+        <div className="grid flex-1 gap-2 sm:grid-cols-2">
+          <Input value={b.title} maxLength={80} placeholder="Title" onChange={(e) => onChange({ title: e.target.value })} />
+          <Input value={b.title_mr} maxLength={80} placeholder="शीर्षक (मराठी)" onChange={(e) => onChange({ title_mr: e.target.value })} />
+          <Input value={b.subline} maxLength={120} placeholder="Sub-line" onChange={(e) => onChange({ subline: e.target.value })} />
+          <Input value={b.subline_mr} maxLength={120} placeholder="उप-ओळ (मराठी)" onChange={(e) => onChange({ subline_mr: e.target.value })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live: LiveOption[]; lang: "en" | "mr"; setLang: (l: "en" | "mr") => void; service: ServiceKey }) {
   const t = (en: string, mr: string) => (lang === "en" ? en : mr || en);
+  const [st, setSt] = useState<BannerState | "campaign">("open_available");
+  const b: Banner = st === "campaign" ? m.campaign : m.banners[st];
+  const card = m.cards.find((c) => c.enabled);
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
@@ -253,7 +277,18 @@ function Preview({ m, live, lang, setLang }: { m: ServiceContent; live: LiveOpti
           {(["en", "mr"] as const).map((l) => <button key={l} onClick={() => setLang(l)} className={`px-2 py-0.5 ${lang === l ? "bg-primary text-primary-foreground" : ""}`}>{l === "en" ? "EN" : "मराठी"}</button>)}
         </div>
       </div>
+      <select className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs" value={st} onChange={(e) => setSt(e.target.value as BannerState | "campaign")}>
+        {BANNER_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        <option value="campaign">Campaign</option>
+      </select>
       <div className="mx-auto w-[280px] space-y-3 rounded-[28px] border-4 border-foreground/80 bg-background p-3">
+        <div className="relative flex aspect-[1080/600] flex-col justify-end overflow-hidden rounded-xl bg-muted p-2">
+          {b.image_url && <img src={b.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+          <div className="relative rounded bg-background/80 px-2 py-1">
+            <div className="text-[12px] font-bold text-foreground">{fill(t(b.title, b.title_mr))}</div>
+            <div className="text-[10px] text-muted-foreground">{fill(t(b.subline, b.subline_mr))}</div>
+          </div>
+        </div>
         {/* Hero colour is staff-chosen content, so it is applied inline. */}
         <div className="relative flex h-[130px] flex-col justify-end overflow-hidden rounded-xl p-3" style={{ backgroundColor: m.hero.bg_color }}>
           <div className="z-10 max-w-[60%] space-y-1 text-primary-foreground">
