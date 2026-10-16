@@ -166,7 +166,8 @@ function AssignPopover({
               key={c.id}
               type="button"
               onClick={() => pick(c)}
-              className="w-full flex items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
+              disabled={c.tag === "Busy"}
+              className="w-full flex disabled:opacity-50 disabled:cursor-not-allowed items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
             >
               <span className="text-[13px] font-semibold text-foreground truncate">{c.name}</span>
               <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
