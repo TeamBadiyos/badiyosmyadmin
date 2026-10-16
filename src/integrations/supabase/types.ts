@@ -6270,21 +6270,33 @@ export type Database = {
       merchant_referral_config: {
         Row: {
           id: number
+          is_active: boolean
           reward_amount: number
           rules: string | null
+          target_orders: number
           updated_at: string
+          updated_by: string | null
+          window_days: number
         }
         Insert: {
           id?: number
+          is_active?: boolean
           reward_amount?: number
           rules?: string | null
+          target_orders?: number
           updated_at?: string
+          updated_by?: string | null
+          window_days?: number
         }
         Update: {
           id?: number
+          is_active?: boolean
           reward_amount?: number
           rules?: string | null
+          target_orders?: number
           updated_at?: string
+          updated_by?: string | null
+          window_days?: number
         }
         Relationships: []
       }
@@ -6329,6 +6341,115 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_referrals: {
+        Row: {
+          adjustment_id: string | null
+          created_at: string
+          delivered_count: number
+          earned_at: string | null
+          earned_by: string | null
+          id: string
+          live_at: string | null
+          referred_store_id: string
+          referrer_id: string
+          reversal_adjustment_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          reward_amount: number
+          status: string
+          target_orders: number
+          updated_at: string
+          window_days: number
+          window_expires_at: string | null
+        }
+        Insert: {
+          adjustment_id?: string | null
+          created_at?: string
+          delivered_count?: number
+          earned_at?: string | null
+          earned_by?: string | null
+          id?: string
+          live_at?: string | null
+          referred_store_id: string
+          referrer_id: string
+          reversal_adjustment_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reward_amount?: number
+          status?: string
+          target_orders?: number
+          updated_at?: string
+          window_days?: number
+          window_expires_at?: string | null
+        }
+        Update: {
+          adjustment_id?: string | null
+          created_at?: string
+          delivered_count?: number
+          earned_at?: string | null
+          earned_by?: string | null
+          id?: string
+          live_at?: string | null
+          referred_store_id?: string
+          referrer_id?: string
+          reversal_adjustment_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reward_amount?: number
+          status?: string
+          target_orders?: number
+          updated_at?: string
+          window_days?: number
+          window_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_referrals_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlement_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referrals_referred_store_id_fkey"
+            columns: ["referred_store_id"]
+            isOneToOne: true
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referrals_referred_store_id_fkey"
+            columns: ["referred_store_id"]
+            isOneToOne: true
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_referrals_reversal_adjustment_id_fkey"
+            columns: ["reversal_adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlement_adjustments"
             referencedColumns: ["id"]
           },
         ]
@@ -6419,7 +6540,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
-          order_id: string
+          order_id: string | null
           reason: string
           settlement_id: string | null
           store_id: string
@@ -6428,7 +6549,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
-          order_id: string
+          order_id?: string | null
           reason?: string
           settlement_id?: string | null
           store_id: string
@@ -6437,7 +6558,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
-          order_id?: string
+          order_id?: string | null
           reason?: string
           settlement_id?: string | null
           store_id?: string
@@ -12660,6 +12781,14 @@ export type Database = {
         Returns: Json
       }
       merchant_referral_code: { Args: never; Returns: string }
+      merchant_referral_credit: {
+        Args: { _by: string; _ref_id: string }
+        Returns: undefined
+      }
+      merchant_referral_evaluate: {
+        Args: { _store_id: string }
+        Returns: undefined
+      }
       merchant_require: {
         Args: { _allow: string[]; _store_id: string }
         Returns: string
@@ -13663,6 +13792,10 @@ export type Database = {
         Returns: undefined
       }
       staff_mark_all_notifications_read: { Args: never; Returns: undefined }
+      staff_mark_merchant_referral_earned: {
+        Args: { _id: string }
+        Returns: undefined
+      }
       staff_mark_notification_read: {
         Args: { _id: string; _read?: boolean }
         Returns: undefined
@@ -13695,6 +13828,7 @@ export type Database = {
         Args: { _doc_types: string[]; _merchant_id: string; _notes: string }
         Returns: undefined
       }
+      staff_merchant_referrals: { Args: never; Returns: Json }
       staff_move_banner: {
         Args: { _dir: number; _id: string }
         Returns: undefined
@@ -13825,6 +13959,10 @@ export type Database = {
       }
       staff_retry_store_refund: {
         Args: { _order_id: string }
+        Returns: undefined
+      }
+      staff_reverse_merchant_referral: {
+        Args: { _id: string; _reason: string }
         Returns: undefined
       }
       staff_reverse_referral_reward: {
@@ -14301,6 +14439,15 @@ export type Database = {
       }
       staff_update_dispatch_config: {
         Args: { _payload: Json }
+        Returns: undefined
+      }
+      staff_update_merchant_referral_config: {
+        Args: {
+          _active: boolean
+          _days: number
+          _reward: number
+          _target: number
+        }
         Returns: undefined
       }
       staff_update_referral_config: {
