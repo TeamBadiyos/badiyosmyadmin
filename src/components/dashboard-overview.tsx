@@ -38,13 +38,13 @@ const ago = (iso: string | null) => {
 };
 
 const TIPS: Record<string, string> = {
-  Orders: "Completed orders in the selected dates.",
+  Orders: "Orders paid on these dates (counted when paid, any status).",
   Cancelled: "Cancelled + rejected orders.",
   Gross: "Money received from customers on these dates (counted when paid), without GST.",
   Discount: "Coupons and offers given.",
   Refunds: "Money returned to customers on these dates, without GST.",
   "Net revenue": "Gross − Discount − Refunds, without GST.",
-  "badiyos earning": "Commission + delivery share + platform fee, without GST.",
+  "badiyos earning": "Our share (commission + delivery share + platform fee, without GST) of orders paid on these dates, minus our share of refunds made on these dates.",
 };
 
 function Th({ label, right = true }: { label: string; right?: boolean }) {
@@ -87,7 +87,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
   const rows = ROWS.map((r) => {
     const v = d?.services?.[r.key] ?? {};
     const m = money?.[r.key];
-    return { r, orders: Number(v.completed ?? 0), cancelled: Number(v.cancelled ?? 0), gross: m?.gross ?? 0, discount: m?.discount ?? 0, refund: m?.refund ?? 0, net: m?.net ?? 0, earning: Number(v.earning ?? 0) };
+    return { r, orders: Number(m?.orders ?? 0), cancelled: Number(v.cancelled ?? 0), gross: m?.gross ?? 0, discount: m?.discount ?? 0, refund: m?.refund ?? 0, net: m?.net ?? 0, earning: Number(m?.earning ?? 0) };
   });
   const tot = rows.reduce((t, x) => ({ orders: t.orders + x.orders, cancelled: t.cancelled + x.cancelled, gross: t.gross + x.gross, discount: t.discount + x.discount, refund: t.refund + x.refund, net: t.net + x.net, earning: t.earning + x.earning }),
     { orders: 0, cancelled: 0, gross: 0, discount: 0, refund: 0, net: 0, earning: 0 });
