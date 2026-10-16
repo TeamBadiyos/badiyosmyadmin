@@ -30,7 +30,6 @@ import { StoreSettingsPage } from "@/components/store-settings-page";
 import { TaskTypesPage } from "@/components/task-types-page";
 import { BannersPage } from "@/components/banners-page";
 import { WalletsPage } from "@/components/wallets-page";
-import { CommissionTab } from "@/components/commission-tab";
 import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
 import { AuditLogsPage } from "@/components/audit-logs-page";
