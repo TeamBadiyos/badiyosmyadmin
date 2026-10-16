@@ -33,7 +33,7 @@ import {
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
   listBankChanges, decideBankChange,
   listStoreTypes, saveStoreType, reorderStoreTypes,
-  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, createDraftMerchant,
+  listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, saveHideLowItemSections, createDraftMerchant,
 } from "@/lib/service-commerce.functions";
 import { cancelStoreOrderWithRefund, reassignStoreRider } from "@/lib/commerce.functions";
 
