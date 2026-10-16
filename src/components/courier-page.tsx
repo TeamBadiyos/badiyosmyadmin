@@ -61,7 +61,7 @@ import {
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
-import { ShareLocation, ShareLocationIcons } from "@/components/share-location";
+import { ShareLocationIcons } from "@/components/share-location";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
