@@ -547,7 +547,7 @@ export const listCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("marketing_campaigns")
       .select(
-        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at, target_user_ids",
+        "id, title, body, image_url, deep_link, audience, status, show_in_offers, sent_at, recipients_count, created_at, target_user_ids, city_id",
       )
       .order("created_at", { ascending: false })
       .limit(200);

@@ -77,6 +77,7 @@ export function SettlementsTab({ canEdit, extra }: { canEdit: boolean; extra?: R
 const noBank = (r: any) => !r.merchant?.bank_account_number || !r.merchant?.bank_ifsc;
 
 export function SettlementTable({ status, type, canEdit }: { status: string; type?: string; canEdit: boolean; title?: string }) {
+  const showCity = useShowCity();
   const fetch = useServerFn(listMerchantSettlements);
   const act = useServerFn(financeAction);
   const qc = useQueryClient();
@@ -178,6 +179,7 @@ function SettlementDetail({ id }: { id: string }) {
 }
 
 export function RefundsTab({ canEdit }: { canEdit: boolean }) {
+  const showCity = useShowCity();
   const [s, setS] = useState<"refund_pending" | "processing" | "failed" | "done">("refund_pending");
   const fetch = useServerFn(listRefunds);
   const act = useServerFn(financeAction);
@@ -215,6 +217,7 @@ export function RefundsTab({ canEdit }: { canEdit: boolean }) {
 }
 
 export function InvoicesTab() {
+  const showCity = useShowCity();
   const fetch = useServerFn(listMerchantSettlements);
   const inv = useServerFn(getSettlementInvoice);
   const q = useQuery({ queryKey: ["fin-settlements", null, null], queryFn: () => fetch({ data: {} }) });
