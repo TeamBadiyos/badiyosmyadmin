@@ -122,7 +122,7 @@ export const listServiceStores = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
-      db.from("merchants").select("id, store_name, owner_name, phone, city, city_id, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number").is("deleted_at", null),
+      db.from("merchants").select("id, store_name, owner_name, phone, city, city_id, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number, service_type, fssai_number, fssai_expiry").is("deleted_at", null),
       data.service,
     ).order("store_name"); chk(r);
     const rows = r.data ?? [];
@@ -132,6 +132,11 @@ export const listServiceStores = createServerFn({ method: "POST" })
       const o = await db.from("merchant_orders").select("merchant_id").in("merchant_id", rows.map((x: any) => x.id))
         .eq("is_training", false).gte("created_at", start.toISOString()).or("payment_mode.neq.online,payment_status.eq.paid").limit(5000);
       for (const x of o.data ?? []) counts.set(x.merchant_id, (counts.get(x.merchant_id) ?? 0) + 1);
+    }
+    const fssaiDoc = new Set<string>();
+    if (rows.length && data.service === "food") {
+      const d = await db.from("merchant_documents").select("merchant_id, doc_type").in("merchant_id", rows.map((x: any) => x.id)).ilike("doc_type", "fssai%");
+      for (const x of (d.data ?? []) as any[]) fssaiDoc.add(x.merchant_id);
     }
     const live = new Map<string, number>();
     const types = new Map<string, string>();
@@ -145,7 +150,7 @@ export const listServiceStores = createServerFn({ method: "POST" })
       for (const x of (t.data ?? []) as any[]) types.set(x.id, x.name);
     }
     return rows.map((x: any) => ({
-      ...x, today_orders: counts.get(x.id) ?? 0, live_items: live.get(x.id) ?? 0,
+      ...x, has_fssai_doc: fssaiDoc.has(x.id), today_orders: counts.get(x.id) ?? 0, live_items: live.get(x.id) ?? 0,
       store_type: x.store_category_id ? types.get(x.store_category_id) ?? null : null,
       photo: x.shop_photo_url ?? null, bank_pending: !x.bank_account_number, bank_account_number: undefined,
     }));
@@ -188,7 +193,17 @@ export const getStoreDetail = createServerFn({ method: "POST" })
     const types = data.service === "store"
       ? await db.from("store_categories").select("id, name, is_active").order("sort_order")
       : { data: [] };
+    const rawDocs = ((await db.from("merchant_documents").select("doc_type, file_url, uploaded_at").eq("merchant_id", data.storeId)).data ?? []) as any[];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const documents = await Promise.all(rawDocs.map(async (d) => {
+      const v: string = d.file_url ?? "";
+      if (!v) return { docType: d.doc_type, url: null as string | null, uploadedAt: d.uploaded_at };
+      if (/^https?:\/\//i.test(v)) return { docType: d.doc_type, url: v, uploadedAt: d.uploaded_at };
+      const { data: sg } = await supabaseAdmin.storage.from("merchant-documents").createSignedUrl(v.replace(/^merchant-documents\//, ""), 600);
+      return { docType: d.doc_type, url: sg?.signedUrl ?? null, uploadedAt: d.uploaded_at };
+    }));
     return {
+      documents,
       store: m.data,
       storeTypes: ((types as any).data ?? []) as { id: string; name: string; is_active: boolean }[],
       categories,
