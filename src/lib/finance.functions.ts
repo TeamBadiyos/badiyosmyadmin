@@ -31,7 +31,9 @@ export const listMerchantSettlements = createServerFn({ method: "GET" })
         .eq("entry_type", "round_off_carried").in("settlement_id", sids.slice(i, i + 200));
       for (const e of (l.data ?? []) as any[]) ro.set(e.settlement_id, Number(e.info_amount ?? 0));
     }
-    return (r.data ?? []).map((x: any) => ({ ...x, merchant: mm.get(x.store_id) ?? null, round_off_carried: ro.get(x.id) ?? null }));
+    const bc = ids.length ? await db.from("merchant_bank_change_requests").select("merchant_id").eq("status", "pending").in("merchant_id", ids) : { data: [] };
+    const pendingBank = new Set(((bc.data ?? []) as any[]).map((x) => x.merchant_id));
+    return (r.data ?? []).map((x: any) => ({ ...x, merchant: mm.get(x.store_id) ?? null, round_off_carried: ro.get(x.id) ?? null, bank_change_pending: pendingBank.has(x.store_id) }));
   });
 
 export const getSettlementDetail = createServerFn({ method: "GET" })

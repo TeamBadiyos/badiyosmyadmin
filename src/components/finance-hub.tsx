@@ -120,7 +120,9 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
             {rows.map((r) => (
               <Fragment key={r.id}>
                 <tr className="border-b hover:bg-muted/40 cursor-pointer" onClick={() => setOpen(open === r.id ? null : r.id)}>
-                  <td className="p-2 font-medium">{r.merchant?.store_name ?? "—"}{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={r.city_id} /></p>}</td>
+                  <td className="p-2 font-medium">{r.merchant?.store_name ?? "—"}
+                    {r.bank_change_pending && r.status !== "paid" && <Badge variant="outline" className="ml-1 border-destructive text-destructive" title="New bank details are waiting for approval in Store/Food → Approvals → Bank changes. Check before paying.">Bank change pending</Badge>}
+                    {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={r.city_id} /></p>}</td>
                   <td className="p-2 capitalize">{r.merchant?.service_type ?? "—"}{r.type === "instant" && <Badge variant="outline" className="ml-1">instant</Badge>}</td>
                   <td className="p-2 whitespace-nowrap">{r.period_from} → {r.period_to}</td>
                   <td className="p-2 text-right">{inr(r.gross_amount)}</td>
