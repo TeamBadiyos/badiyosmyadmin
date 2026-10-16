@@ -67,9 +67,12 @@ const AGENT_ICON =
 export function LiveTrackingMap({
   kind,
   id,
+  compact = false,
 }: {
   kind: "courier" | "booking";
   id: string;
+  /** Detail-panel mode: 220px map, opens on Full route, no address footer. */
+  compact?: boolean;
 }) {
   const fetchRoute = useServerFn(getRoadRoute);
 
@@ -85,7 +88,7 @@ export function LiveTrackingMap({
   const lineRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [follow, setFollow] = useState(true);
+  const [follow, setFollow] = useState(!compact);
 
   const agentPos = useMemo(
     () =>
@@ -265,6 +268,10 @@ export function LiveTrackingMap({
 
     if (follow && agentPos) {
       map.panTo(agentPos);
+    } else if (!agentPos && stops.length < 2 && !bounds.isEmpty()) {
+      // Nobody assigned: centre on the job location.
+      map.setCenter(bounds.getCenter());
+      map.setZoom(15);
     } else if (!bounds.isEmpty()) {
       // Generous padding keeps pins clear of the map edges and the footer card.
       map.fitBounds(bounds, { top: 56, right: 48, bottom: 72, left: 48 });
@@ -309,7 +316,7 @@ export function LiveTrackingMap({
       </div>
 
       <div className="relative">
-        <div ref={containerRef} className="h-[320px] w-full bg-muted" />
+        <div ref={containerRef} className={`${compact ? "h-[220px]" : "h-[320px]"} w-full bg-muted`} />
         {(isLoading || !mapReady) && !mapError && (
           <div className="absolute inset-0 grid place-items-center bg-background/70 text-[12px] text-muted-foreground">
             Loading live map…
@@ -322,7 +329,7 @@ export function LiveTrackingMap({
         )}
       </div>
 
-      <div className="px-3 py-2 space-y-1.5 text-[12px]">
+      {!compact && <div className="px-3 py-2 space-y-1.5 text-[12px]">
         {isError && (
           <p className="text-destructive">
             Could not load tracking
@@ -377,7 +384,10 @@ export function LiveTrackingMap({
             )}
           </span>
         </p>
-      </div>
+      </div>}
+      {compact && isError && (
+        <p className="px-3 py-1.5 text-[11px] text-destructive">Could not load tracking.</p>
+      )}
     </div>
   );
 }
