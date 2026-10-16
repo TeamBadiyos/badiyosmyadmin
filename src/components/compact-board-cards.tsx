@@ -32,7 +32,6 @@ const dayTime = (date: string | null, slot: string | null, slotType?: string | n
   return [d, t].filter(Boolean).join(" ") || "—";
 };
 const mins = (iso: string, now: number) => Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60000));
-const first = (n?: string | null) => (n ?? "").trim().split(/\s+/)[0] || "—";
 
 const ALERT_LABEL: Record<string, string> = {
   merchant_slow: "Merchant slow",
