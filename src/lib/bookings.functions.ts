@@ -386,7 +386,29 @@ export type BookingDetails = {
   deletedAt: string | null;
   deletedBy: string | null;
   deleteReason: string | null;
+  /** Customer's bookings up to and including this one, and avg rating they gave. */
+  customerStats: { bookingCount: number; avgRatingGiven: number | null };
+  /** Staff time adjustments that change the job length now (not the "charge customer" ones, which wait for payment). */
+  adjustMinutes: number;
+  adjustments: Array<{ id: string; deltaMinutes: number; reason: string; note: string | null; moneyMode: string; customerAmount: number; expertPayDelta: number; refundStatus: string | null; createdAt: string }>;
+  history: Array<{ at: string; what: string; who: string | null }>;
 };
+
+const AUDIT_LABEL: Record<string, string> = {
+  booking_time_adjusted: "Time adjusted",
+};
+function auditWhat(action: string, after: Record<string, unknown> | null, before: Record<string, unknown> | null): string {
+  if (action === "booking_time_adjusted" && after) {
+    const d = Number(after.delta_minutes ?? 0);
+    const mode = String(after.money_mode ?? "").replace("_", " ");
+    return `Time ${d > 0 ? "+" : ""}${d} min · ${after.reason ?? ""} · ${mode}`;
+  }
+  const st = (after?.status ?? after?.new_status) as string | undefined;
+  const prev = (before?.status) as string | undefined;
+  const base = AUDIT_LABEL[action] ?? action.replace(/^staff_|^booking_/, "").replace(/_/g, " ");
+  const label = base.charAt(0).toUpperCase() + base.slice(1);
+  return st ? `${label}${prev ? ` · ${prev} → ${st}` : ` · ${st}`}` : label;
+}
 
 async function loadBookingDetails(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -453,7 +475,52 @@ async function loadBookingDetails(
   }));
   const approved = extensions.filter((e) => e.approvalStatus === "approved" || e.approvalStatus === "accepted");
 
+  const [statsRes, adjRes, auditRes] = await Promise.all([
+    b.user_id
+      ? supabase.from("bookings").select("id, rating, created_at").eq("user_id", b.user_id).is("deleted_at", null).limit(1000)
+      : Promise.resolve({ data: [] }),
+    supabase.from("booking_time_adjustments")
+      .select("id, delta_minutes, reason, note, money_mode, customer_amount, expert_pay_delta, refund_status, created_at, created_by")
+      .eq("booking_id", bookingId).order("created_at"),
+    supabase.from("audit_logs").select("action, actor_id, before_state, after_state, created_at")
+      .eq("target_table", "bookings").eq("target_id", bookingId).order("created_at").limit(200),
+  ]);
+  const custRows = ((statsRes.data ?? []) as Array<{ id: string; rating: number | null; created_at: string }>);
+  const ratings = custRows.map((r) => r.rating).filter((r): r is number => typeof r === "number");
+  const customerStats = {
+    bookingCount: custRows.filter((r) => r.created_at <= b.created_at).length,
+    avgRatingGiven: ratings.length ? ratings.reduce((x, y) => x + Number(y), 0) / ratings.length : null,
+  };
+  const adjustments = ((adjRes.data ?? []) as Array<Record<string, unknown>>).map((a) => ({
+    id: String(a.id), deltaMinutes: Number(a.delta_minutes ?? 0), reason: String(a.reason ?? ""),
+    note: (a.note as string | null) ?? null, moneyMode: String(a.money_mode ?? ""),
+    customerAmount: Number(a.customer_amount ?? 0), expertPayDelta: Number(a.expert_pay_delta ?? 0),
+    refundStatus: (a.refund_status as string | null) ?? null, createdAt: String(a.created_at),
+  }));
+  const auditRows = ((auditRes.data ?? []) as Array<{ action: string; actor_id: string | null; before_state: Record<string, unknown> | null; after_state: Record<string, unknown> | null; created_at: string }>);
+  const actorIds = Array.from(new Set(auditRows.map((r) => r.actor_id).filter((x): x is string => !!x)));
+  const actorMap = new Map<string, string>();
+  if (actorIds.length) {
+    const { data: st } = await supabase.from("staff_users").select("*").in("auth_user_id", actorIds);
+    for (const r of (st ?? []) as Array<Record<string, unknown>>) {
+      actorMap.set(String(r.auth_user_id), String(r.name ?? r.full_name ?? r.email ?? r.role ?? "Staff"));
+    }
+  }
+  const history: BookingDetails["history"] = [
+    { at: b.created_at, what: "Booking placed", who: userRes.data?.full_name ?? "Customer" },
+    ...(b.started_at ? [{ at: b.started_at as string, what: "Job started", who: expertRes.data?.name ?? null }] : []),
+    ...(b.service_end_at && b.status === "completed" ? [{ at: b.service_end_at as string, what: "Job completed", who: expertRes.data?.name ?? null }] : []),
+    ...extensions.map((e) => ({ at: e.createdAt, what: `Extra time +${e.extraMinutes} min (₹${e.price}) · ${e.approvalStatus}`, who: null })),
+    ...auditRows.map((r) => ({ at: r.created_at, what: auditWhat(r.action, r.after_state, r.before_state), who: r.actor_id ? actorMap.get(r.actor_id) ?? "Staff" : null })),
+    ...(b.status === "cancelled" ? [{ at: (b.updated_at ?? b.created_at) as string, what: `Cancelled${b.cancellation_reason ? ` · ${String(b.cancellation_reason).replace(/_/g, " ")}` : ""}`, who: null }] : []),
+    ...(b.refund_status ? [{ at: (b.updated_at ?? b.created_at) as string, what: `Refund ${b.refund_status}${b.refund_amount != null ? ` · ₹${b.refund_amount}` : ""}`, who: null }] : []),
+  ];
+
   return {
+    customerStats,
+    adjustments,
+    adjustMinutes: adjustments.filter((a) => a.moneyMode !== "charge").reduce((x, a) => x + a.deltaMinutes, 0),
+    history,
     id: b.id,
     bookingNumber: (b as { booking_number?: string | null }).booking_number ?? null,
     status: b.status as BookingStatus,
@@ -1041,4 +1108,34 @@ export const setBookingStaffNote = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
+  });
+
+
+export const ADJUST_REASONS = [
+  "Customer asked for more",
+  "Customer asked for less",
+  "Work finished early",
+  "Other",
+] as const;
+
+/** Staff adds or removes job time (Clean Home / Clean Auto). Audited; expert pay follows. */
+export const adjustBookingTime = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; deltaMinutes: number; reason: string; note?: string | null; moneyMode: "charge" | "no_charge" | "refund" | "no_refund" }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!Number.isInteger(input.deltaMinutes) || input.deltaMinutes === 0) throw new Error("Enter minutes");
+    if (!input.reason?.trim()) throw new Error("Reason required");
+    if (input.reason === "Other" && !input.note?.trim()) throw new Error("Add a note for Other");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { data: res, error } = await context.supabase.rpc("staff_adjust_booking_time" as never, {
+      _booking_id: data.bookingId,
+      _delta_minutes: data.deltaMinutes,
+      _reason: data.reason,
+      _note: data.note ?? null,
+      _money_mode: data.moneyMode,
+    } as never);
+    if (error) throw new Error((error as { message: string }).message);
+    return res as unknown as { customer_amount: number; expert_pay_delta: number; extension_id: string | null };
   });

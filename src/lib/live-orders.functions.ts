@@ -499,7 +499,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       const { data: cs } = await db.from("service_categories").select("id, slug").in("id", catIds);
       for (const c of (cs ?? []) as Array<{ id: string; slug: string | null }>) if (c.slug === "car-bike-wash") washCats.add(c.id);
     }
-    const [usersRes, expertsRes, priceOptionsRes, extRes] = await Promise.all([
+    const [usersRes, expertsRes, priceOptionsRes, extRes, adjRes] = await Promise.all([
       userIds.length
         ? db.from("users").select("id, full_name").in("id", userIds)
         : Promise.resolve({ data: [], error: null } as const),
@@ -517,6 +517,11 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         .select("booking_id, extra_minutes, approval_status")
         .in("booking_id", bookingIds)
         .in("approval_status", ["accepted", "approved"]),
+      db
+        .from("booking_time_adjustments" as never)
+        .select("booking_id, delta_minutes, money_mode")
+        .in("booking_id", bookingIds)
+        .neq("money_mode", "charge"),
     ]);
     if ("error" in extRes && extRes.error) {
       throw new Error(extRes.error.message);
