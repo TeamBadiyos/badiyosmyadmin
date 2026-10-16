@@ -12,8 +12,13 @@ export type CommerceAlert = "merchant_slow" | "no_rider" | "pickup_delayed";
 
 export type RiderState = "none" | "searching" | "assigned" | "picked_up";
 
+const maskPhone = (p: string | null | undefined, role: string) =>
+  !p ? null : role === "finance" || role === "area_partner" ? `••••••${String(p).replace(/\D/g, "").slice(-4)}` : p;
+
 export type CommerceOrder = {
   id: string;
+  customerPhone: string | null;
+  phoneMasked: boolean;
   orderNumber: string;
   status: CommerceStatus;
   merchantName: string;
@@ -107,7 +112,7 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
     }
 
     const cols =
-      "id, order_number, status, merchant_id, user_id, customer_name, total_amount, payment_mode, payment_status, created_at, accepted_at, ready_at, picked_up_at, courier_order_id, items_total, commission_pct, commission_amount, commission_gst_amount, merchant_net, delivery_fee";
+      "id, order_number, status, merchant_id, user_id, customer_name, customer_phone, total_amount, payment_mode, payment_status, created_at, accepted_at, ready_at, picked_up_at, courier_order_id, items_total, commission_pct, commission_amount, commission_gst_amount, merchant_net, delivery_fee";
 
     let openQ = db
       .from("merchant_orders")
@@ -215,6 +220,8 @@ export const listCommercePipeline = createServerFn({ method: "GET" })
         status: r.status as CommerceStatus,
         merchantName: merchantMap.get(r.merchant_id) ?? "Store",
         customerName: r.customer_name || userMap.get(r.user_id) || "Customer",
+        customerPhone: maskPhone(r.customer_phone, staff.role),
+        phoneMasked: staff.role === "finance" || staff.role === "area_partner",
         totalAmount: Number(r.total_amount ?? 0),
         paymentMode: r.payment_mode ?? null,
         paymentStatus: r.payment_status ?? null,

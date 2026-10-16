@@ -1480,7 +1480,7 @@ function RescheduleSection({
   );
 }
 
-function ContactButtons({ phone, whatsapp = true }: { phone: string; whatsapp?: boolean }) {
+export function ContactButtons({ phone, whatsapp = true }: { phone: string; whatsapp?: boolean }) {
   const digits = phone.replace(/\D/g, "");
   const wa = digits.length === 10 ? `91${digits}` : digits;
   const cls = "w-8 h-8 rounded-full border border-border inline-flex items-center justify-center text-primary hover:bg-muted";
