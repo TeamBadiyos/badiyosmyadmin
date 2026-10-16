@@ -549,7 +549,7 @@ export const getServiceSettings = createServerFn({ method: "POST" })
     ]);
     chk(s);
     if (data.cityId && data.cityId !== "all") {
-      const c = await (db as any).from("city_service_settings").select("delivery_min_fare, delivery_per_km, default_accept_timeout_minutes").eq("city_id", data.cityId).eq("service_key", data.service).maybeSingle();
+      const c = await (db as any).from("city_service_settings").select("delivery_min_fare, delivery_per_km, delivery_base_fare, delivery_included_km, delivery_platform_fee, rider_share_pct, default_accept_timeout_minutes").eq("city_id", data.cityId).eq("service_key", data.service).maybeSingle();
       if (c.data) for (const [k, v] of Object.entries(c.data)) if (v != null) (s.data as any)[k] = v;
     }
     const rows = ((n.data ?? []) as any[]).filter((r) => r.service_type === data.service);
@@ -559,32 +559,30 @@ export const getServiceSettings = createServerFn({ method: "POST" })
 
 export const saveServiceSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { service: Svc; delivery_min_fare?: number; delivery_per_km?: number; rider_share_pct?: number; default_accept_timeout_minutes: number; cityId?: string | null }) => i)
+  .inputValidator((i: {
+    service: Svc; cityId?: string | null;
+    default_accept_timeout_minutes?: number;
+    rate?: { delivery_base_fare: number; delivery_included_km: number; delivery_per_km: number; delivery_min_fare: number; delivery_platform_fee: number; rider_share_pct: number };
+  }) => i)
   .handler(async ({ data, context }) => {
     const svc = svcOk(data.service);
-    const patch: Record<string, number> = {};
-    const t = Math.round(Number(data.default_accept_timeout_minutes));
-    if (!(t >= 1 && t <= 120)) throw new Error("Accept timeout must be 1–120 minutes");
-    patch.default_accept_timeout_minutes = t;
-    if (svc === "food" || svc === "store") {
-      const a = Number(data.delivery_min_fare), b = Number(data.delivery_per_km), c = Number(data.rider_share_pct);
-      if (!(a >= 0) || !(b >= 0) || !(c >= 0 && c <= 100)) throw new Error("Check the values");
-      Object.assign(patch, { delivery_min_fare: a, delivery_per_km: b, rider_share_pct: c });
-    }
-    const db = context.supabase;
     if (!data.cityId || data.cityId === "all") throw new Error("Pick a city to edit");
-    const cityPatch: Record<string, number> = { default_accept_timeout_minutes: patch.default_accept_timeout_minutes! };
-    if (patch.delivery_min_fare != null) { cityPatch.delivery_min_fare = patch.delivery_min_fare; cityPatch.delivery_per_km = patch.delivery_per_km!; }
-    const cr = await (db as any).rpc("staff_set_city_service", { _city_id: data.cityId, _service_key: svc, _patch: cityPatch });
+    const patch: Record<string, number> = {};
+    if (data.default_accept_timeout_minutes != null) {
+      const t = Math.round(Number(data.default_accept_timeout_minutes));
+      if (!(t >= 1 && t <= 120)) throw new Error("Accept timeout must be 1–120 minutes");
+      patch.default_accept_timeout_minutes = t;
+    }
+    if (data.rate) {
+      if (svc !== "food" && svc !== "store") throw new Error("Only for Store/Food");
+      for (const [k, v] of Object.entries(data.rate)) {
+        const n = Number(v);
+        if (!(n >= 0) || (k === "rider_share_pct" && n > 100)) throw new Error("Check the values");
+        patch[k] = n;
+      }
+    }
+    const cr = await (context.supabase as any).rpc("staff_set_city_service", { _city_id: data.cityId, _service_key: svc, _patch: patch });
     if (cr.error) throw new Error(cr.error.message);
-    // Rider share is a global value; it stays on the shared row.
-    if (patch.rider_share_pct == null) return { ok: true as const };
-    for (const k of ["default_accept_timeout_minutes", "delivery_min_fare", "delivery_per_km"]) delete patch[k];
-    const b = await db.from("service_settings").select("*").eq("service_key", svc).maybeSingle();
-    const r = await db.from("service_settings").update({ ...patch, updated_at: new Date().toISOString(), updated_by: context.userId }).eq("service_key", svc).select("service_key");
-    chk(r);
-    if (!r.data?.length) throw new Error("Only super admin can change this.");
-    await audit(context, "service_settings_updated", "service_settings", null, b.data, { service: svc, ...patch });
     return { ok: true as const };
   });
 

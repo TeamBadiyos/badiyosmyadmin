@@ -2600,8 +2600,12 @@ export type Database = {
         Row: {
           city_id: string
           default_accept_timeout_minutes: number | null
+          delivery_base_fare: number
+          delivery_included_km: number
           delivery_min_fare: number | null
           delivery_per_km: number | null
+          delivery_platform_fee: number
+          rider_share_pct: number | null
           service_key: string
           timings: Json | null
           updated_at: string
@@ -2609,8 +2613,12 @@ export type Database = {
         Insert: {
           city_id: string
           default_accept_timeout_minutes?: number | null
+          delivery_base_fare?: number
+          delivery_included_km?: number
           delivery_min_fare?: number | null
           delivery_per_km?: number | null
+          delivery_platform_fee?: number
+          rider_share_pct?: number | null
           service_key: string
           timings?: Json | null
           updated_at?: string
@@ -2618,8 +2626,12 @@ export type Database = {
         Update: {
           city_id?: string
           default_accept_timeout_minutes?: number | null
+          delivery_base_fare?: number
+          delivery_included_km?: number
           delivery_min_fare?: number | null
           delivery_per_km?: number | null
+          delivery_platform_fee?: number
+          rider_share_pct?: number | null
           service_key?: string
           timings?: Json | null
           updated_at?: string
@@ -12573,6 +12585,17 @@ export type Database = {
       customer_wallet_start_topup: { Args: { _amount: number }; Returns: Json }
       default_cancel_policy: { Args: never; Returns: Json }
       default_city_id: { Args: never; Returns: string }
+      delivery_fee_calc: {
+        Args: {
+          _base: number
+          _incl: number
+          _km: number
+          _min: number
+          _per_km: number
+          _pf: number
+        }
+        Returns: number
+      }
       demand_waiting_count: { Args: { _city: string }; Returns: number }
       dispatch_limit_minutes: {
         Args: { _city: string; _svc: string }
