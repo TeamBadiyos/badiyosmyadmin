@@ -397,7 +397,6 @@ export function ServiceHoursEditor({
           </div>
         </div>
       ) : null}
-      </div>
 
       {/* holidays */}
       <div>
