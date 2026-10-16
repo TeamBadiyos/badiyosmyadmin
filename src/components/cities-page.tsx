@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "@tanstack/react-router";
+import { useCity } from "@/lib/city-scope";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,16 +86,27 @@ function AddCityWizard({ cities, onClose, onDone }: { cities: CityRow[]; onClose
   const [code, setCode] = useState("27");
   const [from, setFrom] = useState(cities.find((c) => c.is_default)?.id ?? "");
   const [tpl, setTpl] = useState<Tpl | null>(null);
+  const [newId, setNewId] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { setCityId } = useCity();
+  const drawZone = async () => {
+    await qc.refetchQueries({ queryKey: ["staff", "my-cities"] });
+    if (newId) setCityId(newId);
+    onDone();
+    navigate({ to: "/dashboard", search: { tab: "zones" } });
+  };
   const load = useMutation({
     mutationFn: async () => { const { data, error } = await db.rpc("staff_city_template", { _from: from }); if (error) throw error; return data as Tpl; },
     onSuccess: (d) => { setTpl(d); setStep(3); }, onError: (e) => toast.error(err(e)),
   });
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await db.rpc("staff_create_city", { _name: name, _state: state, _state_code: code, _copy_from: from || null, _prices: tpl?.prices ?? [], _delivery: tpl?.delivery ?? [], _vehicle_rates: tpl?.vehicle_rates ?? [] });
+      const { data, error } = await db.rpc("staff_create_city", { _name: name, _state: state, _state_code: code, _copy_from: from || null, _prices: tpl?.prices ?? [], _delivery: tpl?.delivery ?? [], _vehicle_rates: tpl?.vehicle_rates ?? [] });
       if (error) throw error;
+      return data as string;
     },
-    onSuccess: () => { toast.success(`${name} added. Draw its zones in Settings → Zones (pick ${name} in the top bar).`); onDone(); }, onError: (e) => toast.error(err(e)),
+    onSuccess: (id) => { toast.success(`${name} added`); setNewId(id); setStep(5); qc.invalidateQueries({ queryKey: ["cities"] }); }, onError: (e) => toast.error(err(e)),
   });
   const num = (v: unknown) => (v === null || v === undefined ? "" : String(v));
   const setP = (i: number, k: "customer_price" | "expert_payout" | "partner_commission", v: string) =>
@@ -106,7 +119,7 @@ function AddCityWizard({ cities, onClose, onDone }: { cities: CityRow[]; onClose
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>Add city · step {step} of 4</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add city · step {Math.min(step, 4)} of 4{step === 5 ? " · done" : ""}</DialogTitle></DialogHeader>
         {step === 1 && (
           <div className="space-y-3">
             <label className="block text-sm">City name<Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Nanded" /></label>
@@ -161,8 +174,15 @@ function AddCityWizard({ cities, onClose, onDone }: { cities: CityRow[]; onClose
         {step === 4 && (
           <div className="space-y-3 text-sm">
             <p><b>{name}</b>, {state}. All services will start as <b>Coming Soon</b>.</p>
-            <p className="text-muted-foreground">Zones: after saving, pick {name} in the top bar and draw its zones in Settings → Zones.</p>
+            <p className="text-muted-foreground">Next you can draw its first zone.</p>
             <div className="flex justify-between"><Button variant="outline" onClick={() => setStep(3)}>Back</Button><Button disabled={save.isPending} onClick={() => save.mutate()}>Create city</Button></div>
+          </div>
+        )}
+        {step === 5 && (
+          <div className="space-y-3 text-sm">
+            <p><b>{name}</b> is created. All services are Coming Soon.</p>
+            <p className="text-muted-foreground">Draw the first zone so customers in {name} can be served. This opens Settings → Zones with {name} selected.</p>
+            <div className="flex justify-between"><Button variant="outline" onClick={onDone}>Later</Button><Button onClick={drawZone}>Draw first zone</Button></div>
           </div>
         )}
       </DialogContent>
