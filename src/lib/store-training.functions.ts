@@ -25,10 +25,17 @@ export type StoreTrainingOrder = {
 
 export const getStoreTrainingData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: { svc?: "store" | "food" } | undefined) => ({ svc: d?.svc === "food" ? "food" : "store" } as const))
+  .handler(async ({ data: inp, context }) => {
     const role = await staffRole(context);
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-    const { data: ms } = await db.from("merchants").select("id, store_name, status").eq("status", "approved").order("store_name").limit(300);
+    let mq = db.from("merchants").select("id, store_name, status").eq("status", "approved");
+    mq = inp.svc === "food" ? mq.eq("service_type", "food") : mq.or("service_type.is.null,service_type.neq.food");
+    const { data: ms } = await mq.order("store_name").limit(300);
+    let sq = db.from("merchants").select("id");
+    sq = inp.svc === "food" ? sq.eq("service_type", "food") : sq.or("service_type.is.null,service_type.neq.food");
+    const { data: allM } = await sq.limit(5000);
+    const svcIds = (allM ?? []).map((m: any) => m.id);
     const ids = (ms ?? []).map((m: any) => m.id);
     const { data: ps } = ids.length
       ? await db.from("products").select("id, name, price, unit, merchant_id").in("merchant_id", ids).eq("is_active", true).limit(5000)
@@ -40,7 +47,7 @@ export const getStoreTrainingData = createServerFn({ method: "GET" })
 
     const { data: os } = await db.from("merchant_orders")
       .select("id, order_number, status, merchant_id, customer_name, total_amount, created_at")
-      .eq("is_training", true).order("created_at", { ascending: false }).limit(100);
+      .eq("is_training", true).in("merchant_id", svcIds.length ? svcIds : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }).limit(100);
     const oIds = (os ?? []).map((o: any) => o.id);
     const { data: its } = oIds.length
       ? await db.from("merchant_order_items").select("order_id, product_name_snapshot, quantity, price_snapshot").in("order_id", oIds)
@@ -139,12 +146,18 @@ export const advanceStoreTrainingOrder = createServerFn({ method: "POST" })
 
 export const clearStoreTrainingOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: { svc?: "store" | "food" } | undefined) => ({ svc: d?.svc === "food" ? "food" : "store" } as const))
+  .handler(async ({ data: inp, context }) => {
     await assertManager(context);
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    let sq = db.from("merchants").select("id");
+    sq = inp.svc === "food" ? sq.eq("service_type", "food") : sq.or("service_type.is.null,service_type.neq.food");
+    const { data: allM } = await sq.limit(5000);
+    const svcIds = (allM ?? []).map((m: any) => m.id);
+    if (!svcIds.length) return { count: 0 };
     const { data, error } = await db.from("merchant_orders")
       .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancel_reason: "Training cleared" } as any)
-      .eq("is_training", true).in("status", ["pending", "accepted", "preparing", "ready"]).select("id");
+      .eq("is_training", true).in("merchant_id", svcIds).in("status", ["pending", "accepted", "preparing", "ready"]).select("id");
     if (error) throw new Error(error.message);
     await db.from("audit_logs").insert({ actor_id: context.userId, action: "store_training_orders_cleared", target_table: "merchant_orders", after_state: { count: data?.length ?? 0 } });
     return { count: data?.length ?? 0 };

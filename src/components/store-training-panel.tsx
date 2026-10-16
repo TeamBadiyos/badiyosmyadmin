@@ -21,10 +21,12 @@ const STEP_LABEL: Record<string, string> = {
 };
 const NEXT: Record<string, string> = { pending: "accepted", accepted: "preparing", preparing: "ready", ready: "completed" };
 
-export function StoreTrainingPanel() {
+export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }) {
+  const W = svc === "food" ? "Food" : "Store";
+  const w = svc === "food" ? "restaurant" : "store";
   const qc = useQueryClient();
   const fetchData = useServerFn(getStoreTrainingData);
-  const q = useQuery({ queryKey: ["store-training"], queryFn: () => fetchData(), refetchInterval: 20_000 });
+  const q = useQuery({ queryKey: ["store-training", svc], queryFn: () => fetchData({ data: { svc } }), refetchInterval: 20_000 });
   const advance = useServerFn(advanceStoreTrainingOrder);
   const clear = useServerFn(clearStoreTrainingOrders);
   const [open, setOpen] = useState(false);
@@ -38,8 +40,8 @@ export function StoreTrainingPanel() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   const clearM = useMutation({
-    mutationFn: () => clear(),
-    onSuccess: (r) => { toast.success(`${r.count} training store orders closed`); inv(); },
+    mutationFn: () => clear({ data: { svc } }),
+    onSuccess: (r) => { toast.success(`${r.count} training ${w} orders closed`); inv(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   const canManage = q.data?.canManage;
@@ -48,30 +50,30 @@ export function StoreTrainingPanel() {
     <section className="bg-card border border-border rounded-[18px] p-4 sm:p-6 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h3 className="text-[16px] font-bold text-foreground">Store Training Orders</h3>
+          <h3 className="text-[16px] font-bold text-foreground">{W} Training Orders</h3>
           <p className="text-[12px] text-muted-foreground mt-1">
-            Dummy store orders to test the Store board, timers and alerts. They never touch billing, reports or merchant wallet.
-            View them on the store board with the "Training" switch.
+            Dummy {w} orders to test the {W} board, timers and alerts. They never touch billing, reports or merchant wallet.
+            View them on the {W} board with the "Training" switch.
           </p>
         </div>
         {canManage && (
           <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => { if (window.confirm("Close all open training store orders?")) clearM.mutate(); }}
+              onClick={() => { if (window.confirm(`Close all open training ${w} orders?`)) clearM.mutate(); }}
               className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-bold"
             >
               Clear training orders
             </button>
             <button onClick={() => setOpen(true)} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold inline-flex items-center gap-1">
-              <Plus size={14} /> Dummy store order
+              <Plus size={14} /> Dummy {w} order
             </button>
           </div>
         )}
       </div>
 
       {q.isLoading && <p className="text-[13px] text-muted-foreground">Loading…</p>}
-      {q.isError && <p className="text-[13px] text-destructive">Could not load training store orders.</p>}
-      {q.data && q.data.orders.length === 0 && <p className="text-[13px] text-muted-foreground">No training store orders yet.</p>}
+      {q.isError && <p className="text-[13px] text-destructive">Could not load training {w} orders.</p>}
+      {q.data && q.data.orders.length === 0 && <p className="text-[13px] text-muted-foreground">No training {w} orders yet.</p>}
 
       <div className="space-y-2">
         {q.data?.orders.map((o) => {
@@ -104,12 +106,12 @@ export function StoreTrainingPanel() {
         })}
       </div>
 
-      {open && q.data && <CreateDialog stores={q.data.stores} onClose={() => setOpen(false)} onDone={inv} />}
+      {open && q.data && <CreateDialog w={w} stores={q.data.stores} onClose={() => setOpen(false)} onDone={inv} />}
     </section>
   );
 }
 
-function CreateDialog({ stores, onClose, onDone }: { stores: { id: string; name: string; products: { id: string; name: string; price: number; unit: string | null }[] }[]; onClose: () => void; onDone: () => void }) {
+function CreateDialog({ w, stores, onClose, onDone }: { w: string; stores: { id: string; name: string; products: { id: string; name: string; price: number; unit: string | null }[] }[]; onClose: () => void; onDone: () => void }) {
   const create = useServerFn(createStoreTrainingOrder);
   const [storeId, setStoreId] = useState(stores[0]?.id ?? "");
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -125,7 +127,7 @@ function CreateDialog({ stores, onClose, onDone }: { stores: { id: string; name:
       items: Object.entries(qty).filter(([, n]) => n > 0).map(([productId, n]) => ({ productId, qty: n })),
       customerName: name, customerPhone: phone, address, paymentMode: mode,
     } }),
-    onSuccess: () => { toast.success("Training store order created"); onDone(); onClose(); },
+    onSuccess: () => { toast.success(`Training ${w} order created`); onDone(); onClose(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
@@ -133,11 +135,11 @@ function CreateDialog({ stores, onClose, onDone }: { stores: { id: string; name:
     <div className="fixed inset-0 z-50 bg-foreground/40 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div className="bg-card w-full sm:max-w-lg max-h-[92dvh] rounded-t-[18px] sm:rounded-[18px] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h4 className="text-[15px] font-bold text-foreground">New dummy store order</h4>
+          <h4 className="text-[15px] font-bold text-foreground">New dummy {w} order</h4>
           <button onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
         <div className="overflow-y-auto p-4 space-y-3">
-          {stores.length === 0 && <p className="text-[13px] text-muted-foreground">No approved store with active items.</p>}
+          {stores.length === 0 && <p className="text-[13px] text-muted-foreground">No approved {w} with active items.</p>}
           <div>
             <label className={labelCls}>Store</label>
             <select className={inputCls} value={storeId} onChange={(e) => { setStoreId(e.target.value); setQty({}); }}>
