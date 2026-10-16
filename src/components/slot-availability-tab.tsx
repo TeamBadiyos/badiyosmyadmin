@@ -52,7 +52,7 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const [ovDate, setOvDate] = useState(istDate(1));
+  const [ovDate, setOvDate] = useState(istDate());
   const ov = useCap(group, ovDate);
   const [ovIn, setOvIn] = useState<Record<string, string>>({});
   const ovMut = useMutation({

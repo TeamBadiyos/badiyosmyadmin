@@ -155,22 +155,28 @@ export const listSlotOverrides = createServerFn({ method: "GET" })
     const sb = (context as Ctx).supabase;
     const [ov, bk, cfg] = await Promise.all([
       sb.from("service_slot_overrides").select("start_hour, start_minute, reason").eq("service_key", data.group).eq("slot_date", data.date).eq("status", "fully_booked"),
-      sb.from("bookings").select("scheduled_time_slot, status, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"),
-      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled"]),
+      sb.from("bookings").select("scheduled_time_slot, status, service_duration_minutes, service_categories(slug)").eq("scheduled_date", data.date).neq("slot_type", "now"),
+      sb.from("ops_settings").select("key, value").in("key", ["slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled", "booking_buffer_minutes"]),
     ]);
     if (ov.error) throw new Error(ov.error.message);
     const c: Record<string, string> = {};
     for (const r of (cfg.data ?? []) as Array<{ key: string; value: string }>) c[r.key] = r.value;
+    const buffer = Number(c["booking_buffer_minutes"] ?? 5);
     const counts: Record<number, number> = {};
-    for (const b of (bk.data ?? []) as unknown as Array<{ scheduled_time_slot: string | null; status: string; service_categories: { slug: string } | null }>) {
+    for (const b of (bk.data ?? []) as unknown as Array<{ scheduled_time_slot: string | null; status: string; service_duration_minutes: number | null; service_categories: { slug: string } | null }>) {
       if (["cancelled", "refunded", "rejected"].includes(b.status)) continue;
       if ((b.service_categories?.slug === "car-bike-wash") !== (data.group === "wash")) continue;
       const m = /(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])/.exec(b.scheduled_time_slot ?? "");
       if (!m) continue;
       let h = Number(m[1]); const ap = m[3]!.toUpperCase();
       if (ap === "PM" && h < 12) h += 12; if (ap === "AM" && h === 12) h = 0;
-      const k = h * 60 + Math.floor(Number(m[2] ?? 0) / 30) * 30;
-      counts[k] = (counts[k] ?? 0) + 1;
+      const start = h * 60 + Math.floor(Number(m[2] ?? 0) / 30) * 30;
+      // A booking occupies the maid/washer for its whole duration + buffer, so
+      // every half-hour slot it touches counts as busy — not just the start slot.
+      const span = Math.max(30, (b.service_duration_minutes ?? 30) + buffer);
+      for (let k = start; k < start + span && k < 1440; k += 30) {
+        counts[k] = (counts[k] ?? 0) + 1;
+      }
     }
     return {
       canEdit: role === "super_admin" || role === "ops_manager",
