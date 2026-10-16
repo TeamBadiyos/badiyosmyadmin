@@ -3315,6 +3315,7 @@ export type Database = {
           incident_code: string | null
           incident_notes: string | null
           incident_resolution: string | null
+          is_training: boolean
           merchant_order_id: string | null
           needs_ops_attention: boolean
           order_code: string
@@ -3399,6 +3400,7 @@ export type Database = {
           incident_code?: string | null
           incident_notes?: string | null
           incident_resolution?: string | null
+          is_training?: boolean
           merchant_order_id?: string | null
           needs_ops_attention?: boolean
           order_code?: string
@@ -3483,6 +3485,7 @@ export type Database = {
           incident_code?: string | null
           incident_notes?: string | null
           incident_resolution?: string | null
+          is_training?: boolean
           merchant_order_id?: string | null
           needs_ops_attention?: boolean
           order_code?: string
@@ -12079,6 +12082,7 @@ export type Database = {
           incident_code: string | null
           incident_notes: string | null
           incident_resolution: string | null
+          is_training: boolean
           merchant_order_id: string | null
           needs_ops_attention: boolean
           order_code: string

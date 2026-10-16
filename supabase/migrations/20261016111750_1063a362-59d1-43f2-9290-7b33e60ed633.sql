@@ -1,0 +1,2 @@
+ALTER TABLE public.courier_orders ADD COLUMN IF NOT EXISTS is_training boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS courier_orders_is_training_idx ON public.courier_orders(is_training) WHERE is_training;
