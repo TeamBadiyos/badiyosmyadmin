@@ -208,7 +208,15 @@ export function CompactBookingCard({ b, col, now, onOpen, svc }: { b: PipelineBo
     : col === "completed" ? `✓ ${clock(b.serviceEndAt ?? b.updatedAt)} · ${expert}`
     : `Expert: ${expert}`;
   const status =
-    col === "in_progress" ? (b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}` : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}` : "In progress")
+    col === "in_progress" ? (() => {
+      const base = b.arrivedAt ? `Arrived ${clock(b.arrivedAt)}` : b.onTheWayAt ? `On the way ${clock(b.onTheWayAt)}` : "In progress";
+      const startIso = b.startedAt ?? b.arrivedAt;
+      const dur = (b.serviceDurationMinutes ?? 0) + (b.extMinutes ?? 0);
+      if (!startIso || !dur) return base;
+      const left = Math.round((new Date(startIso).getTime() + dur * 60000 - now) / 60000);
+      const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`);
+      return <>{base} · <span className={left < 0 ? "text-destructive" : "text-primary"}>⏱ {left >= 0 ? `${fmt(left)} left` : `${fmt(-left)} over`}</span></>;
+    })()
     : inr(b.totalAmount);
   const flag = b.dispatchExhaustedAt && isNew ? "No Expert found" : null;
   return (
@@ -248,7 +256,7 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
   const third =
     isNew ? <Timer wait={wait} late={late} />
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
-    : `Rider: ${o.riderName ? first(o.riderName) : "—"}`;
+    : `Rider: ${o.riderName?.trim() || "—"}`;
   const flag = o.alerts.length ? o.alerts.map((a) => ALERT_LABEL[a] ?? a).join(" · ") : null;
   const fetchRiders = useServerFn(listCourierRiders);
   const assignFn = useServerFn(reassignRider);
@@ -295,7 +303,7 @@ export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow
   const third =
     isNew ? <Timer wait={wait} late={late} />
     : col === "completed" ? "✓ Delivered"
-    : `Rider: ${first(o.riderName)}`;
+    : `Rider: ${o.riderName?.trim() || "—"}`;
   return (
     <Shell onOpen={onOpen} late={late}>
       <Top name={o.customerName ?? "Customer"} flag={o.needs_ops_attention ? "Needs attention" : null} onOpen={onOpen} />
