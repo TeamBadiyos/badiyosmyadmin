@@ -91,7 +91,7 @@ export function badPlaceholder(text: string): string | null {
   return null;
 }
 
-export function validateServiceContent(m: ServiceContent, live: LiveOption[]): string | null {
+export function validateServiceContent(m: ServiceContent, live: LiveOption[], service: ServiceKey = "clean"): string | null {
   if (!/^#[0-9a-f]{6}$/i.test(m.hero.bg_color)) return "Background colour must look like #00B97A";
   if (!m.hero.subline.trim()) return "Sub-line (English) is required";
   if (!m.hero.button.trim()) return "Button text (English) is required";
@@ -104,6 +104,7 @@ export function validateServiceContent(m: ServiceContent, live: LiveOption[]): s
     if (op != null && op <= o.price) return `Original price for ${o.label} must be higher than ₹${o.price}`;
   }
   if (!m.details.included_title.trim() || !m.details.excluded_title.trim()) return "Details sheet section titles (English) are required";
+  if (service === "wash") return null;
   for (const { key, label } of BANNER_STATES) {
     const b = m.banner.texts[key];
     if (!b.title.trim()) return `Banner "${label}" needs an English title`;
