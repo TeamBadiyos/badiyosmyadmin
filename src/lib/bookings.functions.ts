@@ -370,6 +370,10 @@ export type BookingDetails = {
   updatedAt: string | null;
   rating: number | null;
   staffNote: string | null;
+  customerNote: string | null;
+  refundDestination: string | null;
+  refundWalletAmount: number | null;
+  cancellationFee: number | null;
   reviewText: string | null;
   customer: { id: string | null; name: string | null; phone: string | null };
   address: {
@@ -427,7 +431,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at, gst_amount, gst_percent, total_amount, coupon_code, discount_amount",
+      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, customer_note, refund_destination, refund_wallet_amount, cancellation_fee, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at, gst_amount, gst_percent, total_amount, coupon_code, discount_amount",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -566,6 +570,10 @@ async function loadBookingDetails(
     rating: b.rating ?? null,
     reviewText: b.review_text ?? null,
     staffNote: (b as { staff_note?: string | null }).staff_note ?? null,
+    customerNote: (b as { customer_note?: string | null }).customer_note ?? null,
+    refundDestination: (b as { refund_destination?: string | null }).refund_destination ?? null,
+    refundWalletAmount: (b as { refund_wallet_amount?: number | null }).refund_wallet_amount ?? null,
+    cancellationFee: (b as { cancellation_fee?: number | null }).cancellation_fee ?? null,
     customer: {
       id: userRes.data?.id ?? null,
       name: userRes.data?.full_name ?? null,
@@ -815,22 +823,28 @@ async function processBookingRefund(
 export const cancelBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { bookingId: string; reason: CancellationReason; refund?: boolean }) => {
+    (input: { bookingId: string; reason: CancellationReason; refund?: boolean; destination?: "wallet" | "original" }) => {
       if (!input?.bookingId) throw new Error("bookingId required");
       if (!CANCELLATION_REASONS.includes(input.reason)) throw new Error("Invalid reason");
       return input;
     },
   )
   .handler(async ({ data, context }): Promise<{ ok: true; refund: RefundOutcome }> => {
-    const { error } = await context.supabase.rpc("staff_cancel_booking", {
-      _booking_id: data.bookingId,
-      _reason: data.reason,
+    if (!data.refund) {
+      const { error } = await context.supabase.rpc("staff_cancel_booking", { _booking_id: data.bookingId, _reason: data.reason });
+      if (error) throw new Error(error.message);
+      return { ok: true, refund: NO_REFUND };
+    }
+    // Full refund; destination chosen by staff (wallet = instant, original = normal Razorpay refund queue).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: r, error } = await (context.supabase.rpc as any)("staff_cancel_booking_v2", {
+      _booking_id: data.bookingId, _reason: data.reason, _destination: data.destination === "wallet" ? "wallet" : "original", _apply_fee: false,
     });
     if (error) throw new Error(error.message);
-
-    if (!data.refund) return { ok: true, refund: NO_REFUND };
-    const refund = await processBookingRefund(context.supabase, data.bookingId);
-    return { ok: true, refund };
+    const res = (r ?? {}) as { refund_to_wallet?: number; refund_to_original?: number };
+    const w = Number(res.refund_to_wallet ?? 0), o = Number(res.refund_to_original ?? 0);
+    return { ok: true, refund: { attempted: true, ok: true, amount: w + o, refundId: null, status: o > 0 ? "pending" : "done",
+      message: [w > 0 ? `₹${w} added to badiyos Wallet` : "", o > 0 ? `₹${o} queued to original payment method (5–7 working days)` : ""].filter(Boolean).join(" · ") || "No refund due" } };
   });
 
 export const refundBooking = createServerFn({ method: "POST" })

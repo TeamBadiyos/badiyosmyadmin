@@ -24,7 +24,8 @@ async function staffRole(context: Ctx): Promise<"super_admin" | "ops_manager"> {
 const CITY_KEYS = new Set(["slot_capacity_enabled", "slot_capacity_mode", "default_slot_capacity", "wash_default_slot_capacity",
   "clean_band_morning_end", "clean_band_day_end", "wash_band_morning_end", "wash_band_day_end",
   "slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled",
-  "clean_auto_cancel_minutes", "wash_auto_cancel_minutes", "clean_last_slot_before_close_minutes", "wash_last_slot_before_close_minutes"]);
+  "clean_auto_cancel_minutes", "wash_auto_cancel_minutes", "clean_last_slot_before_close_minutes", "wash_last_slot_before_close_minutes",
+  "clean_cancel_fee_percent", "wash_cancel_fee_percent", "clean_no_refund_after_arrived", "wash_no_refund_after_arrived", "clean_cancel_policy", "wash_cancel_policy"]);
 
 /** City-wise keys come only from the city's own row; other keys from shared ops_settings. */
 async function readOps(sb: any, keys: string[], cityId?: string | null): Promise<Record<string, string>> {
@@ -395,5 +396,67 @@ export const setLastSlotGap = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await staffRole(context as Ctx);
     await writeOps((context as Ctx).supabase, `${data.group}_last_slot_before_close_minutes`, String(data.minutes), data.cityId);
+    return { ok: true };
+  });
+
+
+export type CancelPolicy = { en: string[]; mr: string[] };
+export const DEFAULT_CANCEL_POLICY: CancelPolicy = {
+  en: [
+    "Cancel before an expert is assigned: full refund.",
+    "Cancel after an expert is assigned: {fee_percent}% cancellation fee, rest refunded.",
+    "Cancel after the expert arrives: no refund.",
+    "If no expert accepts within {auto_cancel_minutes} minutes, the booking is cancelled automatically with a full refund.",
+    "Choose your refund: instantly to your badiyos Wallet, or to your original payment method in 5–7 working days.",
+  ],
+  mr: [
+    "मदतनीस नेमण्यापूर्वी रद्द केल्यास: पूर्ण परतावा.",
+    "मदतनीस नेमल्यानंतर रद्द केल्यास: {fee_percent}% रद्द शुल्क, उर्वरित परत.",
+    "मदतनीस पोहोचल्यानंतर रद्द केल्यास: परतावा नाही.",
+    "{auto_cancel_minutes} मिनिटांत कोणी स्वीकारले नाही तर बुकिंग आपोआप रद्द होऊन पूर्ण परतावा.",
+    "परतावा निवडा: त्वरित badiyos Wallet मध्ये, किंवा मूळ पेमेंट पद्धतीवर 5–7 कामकाजाच्या दिवसांत.",
+  ],
+};
+
+/** Cancellation rules per city/service: fee %, no-refund-after-arrived, policy text. */
+export const getCancelRules = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { group?: CapGroup; cityId?: string | null }) => ({ group: grp(i?.group), cityId: i?.cityId ?? null }))
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context as Ctx);
+    const g = data.group;
+    const c = await readOps((context as Ctx).supabase, [`${g}_cancel_fee_percent`, `${g}_no_refund_after_arrived`, `${g}_cancel_policy`], data.cityId);
+    let policy: CancelPolicy = DEFAULT_CANCEL_POLICY;
+    try {
+      const p = JSON.parse(c[`${g}_cancel_policy`] ?? "");
+      if (Array.isArray(p?.en)) policy = { en: p.en.map(String), mr: Array.isArray(p.mr) ? p.mr.map(String) : [] };
+    } catch { /* default */ }
+    return {
+      feePercent: Number(c[`${g}_cancel_fee_percent`] ?? 50),
+      noRefundAfterArrived: (c[`${g}_no_refund_after_arrived`] ?? "1") === "1",
+      policy,
+      canEdit: role === "super_admin" || role === "ops_manager",
+    };
+  });
+
+export const saveCancelRules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { group?: CapGroup; cityId?: string | null; feePercent?: number; noRefundAfterArrived?: boolean; policy?: CancelPolicy }) => {
+    if (i.feePercent != null && (!Number.isFinite(i.feePercent) || i.feePercent < 0 || i.feePercent > 100)) throw new Error("Fee must be 0–100%");
+    if (i.policy) {
+      const clean = (a: unknown) => (Array.isArray(a) ? a.map((x) => String(x).trim()).filter(Boolean).slice(0, 10) : []);
+      const en = clean(i.policy.en), mr = clean(i.policy.mr);
+      if (!en.length) throw new Error("Add at least one English line");
+      if ([...en, ...mr].some((l) => l.length > 240)) throw new Error("Each line can be at most 240 characters");
+      i = { ...i, policy: { en, mr } };
+    }
+    return { ...i, group: grp(i.group), cityId: i.cityId ?? null };
+  })
+  .handler(async ({ data, context }) => {
+    await staffRole(context as Ctx);
+    const sb = (context as Ctx).supabase, g = data.group;
+    if (data.feePercent != null) await writeOps(sb, `${g}_cancel_fee_percent`, String(data.feePercent), data.cityId);
+    if (data.noRefundAfterArrived != null) await writeOps(sb, `${g}_no_refund_after_arrived`, data.noRefundAfterArrived ? "1" : "0", data.cityId);
+    if (data.policy) await writeOps(sb, `${g}_cancel_policy`, JSON.stringify(data.policy), data.cityId);
     return { ok: true };
   });

@@ -141,6 +141,7 @@ export function BookingDetailsModal({
   const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
   const [cancelRefund, setCancelRefund] = useState(true);
   const [refundConfirm, setRefundConfirm] = useState(false);
+  const [cancelDest, setCancelDest] = useState<"original" | "wallet">("original");
   const [panel, setPanel] = useState<null | "status" | "reschedule" | "handover">(null);
   const [showIds, setShowIds] = useState(false);
 
@@ -189,7 +190,7 @@ export function BookingDetailsModal({
 
   const cancelMutation = useMutation({
     mutationFn: (payload: { reason: CancellationReason; refund: boolean }) =>
-      cancelFn({ data: { bookingId, reason: payload.reason, refund: payload.refund } }),
+      cancelFn({ data: { bookingId, reason: payload.reason, refund: payload.refund, destination: cancelDest } }),
     onSuccess: (res) => {
       refreshAfterMoney();
       setCancelOpen(false);
@@ -623,6 +624,22 @@ export function BookingDetailsModal({
                   )}
                 </div>
                 <div className="min-w-0">
+                  {data.customerNote && (
+                    <div className="mb-3 rounded-[14px] border border-border bg-muted/40 p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Customer note</p>
+                      <p className="mt-1 whitespace-pre-wrap text-[13px] text-foreground">{data.customerNote}</p>
+                    </div>
+                  )}
+                  {data.refundDestination && (
+                    <div className="mb-3 rounded-[14px] border border-border p-3 text-[13px]">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Refund</p>
+                      <p className="mt-1 text-foreground">
+                        To {data.refundDestination === "wallet" ? "badiyos Wallet" : "original payment method"}
+                        {data.refundWalletAmount ? ` · ₹${data.refundWalletAmount} to wallet` : ""}
+                        {data.cancellationFee ? ` · fee ₹${data.cancellationFee}` : ""}
+                      </p>
+                    </div>
+                  )}
                   <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
                 </div>
               </section>
@@ -1031,6 +1048,17 @@ export function BookingDetailsModal({
                             />
                             <span>Do not refund</span>
                           </label>
+                          {cancelRefund && (
+                            <div className="ml-6 flex flex-wrap gap-2 text-[12px]">
+                              <span className="text-muted-foreground">Refund to:</span>
+                              {(["original", "wallet"] as const).map((d) => (
+                                <label key={d} className="flex items-center gap-1">
+                                  <input type="radio" checked={cancelDest === d} onChange={() => setCancelDest(d)} />
+                                  {d === "original" ? "Original payment method (5–7 working days)" : "badiyos Wallet (instant)"}
+                                </label>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 

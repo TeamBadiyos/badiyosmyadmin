@@ -7,6 +7,7 @@ import { useCity } from "@/lib/city-scope";
 import { ServiceHoursPanel } from "@/components/ops-panels";
 import { BookingRulesPanel, ExpertRulesPanel } from "@/components/booking-timings-tab";
 import { CapacityMessagesPage } from "@/components/capacity-messages-page";
+import { CancelPolicyEditor } from "@/components/cancel-rules";
 import { getLastSlotGap, setLastSlotGap, type CapGroup } from "@/lib/booking-settings.functions";
 
 const SECTIONS = [
@@ -76,7 +77,7 @@ export function CleanSettingsPage({ group }: { group: CapGroup }) {
         ) : sec === "expert" ? (
           <ExpertRulesPanel />
         ) : (
-          <CapacityMessagesPage />
+          <div className="space-y-4"><CapacityMessagesPage /><CancelPolicyEditor key={group} group={group} /></div>
         )}
       </div>
     </div>
