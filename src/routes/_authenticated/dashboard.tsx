@@ -18,6 +18,8 @@ import { FinanceHub, type FinanceTab } from "@/components/finance-hub";
 import { CustomerInvoicesPage, CustomerWalletPage } from "@/components/customer-finance-pages";
 import { FinanceOverview, MerchantsFinance, ExpensesPage, CollectionsPage } from "@/components/finance-redesign";
 import { AgreementsSettingsPage } from "@/components/agreements";
+import { CitiesPage } from "@/components/cities-page";
+import { CitySwitcher } from "@/lib/city-scope";
 import { SacCodesCard } from "@/components/sac-codes-card";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
@@ -181,6 +183,7 @@ const NAV_ITEMS = [
   { key: "fin-wallet", label: "Customer Wallet", icon: Wallet },
   { key: "legal", label: "Legal", icon: Scale },
   { key: "agreements", label: "Agreements", icon: ScrollText },
+  { key: "cities", label: "Cities", icon: Map },
   { key: "notification-sounds", label: "Sounds", icon: Volume2 },
   { key: "support", label: "Support", icon: LifeBuoy },
   { key: "deletion-requests", label: "Deletions", icon: UserMinus },
@@ -273,7 +276,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["company-profile", "services", "zones", "tax-settings", "fees", "roles", "dispatch-alerts", "notification-sounds", "legal", "agreements", "audit"],
+    keys: ["company-profile", "cities", "services", "zones", "tax-settings", "fees", "roles", "dispatch-alerts", "notification-sounds", "legal", "agreements", "audit"],
   },
 ] as const;
 
@@ -610,6 +613,7 @@ function Shell() {
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <CitySwitcher />
           <NotificationBell
             onOpenTarget={(a) => {
               // Website lead notifications point at the Business Leads screen.
@@ -822,6 +826,8 @@ function Shell() {
           <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
         ) : active === "agreements" ? (
           role === "super_admin" ? <AgreementsSettingsPage isSuperAdmin /> : <p className="text-sm text-muted-foreground">Only super admins can manage agreements.</p>
+        ) : active === "cities" ? (
+          role === "super_admin" ? <CitiesPage /> : <p className="text-sm text-muted-foreground">Only super admins can manage cities.</p>
         ) : active === "audit" ? (
           <AuditLogsPage />
         ) : active === "fin-overview" ? (

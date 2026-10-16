@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { CityProvider } from "@/lib/city-scope";
 
 // Auth gate for the whole admin shell.
 // ssr:false because Supabase stores the session in localStorage — the server
@@ -26,5 +27,9 @@ export const Route = createFileRoute("/_authenticated")({
 
     return { staff };
   },
-  component: () => <Outlet />,
+  component: () => (
+    <CityProvider>
+      <Outlet />
+    </CityProvider>
+  ),
 });
