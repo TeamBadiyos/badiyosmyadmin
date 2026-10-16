@@ -184,23 +184,32 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
 
           <Box title="Top banner" hint="1080×600">
             <div className="mb-1 text-xs font-semibold">Banner images by time</div>
+            <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+            <div className="grid grid-cols-[20px_90px_minmax(0,1fr)_110px_110px_120px_24px] items-center gap-2 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
+              <span /><span>Image</span><span>Label</span><span>From</span><span>To</span><span>Text colour</span><span />
+            </div>
             {m.banner.slabs.map((x, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2 border-b border-border py-2">
-                <div className="flex flex-col">
+              <div key={i} className="grid grid-cols-[20px_90px_minmax(0,1fr)_110px_110px_120px_24px] items-center gap-2 border-b border-border py-2">
+                <div className="flex flex-col items-center">
                   <button className="text-[10px] disabled:opacity-30" disabled={i === 0} onClick={() => moveSlab(i, -1)} aria-label="Move up">▲</button>
                   <button className="text-[10px] disabled:opacity-30" disabled={i === m.banner.slabs.length - 1} onClick={() => moveSlab(i, 1)} aria-label="Move down">▼</button>
                 </div>
-                <button disabled={busy} onClick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, banner: { ...cur.banner, slabs: cur.banner.slabs.map((y, k) => (k === i ? { ...y, image_url: url } : y)) } })))}><Photo url={x.image_url} w={90} h={50} /></button>
-                {x.image_url && <button className="text-xs text-muted-foreground underline" onClick={() => setSlab(i, { image_url: null })}>Remove</button>}
-                <Input className="w-28" value={x.label} maxLength={30} placeholder="Label" onChange={(e) => setSlab(i, { label: e.target.value })} />
-                <label className="text-xs">From <Input type="time" className="w-28" value={x.from} onChange={(e) => setSlab(i, { from: e.target.value })} /></label>
-                <label className="text-xs">To <Input type="time" className="w-28" value={x.to} onChange={(e) => setSlab(i, { to: e.target.value })} /></label>
+                <div className="flex flex-col items-start gap-0.5">
+                  <button disabled={busy} onClick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, banner: { ...cur.banner, slabs: cur.banner.slabs.map((y, k) => (k === i ? { ...y, image_url: url } : y)) } })))}><Photo url={x.image_url} w={90} h={50} /></button>
+                  {x.image_url && <button className="text-[10px] text-muted-foreground underline" onClick={() => setSlab(i, { image_url: null })}>Remove</button>}
+                </div>
+                <Input className="h-9" value={x.label} maxLength={30} placeholder="Label" onChange={(e) => setSlab(i, { label: e.target.value })} />
+                <Input type="time" className="h-9" aria-label="From" value={x.from} onChange={(e) => setSlab(i, { from: e.target.value })} />
+                <Input type="time" className="h-9" aria-label="To" value={x.to} onChange={(e) => setSlab(i, { to: e.target.value })} />
                 <select className="h-9 rounded-md border border-border bg-background px-2 text-xs" value={x.text_color} onChange={(e) => setSlab(i, { text_color: e.target.value as Slab["text_color"] })}>
                   <option value="light">Light text</option><option value="dark">Dark text</option>
                 </select>
-                <button className="px-1 text-xs text-muted-foreground" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: m.banner.slabs.filter((_, k) => k !== i) } })} aria-label="Delete slab">✕</button>
+                <button className="text-xs text-muted-foreground" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: m.banner.slabs.filter((_, k) => k !== i) } })} aria-label="Delete slab">✕</button>
               </div>
             ))}
+            </div>
+            </div>
             {m.banner.slabs.length < 12 && <button className="mt-1 text-xs text-primary underline" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: [...m.banner.slabs, { from: "00:00", to: "01:00", label: "", image_url: null, text_color: "light" }] } })}>+ Add slab</button>}
             {slabError(m.banner.slabs) && <p className="mt-1 text-xs text-destructive">{slabError(m.banner.slabs)}</p>}
             {!slabError(m.banner.slabs) && uncoveredRanges(m.banner.slabs).length > 0 && <p className="mt-1 rounded bg-muted px-2 py-1 text-xs">⚠ No image for: {uncoveredRanges(m.banner.slabs).join(", ")}</p>}
