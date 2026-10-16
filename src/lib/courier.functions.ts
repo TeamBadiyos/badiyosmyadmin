@@ -575,6 +575,7 @@ export type CourierOrderRow = {
   pickup_address: string | null;
   drop_address: string | null;
   customerName: string | null;
+  customerPhone: string | null;
   riderName: string | null;
   assigned_expert_id: string | null;
   created_at: string;
@@ -624,7 +625,7 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     let q = db
       .from("courier_orders")
       .select(
-        "id, order_code, city, status, base_amount, extra_fee, discount_amount, gst_amount, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id",
+        "id, order_code, city, status, base_amount, extra_fee, discount_amount, gst_amount, total_amount, payment_status, refund_status, needs_ops_attention, incident_code, incident_resolution, pickup_address, drop_address, customer_id, assigned_expert_id, created_at, pickup_count, drop_count, fare_breakdown, business_merchant_id, customer_phone",
       )
       .order("created_at", { ascending: false })
       .limit(200);
@@ -715,6 +716,7 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       pickup_address: (r["pickup_address"] as string | null) ?? null,
       drop_address: (r["drop_address"] as string | null) ?? null,
       customerName: r["customer_id"] ? (uMap.get(r["customer_id"] as string) ?? null) : null,
+      customerPhone: (r["customer_phone"] as string | null) ?? null,
       riderName: r["assigned_expert_id"]
         ? (eMap.get(r["assigned_expert_id"] as string) ?? null)
         : null,
@@ -771,6 +773,7 @@ export type AssignableRider = {
   phone: string;
   is_online: boolean;
   distance_km: number | null;
+  status: "free" | "busy" | "offline";
 };
 
 export const listCourierRiders = createServerFn({ method: "POST" })
@@ -795,6 +798,7 @@ export const listCourierRiders = createServerFn({ method: "POST" })
       phone: (r["phone"] as string) ?? "",
       is_online: Boolean(r["is_online"]),
       distance_km: r["distance_km"] == null ? null : Number(r["distance_km"]),
+      status: ((r["rider_status"] as string) ?? (r["is_online"] ? "free" : "offline")) as AssignableRider["status"],
     }));
   });
 

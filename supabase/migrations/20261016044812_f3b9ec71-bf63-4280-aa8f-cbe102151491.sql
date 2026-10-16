@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.rider_is_busy(uuid) FROM authenticated;

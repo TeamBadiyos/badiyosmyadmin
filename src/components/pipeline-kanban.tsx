@@ -461,6 +461,7 @@ export function PipelineKanban({
   const bizFn = useServerFn(listUnassignedBusinessTrips);
   const { data: bizTrips } = useQuery({ queryKey: ["bulk", "unassigned-trips"], queryFn: () => bizFn(), refetchInterval: 20_000, enabled: !!unified });
   const parcelLimit = useWaitLimit("parcel");
+  const lim = { maid: useWaitLimit("maid"), wash: useWaitLimit("wash"), store: useWaitLimit("store"), food: useWaitLimit("food"), parcel: parcelLimit } as Record<string, number>;
 
   // Horizontal scroll controls shown at the top of the board.
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -548,21 +549,39 @@ export function PipelineKanban({
                   {isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">Loading…</p>}
                   {!isLoading && total === 0 && <p className="text-[12px] text-muted-foreground px-1">No orders.</p>}
                   {isNew && showBiz && <BusinessTripCards role={role} now={boardNow} waitLimit={parcelLimit} />}
-                  {items.map((b) => (
-                    <Strip key={b.id} svc={svcOfBooking(b)}>
-                      <CompactBookingCard b={b} svc={svcOfBooking(b) === "wash" ? "wash" : "maid"} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
-                    </Strip>
-                  ))}
-                  {comm.map(({ o, svc }) => (
-                    <Strip key={o.id} svc={svc}>
-                      <CompactCommerceCard o={o} svc={svc === "food" ? "food" : "store"} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
-                    </Strip>
-                  ))}
-                  {courierItems.map((o) => (
-                    <Strip key={o.id} svc="parcel">
-                      <CompactCourierCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCourier(o)} />
-                    </Strip>
-                  ))}
+                  {(() => {
+                    // Most important first: alerts / over wait-limit, then longest waiting
+                    // (New), soonest slot (Scheduled), or oldest first (other columns).
+                    const m = (iso: string | null | undefined) => (iso ? (boardNow - Date.parse(iso)) / 60000 : 0);
+                    type Row = { key: string; urgent: number; t: number; node: React.ReactNode };
+                    const rows: Row[] = [];
+                    for (const b of items) {
+                      const sv = svcOfBooking(b);
+                      const w = m(b.broadcastStartedAt ?? b.createdAt);
+                      const urgent = isNew && (w >= (lim[sv === "wash" ? "wash" : "maid"] ?? 1e9) || !!b.dispatchExhaustedAt) ? 1 : 0;
+                      const t = col.key === "confirmed" ? (slotStartMs(b) ?? Number.MAX_SAFE_INTEGER) : Date.parse(b.broadcastStartedAt ?? b.createdAt);
+                      rows.push({ key: b.id, urgent, t, node: (
+                        <Strip key={b.id} svc={sv}>
+                          <CompactBookingCard b={b} svc={sv === "wash" ? "wash" : "maid"} col={col.key} now={boardNow} onOpen={() => setOpenId(b.id)} />
+                        </Strip>) });
+                    }
+                    for (const { o, svc } of comm) {
+                      const urgent = o.alerts.length > 0 || (isNew && m(o.createdAt) >= (lim[svc] ?? 1e9)) ? 1 : 0;
+                      rows.push({ key: o.id, urgent, t: Date.parse(o.createdAt), node: (
+                        <Strip key={o.id} svc={svc}>
+                          <CompactCommerceCard o={o} svc={svc === "food" ? "food" : "store"} col={col.key} now={boardNow} onOpen={() => setOpenCommerceId(o.id)} />
+                        </Strip>) });
+                    }
+                    for (const o of courierItems) {
+                      const urgent = o.needs_ops_attention || (isNew && m(o.created_at) >= parcelLimit) ? 1 : 0;
+                      rows.push({ key: o.id, urgent, t: Date.parse(o.created_at), node: (
+                        <Strip key={o.id} svc="parcel">
+                          <CompactCourierCard o={o} col={col.key} now={boardNow} onOpen={() => setOpenCourier(o)} />
+                        </Strip>) });
+                    }
+                    rows.sort((a, b) => b.urgent - a.urgent || a.t - b.t);
+                    return rows.map((r) => r.node);
+                  })()}
                 </div>
               </div>
             );

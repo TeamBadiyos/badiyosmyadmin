@@ -96,7 +96,7 @@ function Bottom({ left, action }: { left: React.ReactNode; action?: React.ReactN
 type Candidate = { id: string; name: string; distanceKm: number | null; tag: string; good: boolean };
 
 /** Small on-card picker: nearest first, one click assigns with a 5s undo. */
-function AssignPopover({
+export function AssignPopover({
   queryKey,
   load,
   assign,
@@ -166,7 +166,8 @@ function AssignPopover({
               key={c.id}
               type="button"
               onClick={() => pick(c)}
-              className="w-full flex items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
+              disabled={c.tag === "Busy"}
+              className="w-full flex disabled:opacity-50 disabled:cursor-not-allowed items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
             >
               <span className="text-[13px] font-semibold text-foreground truncate">{c.name}</span>
               <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
@@ -244,12 +245,27 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
     : col === "completed" ? `✓ ${clock(o.pickedUpAt ?? o.createdAt)}`
     : `Rider: ${o.riderName ? first(o.riderName) : "—"}`;
   const flag = o.alerts.length ? o.alerts.map((a) => ALERT_LABEL[a] ?? a).join(" · ") : null;
+  const fetchRiders = useServerFn(listCourierRiders);
+  const assignFn = useServerFn(reassignRider);
+  const canAssign = !!o.courierOrderId && (o.riderState === "searching" || o.riderState === "assigned") && col !== "completed";
+  const cid = o.courierOrderId as string;
   return (
     <Shell onOpen={onOpen} late={late}>
       <Top name={o.customerName} flag={flag} onOpen={onOpen} />
       <p className={line}>{o.merchantName}</p>
       <p className={line}>{third}</p>
-      <Bottom left={isNew || col === "completed" ? inr(o.paidAmount || o.totalAmount) : COMMERCE_STATUS[o.status] ?? o.status} />
+      <Bottom
+        left={isNew || col === "completed" ? inr(o.paidAmount || o.totalAmount) : COMMERCE_STATUS[o.status] ?? o.status}
+        action={canAssign && o.riderState === "searching" ? (
+          <AssignPopover
+            queryKey={["courier", "riders", cid]}
+            load={async () => (await fetchRiders({ data: { orderId: cid } })).map(riderOpt)}
+            assign={(id) => assignFn({ data: { orderId: cid, expertId: id } })}
+            onSeeAll={onOpen}
+            invalidate={[["pipeline"], ["commerce"], ["courier"]]}
+          />
+        ) : undefined}
+      />
     </Shell>
   );
 }
@@ -257,6 +273,11 @@ export function CompactCommerceCard({ o, col, now, onOpen, svc }: { o: CommerceO
 const COURIER_STATUS: Record<string, string> = {
   DRIVER_ASSIGNED: "Rider assigned", ARRIVED_PICKUP: "At pickup", PICKED_UP: "Picked up", IN_TRANSIT: "On the way",
 };
+
+export const riderOpt = (r: { id: string; name: string; distance_km: number | null; status: "free" | "busy" | "offline" }) => ({
+  id: r.id, name: r.name, distanceKm: r.distance_km,
+  tag: r.status === "busy" ? "Busy" : r.status === "free" ? "Free" : "Offline", good: r.status === "free",
+});
 
 export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow; col: PipelineStatus; now: number; onOpen: () => void }) {
   const wait = mins(o.created_at, now);
@@ -280,8 +301,7 @@ export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow
           <AssignPopover
             queryKey={["courier", "riders", o.id]}
             load={async () => (await fetchRiders({ data: { orderId: o.id } }))
-              .map((r) => ({ id: r.id, name: r.name, distanceKm: r.distance_km, tag: r.is_online ? "Free" : "Offline", good: r.is_online }))
-              .sort((a, b) => Number(b.good) - Number(a.good) || (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9))}
+              .map(riderOpt)}
             assign={(id) => assignFn({ data: { orderId: o.id, expertId: id } })}
             onSeeAll={onOpen}
             invalidate={[["pipeline"], ["courier"]]}
