@@ -249,6 +249,7 @@ export type Database = {
           accepted_device: string | null
           accepted_ip: string | null
           accepted_phone: string | null
+          city_id: string | null
           created_at: string
           id: string
           is_reacceptance: boolean
@@ -273,6 +274,7 @@ export type Database = {
           accepted_device?: string | null
           accepted_ip?: string | null
           accepted_phone?: string | null
+          city_id?: string | null
           created_at?: string
           id?: string
           is_reacceptance?: boolean
@@ -297,6 +299,7 @@ export type Database = {
           accepted_device?: string | null
           accepted_ip?: string | null
           accepted_phone?: string | null
+          city_id?: string | null
           created_at?: string
           id?: string
           is_reacceptance?: boolean
@@ -317,6 +320,13 @@ export type Database = {
           vals?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "agreements_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agreements_template_id_fkey"
             columns: ["template_id"]
@@ -372,7 +382,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_banners_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_config: {
         Row: {
@@ -699,6 +717,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          city_id: string | null
           commission_rule_id: string | null
           coupon_code: string | null
           coupon_id: string | null
@@ -770,6 +789,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          city_id?: string | null
           commission_rule_id?: string | null
           coupon_code?: string | null
           coupon_id?: string | null
@@ -841,6 +861,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          city_id?: string | null
           commission_rule_id?: string | null
           coupon_code?: string | null
           coupon_id?: string | null
@@ -913,6 +934,13 @@ export type Database = {
             columns: ["assigned_expert_id"]
             isOneToOne: false
             referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -1445,6 +1473,7 @@ export type Database = {
           batched_at: string | null
           cancel_reason: string | null
           cancelled_at: string | null
+          city_id: string | null
           courier_order_id: string | null
           created_at: string
           created_by_label: string | null
@@ -1470,6 +1499,7 @@ export type Database = {
           batched_at?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           courier_order_id?: string | null
           created_at?: string
           created_by_label?: string | null
@@ -1495,6 +1525,7 @@ export type Database = {
           batched_at?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           courier_order_id?: string | null
           created_at?: string
           created_by_label?: string | null
@@ -1521,6 +1552,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "business_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_orders_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -2309,6 +2347,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cities: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          state: string
+          state_code: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          state?: string
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          state?: string
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       city_interest_leads: {
         Row: {
           city: string
@@ -2332,6 +2403,92 @@ export type Database = {
           phone?: string
         }
         Relationships: []
+      }
+      city_price_options: {
+        Row: {
+          city_id: string
+          customer_price: number
+          expert_payout: number
+          is_active: boolean
+          partner_commission: number
+          price_option_id: string
+          strikethrough_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          city_id: string
+          customer_price: number
+          expert_payout?: number
+          is_active?: boolean
+          partner_commission?: number
+          price_option_id: string
+          strikethrough_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string
+          customer_price?: number
+          expert_payout?: number
+          is_active?: boolean
+          partner_commission?: number
+          price_option_id?: string
+          strikethrough_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_price_options_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_price_options_price_option_id_fkey"
+            columns: ["price_option_id"]
+            isOneToOne: false
+            referencedRelation: "service_price_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_service_settings: {
+        Row: {
+          city_id: string
+          default_accept_timeout_minutes: number | null
+          delivery_min_fare: number | null
+          delivery_per_km: number | null
+          service_key: string
+          timings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          city_id: string
+          default_accept_timeout_minutes?: number | null
+          delivery_min_fare?: number | null
+          delivery_per_km?: number | null
+          service_key: string
+          timings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string
+          default_accept_timeout_minutes?: number | null
+          delivery_min_fare?: number | null
+          delivery_per_km?: number | null
+          service_key?: string
+          timings?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_service_settings_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coin_redemptions: {
         Row: {
@@ -2536,6 +2693,7 @@ export type Database = {
         Row: {
           applicable_category_ids: string[] | null
           audience: string
+          city_id: string | null
           code: string
           created_at: string
           created_by: string | null
@@ -2558,6 +2716,7 @@ export type Database = {
         Insert: {
           applicable_category_ids?: string[] | null
           audience?: string
+          city_id?: string | null
           code: string
           created_at?: string
           created_by?: string | null
@@ -2580,6 +2739,7 @@ export type Database = {
         Update: {
           applicable_category_ids?: string[] | null
           audience?: string
+          city_id?: string | null
           code?: string
           created_at?: string
           created_by?: string | null
@@ -2599,7 +2759,15 @@ export type Database = {
           valid_from?: string
           valid_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coupons_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courier_location_read_log: {
         Row: {
@@ -3013,6 +3181,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           city: string
+          city_id: string | null
           commission_pct: number
           completed_at: string | null
           coupon_code: string | null
@@ -3095,6 +3264,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           city: string
+          city_id?: string | null
           commission_pct?: number
           completed_at?: string | null
           coupon_code?: string | null
@@ -3177,6 +3347,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           city?: string
+          city_id?: string | null
           commission_pct?: number
           completed_at?: string | null
           coupon_code?: string | null
@@ -3266,6 +3437,13 @@ export type Database = {
             columns: ["business_merchant_id"]
             isOneToOne: false
             referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_orders_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -3480,6 +3658,7 @@ export type Database = {
         Row: {
           base_fare: number
           city: string
+          city_id: string | null
           commission_pct: number
           created_at: string
           customer_segment: string
@@ -3500,6 +3679,7 @@ export type Database = {
         Insert: {
           base_fare?: number
           city: string
+          city_id?: string | null
           commission_pct?: number
           created_at?: string
           customer_segment?: string
@@ -3520,6 +3700,7 @@ export type Database = {
         Update: {
           base_fare?: number
           city?: string
+          city_id?: string | null
           commission_pct?: number
           created_at?: string
           customer_segment?: string
@@ -3538,6 +3719,13 @@ export type Database = {
           vehicle_type_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "courier_vehicle_rates_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "courier_vehicle_rates_vehicle_type_id_fkey"
             columns: ["vehicle_type_id"]
@@ -3756,6 +3944,7 @@ export type Database = {
       customer_invoices: {
         Row: {
           cgst: number
+          city_id: string | null
           company: Json
           created_at: string
           customer_name: string | null
@@ -3768,6 +3957,8 @@ export type Database = {
           invoice_no: string
           lines: Json
           merchant_goods: Json | null
+          place_of_supply: string | null
+          pos_state_code: string | null
           ref_code: string | null
           ref_id: string
           ref_type: string
@@ -3780,6 +3971,7 @@ export type Database = {
         }
         Insert: {
           cgst?: number
+          city_id?: string | null
           company?: Json
           created_at?: string
           customer_name?: string | null
@@ -3792,6 +3984,8 @@ export type Database = {
           invoice_no: string
           lines?: Json
           merchant_goods?: Json | null
+          place_of_supply?: string | null
+          pos_state_code?: string | null
           ref_code?: string | null
           ref_id: string
           ref_type: string
@@ -3804,6 +3998,7 @@ export type Database = {
         }
         Update: {
           cgst?: number
+          city_id?: string | null
           company?: Json
           created_at?: string
           customer_name?: string | null
@@ -3816,6 +4011,8 @@ export type Database = {
           invoice_no?: string
           lines?: Json
           merchant_goods?: Json | null
+          place_of_supply?: string | null
+          pos_state_code?: string | null
           ref_code?: string | null
           ref_id?: string
           ref_type?: string
@@ -3826,7 +4023,15 @@ export type Database = {
           total?: number
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customer_invoices_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_wallet_ledger: {
         Row: {
@@ -4038,6 +4243,7 @@ export type Database = {
           broadcast_radius_km: number
           broadcast_timeout_seconds: number
           city: string
+          city_id: string | null
           created_at: string
           id: string
           no_accept_alert_threshold_seconds: number
@@ -4055,6 +4261,7 @@ export type Database = {
           broadcast_radius_km?: number
           broadcast_timeout_seconds?: number
           city?: string
+          city_id?: string | null
           created_at?: string
           id?: string
           no_accept_alert_threshold_seconds?: number
@@ -4072,6 +4279,7 @@ export type Database = {
           broadcast_radius_km?: number
           broadcast_timeout_seconds?: number
           city?: string
+          city_id?: string | null
           created_at?: string
           id?: string
           no_accept_alert_threshold_seconds?: number
@@ -4083,7 +4291,15 @@ export type Database = {
           radius_expand_step_km?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_config_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       edge_runtime_config: {
         Row: {
@@ -4359,6 +4575,7 @@ export type Database = {
           bank_account_holder_name: string | null
           bank_account_number: string | null
           bank_ifsc: string | null
+          city_id: string | null
           created_at: string
           documents: Json
           expert_id: string | null
@@ -4385,6 +4602,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          city_id?: string | null
           created_at?: string
           documents?: Json
           expert_id?: string | null
@@ -4411,6 +4629,7 @@ export type Database = {
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
           bank_ifsc?: string | null
+          city_id?: string | null
           created_at?: string
           documents?: Json
           expert_id?: string | null
@@ -4432,6 +4651,13 @@ export type Database = {
           work_types?: string[]
         }
         Relationships: [
+          {
+            foreignKeyName: "expert_applications_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expert_applications_expert_id_fkey"
             columns: ["expert_id"]
@@ -4547,6 +4773,7 @@ export type Database = {
           bank_account_number: string | null
           bank_ifsc: string | null
           bank_name: string | null
+          city_id: string | null
           created_at: string
           current_lat: number | null
           current_lng: number | null
@@ -4593,6 +4820,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           bank_name?: string | null
+          city_id?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
@@ -4639,6 +4867,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           bank_name?: string | null
+          city_id?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
@@ -4683,6 +4912,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -5270,6 +5506,7 @@ export type Database = {
         Row: {
           audience: string
           body: string
+          city_id: string | null
           coupon_id: string | null
           created_at: string
           created_by: string | null
@@ -5290,6 +5527,7 @@ export type Database = {
         Insert: {
           audience?: string
           body?: string
+          city_id?: string | null
           coupon_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -5310,6 +5548,7 @@ export type Database = {
         Update: {
           audience?: string
           body?: string
+          city_id?: string | null
           coupon_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -5328,6 +5567,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "marketing_campaigns_coupon_id_fkey"
             columns: ["coupon_id"]
@@ -5499,6 +5745,7 @@ export type Database = {
           address_id: string | null
           cancel_reason: string | null
           cancelled_at: string | null
+          city_id: string | null
           commission_amount: number | null
           commission_breakdown: Json | null
           commission_gst: number
@@ -5562,6 +5809,7 @@ export type Database = {
           address_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           commission_amount?: number | null
           commission_breakdown?: Json | null
           commission_gst?: number
@@ -5625,6 +5873,7 @@ export type Database = {
           address_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          city_id?: string | null
           commission_amount?: number | null
           commission_breakdown?: Json | null
           commission_gst?: number
@@ -5689,6 +5938,13 @@ export type Database = {
             columns: ["address_id"]
             isOneToOne: false
             referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_orders_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -6201,6 +6457,7 @@ export type Database = {
           bank_account_number: string | null
           bank_ifsc: string | null
           city: string | null
+          city_id: string | null
           commission_mode: string
           commission_pct: number
           commission_type: string
@@ -6267,6 +6524,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           city?: string | null
+          city_id?: string | null
           commission_mode?: string
           commission_pct: number
           commission_type?: string
@@ -6333,6 +6591,7 @@ export type Database = {
           bank_account_number?: string | null
           bank_ifsc?: string | null
           city?: string | null
+          city_id?: string | null
           commission_mode?: string
           commission_pct?: number
           commission_type?: string
@@ -6394,6 +6653,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "staff_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchants_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -6809,6 +7075,7 @@ export type Database = {
       partner_payments: {
         Row: {
           amount: number
+          city_id: string | null
           created_at: string
           created_by: string | null
           gst_amount: number
@@ -6824,6 +7091,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           gst_amount?: number
@@ -6839,6 +7107,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          city_id?: string | null
           created_at?: string
           created_by?: string | null
           gst_amount?: number
@@ -6853,6 +7122,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "partner_payments_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partner_payments_partner_id_fkey"
             columns: ["partner_id"]
@@ -7245,6 +7521,7 @@ export type Database = {
           agreement_start: string
           auth_user_id: string | null
           city: string
+          city_id: string | null
           created_at: string
           fee_collected_at: string | null
           fee_paid: number
@@ -7266,6 +7543,7 @@ export type Database = {
           agreement_start: string
           auth_user_id?: string | null
           city: string
+          city_id?: string | null
           created_at?: string
           fee_collected_at?: string | null
           fee_paid?: number
@@ -7287,6 +7565,7 @@ export type Database = {
           agreement_start?: string
           auth_user_id?: string | null
           city?: string
+          city_id?: string | null
           created_at?: string
           fee_collected_at?: string | null
           fee_paid?: number
@@ -7304,6 +7583,13 @@ export type Database = {
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partners_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partners_growth_plan_id_fkey"
             columns: ["growth_plan_id"]
@@ -8381,6 +8667,7 @@ export type Database = {
       service_flags: {
         Row: {
           city: string
+          city_id: string | null
           closed_today_date: string | null
           closed_today_reason: string | null
           closed_until: string | null
@@ -8402,6 +8689,7 @@ export type Database = {
         }
         Insert: {
           city: string
+          city_id?: string | null
           closed_today_date?: string | null
           closed_today_reason?: string | null
           closed_until?: string | null
@@ -8423,6 +8711,7 @@ export type Database = {
         }
         Update: {
           city?: string
+          city_id?: string | null
           closed_today_date?: string | null
           closed_today_reason?: string | null
           closed_until?: string | null
@@ -8442,7 +8731,15 @@ export type Database = {
           status_updated_by?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_flags_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_focus_snapshots: {
         Row: {
@@ -8806,6 +9103,7 @@ export type Database = {
       sponsored_slots: {
         Row: {
           category_id: string | null
+          city_id: string | null
           created_at: string
           ends_at: string | null
           id: string
@@ -8818,6 +9116,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          city_id?: string | null
           created_at?: string
           ends_at?: string | null
           id?: string
@@ -8830,6 +9129,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          city_id?: string | null
           created_at?: string
           ends_at?: string | null
           id?: string
@@ -8846,6 +9146,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "catalog_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsored_slots_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -8867,6 +9174,42 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_city_access: {
+        Row: {
+          city_id: string
+          created_at: string
+          created_by: string | null
+          staff_user_id: string
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          created_by?: string | null
+          staff_user_id: string
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          created_by?: string | null
+          staff_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_city_access_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_city_access_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
             referencedColumns: ["id"]
           },
         ]
@@ -10124,6 +10467,7 @@ export type Database = {
         Row: {
           boundary: Json
           city: string
+          city_id: string | null
           created_at: string
           delete_reason: string | null
           deleted_at: string | null
@@ -10136,6 +10480,7 @@ export type Database = {
         Insert: {
           boundary: Json
           city: string
+          city_id?: string | null
           created_at?: string
           delete_reason?: string | null
           deleted_at?: string | null
@@ -10148,6 +10493,7 @@ export type Database = {
         Update: {
           boundary?: Json
           city?: string
+          city_id?: string | null
           created_at?: string
           delete_reason?: string | null
           deleted_at?: string | null
@@ -10158,6 +10504,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "zones_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "zones_segment_id_fkey"
             columns: ["segment_id"]
@@ -10377,6 +10730,11 @@ export type Database = {
         Args: { _agreement_id: string }
         Returns: Json
       }
+      app_city_for_location: {
+        Args: { _lat: number; _lng: number }
+        Returns: string
+      }
+      app_city_price_options: { Args: { _city_id: string }; Returns: Json }
       app_expert_application_agreements: { Args: never; Returns: Json }
       app_expert_application_get: { Args: never; Returns: Json }
       app_expert_application_save: {
@@ -10716,6 +11074,7 @@ export type Database = {
         Args: { _lat: number; _lng: number; _segment_id?: string }
         Returns: Json
       }
+      city_id_by_name: { Args: { _name: string }; Returns: string }
       claim_booking_as_expert: {
         Args: { p_booking_id: string }
         Returns: {
@@ -10730,6 +11089,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          city_id: string | null
           commission_rule_id: string | null
           coupon_code: string | null
           coupon_id: string | null
@@ -11028,6 +11388,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           city: string
+          city_id: string | null
           commission_pct: number
           completed_at: string | null
           coupon_code: string | null
@@ -11335,6 +11696,7 @@ export type Database = {
         Returns: Json
       }
       customer_wallet_start_topup: { Args: { _amount: number }; Returns: Json }
+      default_city_id: { Args: never; Returns: string }
       dispatch_limit_minutes: {
         Args: { _city: string; _svc: string }
         Returns: number
@@ -12144,6 +12506,7 @@ export type Database = {
         Args: { _body: string; _ticket_id: string }
         Returns: string
       }
+      staff_allowed_city_ids: { Args: never; Returns: string[] }
       staff_approve_settlement: {
         Args: { _settlement_id: string }
         Returns: undefined
@@ -12195,6 +12558,7 @@ export type Database = {
             Args: { _audience: string; _target_user_ids?: string[] }
             Returns: Json
           }
+      staff_can_city: { Args: { _city: string }; Returns: boolean }
       staff_cancel_booking: {
         Args: { _booking_id: string; _reason: string }
         Returns: undefined
@@ -12209,6 +12573,7 @@ export type Database = {
         }
         Returns: Json
       }
+      staff_city_template: { Args: { _from: string }; Returns: Json }
       staff_clear_availability_override: {
         Args: { _target_id: string; _target_type: string }
         Returns: boolean
@@ -12358,6 +12723,18 @@ export type Database = {
         Args: { _business_name: string; _city: string; _phone: string }
         Returns: string
       }
+      staff_create_city: {
+        Args: {
+          _copy_from: string
+          _delivery: Json
+          _name: string
+          _prices: Json
+          _state: string
+          _state_code: string
+          _vehicle_rates: Json
+        }
+        Returns: string
+      }
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
         Returns: string
@@ -12384,6 +12761,7 @@ export type Database = {
         Returns: boolean
       }
       staff_delete_banner: { Args: { _id: string }; Returns: undefined }
+      staff_delete_city: { Args: { _id: string }; Returns: undefined }
       staff_delete_coupon: { Args: { _id: string }; Returns: undefined }
       staff_delete_customer_address: {
         Args: { _address_id: string }
@@ -12474,6 +12852,7 @@ export type Database = {
       }
       staff_insurance_stats: { Args: never; Returns: Json }
       staff_list_bulk_plans: { Args: never; Returns: Json }
+      staff_list_cities: { Args: never; Returns: Json }
       staff_list_customer_invoices: {
         Args: { _from: string; _q?: string; _service?: string; _to: string }
         Returns: Json
@@ -12571,6 +12950,7 @@ export type Database = {
         Args: { _dir: number; _id: string }
         Returns: undefined
       }
+      staff_my_cities: { Args: never; Returns: Json }
       staff_notify_summary: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -12916,6 +13296,14 @@ export type Database = {
       staff_set_cancel_fee: {
         Args: { _rider_share_pct: number; _type: string; _value: number }
         Returns: Json
+      }
+      staff_set_city_access: {
+        Args: { _city_ids: string[]; _staff_user_id: string }
+        Returns: undefined
+      }
+      staff_set_city_status: {
+        Args: { _id: string; _status: string }
+        Returns: undefined
       }
       staff_set_commission_rule_active: {
         Args: { _id: string; _is_active: boolean }
