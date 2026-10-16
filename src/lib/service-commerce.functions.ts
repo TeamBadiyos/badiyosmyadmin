@@ -303,7 +303,7 @@ export const listProductApprovals = createServerFn({ method: "POST" })
     const pIds = rows.map((r) => r.id);
     const [v, ad, cats] = await Promise.all([
       pIds.length ? db.from("product_variants").select("product_id, name, price").in("product_id", pIds).order("sort_order") : { data: [] },
-      pIds.length ? db.from("product_addons").select("product_id, name, price").in("product_id", pIds).order("sort_order") : { data: [] },
+      pIds.length ? db.from("product_addons").select("product_id, name, price, group_name, min_select, max_select").in("product_id", pIds).order("sort_order") : { data: [] },
       db.from("catalog_categories").select("id, name").eq("service_type", data.service),
     ]);
     const name = new Map((ms.data ?? []).map((m: any) => [m.id, m.store_name]));

@@ -821,6 +821,33 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
 
 /* ================= Approvals ================= */
 
+export function addonRule(min?: number | null, max?: number | null) {
+  const mn = Math.max(0, Number(min ?? 0));
+  const mx = max == null ? null : Number(max);
+  if (mn >= 1) return mx != null && mx > mn ? `Required · pick ${mn} to ${mx}` : `Required · pick ${mn}`;
+  return mx != null && mx > 0 ? `Optional · up to ${mx}` : "Optional · choose any";
+}
+
+function AddonGroups({ addons }: { addons: any[] | null | undefined }) {
+  const list = Array.isArray(addons) ? addons : [];
+  if (!list.length) return <span>—</span>;
+  const groups = new Map<string, any[]>();
+  for (const a of list) {
+    const k = a.group_name?.trim() || "Add-ons";
+    groups.set(k, [...(groups.get(k) ?? []), a]);
+  }
+  return (
+    <div className="space-y-1.5">
+      {Array.from(groups.entries()).map(([g, xs]) => (
+        <div key={g}>
+          <p className="text-xs font-medium">{g} <Badge variant="outline" className="ml-1 text-[10px]">{addonRule(xs[0]?.min_select, xs[0]?.max_select)}</Badge></p>
+          <p className="text-xs text-muted-foreground">{xs.map((x) => `${x.name} +₹${x.price ?? 0}`).join(", ")}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ApprovalsTab({ service }: { service: Svc }) {
   const qc = useQueryClient();
   const fn = useServerFn(listProductApprovals);
@@ -850,7 +877,8 @@ function ApprovalsTab({ service }: { service: Svc }) {
               ["Price", inr(p.price), n ? inr(n.price) : null], ["Category", catName(p.category_id), n ? catName(n.category_id) : null],
               ["Photo", imgUrl(p.image_path, p.image_url) ? <img src={imgUrl(p.image_path, p.image_url)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—",
                 n ? (n.image_path ? <img src={imgUrl(n.image_path)!} className="h-12 w-12 rounded object-cover" alt="" /> : "—") : null],
-              ["Variants", linesStr(p.variants), n ? linesStr(n.variants) : null], ["Add-ons", linesStr(p.addons), n ? linesStr(n.addons) : null],
+              ["Variants", linesStr(p.variants), n ? linesStr(n.variants) : null],
+              ["Add-ons", <AddonGroups key="a" addons={p.addons} />, n ? <AddonGroups key="b" addons={n.addons} /> : null],
             ];
             return (
               <div key={p.id} className="p-3 border-b last:border-0 space-y-2">
