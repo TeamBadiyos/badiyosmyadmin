@@ -197,7 +197,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
             ))}
           </div>
           {drill && drill.metric !== "orders" && drill.metric !== "cancelled" && (
-            <p className="mt-4 text-[11px] text-muted-foreground">Amounts shown are what the customer paid / was refunded (with GST). The Summary figure is without GST.</p>
+            <p className="mt-4 text-[11px] text-muted-foreground">{drill.metric === "refund" ? "Amounts shown are what was actually refunded to the customer (with GST)." : "Amounts shown are what the customer paid (with GST). The Summary figure is without GST."}</p>
           )}
         </SheetContent>
       </Sheet>
