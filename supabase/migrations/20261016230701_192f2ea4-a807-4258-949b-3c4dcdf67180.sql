@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.app_store_is_open(uuid,timestamptz), public.app_store_next_open(uuid), public.app_store_card(uuid,double precision,double precision), public.app_store_live(uuid), public.app_item_card(uuid), public.app_item_live(uuid) FROM public, anon, authenticated;
