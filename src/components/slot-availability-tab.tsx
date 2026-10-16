@@ -296,9 +296,9 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
   return (
     <section className={`${card} divide-y divide-border py-1`}>
       <div className={row}>
-        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Book Now</p><p className="text-[12px] text-muted-foreground">{isWash ? "Instant Clean Auto bookings" : "Instant Clean Home bookings"}</p></div>
-        <Switch label="Book Now" on={!!instOn} disabled={!d || instMut.isPending}
-          onClick={() => d && confirm(instOn ? "Pause Book Now?" : "Turn Book Now ON?") && instMut.mutate(!instOn)} />
+        <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">'Now' slot</p><p className="text-[12px] text-muted-foreground">When ON, customers see a 'Now' option as the first time slot (only when an expert is free). Scheduled slots work either way.</p></div>
+        <Switch label="'Now' slot" on={!!instOn} disabled={!d || instMut.isPending}
+          onClick={() => d && confirm(instOn ? "Pause the 'Now' slot?" : "Turn the 'Now' slot ON?") && instMut.mutate(!instOn)} />
       </div>
       <div className={row}>
         <div className="min-w-0"><p className="text-[14px] font-semibold text-foreground">Auto-cancel and refund if no expert accepts within X minutes</p><p className="text-[12px] text-muted-foreground">Book Now and Scheduled · Counted from when the expert search starts · Full refund · Now: {ac.data?.minutes ?? "–"} min</p></div>
