@@ -24,7 +24,7 @@ import {
   Repeat,
   Timer,
 } from "lucide-react";
-import { CustomerBlock, MapActionBar, ActionBar, ActionBtn, HistorySection, TimerRow, PanelSection, MoreMenu, fmtPhone } from "@/components/detail-panel";
+import { CustomerBlock, MapActionBar, ActionBar, ActionBtn, HistorySection, TimerRow, PanelSection, MoreMenu, fmtPhone, PhaseBanner, waitText } from "@/components/detail-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -500,7 +500,15 @@ export function BookingDetailsModal({
           {data && (
             data.status === "in_progress" && data.startedAt && totalMinutes > 0
               ? <TimerRow startedAt={data.startedAt} totalMinutes={totalMinutes} />
-              : <Timeline current={data.status} />
+              : data.status === "cancelled" || data.status === "rejected"
+                ? <PhaseBanner phase="bad" title={STATUS_LABEL[data.status]} />
+                : data.status === "completed"
+                  ? <PhaseBanner phase="done" title="✓ Completed" detail={data.expert.name ? `by ${data.expert.name}` : null} />
+                  : !data.expert.id
+                    ? <PhaseBanner phase="assign" title={data.status === "confirmed" ? "Scheduled · not sent to experts yet" : "Needs expert · searching"} detail={data.status === "confirmed" ? null : `Waiting ${waitText(data.createdAt)}`} />
+                    : <PhaseBanner phase="assigned" title={`${STATUS_LABEL[data.status]} · ${data.expert.name ?? "Expert"}`}
+                        steps={[{ key: "expert_assigned", label: "Assigned" }, { key: "on_the_way", label: "On the way" }, { key: "arrived", label: "Arrived" }, { key: "in_progress", label: "Started" }]}
+                        current={data.status === "accepted" ? "expert_assigned" : data.status} />
           )}
         </header>
 

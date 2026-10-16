@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Ban, Bike, MoreHorizontal, RefreshCw, Store, User, Volume2, VolumeX, X } from "lucide-react";
-import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine } from "@/components/detail-panel";
+import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, PhaseBanner, waitText } from "@/components/detail-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -255,7 +255,13 @@ export function OrderSheet({
           <p className="mt-1 text-[12px] text-muted-foreground truncate">
             Placed {ago(order.createdAt, now)}{order.readyAt ? ` · Ready ${ago(order.readyAt, now)}` : ""} · {order.paymentMode ?? "—"}
           </p>
-          <StepLine steps={steps.map((k) => ({ key: k, label: STATUS_LABEL[k] }))} current={order.status} />
+          {order.status === "completed"
+            ? <PhaseBanner phase="done" title="✓ Completed" detail={order.riderName ? `by ${order.riderName}` : null} />
+            : order.status === "pending"
+              ? <PhaseBanner phase="assign" title="Waiting for store to accept" detail={`Waiting ${waitText(order.createdAt, now)}`} />
+              : <PhaseBanner phase={order.riderName ? "assigned" : "assign"}
+                  title={order.riderName ? `${STATUS_LABEL[order.status]} · Rider ${order.riderName}` : `${STATUS_LABEL[order.status]} · finding rider`}
+                  steps={steps.filter((k) => k !== "pending").map((k) => ({ key: k, label: STATUS_LABEL[k] }))} current={order.status} />}
           {order.alerts.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {order.alerts.map((a) => (
