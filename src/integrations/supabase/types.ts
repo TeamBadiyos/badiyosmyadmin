@@ -5794,6 +5794,94 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_ledger_entries: {
+        Row: {
+          adjustment_id: string | null
+          amount: number
+          created_at: string
+          dedupe_key: string
+          entry_at: string
+          entry_type: string
+          id: string
+          info_amount: number | null
+          merchant_id: string
+          note: string | null
+          order_id: string | null
+          settlement_id: string | null
+        }
+        Insert: {
+          adjustment_id?: string | null
+          amount?: number
+          created_at?: string
+          dedupe_key: string
+          entry_at?: string
+          entry_type: string
+          id?: string
+          info_amount?: number | null
+          merchant_id: string
+          note?: string | null
+          order_id?: string | null
+          settlement_id?: string | null
+        }
+        Update: {
+          adjustment_id?: string | null
+          amount?: number
+          created_at?: string
+          dedupe_key?: string
+          entry_at?: string
+          entry_type?: string
+          id?: string
+          info_amount?: number | null
+          merchant_id?: string
+          note?: string | null
+          order_id?: string | null
+          settlement_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_ledger_entries_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlement_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_ledger_entries_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_ledger_entries_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_ledger_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_ledger_entries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "store_revenue_report"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "merchant_ledger_entries_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_order_items: {
         Row: {
           addons: Json | null
@@ -12229,6 +12317,38 @@ export type Database = {
         Args: { _target_id: string; _target_type: string }
         Returns: boolean
       }
+      ledger_can_read: { Args: { _store_id: string }; Returns: boolean }
+      ledger_post: {
+        Args: {
+          _adj?: string
+          _amt: number
+          _at: string
+          _info?: number
+          _key: string
+          _m: string
+          _note?: string
+          _order?: string
+          _sett?: string
+          _type: string
+        }
+        Returns: undefined
+      }
+      ledger_post_adjustment: {
+        Args: {
+          _a: Database["public"]["Tables"]["merchant_settlement_adjustments"]["Row"]
+        }
+        Returns: undefined
+      }
+      ledger_post_order: {
+        Args: { _o: Database["public"]["Tables"]["merchant_orders"]["Row"] }
+        Returns: undefined
+      }
+      ledger_post_settlement: {
+        Args: {
+          _s: Database["public"]["Tables"]["merchant_settlements"]["Row"]
+        }
+        Returns: undefined
+      }
       link_referral: { Args: { _code: string }; Returns: undefined }
       list_fully_booked_slots:
         | {
@@ -12285,6 +12405,10 @@ export type Database = {
       }
       merchant_caller_has_perm: { Args: { _perm: string }; Returns: boolean }
       merchant_claim_staff_invite: { Args: never; Returns: string }
+      merchant_commission_invoices: {
+        Args: { _limit?: number; _offset?: number; _store_id: string }
+        Returns: Json
+      }
       merchant_create_offline_sale: {
         Args: { _payload: Json }
         Returns: string
@@ -12306,6 +12430,17 @@ export type Database = {
         Args: { _merchant_id: string }
         Returns: boolean
       }
+      merchant_ledger: {
+        Args: {
+          _from?: string
+          _limit?: number
+          _offset?: number
+          _store_id: string
+          _to?: string
+          _types?: string[]
+        }
+        Returns: Json
+      }
       merchant_my_context: { Args: never; Returns: Json }
       merchant_require: {
         Args: { _allow: string[]; _store_id: string }
@@ -12317,6 +12452,18 @@ export type Database = {
         Returns: boolean
       }
       merchant_set_login_pin: { Args: { p_pin: string }; Returns: undefined }
+      merchant_settlement_statement: {
+        Args: { _settlement_id: string }
+        Returns: Json
+      }
+      merchant_settlement_summary: {
+        Args: { _store_id: string }
+        Returns: Json
+      }
+      merchant_settlements_list: {
+        Args: { _limit?: number; _offset?: number; _store_id: string }
+        Returns: Json
+      }
       merchant_submit_application: { Args: never; Returns: undefined }
       merchant_verify_pin_internal: {
         Args: { p_phone: string; p_pin: string }
