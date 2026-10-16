@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { PipelineKanban } from "@/components/pipeline-kanban";
 import { ServiceCommerceModule } from "@/components/service-commerce-module";
 
+import { CleanAppContent } from "@/components/clean-app-content";
 import { ZonesV2Page } from "@/components/zones-v2-page";
 import { BookingsPage } from "@/components/bookings-page";
 import { ExpertsPage } from "@/components/experts-page";
@@ -808,6 +809,7 @@ function Shell() {
             <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
             <BookingTimingsTab />
             <CapacityMessagesPage />
+            {active === "maid-settings" && <CleanAppContent />}
           </div></RequireCity>
         ) : active === "courier-settings" ? (
           <RequireCity><CourierPage section="settings" /></RequireCity>

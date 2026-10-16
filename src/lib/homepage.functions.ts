@@ -108,3 +108,59 @@ export const reorderHomepageSections = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---- Clean Home app content ("clean_media") ----
+export const getCleanMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { cityId: string | null }) => ({ cityId: i?.cityId ?? null }))
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_get_clean_media" as never, { _city: data.cityId } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+export const saveCleanMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { cityId: string | null; payload: JsonRecord }) => ({ cityId: i?.cityId ?? null, payload: i.payload }))
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_save_clean_media" as never, { _city: data.cityId, _payload: data.payload } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+export const resetCleanMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { cityId: string }) => {
+    if (!i?.cityId) throw new Error("city required");
+    return { cityId: i.cityId };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase.rpc("staff_reset_clean_media" as never, { _city: data.cityId } as never);
+    if (error) throw new Error(error.message);
+    return r as unknown as JsonRecord;
+  });
+
+/** Uploads an already-compressed WebP (base64) to catalog-images/clean-media/… and returns its public URL. */
+export const uploadCleanMediaImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { cityId: string | null; kind: "maid" | "tile"; base64: string }) => {
+    if (i?.kind !== "maid" && i?.kind !== "tile") throw new Error("Invalid kind");
+    const b64 = String(i?.base64 ?? "").replace(/^data:image\/webp;base64,/, "");
+    if (!b64 || b64.length > 4_000_000) throw new Error("Image too large (max ~3 MB)");
+    if (i.cityId && !/^[0-9a-f-]{36}$/i.test(i.cityId)) throw new Error("Invalid city");
+    return { cityId: i.cityId ?? null, kind: i.kind, b64 };
+  })
+  .handler(async ({ data, context }) => {
+    await requireHomepageStaff(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { CATALOG_BUCKET, catalogImageUrl } = await import("@/lib/catalog-images");
+    const bytes = Uint8Array.from(atob(data.b64), (c) => c.charCodeAt(0));
+    const path = `clean-media/${data.cityId ?? "default"}/${data.kind}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webp`;
+    const { error } = await supabaseAdmin.storage.from(CATALOG_BUCKET).upload(path, bytes, { contentType: "image/webp", upsert: false });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_logs").insert({
+      actor_id: context.userId, action: "upload_clean_media_image", target_table: "homepage_sections",
+      target_id: data.cityId, before_state: null, after_state: { path, kind: data.kind },
+    });
+    return { url: catalogImageUrl(path) as string };
+  });
