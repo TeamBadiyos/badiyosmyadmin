@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useCity } from "@/lib/city-scope";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
