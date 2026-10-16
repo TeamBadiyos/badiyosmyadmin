@@ -93,7 +93,8 @@ function Bottom({ left, action }: { left: React.ReactNode; action?: React.ReactN
   );
 }
 
-type Candidate = { id: string; name: string; distanceKm: number | null; tag: string; good: boolean };
+type Candidate = { id: string; name: string; distanceKm: number | null; tag: string; good: boolean; rider?: boolean };
+const RANK: Record<string, number> = { Free: 0, Busy: 1, Offline: 2 };
 
 /** Small on-card picker: nearest first, one click assigns with a 5s undo. */
 export function AssignPopover({
@@ -113,7 +114,8 @@ export function AssignPopover({
   const qc = useQueryClient();
   const timer = useRef<number | null>(null);
   const q = useQuery({ queryKey, queryFn: load, enabled: open, staleTime: 15_000 });
-  const list = q.data ?? [];
+  const list = [...(q.data ?? [])].sort((a, b) =>
+    (RANK[a.tag] ?? 1) - (RANK[b.tag] ?? 1) || (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
 
   function pick(c: Candidate) {
     setOpen(false);
@@ -165,8 +167,11 @@ export function AssignPopover({
             <button
               key={c.id}
               type="button"
-              onClick={() => pick(c)}
-              disabled={c.tag === "Busy"}
+              onClick={() => {
+                if (c.rider && c.tag === "Busy" && !window.confirm("Rider is on another job — assign anyway?")) return;
+                pick(c);
+              }}
+              disabled={c.rider ? c.tag === "Offline" : c.tag === "Busy"}
               className="w-full flex disabled:opacity-50 disabled:cursor-not-allowed items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-left hover:bg-muted"
             >
               <span className="text-[13px] font-semibold text-foreground truncate">{c.name}</span>
@@ -277,6 +282,7 @@ const COURIER_STATUS: Record<string, string> = {
 export const riderOpt = (r: { id: string; name: string; distance_km: number | null; status: "free" | "busy" | "offline" }) => ({
   id: r.id, name: r.name, distanceKm: r.distance_km,
   tag: r.status === "busy" ? "Busy" : r.status === "free" ? "Free" : "Offline", good: r.status === "free",
+  rider: true,
 });
 
 export function CompactCourierCard({ o, col, now, onOpen }: { o: CourierOrderRow; col: PipelineStatus; now: number; onOpen: () => void }) {
