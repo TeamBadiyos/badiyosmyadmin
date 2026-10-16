@@ -6,6 +6,7 @@ import { Info, Phone } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PipelineKanban, SERVICE_META, type BoardService } from "@/components/pipeline-kanban";
 import type { StaffRole } from "@/lib/staff.functions";
+import { listExpertsWithoutDevice } from "@/lib/booking-settings.functions";
 
 type Range = "today" | "yesterday" | "7d" | "30d";
 const ist = (d: Date) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -66,6 +67,8 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
   const money = useQuery({ queryKey: ["dash-money", from, to], queryFn: () => fetchMoney({ data: { from, to } }), refetchInterval: 60_000 }).data;
   const team = useQuery({ queryKey: ["dash-team"], queryFn: () => fetchTeam(), refetchInterval: 30_000 }).data;
 
+  const noDevFn = useServerFn(listExpertsWithoutDevice);
+  const noDev = useQuery({ queryKey: ["experts-no-device"], queryFn: () => noDevFn(), refetchInterval: 60_000 }).data ?? [];
   const d = q.data as { services?: Record<string, Record<string, number | null>>; alerts?: Record<string, number> } | undefined;
   const a = d?.alerts ?? {};
   const approvals = Number(a.pending_products_store ?? 0) + Number(a.pending_products_food ?? 0);
@@ -74,6 +77,7 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
     { n: Number(a.refunds_failed ?? 0), label: "Refunds failed", nav: "fin-refunds" },
     { n: Number(a.instant_to_pay ?? 0), label: "Instant pay today", nav: "fin-instant" },
     { n: Number(a.carry_forward_merchants ?? 0), label: "Carry-forward merchants", nav: "fin-settlements" },
+    { n: noDev.length, label: `Experts not receiving job alerts${noDev.some((x) => x.online) ? ` (${noDev.filter((x) => x.online).length} online)` : ""}`, nav: "clean-experts" },
   ].filter((x) => x.n > 0);
 
   const count = (g: TeamKey, busy: boolean) => (team ? team.filter((t) => t.group === g && t.busy === busy).length : null);
