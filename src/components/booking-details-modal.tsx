@@ -359,6 +359,8 @@ export function BookingDetailsModal({
   const [selectedExpertId, setSelectedExpertId] = useState<string>("");
   const [expertSearch, setExpertSearch] = useState("");
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
 
   const showAssign = !!data && data.status === "accepted" && canEdit;
   const canReassign =
@@ -439,8 +441,6 @@ export function BookingDetailsModal({
     maximumFractionDigits: 0,
   });
 
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [adjustOpen, setAdjustOpen] = useState(false);
   const isWash = /wash/i.test(data?.serviceLabel ?? "");
   const canAdjust = canEdit && !!data && !isDeleted && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
   const canHandover = canEdit && !!data && !!data.expert.id && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
