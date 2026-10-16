@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.experts_on_became_available() FROM PUBLIC, anon, authenticated;

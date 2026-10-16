@@ -169,7 +169,17 @@ export const Route = createFileRoute("/api/public/hooks/expire-stale-bookings")(
             });
           }
 
-          return json(200, { ok: true, processed: results.length, results });
+          // Re-send waiting "Needs expert" bookings to free online experts
+          // (each expert at most once per 5 min per booking).
+          const { data: rebroadcast, error: rbErr } = await supabaseAdmin.rpc(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            "rebroadcast_open_bookings" as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            { _expert_id: null, _min_gap_minutes: 5 } as any,
+          );
+          if (rbErr) console.error("[expire-stale-bookings] rebroadcast failed", rbErr.message);
+
+          return json(200, { ok: true, processed: results.length, results, rebroadcast });
         },
       },
     },
