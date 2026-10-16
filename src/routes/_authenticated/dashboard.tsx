@@ -19,7 +19,7 @@ import { CustomerInvoicesPage, CustomerWalletPage } from "@/components/customer-
 import { FinanceOverview, MerchantsFinance, ExpensesPage, CollectionsPage } from "@/components/finance-redesign";
 import { AgreementsSettingsPage } from "@/components/agreements";
 import { CitiesPage } from "@/components/cities-page";
-import { CitySwitcher } from "@/lib/city-scope";
+import { CitySwitcher, RequireCity } from "@/lib/city-scope";
 import { SacCodesCard } from "@/components/sac-codes-card";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { BookingDetailsModal } from "@/components/booking-details-modal";
@@ -683,7 +683,7 @@ function Shell() {
             )}
           </div>
         ) : active === "zones" ? (
-          <ZonesPage role={role} />
+          <RequireCity><ZonesPage role={role} /></RequireCity>
         ) : active === "bookings" ? (
           <BookingsPage
             key={`bookings-${navNonce}`}
@@ -725,7 +725,7 @@ function Shell() {
         ) : active === "catalogue" ? (
           <ServiceCataloguePage />
         ) : active === "store-settings" ? (
-          <StoreSettingsPage onOpenTax={() => setActive("tax-settings")} />
+          <RequireCity><StoreSettingsPage onOpenTax={() => setActive("tax-settings")} /></RequireCity>
         ) : active === "live-stores" ? (
           <LiveStoresView />
         ) : active === "store-categories" ? (
@@ -755,13 +755,13 @@ function Shell() {
         ) : active === "deletion-requests" ? (
           <DeletionRequestsPage role={role} />
         ) : active === "dispatch-alerts" ? (
-          <DispatchAlertsPage />
+          <RequireCity><DispatchAlertsPage /></RequireCity>
         ) : active === "services" ? (
-          <ServicesPage
+          <RequireCity><ServicesPage
             onEditHours={(k) =>
               setActive(k === "clean" ? "maid-settings" : k === "wash" ? "wash-settings" : k === "courier" ? "courier-settings" : k === "food" ? "food-orders" : "store-orders")
             }
-          />
+          /></RequireCity>
         ) : active === "event-offers" ? (
           <RewardsHub key={`rw-e-${navNonce}`} role={role} initialTab="events" />
         ) : active === "offers" ? (
@@ -769,7 +769,7 @@ function Shell() {
         ) : active === "courier" || active === "courier-orders" ? (
           <CourierPage section="orders" />
         ) : active === "courier-rates" ? (
-          <CourierPage section="rates" />
+          <RequireCity><CourierPage section="rates" /></RequireCity>
         ) : active === "courier-types" ? (
           <CourierPage section="types" />
         ) : active === "courier-bulk" ? (
@@ -788,12 +788,11 @@ function Shell() {
         ) : active === "maid-catalogue" || active === "wash-catalogue" ? (
           <div className="space-y-8">
             <ServiceCataloguePage kind={active === "wash-catalogue" ? "wash" : "maid"} />
-            <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Pay rates</h2><CommissionTab only="commission" /></section>
           </div>
         ) : active === "maid-slots" ? (
-          <SlotAvailabilityTab group="clean" />
+          <RequireCity><SlotAvailabilityTab group="clean" /></RequireCity>
         ) : active === "wash-slots" ? (
-          <SlotAvailabilityTab group="wash" />
+          <RequireCity><SlotAvailabilityTab group="wash" /></RequireCity>
         ) : active === "clean-experts" ? (
           <ExpertsPage key={`cexperts-${navNonce}`} role={role} initialOnlineOnly={false} skill="maid" />
         ) : active === "wash-team" ? (
@@ -805,14 +804,14 @@ function Shell() {
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training address</h2><TrainingAddressTab /></section>
           </div>
         ) : active === "maid-settings" || active === "wash-settings" ? (
-          <div className="space-y-6 max-w-4xl">
+          <RequireCity><div className="space-y-6 max-w-4xl">
             <CleanCapacitySettings group={active === "wash-settings" ? "wash" : "clean"} />
             <ServiceHoursPanel serviceKey={active === "wash-settings" ? "wash" : "clean"} title="Opening hours" />
             <BookingTimingsTab />
             <CapacityMessagesPage />
-          </div>
+          </div></RequireCity>
         ) : active === "courier-settings" ? (
-          <CourierPage section="settings" />
+          <RequireCity><CourierPage section="settings" /></RequireCity>
         ) : active === "store-orders" ? (
           <ServiceCommerceModule service="store" role={role ?? ""} />
         ) : active === "food-orders" ? (
@@ -823,7 +822,7 @@ function Shell() {
             <SacCodesCard isSuperAdmin={role === "super_admin"} />
           </div>
         ) : active === "fees" ? (
-          <ChargesFeesPage isSuperAdmin={role === "super_admin"} />
+          <RequireCity><ChargesFeesPage isSuperAdmin={role === "super_admin"} /></RequireCity>
         ) : active === "agreements" ? (
           role === "super_admin" ? <AgreementsSettingsPage isSuperAdmin /> : <p className="text-sm text-muted-foreground">Only super admins can manage agreements.</p>
         ) : active === "cities" ? (
