@@ -1,6 +1,6 @@
 export type ServiceKey = "clean" | "wash";
 export type Line = { en: string; mr: string };
-export type Hero = { heading: string; heading_mr: string; subline: string; subline_mr: string; button: string; button_mr: string; image_url: string | null; bg_color: string };
+export type Hero = { heading: string; heading_mr: string; subline: string; subline_mr: string; button: string; button_mr: string; image_url: string | null; bg_color: string; card_title: string; card_title_mr: string };
 export type Card = { title: string; title_mr: string; image_url: string | null; included: Line[]; not_included: Line[]; enabled: boolean; price_option_id: string | null };
 export type OptionExtra = { name: string; name_mr: string; image_url: string | null; original_price: number | null };
 export type Details = { included_title: string; included_title_mr: string; excluded_title: string; excluded_title_mr: string; note: string; note_mr: string; note_icon: string };
@@ -64,7 +64,7 @@ export function normalizeServiceContent(p: any, key: ServiceKey): ServiceContent
   const banners = {} as Record<BannerState, Banner>;
   for (const { key: b } of BANNER_STATES) banners[b] = pickStr(d.banners[b], p?.banners?.[b]);
   return {
-    hero: { heading: s(h.heading), heading_mr: s(h.heading_mr), subline: s(h.subline), subline_mr: s(h.subline_mr), button: s(h.button) || "Book Now", button_mr: s(h.button_mr), image_url: h.image_url || null, bg_color: s(h.bg_color) || (key === "wash" ? "#222831" : "#00B97A") },
+    hero: { heading: s(h.heading), heading_mr: s(h.heading_mr), subline: s(h.subline), subline_mr: s(h.subline_mr), button: s(h.button) || "Book Now", button_mr: s(h.button_mr), image_url: h.image_url || null, bg_color: s(h.bg_color) || (key === "wash" ? "#222831" : "#00B97A"), card_title: s(h.card_title) || (key === "wash" ? "Car Wash" : "Maid"), card_title_mr: s(h.card_title_mr) || (key === "wash" ? "कार वॉश" : "मेड") },
     cards, options,
     details: pickStr(d.details, p?.details),
     banners,
@@ -81,6 +81,7 @@ export function validateServiceContent(m: ServiceContent, live: LiveOption[]): s
   if (!/^#[0-9a-f]{6}$/i.test(m.hero.bg_color)) return "Background colour must look like #00B97A";
   if (!m.hero.subline.trim()) return "Sub-line (English) is required";
   if (!m.hero.button.trim()) return "Button text (English) is required";
+  if (!m.hero.card_title.trim()) return "Card title (English) is required";
   if (m.cards.length !== 3) return "Exactly 3 cards are required";
   if (m.cards.some((c) => !c.title.trim())) return "Each card needs an English title";
   if (m.cards.some((c) => [...c.included, ...c.not_included].some((l) => !l.en.trim()))) return "Each list line needs English text";

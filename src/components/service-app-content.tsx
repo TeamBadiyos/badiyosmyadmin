@@ -99,6 +99,8 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
         <div className="space-y-4">
           <Box title="Hero card">
             <div className="grid gap-2 sm:grid-cols-2">
+              <Input value={m.hero.card_title} maxLength={30} placeholder="Card title (small card on Clean tab)" onChange={(e) => setHero({ card_title: e.target.value })} />
+              <Input value={m.hero.card_title_mr} maxLength={30} placeholder="कार्ड शीर्षक (मराठी)" onChange={(e) => setHero({ card_title_mr: e.target.value })} />
               <Input value={m.hero.heading} maxLength={80} placeholder="Heading (optional, blank = hidden)" onChange={(e) => setHero({ heading: e.target.value })} />
               <Input value={m.hero.heading_mr} maxLength={80} placeholder="शीर्षक (मराठी)" onChange={(e) => setHero({ heading_mr: e.target.value })} />
               <Input value={m.hero.subline} maxLength={120} placeholder="Sub-line" onChange={(e) => setHero({ subline: e.target.value })} />
@@ -289,6 +291,7 @@ function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live:
             <div className="text-[10px] text-muted-foreground">{fill(t(b.subline, b.subline_mr))}</div>
           </div>
         </div>
+        <div className="inline-block rounded-lg border border-border px-2 py-1 text-[10px] font-semibold">{t(m.hero.card_title, m.hero.card_title_mr)}</div>
         {/* Hero colour is staff-chosen content, so it is applied inline. */}
         <div className="relative flex h-[130px] flex-col justify-end overflow-hidden rounded-xl p-3" style={{ backgroundColor: m.hero.bg_color }}>
           <div className="z-10 max-w-[60%] space-y-1 text-primary-foreground">
