@@ -1,3 +1,4 @@
+import { useCity } from "@/lib/city-scope";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -92,12 +93,14 @@ export function TaxSettingsPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   );
 }
 
-type Fee = { id?: string; name: string; service_types: string[]; amount_type: "flat" | "percent" | string; amount: number; gst_key: string | null; is_active: boolean; starts_at: string | null; ends_at: string | null };
+type Fee = { id?: string; name: string; service_types: string[]; amount_type: "flat" | "percent" | string; amount: number; gst_key: string | null; is_active: boolean; starts_at: string | null; ends_at: string | null; city_id?: string | null };
 const SERVICES = ["clean", "store", "food", "parcel"];
 const blank: Fee = { name: "", service_types: [], amount_type: "flat", amount: 0, gst_key: "platform_fee_gst", is_active: false, starts_at: null, ends_at: null };
 
 export function ChargesFeesPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const qc = useQueryClient();
+  const { cities, cityId } = useCity();
+  const cityName = (id?: string | null) => (id ? cities.find((c) => c.id === id)?.name ?? "—" : "All cities");
   const { data } = useQuery({
     queryKey: ["platform", "fees"],
     queryFn: async () => {
@@ -120,16 +123,17 @@ export function ChargesFeesPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const d = (v: string | null) => (v ? v.slice(0, 10) : "");
   return (
     <div className="space-y-4">
-      {isSuperAdmin && <button className={btn} onClick={() => setForm({ ...blank })}>+ Add fee</button>}
+      {isSuperAdmin && <button className={btn} onClick={() => setForm({ ...blank, city_id: cityId === "all" ? null : cityId })}>+ Add fee</button>}
       <div className="rounded-[14px] border border-border bg-card overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead><tr className="text-left text-muted-foreground border-b border-border">
-            <th className="p-3">Name</th><th className="p-3">Services</th><th className="p-3">Amount</th><th className="p-3">GST</th><th className="p-3">Dates</th><th className="p-3">Active</th><th className="p-3"></th>
+            <th className="p-3">Name</th><th className="p-3">City</th><th className="p-3">Services</th><th className="p-3">Amount</th><th className="p-3">GST</th><th className="p-3">Dates</th><th className="p-3">Active</th><th className="p-3"></th>
           </tr></thead>
           <tbody>
-            {data?.map((f) => (
+            {data?.filter((f) => cityId === "all" || !f.city_id || f.city_id === cityId).map((f) => (
               <tr key={f.id} className="border-b border-border last:border-0">
                 <td className="p-3 font-semibold text-foreground">{f.name}</td>
+                <td className="p-3">{cityName(f.city_id)}</td>
                 <td className="p-3">{f.service_types?.join(", ")}</td>
                 <td className="p-3">{f.amount_type === "flat" ? `₹${f.amount}` : `${f.amount}%`}</td>
                 <td className="p-3">{f.gst_key ? TAX_LABELS[f.gst_key] ?? f.gst_key : "—"}</td>
@@ -146,6 +150,9 @@ export function ChargesFeesPage({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <div className="bg-card rounded-[14px] p-5 w-full max-w-md space-y-3 text-[13px]">
             <div className="font-bold text-foreground">{form.id ? "Edit fee" : "Add fee"}</div>
             <input className={inp + " w-full"} placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <select className={inp + " w-full"} value={form.city_id ?? ""} onChange={(e) => setForm({ ...form, city_id: e.target.value || null })}>
+              <option value="">All cities</option>{cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
             <div className="flex gap-3 flex-wrap">{SERVICES.map((s) => (
               <label key={s} className="flex items-center gap-1 capitalize"><input type="checkbox" checked={form.service_types.includes(s)} onChange={(e) => setForm({ ...form, service_types: e.target.checked ? [...form.service_types, s] : form.service_types.filter((x) => x !== s) })} />{s}</label>
             ))}</div>
