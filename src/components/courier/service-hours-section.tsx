@@ -497,7 +497,7 @@ export function ServiceHoursEditor({
             </label>
             <label className="block">
               <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
-                End date (optional — range ke liye)
+                End date (optional, for a range)
               </span>
               <DateInput
                 
@@ -586,7 +586,7 @@ export function ServicePreviewTable({ canWrite }: { canWrite: boolean }) {
             value={testTime}
             onChange={(e) => setTestTime(e.target.value)}
             className={controlInputCls + " w-auto"}
-            title="Test time (IST) — sirf staff ke liye"
+            title="Test time (IST) — staff only"
           />
           <button
             onClick={() => setSubmittedAt(istInputToIso(testTime) ?? new Date().toISOString())}
@@ -599,7 +599,7 @@ export function ServicePreviewTable({ canWrite }: { canWrite: boolean }) {
 
       {!submittedAt ? (
         <p className="mt-3 text-[12px] text-muted-foreground">
-          Time chun kar "Preview" dabaiye — default abhi ka time hai (IST).
+          Pick a time and press "Preview" — defaults to now (IST).
         </p>
       ) : null}
 
@@ -654,7 +654,7 @@ export function ServicePreviewTable({ canWrite }: { canWrite: boolean }) {
       ) : null}
       {!canWrite ? (
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Aap read-only mode me hain — sirf dekh sakte hain, badal nahi sakte.
+          Read-only — you can view but not change these.
         </p>
       ) : null}
     </div>
