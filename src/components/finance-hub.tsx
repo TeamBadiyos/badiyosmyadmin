@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const inr = (n: any) => "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const fix2 = (v: any) => Number(v || 0).toFixed(2);
 
 function csvDownload(name: string, rows: (string | number | null | undefined)[][]) {
   const esc = (v: any) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
