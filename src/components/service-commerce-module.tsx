@@ -859,21 +859,82 @@ export function addonRule(min?: number | null, max?: number | null) {
   return mx != null && mx > 0 ? `Optional · up to ${mx}` : "Optional · choose any";
 }
 
-function AddonGroups({ addons }: { addons: any[] | null | undefined }) {
-  const list = Array.isArray(addons) ? addons : [];
-  if (!list.length) return <span>—</span>;
-  const groups = new Map<string, any[]>();
-  for (const a of list) {
-    const k = a.group_name?.trim() || "Add-ons";
-    groups.set(k, [...(groups.get(k) ?? []), a]);
+/* Same storage model as the Merchant App: one product_addons row per item, "Group: Item" name + group_name/min/max. */
+const GROUP_SEP = ": ";
+type GroupDraft = { name: string; min: string; max: string; items: { name: string; price: string }[] };
+type AGroup = { name: string; min: number; max: number; items: { name: string; price: number }[] };
+
+function groupAddons(addons: any[] | null | undefined): AGroup[] {
+  const out: AGroup[] = [];
+  for (const a of Array.isArray(addons) ? addons : []) {
+    const raw = String(a.name ?? "");
+    const i = raw.indexOf(GROUP_SEP);
+    const gname = (a.group_name ?? (i > 0 ? raw.slice(0, i) : "")) || "";
+    const iname = gname && raw.startsWith(gname + GROUP_SEP) ? raw.slice(gname.length + GROUP_SEP.length) : raw;
+    let g = out.find((x) => x.name === gname);
+    if (!g) out.push((g = { name: gname, min: Number(a.min_select ?? 0), max: Number(a.max_select ?? 1), items: [] }));
+    g.items.push({ name: iname, price: Number(a.price ?? 0) });
   }
+  return out;
+}
+function parseAddonGroups(addons: any[]): GroupDraft[] {
+  return groupAddons(addons).map((g) => ({ name: g.name, min: String(g.min), max: String(g.max), items: g.items.map((i) => ({ name: i.name, price: String(i.price) })) }));
+}
+function serializeAddonGroups(groups: GroupDraft[]) {
+  return groups.flatMap((g) => g.items.filter((i) => i.name.trim()).map((i) => ({
+    name: g.name.trim() ? `${g.name.trim()}${GROUP_SEP}${i.name.trim()}` : i.name.trim(),
+    price: Number(i.price || 0), is_active: true,
+    group_name: g.name.trim() || null, min_select: Number(g.min || 0), max_select: Number(g.max || 1),
+  })));
+}
+function addonsChanged(a: any[] | null | undefined, b: any[] | null | undefined) {
+  return JSON.stringify(groupAddons(a)) !== JSON.stringify(groupAddons(b));
+}
+
+/** Renders add-on groups; when `before` is given, highlights added / removed / price or rule changes. */
+function AddonGroups({ addons, before }: { addons: any[] | null | undefined; before?: any[] | null }) {
+  const gs = groupAddons(addons);
+  const old = before === undefined ? null : groupAddons(before);
+  const removedGroups = old ? old.filter((o) => !gs.some((g) => g.name === o.name)) : [];
+  if (!gs.length && !removedGroups.length) return <span>—</span>;
+  const hi = "font-semibold text-primary";
   return (
     <div className="space-y-1.5">
-      {Array.from(groups.entries()).map(([g, xs]) => (
-        <div key={g}>
-          <p className="text-xs font-medium">{g} <Badge variant="outline" className="ml-1 text-[10px]">{addonRule(xs[0]?.min_select, xs[0]?.max_select)}</Badge></p>
-          <p className="text-xs text-muted-foreground">{xs.map((x) => `${x.name} +₹${x.price ?? 0}`).join(", ")}</p>
-        </div>
+      {gs.map((g) => {
+        const o = old?.find((x) => x.name === g.name);
+        const newGroup = !!old && !o;
+        const ruleChanged = !!o && (o.min !== g.min || o.max !== g.max);
+        return (
+          <div key={g.name}>
+            <p className="text-xs font-medium">
+              <span className={newGroup ? hi : ""}>{g.name || "Add-ons"}</span>
+              {newGroup && <Badge className="ml-1 text-[10px]">Added</Badge>}
+              <Badge variant="outline" className={`ml-1 text-[10px] ${ruleChanged ? "border-primary text-primary" : ""}`}>
+                {ruleChanged ? `${addonRule(o!.min, o!.max)} → ` : ""}{addonRule(g.min, g.max)}
+              </Badge>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {g.items.map((x, k) => {
+                const oi = o?.items.find((y) => y.name === x.name);
+                const added = !!old && !newGroup && !oi;
+                const priceCh = !!oi && oi.price !== x.price;
+                return (
+                  <span key={k}>{k > 0 && ", "}
+                    <span className={added || priceCh || newGroup ? hi : ""}>
+                      {added && "+ "}{x.name} +₹{priceCh ? <><s>{oi!.price}</s> {x.price}</> : x.price}
+                    </span>
+                  </span>
+                );
+              })}
+              {o?.items.filter((y) => !g.items.some((x) => x.name === y.name)).map((y, k) => (
+                <span key={`r${k}`}>, <s className="text-destructive">{y.name} +₹{y.price}</s></span>
+              ))}
+            </p>
+          </div>
+        );
+      })}
+      {removedGroups.map((o) => (
+        <p key={`rg${o.name}`} className="text-xs text-destructive"><s>{o.name || "Add-ons"}</s> <Badge variant="destructive" className="ml-1 text-[10px]">Removed</Badge></p>
       ))}
     </div>
   );
