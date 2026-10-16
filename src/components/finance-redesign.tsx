@@ -244,15 +244,21 @@ function ExpensesList() {
             {q.isError && <tr><td colSpan={8} className={`${tableCls.td} text-destructive`}>{err(q.error)}</td></tr>}
             {!q.isLoading && !rows.length && <tr><td colSpan={8} className={`${tableCls.td} text-muted-foreground`}>No expenses for this month.</td></tr>}
             {shown.map((r) => (
-              <tr key={r.id} className={tableCls.tr} onClick={() => setEdit(r)}>
+              <tr key={r.id} className={tableCls.tr} onClick={() => { if (!r.is_system) setEdit(r); }}>
                 <td className={tableCls.td}>{r.expense_date}</td>
-                <td className={tableCls.td}>{r.category}</td>
+                <td className={tableCls.td}>
+                  {r.category}
+                  {r.is_system && <span className="ml-2 inline-flex px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wide" title="Created by the system. Correct it through Rewards → Programs → Reverse.">System</span>}
+                </td>
                 <td className={tableCls.td}>{r.vendor ?? "—"}</td>
                 <td className={`${tableCls.td} font-semibold`}>{inr(r.amount)}</td>
                 <td className={tableCls.td}>{inr(r.gst_paid)}</td>
                 <td className={tableCls.td}>{r.paid_via}</td>
                 <td className={`${tableCls.td} text-muted-foreground`}>{r.note ?? ""}</td>
                 <td className={tableCls.td} onClick={(e) => e.stopPropagation()}>
+                  {r.is_system ? (
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">Read-only · fix via Rewards → Reverse</span>
+                  ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="More"><MoreHorizontal size={16} /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -260,6 +266,7 @@ function ExpensesList() {
                       <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm("Delete this expense?")) remove.mutate(r.id); }}>Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </td>
               </tr>
             ))}

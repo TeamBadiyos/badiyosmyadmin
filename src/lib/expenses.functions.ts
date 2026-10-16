@@ -5,7 +5,7 @@ const chk = (r: { error: { message: string } | null }) => { if (r.error) throw n
 
 export type ExpenseRow = {
   id: string; expense_date: string; category: string; amount: number; gst_paid: number;
-  paid_via: string; vendor: string | null; note: string | null; subscription_id: string | null;
+  paid_via: string; vendor: string | null; note: string | null; subscription_id: string | null; is_system?: boolean;
 };
 export type SubscriptionRow = {
   id: string; name: string; vendor: string | null; amount: number; billing_cycle: "monthly" | "yearly";
