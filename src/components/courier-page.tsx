@@ -1265,8 +1265,6 @@ export function OrderDetail({
                 </span>
               </button>
             </div>
-          </div>
-
           </div>}
 
           {panel === "refund" && <div className="rounded-[12px] border border-border p-3">
@@ -1304,8 +1302,6 @@ export function OrderDetail({
                 Refund
               </button>
             </div>
-          </div>
-
           </div>}
 
           {order.status === "FAILED_DELIVERY" && panel === "resolve" ? (
