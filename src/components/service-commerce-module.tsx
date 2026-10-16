@@ -764,7 +764,8 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   const [cat, setCat] = useState(product.category_id ?? "");
   const [img, setImg] = useState<string | null>(product.image_path ?? null);
   const [vars, setVars] = useState<Line[]>((product.variants ?? []).map((v: any) => ({ name: v.name, price: String(v.price), is_default: v.is_default })));
-  const [adds, setAdds] = useState<Line[]>((product.addons ?? []).map((v: any) => ({ name: v.name, price: String(v.price) })));
+  const [groups, setGroups] = useState<GroupDraft[]>(parseAddonGroups(product.addons ?? []));
+  const setG = (i: number, patch: Partial<GroupDraft>) => setGroups(groups.map((g, j) => (j === i ? { ...g, ...patch } : g)));
   const [busy, setBusy] = useState(false);
   const lines = (arr: Line[], set: (x: Line[]) => void, title: string, withDefault?: boolean) => (
     <div className="space-y-1">
