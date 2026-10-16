@@ -1,5 +1,6 @@
 import { useCity, CityName, useShowCity } from "@/lib/city-scope";
 import { PartyAgreementCard } from "@/components/agreements";
+import { MerchantLedgerPane } from "@/components/merchant-ledger-pane";
 import { useEffect, useMemo, useState } from "react";
 import { SectionTabs, FilterBar, FilterField, filterInputCls, filterSelectCls, tableCls, countLabel, StatusPill } from "@/components/section-chrome";
 import { ClipboardList, Store as StoreIcon, CheckCircle2, Tags, Megaphone, Settings } from "lucide-react";
@@ -572,20 +573,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               ))}
             </div>
           )}
-          {t === "settlements" && (
-            <div className="rounded-lg border bg-card overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="p-2 text-left">Period</th><th className="p-2 text-left">Type</th><th className="p-2 text-right">Gross</th><th className="p-2 text-right">Adjust</th><th className="p-2 text-right">Net</th><th className="p-2 text-left">Status</th><th className="p-2 text-left">Invoice</th></tr></thead>
-                <tbody>
-                  {r.data!.settlements.length === 0 && <tr><td colSpan={7} className="p-3 text-muted-foreground">No settlements yet.</td></tr>}
-                  {r.data!.settlements.map((x: any) => (
-                    <tr key={x.id} className="border-b last:border-0"><td className="p-2">{x.period_from} → {x.period_to}</td><td className="p-2">{x.type}</td><td className="p-2 text-right">{inr(x.gross_amount)}</td><td className="p-2 text-right">{inr(x.adjustment_total)}</td><td className="p-2 text-right font-semibold">{inr(x.net_amount)}</td><td className="p-2">{x.status}</td><td className="p-2 text-xs">{x.invoice_no ?? "—"}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="p-2 text-xs text-muted-foreground">Read-only. Pay and manage settlements in Finance → Settlement.</p>
-            </div>
-          )}
+          {t === "settlements" && <MerchantLedgerPane storeId={storeId} />}
         </>
       )}
       {role !== "super_admin" && t !== "profile" && null}
