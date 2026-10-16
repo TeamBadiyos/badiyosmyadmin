@@ -603,7 +603,7 @@ async function processBookingRefund(
 ): Promise<RefundOutcome> {
   const { data: b, error } = await supabase
     .from("bookings")
-    .select("id, price, razorpay_payment_id, refund_status, refund_id")
+    .select("id, price, total_amount, razorpay_payment_id, refund_status, refund_id")
     .eq("id", bookingId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -621,7 +621,8 @@ async function processBookingRefund(
   }
 
   const paymentId: string | null = b.razorpay_payment_id ?? null;
-  const price = Number(b.price ?? 0);
+  // Always refund what the customer paid (price + GST + fees), never price only.
+  const price = Number(b.total_amount ?? b.price ?? 0);
 
   if (!paymentId || !paymentId.startsWith("pay_")) {
     return {

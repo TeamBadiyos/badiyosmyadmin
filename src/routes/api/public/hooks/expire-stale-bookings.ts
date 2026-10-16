@@ -1,5 +1,5 @@
 // Auto-expiry worker: bookings that no expert accepted within the configured
-// window (dispatch_config.no_expert_timeout_minutes, default 30) are fully
+// window (city_ops_settings clean_/wash_auto_cancel_minutes, per city) are fully
 // refunded via Razorpay and cancelled with reason 'no_expert_available'.
 //
 // Called by pg_cron. Auth: the Supabase anon key in the `apikey` header.
@@ -8,6 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 type Candidate = {
   id: string;
   price: number | string | null;
+  total_amount: number | string | null;
   razorpay_payment_id: string | null;
 };
 
@@ -128,7 +129,7 @@ export const Route = createFileRoute("/api/public/hooks/expire-stale-bookings")(
           const results: Array<Record<string, unknown>> = [];
 
           for (const b of candidates) {
-            const price = Number(b.price ?? 0);
+            const price = Number(b.total_amount ?? b.price ?? 0); // full amount paid
             let refundId: string | null = null;
             let refundStatus = "no_payment_recorded";
             let refundAmount = 0;

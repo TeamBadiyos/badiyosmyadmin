@@ -49,6 +49,7 @@ type Booking = {
   user_id: string;
   status: string;
   price: number | string | null;
+  total_amount: number | string | null;
   razorpay_payment_id: string | null;
   assigned_expert_id: string | null;
 };
@@ -165,7 +166,7 @@ Deno.serve(async (req) => {
   const { data: booking, error: bErr } = await supabase
     .from("bookings")
     .select(
-      "id, user_id, status, price, razorpay_payment_id, assigned_expert_id",
+      "id, user_id, status, price, total_amount, razorpay_payment_id, assigned_expert_id",
     )
     .eq("id", bookingId)
     .maybeSingle<Booking>();
@@ -181,7 +182,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  const originalAmount = Number(booking.price ?? 0);
+  // Refund the full amount paid (price + GST + fees), never price only.
+  const originalAmount = Number(booking.total_amount ?? booking.price ?? 0);
   const fee = status === "expert_assigned" ? CANCEL_FEE_ASSIGNED : 0;
   let refundAmountRupees = Math.max(0, originalAmount - fee);
 
