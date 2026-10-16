@@ -2399,33 +2399,50 @@ export type Database = {
       }
       catalog_categories: {
         Row: {
+          city_id: string | null
           created_at: string
           id: string
           image_path: string | null
           is_active: boolean
+          is_other: boolean
           name: string
+          name_mr: string | null
           service_type: string
           sort_order: number
         }
         Insert: {
+          city_id?: string | null
           created_at?: string
           id?: string
           image_path?: string | null
           is_active?: boolean
+          is_other?: boolean
           name: string
+          name_mr?: string | null
           service_type: string
           sort_order?: number
         }
         Update: {
+          city_id?: string | null
           created_at?: string
           id?: string
           image_path?: string | null
           is_active?: boolean
+          is_other?: boolean
           name?: string
+          name_mr?: string | null
           service_type?: string
           sort_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "catalog_categories_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cities: {
         Row: {
@@ -10022,12 +10039,15 @@ export type Database = {
       }
       store_categories: {
         Row: {
+          city_id: string | null
           icon: string | null
           icon_url: string | null
           id: string
           image_path: string | null
           is_active: boolean
+          is_other: boolean
           name: string
+          name_mr: string | null
           rank: number
           segment_id: string
           slug: string
@@ -10035,12 +10055,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          city_id?: string | null
           icon?: string | null
           icon_url?: string | null
           id?: string
           image_path?: string | null
           is_active?: boolean
+          is_other?: boolean
           name: string
+          name_mr?: string | null
           rank?: number
           segment_id: string
           slug: string
@@ -10048,12 +10071,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          city_id?: string | null
           icon?: string | null
           icon_url?: string | null
           id?: string
           image_path?: string | null
           is_active?: boolean
+          is_other?: boolean
           name?: string
+          name_mr?: string | null
           rank?: number
           segment_id?: string
           slug?: string
@@ -10061,6 +10087,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "store_categories_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "store_categories_segment_id_fkey"
             columns: ["segment_id"]
@@ -11543,6 +11576,10 @@ export type Database = {
         Args: { _city_id?: string; _service_key: string }
         Returns: Json
       }
+      app_categories: {
+        Args: { _city_id?: string; _kind: string }
+        Returns: Json
+      }
       app_city_for_location: {
         Args: { _lat: number; _lng: number }
         Returns: string
@@ -11934,6 +11971,7 @@ export type Database = {
         Args: { _audience: string; _targets: string[]; _uid: string }
         Returns: boolean
       }
+      cat_is_admin: { Args: never; Returns: boolean }
       cc_uid: { Args: never; Returns: string }
       cc_visible_cities: { Args: never; Returns: string[] }
       check_booking_capacity: { Args: { _booking_id: string }; Returns: Json }
@@ -13670,6 +13708,10 @@ export type Database = {
         Returns: Json
       }
       staff_allowed_city_ids: { Args: never; Returns: string[] }
+      staff_apply_product_category_map: {
+        Args: { _map: Json }
+        Returns: number
+      }
       staff_approve_settlement: {
         Args: { _settlement_id: string }
         Returns: undefined
@@ -13744,6 +13786,22 @@ export type Database = {
           _refund_status: string
         }
         Returns: Json
+      }
+      staff_category_copy_default: {
+        Args: { _city_id: string; _kind: string }
+        Returns: number
+      }
+      staff_category_delete: {
+        Args: { _id: string; _kind: string; _move_to?: string }
+        Returns: Json
+      }
+      staff_category_reorder: {
+        Args: { _ids: string[]; _kind: string }
+        Returns: undefined
+      }
+      staff_category_usage: {
+        Args: { _id: string; _kind: string }
+        Returns: number
       }
       staff_city_template: { Args: { _from: string }; Returns: Json }
       staff_clear_availability_override: {
