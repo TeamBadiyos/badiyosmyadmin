@@ -48,7 +48,7 @@ export const listZones = createServerFn({ method: "GET" })
 
     let query = context.supabase
       .from("zones")
-      .select("id, name, city, status, deleted_at, delete_reason")
+      .select("id, name, city, city_id, status, deleted_at, delete_reason")
       .order("created_at", { ascending: false });
 
     if (!includeDeleted) query = query.is("deleted_at", null);
@@ -66,6 +66,7 @@ export const listZones = createServerFn({ method: "GET" })
       id: z.id as string,
       name: z.name as string,
       city: z.city as string,
+      cityId: ((z as { city_id?: string | null }).city_id ?? null) as string | null,
       status: z.status as "active" | "inactive",
       deletedAt: (z.deleted_at as string | null) ?? null,
       deleteReason: (z.delete_reason as string | null) ?? null,
