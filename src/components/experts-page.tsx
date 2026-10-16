@@ -7,6 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, UserRound } from "lucide-react";
 import { listExperts, workHourRanges, type ExpertLevel, type KycStatus, type ExpertRow } from "@/lib/experts.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
+import { listExpertsWithoutDevice } from "@/lib/booking-settings.functions";
 import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
@@ -65,6 +66,9 @@ export function ExpertsPage({
   skill?: "maid" | "wash" | "rider";
 }) {
   const canManage = role === "super_admin" || role === "ops_manager";
+  const noDevFn = useServerFn(listExpertsWithoutDevice);
+  const noDevQ = useQuery({ queryKey: ["experts-no-device"], queryFn: () => noDevFn(), staleTime: 60_000 });
+  const noDevice = useMemo(() => new Set((noDevQ.data ?? []).map((x) => x.id)), [noDevQ.data]);
   const showZoneFilter = role !== "area_partner";
 
   const [zoneId, setZoneId] = useUrlState<string>("zone", "");
@@ -390,6 +394,7 @@ export function ExpertsPage({
           <ExpertRowItem
             key={e.id}
             expert={e}
+            noDevice={noDevice.has(e.id)}
             onOpen={() => setDetailsId(e.id)}
           />
         ))}
@@ -460,7 +465,7 @@ function Filter({
   );
 }
 
-function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => void }) {
+function ExpertRowItem({ expert, noDevice, onOpen }: { expert: ExpertRow; noDevice?: boolean; onOpen: () => void }) {
   const showCity = useShowCity();
   return (
     <button
@@ -472,6 +477,12 @@ function ExpertRowItem({ expert, onOpen }: { expert: ExpertRow; onOpen: () => vo
         <span className="font-semibold text-foreground break-words">{expert.name}</span>
         <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
           <ExpertModeBadge mode={expert.mode} />
+          {noDevice && expert.status === "active" && (
+            <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold whitespace-nowrap"
+              title="No phone registered for job alerts — not counted as available">
+              Not receiving job alerts
+            </span>
+          )}
           {expert.isBusy && (
             <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />

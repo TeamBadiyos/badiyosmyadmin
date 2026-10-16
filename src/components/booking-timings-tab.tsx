@@ -108,14 +108,6 @@ const GROUPS: Array<{ title: string; blurb: string; fields: FieldDef[] }> = [
         min: 0,
         max: 240,
       },
-      {
-        key: "no_expert_refund_after_slot_minutes",
-        label: "Cancel & refund after slot",
-        help: "Cancel with a full refund if still no expert this long after the slot time.",
-        unit: "minutes",
-        min: 0,
-        max: 240,
-      },
     ],
   },
 ];
