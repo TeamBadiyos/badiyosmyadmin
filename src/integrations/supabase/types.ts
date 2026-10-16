@@ -3222,6 +3222,7 @@ export type Database = {
           created_at: string
           current_search_radius_km: number | null
           customer_id: string
+          customer_phone: string | null
           delivered_at: string | null
           discount_amount: number
           distance_km: number
@@ -3305,6 +3306,7 @@ export type Database = {
           created_at?: string
           current_search_radius_km?: number | null
           customer_id: string
+          customer_phone?: string | null
           delivered_at?: string | null
           discount_amount?: number
           distance_km?: number
@@ -3388,6 +3390,7 @@ export type Database = {
           created_at?: string
           current_search_radius_km?: number | null
           customer_id?: string
+          customer_phone?: string | null
           delivered_at?: string | null
           discount_amount?: number
           distance_km?: number
@@ -11571,6 +11574,7 @@ export type Database = {
           created_at: string
           current_search_radius_km: number | null
           customer_id: string
+          customer_phone: string | null
           delivered_at: string | null
           discount_amount: number
           distance_km: number
@@ -12550,6 +12554,7 @@ export type Database = {
         Args: { _date: string; _slot: string }
         Returns: string
       }
+      rider_is_busy: { Args: { _expert_id: string }; Returns: boolean }
       rider_pool_stats: { Args: never; Returns: Json }
       run_expert_referral_reward_job: { Args: never; Returns: number }
       run_reward_period_jobs: {
@@ -12849,6 +12854,7 @@ export type Database = {
           is_online: boolean
           name: string
           phone: string
+          rider_status: string
         }[]
       }
       staff_courier_confirm_rate: { Args: { _id: string }; Returns: undefined }
