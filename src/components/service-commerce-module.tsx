@@ -811,6 +811,9 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
             <SizeHint text="Square 800×800 px recommended" />
           </div>
           {lines(vars, setVars, "Variants (e.g. Half / Full)", true)}
+          {(product.addons ?? []).length > 0 && (
+            <div className="rounded-md border p-2"><p className="text-xs text-muted-foreground mb-1">Add-on groups (saved)</p><AddonGroups addons={product.addons} /></div>
+          )}
           {lines(adds, setAdds, "Add-ons")}
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={busy} onClick={submit}>Save</Button></DialogFooter>
