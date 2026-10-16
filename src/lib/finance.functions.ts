@@ -24,7 +24,14 @@ export const listMerchantSettlements = createServerFn({ method: "GET" })
     const ids = [...new Set((r.data ?? []).map((x: any) => x.store_id))];
     const m = ids.length ? await db.from("merchants").select("id, store_name, service_type, bank_account_number, bank_ifsc, bank_account_holder_name").in("id", ids) : { data: [] };
     const mm = new Map((m.data ?? []).map((x: any) => [x.id, x]));
-    return (r.data ?? []).map((x: any) => ({ ...x, merchant: mm.get(x.store_id) ?? null }));
+    const sids = (r.data ?? []).map((x: any) => x.id);
+    const ro = new Map<string, number>();
+    for (let i = 0; i < sids.length; i += 200) {
+      const l = await db.from("merchant_ledger_entries").select("settlement_id, info_amount")
+        .eq("entry_type", "round_off_carried").in("settlement_id", sids.slice(i, i + 200));
+      for (const e of (l.data ?? []) as any[]) ro.set(e.settlement_id, Number(e.info_amount ?? 0));
+    }
+    return (r.data ?? []).map((x: any) => ({ ...x, merchant: mm.get(x.store_id) ?? null, round_off_carried: ro.get(x.id) ?? null }));
   });
 
 export const getSettlementDetail = createServerFn({ method: "GET" })

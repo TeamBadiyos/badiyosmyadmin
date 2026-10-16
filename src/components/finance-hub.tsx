@@ -99,7 +99,7 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
     ["Merchant name", "Account holder", "Bank account", "IFSC", "Amount", "Reference"],
     ...rows.map((r) => [r.merchant?.store_name, r.merchant?.bank_account_holder_name, r.merchant?.bank_account_number, r.merchant?.bank_ifsc, Number(r.net_amount).toFixed(2), r.invoice_no ?? r.id]),
   ]);
-  const cols = 14;
+  const cols = 15;
   return (
     <div className="space-y-2">
       
@@ -108,8 +108,8 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b">
-              {["Merchant", "Service", "Period", "Gross", "Commission", "Comm. GST", "TCS", "TDS", "Adjustments", "Instant fee", "Fee GST", "Net", "Invoice", ""].map((h, i) => (
-                <th key={i} className={`p-2 ${i >= 3 && i <= 10 ? "text-right" : "text-left"}`}>{h}</th>
+              {["Merchant", "Service", "Period", "Gross", "Commission", "Comm. GST", "TCS", "TDS", "Adjustments", "Instant fee", "Fee GST", "Paid (₹100 rounded)", "Round-off carried", "Invoice", ""].map((h, i) => (
+                <th key={i} className={`p-2 ${i >= 3 && i <= 12 ? "text-right" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -132,6 +132,7 @@ export function SettlementTable({ status, type, canEdit }: { status: string; typ
                   <td className="p-2 text-right">{inr(r.instant_fee)}</td>
                   <td className="p-2 text-right">{inr(r.instant_fee_gst ?? 0)}</td>
                   <td className="p-2 text-right font-semibold">{inr(r.net_amount)}</td>
+                  <td className="p-2 text-right">{r.round_off_carried ? inr(r.round_off_carried) : "—"}</td>
                   <td className="p-2 text-xs">{r.invoice_no ?? "—"}{r.reference && <div className="text-muted-foreground">Ref {r.reference}</div>}</td>
                   <td className="p-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     {canEdit && r.status === "draft" && <Button size="sm" variant="outline" onClick={() => approve.mutate(r.id)}>Approve</Button>}{" "}
