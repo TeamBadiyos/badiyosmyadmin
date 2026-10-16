@@ -150,7 +150,7 @@ export function BookingDetailsModal({
   const canCancel = canEdit && !!data && !isTerminal && !isDeleted;
   const canEditFields = canEdit && !!data && !isTerminal && !isDeleted;
   const canDelete = role === "super_admin" && !!data && !isDeleted;
-  const refundableAmount = data?.price ?? 0;
+  const refundableAmount = data?.totalAmount ?? data?.price ?? 0;
   const canRefund =
     !!data &&
     !!data.razorpayPaymentId &&
