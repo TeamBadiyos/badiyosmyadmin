@@ -5719,6 +5719,72 @@ export type Database = {
           },
         ]
       }
+      merchant_bank_change_requests: {
+        Row: {
+          account_holder_name: string
+          account_number: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          ifsc: string
+          merchant_id: string
+          proof_path: string
+          rejection_reason: string | null
+          status: string
+          submitted_by: string | null
+          updated_at: string
+          verified_phone: string | null
+        }
+        Insert: {
+          account_holder_name: string
+          account_number: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          ifsc: string
+          merchant_id: string
+          proof_path: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          verified_phone?: string | null
+        }
+        Update: {
+          account_holder_name?: string
+          account_number?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          ifsc?: string
+          merchant_id?: string
+          proof_path?: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          verified_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_bank_change_requests_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_bank_change_requests_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_documents: {
         Row: {
           doc_type: string
@@ -11021,6 +11087,10 @@ export type Database = {
         Args: { _secret: string }
         Returns: boolean
       }
+      admin_decide_bank_change: {
+        Args: { _approve: boolean; _reason?: string; _request_id: string }
+        Returns: undefined
+      }
       advance_booking_status: {
         Args: { _booking_id: string; _new_status: string }
         Returns: undefined
@@ -12428,6 +12498,21 @@ export type Database = {
         Args: { _new_status: string; _order_id: string }
         Returns: undefined
       }
+      merchant_bank_change_request_otp: {
+        Args: { _store_id: string }
+        Returns: Json
+      }
+      merchant_bank_change_submit: {
+        Args: {
+          _account: string
+          _holder: string
+          _ifsc: string
+          _otp: string
+          _proof_path: string
+          _store_id: string
+        }
+        Returns: string
+      }
       merchant_caller_has_perm: { Args: { _perm: string }; Returns: boolean }
       merchant_claim_staff_invite: { Args: never; Returns: string }
       merchant_commission_invoices: {
@@ -12451,6 +12536,10 @@ export type Database = {
       merchant_get_order_rider: { Args: { _order_id: string }; Returns: Json }
       merchant_get_pickup_otp: { Args: { _order_id: string }; Returns: Json }
       merchant_has_login_pin: { Args: { p_phone: string }; Returns: boolean }
+      merchant_instant_settlement_preview: {
+        Args: { _store_id: string }
+        Returns: Json
+      }
       merchant_is_currently_open: {
         Args: { _merchant_id: string }
         Returns: boolean
