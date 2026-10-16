@@ -96,3 +96,16 @@ export const getWaitlistOverview = createServerFn({ method: "GET" })
       .sort((a, b) => b.latestAt.localeCompare(a.latestAt));
     return { total: rows.length, totalNotified: rows.filter((r) => r.notified).length, cities };
   });
+
+export type TopName = {
+  city: string; service: string; name: string; customers: number; latest_at: string; phones: string[]; spellings: string[];
+};
+
+export const getDemandTopNames = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TopName[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (context.supabase as any).rpc("staff_demand_top_names", { _city: null, _service: null });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as TopName[];
+  });
