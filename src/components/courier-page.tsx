@@ -1,3 +1,5 @@
+import { DeliveryRateFields } from "@/components/delivery-rate-card";
+import { commissionToRiderShare, riderShareToCommission } from "@/lib/delivery-rate";
 import { ContactButtons } from "@/components/booking-details-modal";
 import { TripLeftBehind } from "@/components/left-behind";
 import {
@@ -425,7 +427,7 @@ type RateDraft = {
   perKm: string;
   minFare: string;
   platformFee: string;
-  commissionPct: string;
+  riderSharePct: string;
   segment: "regular" | "corporate";
   extraPickupFee: string;
   extraDropFee: string;
@@ -451,7 +453,7 @@ function rateDraft(
     perKm: String(r?.per_km ?? 0),
     minFare: String(r?.min_fare ?? 0),
     platformFee: String(r?.platform_fee ?? 0),
-    commissionPct: String(r?.commission_pct ?? 0),
+    riderSharePct: String(r ? commissionToRiderShare(r.commission_pct) : 70),
     segment: seg,
     extraPickupFee: String(r?.extra_pickup_fee ?? 0),
     extraDropFee: String(r?.extra_drop_fee ?? 0),
@@ -611,7 +613,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
           perKm: Number(draft.perKm || 0),
           minFare: Number(draft.minFare || 0),
           platformFee: Number(draft.platformFee || 0),
-          commissionPct: Number(draft.commissionPct || 0),
+          commissionPct: riderShareToCommission(Number(draft.riderSharePct || 0)),
           segment: draft.segment,
           extraPickupFee: Number(draft.extraPickupFee || 0),
           extraDropFee: Number(draft.extraDropFee || 0),
@@ -655,7 +657,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
               <th className="px-3 py-2.5 text-right">Min fare</th>
               <th className="px-3 py-2.5 text-right">Extra stop</th>
               <th className="px-3 py-2.5 text-right">Return/km</th>
-              <th className="px-3 py-2.5 text-right">Commission</th>
+              <th className="px-3 py-2.5 text-right">Rider share</th>
               <th className="px-3 py-2.5" />
             </tr>
           </thead>
@@ -675,7 +677,7 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 <td className="px-3 py-2.5 text-right">₹{r.min_fare}</td>
                 <td className="px-3 py-2.5 text-right">₹{r.extra_drop_fee}</td>
                 <td className="px-3 py-2.5 text-right">₹{r.return_per_km}</td>
-                <td className="px-3 py-2.5 text-right">{r.commission_pct}%</td>
+                <td className="px-3 py-2.5 text-right">{commissionToRiderShare(r.commission_pct)}%</td>
                 <td className="px-3 py-2.5">
                   <div className="flex justify-end gap-1.5">
                     {canWrite && r.is_placeholder ? (
@@ -720,39 +722,18 @@ function RatesTab({ canWrite }: { canWrite: boolean }) {
                 onChange={(e) => setDraft({ ...draft, city: e.target.value })}
               />
             </Field>
-            <Field label="Vehicle">
-              <select
-                className={inputCls}
-                value={draft.vehicleTypeId}
-                onChange={(e) => setDraft({ ...draft, vehicleTypeId: e.target.value })}
-              >
-                <option value="">Select</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {(
-              [
-                ["Base fare (₹)", "baseFare"],
-                ["Included km", "includedKm"],
-                ["Per km (₹)", "perKm"],
-                ["Min fare (₹)", "minFare"],
-                ["Platform fee (₹)", "platformFee"],
-                ["Commission (%)", "commissionPct"],
-              ] as Array<[string, keyof RateDraft]>
-            ).map(([label, key]) => (
-              <Field key={key} label={label}>
-                <input
-                  type="number"
-                  className={inputCls}
-                  value={String(draft[key] ?? "")}
-                  onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-                />
-              </Field>
-            ))}
+          </div>
+          <div className="mt-3">
+            <DeliveryRateFields
+              value={draft}
+              onChange={(x) => setDraft({ ...draft, ...x })}
+              vehicleSlot={
+                <select className={inputCls} value={draft.vehicleTypeId} onChange={(e) => setDraft({ ...draft, vehicleTypeId: e.target.value })}>
+                  <option value="">Select</option>
+                  {vehicles.map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
+                </select>
+              }
+            />
           </div>
           <div className="mt-4 rounded-[12px] border border-border p-3">
             <h4 className="text-[13px] font-bold text-foreground">Multi-stop charges</h4>
