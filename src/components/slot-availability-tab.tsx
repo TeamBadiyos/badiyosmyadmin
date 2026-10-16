@@ -254,7 +254,6 @@ export function CleanCapacitySettings({ group = "clean" }: { group?: CapGroup })
   const { cityId } = useCity();
   const instFn = useServerFn(setInstantBooking);
   const setFn = useServerFn(setCapacitySetting);
-  const { cityId } = useCity();
   const today = istDate();
   const q = useQuery({ queryKey: ["slot-overrides", today, cityId], queryFn: () => listFn({ data: { date: today, cityId } }) });
   const cq = useCap(group, today);
