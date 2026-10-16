@@ -36,6 +36,21 @@ describe("hero card title", () => {
   });
 });
 
-describe("morning switch time", () => {
-  it("defaults to 05:00", () => { expect(nsc({}, "clean").hero.morning_switch_time).toBe("05:00"); });
+import { slabError, uncoveredRanges } from "./service-content";
+describe("banner slabs", () => {
+  const sl = (from: string, to: string) => ({ from, to, label: "", image_url: null, text_color: "light" as const });
+  it("rejects overlap", () => { expect(slabError([sl("05:00", "10:00"), sl("09:00", "12:00")])).toMatch(/overlap at 09:00/); });
+  it("accepts midnight-crossing slab", () => { expect(slabError([sl("19:00", "05:00"), sl("05:00", "19:00")])).toBeNull(); });
+  it("reports gaps", () => { expect(uncoveredRanges([sl("05:00", "19:00"), sl("19:00", "02:00")])).toEqual(["02:00–05:00"]); });
+  it("migrates old banners to 4 default slabs", () => {
+    const m = nsc({ banners: { closed_morning: { image_url: "https://x/s.webp" }, open_busy: { title: "Old busy" } } }, "clean");
+    expect(m.banner.slabs.map((x) => `${x.from}-${x.to}`)).toEqual(["05:00-10:00", "10:00-17:00", "17:00-19:00", "19:00-05:00"]);
+    expect(m.banner.slabs[0].image_url).toBe("https://x/s.webp");
+    expect(m.banner.texts.open_busy.title).toBe("Old busy");
+  });
+  it("rejects unknown placeholder in state text", () => {
+    const m = nsc({ hero: { subline: "x" }, cards: [{ title: "a" }, { title: "b" }, { title: "c" }] }, "clean");
+    m.banner.texts.closed.subline = "Open {time}";
+    expect(vsc(m, [])).toMatch(/unknown placeholder \{time\}/);
+  });
 });
