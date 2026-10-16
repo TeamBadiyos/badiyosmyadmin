@@ -782,10 +782,16 @@ function ProductEditor({ product, categories, storeId, label, onClose, onSave }:
   );
   const submit = () => {
     if (!name.trim() || price === "") return toast.error("Name and price are required");
+    for (const g of groups) {
+      const count = g.items.filter((i) => i.name.trim()).length;
+      const mn = Number(g.min || 0), mx = Number(g.max || 1);
+      if (count && (mn < 0 || mx < 1 || mn > mx || mx > count))
+        return toast.error(`Check the limits for "${g.name || "Add-ons"}": min ≤ max ≤ number of items`);
+    }
     onSave({
       name: name.trim(), description: desc.trim() || null, price: Number(price), category_id: cat || null, image_path: img,
       variants: vars.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price: Number(v.price || 0), is_default: !!v.is_default })),
-      addons: adds.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), price: Number(v.price || 0), is_active: true })),
+      addons: serializeAddonGroups(groups),
     });
   };
   return (
