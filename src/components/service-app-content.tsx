@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useCity } from "@/lib/city-scope";
 import { getServiceContent, resetServiceContent, saveServiceContent, uploadServiceContentImage } from "@/lib/homepage.functions";
-import { normalizeServiceContent, validateServiceContent, type Card, type Line, type LiveOption, type OptionExtra, type ServiceContent, type ServiceKey } from "@/lib/service-content";
+import { BANNER_STATES, NOTE_ICONS, PLACEHOLDERS, normalizeServiceContent, validateServiceContent, type Banner, type BannerState, type Card, type Line, type LiveOption, type OptionExtra, type ServiceContent, type ServiceKey } from "@/lib/service-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -44,7 +44,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
   }
   useEffect(() => { setM(null); get({ data: { service, cityId } }).then(load).catch((e) => toast.error(e.message)); }, [service, cityId, get]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function pick(kind: "hero" | "card" | "option", w: number, h: number, apply: (url: string) => void) {
+  function pick(kind: "hero" | "card" | "option" | "banner", w: number, h: number, apply: (url: string) => void) {
     const inp = document.createElement("input");
     inp.type = "file"; inp.accept = "image/png,image/jpeg,image/webp";
     inp.onchange = async () => {
@@ -78,6 +78,8 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
   const setCard = (i: number, p: Partial<Card>) => setM({ ...m, cards: m.cards.map((c, k) => (k === i ? { ...c, ...p } : c)) });
   const moveCard = (i: number, d: number) => { const j = i + d; if (j < 0 || j > 2) return; const c = [...m.cards]; [c[i], c[j]] = [c[j], c[i]]; setM({ ...m, cards: c }); };
   const setOpt = (id: string, p: Partial<OptionExtra>) => setM({ ...m, options: { ...m.options, [id]: { ...emptyExtra, ...m.options[id], ...p } } });
+  const setDet = (p: Partial<ServiceContent["details"]>) => setM({ ...m, details: { ...m.details, ...p } });
+  const setCamp = (p: Partial<ServiceContent["campaign"]>) => setM({ ...m, campaign: { ...m.campaign, ...p } });
 
   return (
     <section className="space-y-3">
@@ -160,9 +162,45 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
               );
             })}
           </Box>
+          <Box title="Details sheet">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input value={m.details.included_title} maxLength={40} placeholder="Included section title" onChange={(e) => setDet({ included_title: e.target.value })} />
+              <Input value={m.details.included_title_mr} maxLength={40} placeholder="मराठी" onChange={(e) => setDet({ included_title_mr: e.target.value })} />
+              <Input value={m.details.excluded_title} maxLength={40} placeholder="Not-included section title" onChange={(e) => setDet({ excluded_title: e.target.value })} />
+              <Input value={m.details.excluded_title_mr} maxLength={40} placeholder="मराठी" onChange={(e) => setDet({ excluded_title_mr: e.target.value })} />
+              <Input value={m.details.note} maxLength={140} placeholder="Note (blank = hidden)" onChange={(e) => setDet({ note: e.target.value })} />
+              <Input value={m.details.note_mr} maxLength={140} placeholder="टीप (मराठी)" onChange={(e) => setDet({ note_mr: e.target.value })} />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1 text-xs">Note icon:
+              {Object.entries(NOTE_ICONS).map(([k, ic]) => (
+                <button key={k} onClick={() => setDet({ note_icon: k })} className={`rounded border px-2 py-1 ${m.details.note_icon === k ? "border-primary bg-primary/10" : "border-border"}`}>{ic}</button>
+              ))}
+            </div>
+          </Box>
+
+          <Box title="Top banner" hint="1080×600">
+            <p className="mb-2 text-xs text-muted-foreground">Placeholders: {PLACEHOLDERS.map((p) => `{${p}}`).join(" ")}</p>
+            {BANNER_STATES.map(({ key, label }) => (
+              <BannerFields key={key} label={label} b={m.banners[key]} busy={busy}
+                onChange={(p) => setM({ ...m, banners: { ...m.banners, [key]: { ...m.banners[key], ...p } } })}
+                onPick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, banners: { ...cur.banners, [key]: { ...cur.banners[key], image_url: url } } })))} />
+            ))}
+            <div className="mt-2 rounded-md border border-dashed border-border p-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">Campaign banner <span className="text-xs font-normal text-muted-foreground">replaces the open-state banners while active</span>
+                <Switch className="ml-auto" checked={m.campaign.enabled} onCheckedChange={(v) => setCamp({ enabled: v })} />
+              </div>
+              <BannerFields label="" b={m.campaign} busy={busy} onChange={setCamp}
+                onPick={() => pick("banner", 1080, 600, (url) => setM((cur) => cur && ({ ...cur, campaign: { ...cur.campaign, image_url: url } })))} />
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Input value={m.campaign.link} maxLength={300} placeholder="Link (app link or https://)" onChange={(e) => setCamp({ link: e.target.value })} />
+                <label className="text-xs">Start (IST)<Input type="datetime-local" value={m.campaign.starts_at.slice(0, 16)} onChange={(e) => setCamp({ starts_at: e.target.value ? `${e.target.value}:00+05:30` : "" })} /></label>
+                <label className="text-xs">End (IST)<Input type="datetime-local" value={m.campaign.ends_at.slice(0, 16)} onChange={(e) => setCamp({ ends_at: e.target.value ? `${e.target.value}:00+05:30` : "" })} /></label>
+              </div>
+            </div>
+          </Box>
           <Button disabled={busy} onClick={onSave}>Save app content</Button>
         </div>
-        <Preview m={m} live={live} lang={lang} setLang={setLang} />
+        <Preview m={m} live={live} lang={lang} setLang={setLang} service={service} />
       </div>
     </section>
   );
