@@ -3902,6 +3902,7 @@ export type Database = {
       customer_credit_notes: {
         Row: {
           cgst: number
+          city_id: string | null
           created_at: string
           credit_note_no: string
           fy: string
@@ -3917,6 +3918,7 @@ export type Database = {
         }
         Insert: {
           cgst?: number
+          city_id?: string | null
           created_at?: string
           credit_note_no: string
           fy: string
@@ -3932,6 +3934,7 @@ export type Database = {
         }
         Update: {
           cgst?: number
+          city_id?: string | null
           created_at?: string
           credit_note_no?: string
           fy?: string
@@ -3946,6 +3949,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customer_credit_notes_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customer_credit_notes_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -4356,6 +4366,7 @@ export type Database = {
           acknowledged_at: string | null
           acknowledged_by: string | null
           booking_id: string | null
+          city_id: string | null
           created_at: string
           expert_id: string
           id: string
@@ -4368,6 +4379,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           booking_id?: string | null
+          city_id?: string | null
           created_at?: string
           expert_id: string
           id?: string
@@ -4380,6 +4392,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           booking_id?: string | null
+          city_id?: string | null
           created_at?: string
           expert_id?: string
           id?: string
@@ -4394,6 +4407,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_alerts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -6209,6 +6229,7 @@ export type Database = {
       merchant_settlements: {
         Row: {
           adjustment_total: number
+          city_id: string | null
           commission_gst_total: number
           commission_total: number
           created_at: string
@@ -6233,6 +6254,7 @@ export type Database = {
         }
         Insert: {
           adjustment_total?: number
+          city_id?: string | null
           commission_gst_total?: number
           commission_total?: number
           created_at?: string
@@ -6257,6 +6279,7 @@ export type Database = {
         }
         Update: {
           adjustment_total?: number
+          city_id?: string | null
           commission_gst_total?: number
           commission_total?: number
           created_at?: string
@@ -6280,6 +6303,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "merchant_settlements_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "merchant_settlements_store_id_fkey"
             columns: ["store_id"]
@@ -7301,6 +7331,7 @@ export type Database = {
           batch_id: string
           business_line: string | null
           calculated_amount: number
+          city_id: string | null
           commission_pct: number
           delete_reason: string | null
           edit_reason: string | null
@@ -7323,6 +7354,7 @@ export type Database = {
           batch_id: string
           business_line?: string | null
           calculated_amount: number
+          city_id?: string | null
           commission_pct: number
           delete_reason?: string | null
           edit_reason?: string | null
@@ -7345,6 +7377,7 @@ export type Database = {
           batch_id?: string
           business_line?: string | null
           calculated_amount?: number
+          city_id?: string | null
           commission_pct?: number
           delete_reason?: string | null
           edit_reason?: string | null
@@ -7367,6 +7400,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "partner_payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payout_lines_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -9402,6 +9442,32 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_view_city: {
+        Row: {
+          auth_user_id: string
+          city_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          city_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          city_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_view_city_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_categories: {
         Row: {
           icon: string | null
@@ -9830,6 +9896,7 @@ export type Database = {
           assigned_staff_id: string | null
           booking_id: string | null
           category: string
+          city_id: string | null
           created_at: string
           id: string
           internal_note: string | null
@@ -9850,6 +9917,7 @@ export type Database = {
           assigned_staff_id?: string | null
           booking_id?: string | null
           category?: string
+          city_id?: string | null
           created_at?: string
           id?: string
           internal_note?: string | null
@@ -9870,6 +9938,7 @@ export type Database = {
           assigned_staff_id?: string | null
           booking_id?: string | null
           category?: string
+          city_id?: string | null
           created_at?: string
           id?: string
           internal_note?: string | null
@@ -9892,6 +9961,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
             referencedColumns: ["id"]
           },
           {
@@ -11111,6 +11187,7 @@ export type Database = {
         Args: { _audience: string; _targets: string[]; _uid: string }
         Returns: boolean
       }
+      cc_visible_cities: { Args: never; Returns: string[] }
       check_booking_capacity: { Args: { _booking_id: string }; Returns: Json }
       check_serviceability: {
         Args: { _lat: number; _lng: number; _segment_id?: string }
@@ -13568,6 +13645,7 @@ export type Database = {
         Args: { _archived: boolean; _id: string }
         Returns: boolean
       }
+      staff_set_view_city: { Args: { _city_id: string }; Returns: undefined }
       staff_slot_band_summary: {
         Args: { _date: string; _service_key: string }
         Returns: Json
