@@ -70,7 +70,7 @@ function StorePage() {
       const k = "badiyos.linkVisitor";
       let id = localStorage.getItem(k);
       if (!id) { id = crypto.randomUUID(); localStorage.setItem(k, id); }
-      void supabase.rpc("record_merchant_store_visit", { _merchant_id: s.id, _session_id: `link:${id}` });
+      void supabase.rpc("record_merchant_store_visit", { _merchant_id: s.id, _session_id: `link:${id}` }).then(() => undefined);
     } catch { /* analytics never breaks the page */ }
   }, [s.id]);
 
