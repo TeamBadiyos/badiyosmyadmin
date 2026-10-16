@@ -109,6 +109,8 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
               <Input value={m.hero.subline_mr} maxLength={120} placeholder="उप-ओळ (मराठी)" onChange={(e) => setHero({ subline_mr: e.target.value })} />
               <Input value={m.hero.button} maxLength={30} placeholder="Button text" onChange={(e) => setHero({ button: e.target.value })} />
               <Input value={m.hero.button_mr} maxLength={30} placeholder="बटण (मराठी)" onChange={(e) => setHero({ button_mr: e.target.value })} />
+              {service === "clean" && <Input value={m.hero.cards_title} maxLength={40} placeholder="Section title (above the cards)" onChange={(e) => setHero({ cards_title: e.target.value })} />}
+              {service === "clean" && <Input value={m.hero.cards_title_mr} maxLength={40} placeholder="विभाग शीर्षक (मराठी)" onChange={(e) => setHero({ cards_title_mr: e.target.value })} />}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <Photo url={m.hero.image_url} w={80} h={100} contain />
@@ -360,6 +362,7 @@ function Preview({ m, live, lang, setLang, service }: { m: ServiceContent; live:
           </div>
           {m.hero.image_url && <img src={m.hero.image_url} alt="" className="absolute bottom-0 right-1 h-[125px] object-contain" />}
         </div>
+        {service === "clean" && <div className="text-[11px] font-bold text-foreground">{t(m.hero.cards_title, m.hero.cards_title_mr)}</div>}
         <div className="grid grid-cols-3 gap-2">
           {m.cards.filter((c) => c.enabled).map((c, i) => (
             <div key={i} className="text-center">

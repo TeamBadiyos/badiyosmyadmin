@@ -1,6 +1,6 @@
 export type ServiceKey = "clean" | "wash";
 export type Line = { en: string; mr: string };
-export type Hero = { heading: string; heading_mr: string; subline: string; subline_mr: string; button: string; button_mr: string; image_url: string | null; bg_color: string; card_title: string; card_title_mr: string };
+export type Hero = { heading: string; heading_mr: string; subline: string; subline_mr: string; button: string; button_mr: string; image_url: string | null; bg_color: string; card_title: string; card_title_mr: string; cards_title: string; cards_title_mr: string };
 export type Card = { title: string; title_mr: string; image_url: string | null; included: Line[]; not_included: Line[]; enabled: boolean; price_option_id: string | null };
 export type OptionExtra = { name: string; name_mr: string; image_url: string | null; original_price: number | null };
 export type Details = { included_title: string; included_title_mr: string; excluded_title: string; excluded_title_mr: string; note: string; note_mr: string; note_icon: string };
@@ -78,7 +78,7 @@ export function normalizeServiceContent(p: any, key: ServiceKey): ServiceContent
     ? nb.slabs.map((x: any) => ({ from: T.test(s(x?.from)) ? s(x.from) : "00:00", to: T.test(s(x?.to)) ? s(x.to) : "00:00", label: s(x?.label), image_url: x?.image_url || null, text_color: x?.text_color === "dark" ? "dark" : "light" })) // eslint-disable-line @typescript-eslint/no-explicit-any
     : d.banner.slabs.map((x, i) => ({ ...x, image_url: (i === 0 ? p?.banners?.closed_morning?.image_url : i === 1 ? p?.banners?.open_available?.image_url : i === 3 ? p?.banners?.closed_evening?.image_url : null) || null }));
   return {
-    hero: { heading: s(h.heading), heading_mr: s(h.heading_mr), subline: s(h.subline), subline_mr: s(h.subline_mr), button: s(h.button) || "Book Now", button_mr: s(h.button_mr), image_url: h.image_url || null, bg_color: s(h.bg_color) || (key === "wash" ? "#222831" : "#00B97A"), card_title: s(h.card_title) || (key === "wash" ? "Car Wash" : "Maid"), card_title_mr: s(h.card_title_mr) || (key === "wash" ? "कार वॉश" : "मेड") },
+    hero: { heading: s(h.heading), heading_mr: s(h.heading_mr), subline: s(h.subline), subline_mr: s(h.subline_mr), button: s(h.button) || "Book Now", button_mr: s(h.button_mr), image_url: h.image_url || null, bg_color: s(h.bg_color) || (key === "wash" ? "#222831" : "#00B97A"), card_title: s(h.card_title) || (key === "wash" ? "Car Wash" : "Maid"), card_title_mr: s(h.card_title_mr) || (key === "wash" ? "कार वॉश" : "मेड"), cards_title: s(h.cards_title) || "What our experts do", cards_title_mr: s(h.cards_title_mr) || "आमचे एक्सपर्ट काय करतात" },
     cards, options,
     details: pickStr(d.details, p?.details),
     banner: { slabs, texts },
