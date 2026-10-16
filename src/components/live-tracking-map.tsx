@@ -67,13 +67,17 @@ const AGENT_ICON =
 export function LiveTrackingMap({
   kind,
   id,
-  compact = false,
+  compact: compactProp = false,
+  panel = false,
 }: {
   kind: "courier" | "booking";
   id: string;
   /** Detail-panel mode: 220px map, opens on Full route, no address footer. */
   compact?: boolean;
+  /** Unified detail panel: full width, ~380px tall, opens on Full route, no footer. */
+  panel?: boolean;
 }) {
+  const compact = compactProp || panel;
   const fetchRoute = useServerFn(getRoadRoute);
 
   const { data, isLoading, isError, error } = useLiveTracking(kind, id);
@@ -316,7 +320,7 @@ export function LiveTrackingMap({
       </div>
 
       <div className="relative">
-        <div ref={containerRef} className={`${compact ? "h-[220px]" : "h-[320px]"} w-full bg-muted`} />
+        <div ref={containerRef} className={`${panel ? "h-[380px]" : compact ? "h-[220px]" : "h-[320px]"} w-full bg-muted`} />
         {(isLoading || !mapReady) && !mapError && (
           <div className="absolute inset-0 grid place-items-center bg-background/70 text-[12px] text-muted-foreground">
             Loading live map…
