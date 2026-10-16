@@ -7439,6 +7439,7 @@ export type Database = {
           expense_date: string
           gst_paid: number
           id: string
+          is_system: boolean
           note: string | null
           paid_via: string
           subscription_id: string | null
@@ -7454,6 +7455,7 @@ export type Database = {
           expense_date?: string
           gst_paid?: number
           id?: string
+          is_system?: boolean
           note?: string | null
           paid_via?: string
           subscription_id?: string | null
@@ -7469,6 +7471,7 @@ export type Database = {
           expense_date?: string
           gst_paid?: number
           id?: string
+          is_system?: boolean
           note?: string | null
           paid_via?: string
           subscription_id?: string | null
