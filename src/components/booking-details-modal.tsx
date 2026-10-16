@@ -9,13 +9,22 @@ import {
   CircleDot,
   XCircle,
   Ban,
-  UserPlus,
   RefreshCw,
   Pencil,
   Trash2,
   AlertTriangle,
   IndianRupee,
+  MoreHorizontal,
+  Phone,
+  MessageCircle,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 import {
@@ -43,7 +52,7 @@ import {
 } from "@/lib/live-orders.functions";
 
 import { LiveTrackingMap } from "@/components/live-tracking-map";
-import { ShareLocation } from "@/components/share-location";
+import { ShareLocationIcons } from "@/components/share-location";
 import { ServiceTimerCard } from "@/components/service-timer";
 import { JobLocationDialog } from "@/components/job-location-dialog";
 import { ExpertHandoverPanel } from "@/components/expert-handover-panel";
@@ -123,6 +132,8 @@ export function BookingDetailsModal({
   const [cancelReason, setCancelReason] = useState<CancellationReason | "">("");
   const [cancelRefund, setCancelRefund] = useState(true);
   const [refundConfirm, setRefundConfirm] = useState(false);
+  const [panel, setPanel] = useState<null | "status" | "reschedule">(null);
+  const [showIds, setShowIds] = useState(false);
 
   const isDeleted = !!data?.deletedAt;
   const isTerminal =
@@ -145,6 +156,7 @@ export function BookingDetailsModal({
       queryClient.invalidateQueries({ queryKey: ["bookings", "list"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
       setNextStatus("");
+      setPanel(null);
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message : "Failed to update status";
@@ -429,25 +441,86 @@ export function BookingDetailsModal({
         onClick={(e) => e.stopPropagation()}
         className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Booking
-            </p>
-            <h2 className="text-[18px] font-bold text-foreground truncate">
-              {data?.bookingNumber ?? `#${bookingId.slice(0, 8)}`}
-            </h2>
+        <header className="px-4 sm:px-5 py-3 border-b border-border shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h2 className="text-[17px] font-bold text-foreground">
+                {data?.bookingNumber ?? `#${bookingId.slice(0, 8)}`}
+              </h2>
+              {data && (
+                <>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[data.status]}`}>
+                    {STATUS_LABEL[data.status]}
+                  </span>
+                  {data.serviceLabel && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-foreground">
+                      {data.serviceLabel}
+                    </span>
+                  )}
+                  <span className="text-[13px] font-bold text-foreground">
+                    {data.price != null ? inr.format(data.price + data.extensionAmount) : "—"}
+                  </span>
+                  {data.paymentStatus === "paid" && (
+                    <span className="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">Paid</span>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {data && showAssign && (
+                <button type="button" onClick={() => document.getElementById("bdm-expert")?.scrollIntoView({ behavior: "smooth" })}
+                  className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[12px] font-bold">
+                  Assign
+                </button>
+              )}
+              {data && !showAssign && canEdit && nextOptions.length > 0 && (
+                <button type="button" disabled={mutation.isPending}
+                  onClick={() => mutation.mutate({ newStatus: nextOptions[0] })}
+                  className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[12px] font-bold disabled:opacity-50">
+                  {mutation.isPending ? "Saving…" : `Mark ${STATUS_LABEL[nextOptions[0]]}`}
+                </button>
+              )}
+              {data && canEdit && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button aria-label="More actions" className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {nextOptions.length > 0 && <DropdownMenuItem onSelect={() => setPanel("status")}>Change status</DropdownMenuItem>}
+                    {canReschedule && <DropdownMenuItem onSelect={() => setPanel("reschedule")}>Reschedule</DropdownMenuItem>}
+                    {canEditFields && <DropdownMenuItem onSelect={() => { setPanel(null); setEditOpen(true); }}>Edit booking</DropdownMenuItem>}
+                    {canEdit && data.status === "confirmed" && !data.expert.id && (
+                      <DropdownMenuItem onSelect={() => { if (confirm("Is order ko abhi experts ko bhej dein (Needs Expert)?")) shootMutation.mutate(); }}>Shoot now</DropdownMenuItem>
+                    )}
+                    {canEdit && isTerminal && canRefund && <DropdownMenuItem onSelect={() => setRefundConfirm(true)}>Issue refund</DropdownMenuItem>}
+                    {(canCancel || canDelete) && <DropdownMenuSeparator />}
+                    {canCancel && <DropdownMenuItem className="text-destructive" onSelect={() => setCancelOpen(true)}>Cancel booking…</DropdownMenuItem>}
+                    {canDelete && <DropdownMenuItem className="text-destructive" onSelect={() => setDeleteOpen(true)}>Delete booking…</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
+                <X size={18} />
+              </button>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
-          >
-            <X size={20} />
-          </button>
+          {data && (
+            <p className="mt-1 text-[12px] text-muted-foreground truncate">
+              {[
+                `Placed ${fmtDateTime(data.createdAt)}`,
+                (data.slotType ?? "").toLowerCase() === "now" && !data.scheduledDate
+                  ? "Now"
+                  : [data.scheduledDate, data.scheduledTimeSlot].filter(Boolean).join(" "),
+                [data.serviceLabel, data.serviceDurationMinutes ? `${data.serviceDurationMinutes} min` : null].filter(Boolean).join(" · "),
+                data.zone.name,
+              ].filter(Boolean).join(" · ")}
+            </p>
+          )}
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-6 pb-16 sm:pb-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 pt-3 pb-16 sm:pb-4 space-y-3">
           {isLoading && (
             <p className="text-[14px] text-muted-foreground">Loading…</p>
           )}
@@ -458,22 +531,8 @@ export function BookingDetailsModal({
           )}
           {data && (
             <>
-              {/* Status + timeline */}
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${STATUS_STYLES[data.status]}`}
-                  >
-                    {STATUS_LABEL[data.status]}
-                  </span>
-                  <span className="text-[12px] text-muted-foreground">
-                    Placed {fmtDateTime(data.createdAt)}
-                  </span>
-                </div>
-                <Timeline current={data.status} />
-              </section>
+              <Timeline current={data.status} />
 
-              {/* Live service timer */}
               <ServiceTimerCard
                 booking={{
                   status: data.status,
@@ -484,226 +543,123 @@ export function BookingDetailsModal({
                 extensionMinutes={data.extensionMinutes}
               />
 
-
-              {/* Live tracking */}
-              <section>
-                <h3 className="text-[13px] font-bold text-foreground mb-2">
-                  Live tracking
-                </h3>
-                <ShareLocation kind="booking" id={bookingId} />
-                <LiveTrackingMap kind="booking" id={bookingId} />
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3 min-w-0">
+                  <Card title="Customer">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-foreground truncate">{data.customer.name ?? "—"}</p>
+                        <p className="text-[12px] font-mono text-muted-foreground">{data.customer.phone ?? "—"}</p>
+                      </div>
+                      {data.customer.phone && <ContactButtons phone={data.customer.phone} />}
+                    </div>
+                  </Card>
+                  <Card title="Address">
+                    {data.address ? (
+                      <div className="space-y-0.5">
+                        <p className="text-[13px] font-semibold text-foreground">
+                          {[data.address.label, [data.address.area, data.address.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
+                        </p>
+                        <p className="text-[12px] text-muted-foreground">{data.address.fullAddress ?? "—"}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[13px] text-muted-foreground">No address on booking.</p>
+                    )}
+                    {canEditFields && (
+                      <button type="button" onClick={() => setLocOpen(true)}
+                        className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline">
+                        <Pencil size={12} /> Change location
+                      </button>
+                    )}
+                    {locOpen && (
+                      <JobLocationDialog bookingId={bookingId} initial={data.address} onClose={() => setLocOpen(false)} />
+                    )}
+                  </Card>
+                </div>
+                <div className="min-w-0">
+                  <LiveTrackingMap kind="booking" id={bookingId} compact />
+                  <ShareLocationIcons kind="booking" id={bookingId} />
+                </div>
               </section>
 
-
-              {/* Grid */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card title="Customer">
-                  <Field label="Name" value={data.customer.name ?? "—"} />
-                  <Field label="Phone" value={data.customer.phone ?? "—"} mono />
+              <div id="bdm-expert">
+                <Card title="Expert">
+                  {data.expert.id ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-foreground truncate">{data.expert.name ?? "—"}</p>
+                        <p className="text-[12px] font-mono text-muted-foreground">{data.expert.phone ?? "—"}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {data.expert.phone && <ContactButtons phone={data.expert.phone} whatsapp={false} />}
+                        {canReassign && !reassignOpen && (
+                          <button onClick={() => setReassignOpen(true)}
+                            className="h-8 px-3 rounded-full border border-border text-[12px] font-bold text-primary inline-flex items-center gap-1">
+                            <RefreshCw size={12} /> Reassign
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : !showAssign ? (
+                    <p className="text-[13px] text-muted-foreground italic">No expert assigned.</p>
+                  ) : null}
+                  {(showAssign || (canReassign && reassignOpen)) && (
+                    <NearestList
+                      experts={filteredExperts}
+                      loading={expertsQuery.isLoading}
+                      error={expertsQuery.isError ? (expertsQuery.error instanceof Error ? expertsQuery.error.message : "Couldn't load experts") : null}
+                      onRetry={() => expertsQuery.refetch()}
+                      search={expertSearch}
+                      onSearch={setExpertSearch}
+                      pending={showAssign ? assignMutation.isPending : reassignMutation.isPending}
+                      onPick={(id) => (showAssign ? assignMutation.mutate(id) : reassignMutation.mutate(id))}
+                      onCancel={showAssign ? undefined : () => { setReassignOpen(false); setExpertSearch(""); }}
+                    />
+                  )}
                 </Card>
-                <Card title="Address">
-                  {canEditFields && (
-                    <button
-                      type="button"
-                      onClick={() => setLocOpen(true)}
-                      className="mb-2 inline-flex items-center gap-1 h-8 px-3 rounded-[8px] border border-primary text-primary text-[12px] font-semibold"
-                    >
-                      <Pencil size={12} /> Change job location
+              </div>
+
+              <div className="rounded-[14px] border border-border px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Payment</span>
+                  <span className="font-semibold text-foreground">
+                    {data.price != null ? inr.format(data.price) : "—"}
+                    {data.extensionMinutes > 0 ? ` + ext ${inr.format(data.extensionAmount)} = ${inr.format((data.price ?? 0) + data.extensionAmount)}` : ""}
+                  </span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                    data.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700"
+                    : data.paymentStatus === "refunded" ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground"}`}>
+                    {data.paymentStatus}
+                  </span>
+                  <span className="text-muted-foreground">· {data.razorpayPaymentId ? "Online (Razorpay)" : "—"}</span>
+                  {data.extensions.some((e) => e.approvalStatus === "pending") && (
+                    <span className="text-[11px] font-bold text-amber-700">· Extension awaiting expert</span>
+                  )}
+                  {(data.razorpayPaymentId || data.razorpayOrderId) && (
+                    <button type="button" onClick={() => setShowIds((v) => !v)} className="ml-auto text-[11px] font-semibold text-muted-foreground hover:text-foreground">
+                      IDs {showIds ? "▾" : "▸"}
                     </button>
                   )}
-                  {locOpen && (
-                    <JobLocationDialog
-                      bookingId={bookingId}
-                      initial={data.address}
-                      onClose={() => setLocOpen(false)}
-                    />
-                  )}
-                  {data.address ? (
-                    <>
-                      <Field label="Label" value={data.address.label ?? "—"} />
-                      <Field
-                        label="Full address"
-                        value={data.address.fullAddress ?? "—"}
-                      />
-                      <Field
-                        label="Area / City"
-                        value={
-                          [data.address.area, data.address.city]
-                            .filter(Boolean)
-                            .join(", ") || "—"
-                        }
-                      />
-                    </>
-                  ) : (
-                    <p className="text-[13px] text-muted-foreground">
-                      No address on booking.
-                    </p>
-                  )}
-                </Card>
-                <Card title="Service & Slot">
-                  <Field label="Service" value={data.serviceLabel ?? "—"} />
-                  <Field
-                    label="Duration"
-                    value={
-                      data.serviceDurationMinutes
-                        ? `${data.serviceDurationMinutes} min`
-                        : "—"
-                    }
-                  />
-                  <Field
-                    label="Slot"
-                    value={
-                      [data.scheduledDate, data.scheduledTimeSlot]
-                        .filter(Boolean)
-                        .join(" · ") || "—"
-                    }
-                  />
-                  <Field
-                    label="Slot type"
-                    value={data.slotType ?? "—"}
-                  />
-                </Card>
-                <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
+                </div>
+                {showIds && (
+                  <p className="mt-1 text-[11px] font-mono text-muted-foreground break-all">
+                    Payment {data.razorpayPaymentId ?? "—"} · Order {data.razorpayOrderId ?? "—"}
+                  </p>
+                )}
+              </div>
+
+              <StaffNoteCard bookingId={data.id} initial={data.staffNote} />
+
+              {data.rating != null && (
                 <Card title="Customer rating">
-                  {data.rating != null ? (
-                    <>
-                      <p className="text-[18px] font-bold text-foreground">
-                        <span className="text-warning">{"★".repeat(Math.round(data.rating))}</span>
-                        <span className="text-muted-foreground">{"★".repeat(Math.max(0, 5 - Math.round(data.rating)))}</span>
-                        <span className="ml-2 text-[14px]">{data.rating}/5</span>
-                      </p>
-                      <p className="text-[13px] text-muted-foreground mt-1">
-                        {data.reviewText ? `“${data.reviewText}”` : "No written review"}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-[13px] text-muted-foreground">Not rated yet</p>
-                  )}
+                  <p className="text-[15px] font-bold text-foreground">
+                    <span className="text-warning">{"★".repeat(Math.round(data.rating))}</span>
+                    <span className="text-muted-foreground">{"★".repeat(Math.max(0, 5 - Math.round(data.rating)))}</span>
+                    <span className="ml-2 text-[13px]">{data.rating}/5</span>
+                  </p>
+                  {data.reviewText && <p className="text-[12px] text-muted-foreground">“{data.reviewText}”</p>}
                 </Card>
-                <Card title="Payment">
-                  <Field
-                    label="Price"
-                    value={data.price != null ? inr.format(data.price) : "—"}
-                  />
-                  {data.extensionMinutes > 0 && (
-                    <Field
-                      label="Extension"
-                      value={`+${
-                        data.extensionMinutes % 60 === 0
-                          ? `${data.extensionMinutes / 60}hr`
-                          : `${data.extensionMinutes} min`
-                      } · ${inr.format(data.extensionAmount)}`}
-                    />
-                  )}
-                  {data.extensionMinutes > 0 && data.price != null && (
-                    <Field
-                      label="Total"
-                      value={inr.format(data.price + data.extensionAmount)}
-                    />
-                  )}
-                  {data.extensions.some((e) => e.approvalStatus === "pending") && (
-                    <div className="flex items-center gap-2 py-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground w-28 shrink-0">
-                        Extension
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
-                        Awaiting expert approval
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 py-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground w-28 shrink-0">
-                      Status
-                    </span>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${
-                        data.paymentStatus === "paid"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : data.paymentStatus === "refunded"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {data.paymentStatus}
-                    </span>
-                  </div>
-                  <Field
-                    label="Payment ID"
-                    value={data.razorpayPaymentId ?? "—"}
-                    mono
-                  />
-                  <Field
-                    label="Order ID"
-                    value={data.razorpayOrderId ?? "—"}
-                    mono
-                  />
-                </Card>
-
-                <Card title="Assigned Expert">
-                  {data.expert.id ? (
-                    <>
-                      <Field label="Name" value={data.expert.name ?? "—"} />
-                      <Field label="Phone" value={data.expert.phone ?? "—"} mono />
-                      {canReassign && !reassignOpen && (
-                        <button
-                          onClick={() => setReassignOpen(true)}
-                          className="mt-2 text-[12px] font-bold text-primary hover:underline inline-flex items-center gap-1"
-                        >
-                          <RefreshCw size={12} />
-                          Reassign
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-[13px] text-muted-foreground italic">
-                      No expert assigned.
-                    </p>
-                  )}
-                </Card>
-
-                <Card title="Zone">
-                  <Field label="Name" value={data.zone.name ?? "—"} />
-                </Card>
-              </section>
-
-              {/* Assign / Reassign expert */}
-              {(showAssign || (canReassign && reassignOpen)) && (
-                <ExpertAssignSection
-                  mode={showAssign ? "assign" : "reassign"}
-                  experts={filteredExperts}
-                  loading={expertsQuery.isLoading}
-                  errorMessage={
-                    expertsQuery.isError
-                      ? expertsQuery.error instanceof Error
-                        ? expertsQuery.error.message
-                        : "Couldn't load experts"
-                      : null
-                  }
-                  onRetry={() => expertsQuery.refetch()}
-                  search={expertSearch}
-                  onSearch={setExpertSearch}
-                  selected={selectedExpertId}
-                  onSelect={setSelectedExpertId}
-                  pending={
-                    showAssign
-                      ? assignMutation.isPending
-                      : reassignMutation.isPending
-                  }
-                  onConfirm={() => {
-                    if (!selectedExpertId) return;
-                    if (showAssign) assignMutation.mutate(selectedExpertId);
-                    else reassignMutation.mutate(selectedExpertId);
-                  }}
-                  onCancel={
-                    showAssign
-                      ? undefined
-                      : () => {
-                          setReassignOpen(false);
-                          setSelectedExpertId("");
-                          setExpertSearch("");
-                        }
-                  }
-                />
               )}
 
               <ExpertHandoverPanel
@@ -724,41 +680,19 @@ export function BookingDetailsModal({
               />
 
 
-              {canEdit && data.status === "confirmed" && !data.expert.id && (
-                <section className="bg-background border border-border rounded-[18px] p-4 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Shoot now
-                    </h3>
-                    <p className="text-[12px] text-muted-foreground">
-                      Send this scheduled order to experts right away (moves to Needs Expert).
-                    </p>
-                  </div>
-                  <button
-                    disabled={shootMutation.isPending}
-                    onClick={() => {
-                      if (confirm("Is order ko abhi experts ko bhej dein (Needs Expert)?")) shootMutation.mutate();
-                    }}
-                    className="h-10 px-4 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50"
-                  >
-                    {shootMutation.isPending ? "Sending…" : "Shoot Now"}
-                  </button>
-                </section>
-              )}
-
-              {canReschedule && (
+              {canReschedule && panel === "reschedule" && (
                 <RescheduleSection
                   currentDate={data.scheduledDate}
                   currentSlot={data.scheduledTimeSlot}
                   hasExpert={!!data.expert.id}
                   pending={rescheduleMutation.isPending}
-                  onSubmit={(v) => rescheduleMutation.mutate(v)}
+                  onSubmit={(v) => { rescheduleMutation.mutate(v); setPanel(null); }}
                 />
               )}
 
               {/* Update status */}
 
-              {canEdit && (
+              {canEdit && panel === "status" && (
 
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3">
@@ -806,7 +740,7 @@ export function BookingDetailsModal({
               )}
 
               {/* Edit booking */}
-              {canEdit && (
+              {canEdit && editOpen && (
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -942,7 +876,7 @@ export function BookingDetailsModal({
               )}
 
               {/* Delete booking (super_admin only) */}
-              {canDelete && (
+              {canDelete && deleteOpen && (
                 <section className="bg-background border border-red-200 rounded-[18px] p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -1013,7 +947,7 @@ export function BookingDetailsModal({
               )}
 
               {/* Cancel booking */}
-              {canCancel && (
+              {canCancel && cancelOpen && (
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
@@ -1122,7 +1056,7 @@ export function BookingDetailsModal({
               )}
 
               {/* Issue refund on an already-cancelled booking */}
-              {canEdit && isTerminal && canRefund && (
+              {canEdit && isTerminal && canRefund && refundConfirm && (
                 <section className="bg-background border border-border rounded-[18px] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1286,8 +1220,8 @@ function StaffNoteCard({ bookingId, initial }: { bookingId: string; initial: str
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-background border border-border rounded-[18px] p-4">
-      <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+    <div className="bg-background border border-border rounded-[14px] px-3 py-2.5">
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
         {title}
       </h3>
       <div className="space-y-1">{children}</div>
@@ -1325,15 +1259,16 @@ function Timeline({ current }: { current: BookingStatus }) {
 
 
   return (
-    <ol className="flex items-center gap-1 overflow-x-auto">
+    <ol className="flex items-center gap-0.5 w-full min-w-0">
       {TIMELINE.map((s, idx) => {
         const done = !isTerminalBad && idx < currentIdx;
         const active = !isTerminalBad && idx === currentIdx;
         const Icon = done ? Check : active ? CircleDot : CircleDashed;
         return (
-          <li key={s} className="flex items-center gap-1 shrink-0">
+          <li key={s} className="flex items-center gap-0.5 min-w-0 flex-1 last:flex-none">
             <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold ${
+              title={STATUS_LABEL[s]}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded-full text-[11px] font-semibold min-w-0 ${
                 active
                   ? "bg-primary-tint text-primary"
                   : done
@@ -1341,19 +1276,19 @@ function Timeline({ current }: { current: BookingStatus }) {
                     : "bg-muted text-muted-foreground"
               }`}
             >
-              <Icon size={14} />
-              {STATUS_LABEL[s]}
+              <Icon size={12} className="shrink-0" />
+              <span className="truncate">{STATUS_LABEL[s]}</span>
             </div>
             {idx < TIMELINE.length - 1 && (
-              <span className="w-4 h-px bg-border" />
+              <span className="flex-1 min-w-[4px] h-px bg-border" />
             )}
           </li>
         );
       })}
       {isTerminalBad && (
-        <li className="flex items-center gap-1 shrink-0 ml-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold bg-red-50 text-red-700">
-            <XCircle size={14} />
+        <li className="flex items-center gap-1 shrink-0 ml-1">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700">
+            <XCircle size={12} />
             {STATUS_LABEL[current]}
           </div>
         </li>
@@ -1361,118 +1296,6 @@ function Timeline({ current }: { current: BookingStatus }) {
     </ol>
   );
 }
-
-function ExpertAssignSection({
-  mode,
-  experts,
-  loading,
-  errorMessage,
-  onRetry,
-  search,
-  onSearch,
-  selected,
-  onSelect,
-  pending,
-  onConfirm,
-  onCancel,
-}: {
-  mode: "assign" | "reassign";
-  experts: Array<{ id: string; name: string; phone: string; distanceKm?: number | null }>;
-  loading: boolean;
-  errorMessage?: string | null;
-  onRetry?: () => void;
-  search: string;
-  onSearch: (v: string) => void;
-  selected: string;
-  onSelect: (v: string) => void;
-  pending: boolean;
-  onConfirm: () => void;
-  onCancel?: () => void;
-}) {
-  const isReassign = mode === "reassign";
-  return (
-    <section
-      className={`border rounded-[18px] p-4 ${
-        isReassign
-          ? "bg-amber-50/50 border-amber-200"
-          : "bg-primary-tint/40 border-primary/20"
-      }`}
-    >
-      <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted-foreground mb-3 inline-flex items-center gap-2">
-        {isReassign ? <RefreshCw size={14} /> : <UserPlus size={14} />}
-        {isReassign ? "Reassign expert" : "Assign expert"}
-      </h3>
-      <div className="space-y-3">
-        {errorMessage ? (
-          <div className="rounded-[14px] border border-destructive bg-destructive/5 p-3 space-y-2">
-            <p className="text-[13px] text-destructive font-semibold">
-              Couldn't load experts
-            </p>
-            <p className="text-[12px] text-destructive/80">{errorMessage}</p>
-            {onRetry && (
-              <button
-                onClick={onRetry}
-                className="h-9 px-4 rounded-[10px] border border-destructive text-destructive text-[13px] font-bold"
-              >
-                Retry
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <input
-              type="text"
-              placeholder="Search by name or phone…"
-              value={search}
-              onChange={(e) => onSearch(e.target.value)}
-              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
-            />
-            <select
-              value={selected}
-              onChange={(e) => onSelect(e.target.value)}
-              disabled={loading}
-              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px] disabled:opacity-60"
-            >
-              <option value="">
-                {loading
-                  ? "Loading experts…"
-                  : experts.length === 0
-                    ? "No experts nearby (within broadcast radius)"
-                    : "Select expert…"}
-              </option>
-              {experts.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name} — {e.phone}
-                  {e.distanceKm != null ? ` · ${e.distanceKm.toFixed(1)} km` : ""}
-                  {(e as { busy?: boolean }).busy ? " · Busy (assign as next order)" : ""}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            disabled={!selected || pending}
-            onClick={onConfirm}
-            className="h-11 px-5 rounded-[14px] bg-primary text-primary-foreground font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
-          >
-            <Check size={16} />
-            {pending ? "Saving…" : isReassign ? "Confirm reassignment" : "Confirm assignment"}
-          </button>
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="h-11 px-4 rounded-[14px] border border-border text-foreground font-semibold text-[14px]"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 
 const RESCHEDULE_SLOTS = Array.from({ length: 27 }, (_, i) => {
   const m = 7 * 60 + i * 30; // 7:00 AM … 8:00 PM, every 30 min
@@ -1654,5 +1477,67 @@ function RescheduleSection({
         </div>
       )}
     </section>
+  );
+}
+
+function ContactButtons({ phone, whatsapp = true }: { phone: string; whatsapp?: boolean }) {
+  const digits = phone.replace(/\D/g, "");
+  const wa = digits.length === 10 ? `91${digits}` : digits;
+  const cls = "w-8 h-8 rounded-full border border-border inline-flex items-center justify-center text-primary hover:bg-muted";
+  return (
+    <span className="flex items-center gap-1.5 shrink-0">
+      <a href={`tel:${phone}`} aria-label="Call" title="Call" className={cls}><Phone size={14} /></a>
+      {whatsapp && (
+        <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp" className={cls}>
+          <MessageCircle size={14} />
+        </a>
+      )}
+    </span>
+  );
+}
+
+/** Nearest-first assign list (same as the board card popover), one click assigns. */
+function NearestList({
+  experts, loading, error, onRetry, search, onSearch, pending, onPick, onCancel,
+}: {
+  experts: Array<{ id: string; name: string; phone: string; distanceKm?: number | null; busy?: boolean }>;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  search: string;
+  onSearch: (v: string) => void;
+  pending: boolean;
+  onPick: (id: string) => void;
+  onCancel?: () => void;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <input type="text" placeholder="Search name or phone…" value={search} onChange={(e) => onSearch(e.target.value)}
+          className="flex-1 h-8 px-3 rounded-full border border-border bg-card text-[12px]" />
+        {onCancel && <button onClick={onCancel} className="text-[12px] font-semibold text-muted-foreground">Cancel</button>}
+      </div>
+      {error ? (
+        <p className="text-[12px] text-destructive">{error} <button onClick={onRetry} className="underline font-semibold">Retry</button></p>
+      ) : loading ? (
+        <p className="text-[12px] text-muted-foreground">Loading experts…</p>
+      ) : experts.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground">No free experts right now.</p>
+      ) : (
+        <div className="max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
+          {experts.map((e) => (
+            <button key={e.id} type="button" disabled={pending}
+              onClick={() => { if (confirm(`Assign ${e.name}?`)) onPick(e.id); }}
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
+              <span className="text-[13px] font-semibold text-foreground truncate">{e.name}</span>
+              <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
+                <span className="text-muted-foreground">{e.distanceKm != null ? `${e.distanceKm.toFixed(1)} km` : "— km"}</span>
+                <span className={`rounded-full px-1.5 py-0.5 font-bold ${e.busy ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>{e.busy ? "Busy" : "Free"}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

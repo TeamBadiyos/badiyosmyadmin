@@ -74,6 +74,46 @@ function Row({
   );
 }
 
+function IconShare({ label, lat, lng, message }: { label: string; lat: number | null | undefined; lng: number | null | undefined; message: (url: string) => string }) {
+  const ok = lat != null && lng != null;
+  const url = ok ? mapsLink(lat!, lng!) : "";
+  const btn = "inline-flex items-center justify-center h-7 w-7 rounded-full border border-border text-foreground disabled:opacity-40";
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <button type="button" title={`Copy ${label} link`} aria-label={`Copy ${label} link`} disabled={!ok} onClick={() => copy(message(url))} className={btn}>
+        <Copy size={12} />
+      </button>
+      <a href={ok ? `https://wa.me/?text=${encodeURIComponent(message(url))}` : undefined} target="_blank" rel="noreferrer"
+        title={`Send ${label} on WhatsApp`} aria-label={`Send ${label} on WhatsApp`} aria-disabled={!ok}
+        className={`${btn} ${ok ? "" : "pointer-events-none opacity-40"}`}>
+        <MessageCircle size={12} />
+      </a>
+    </span>
+  );
+}
+
+/** Small icon-only share row shown under the map in detail panels. */
+export function ShareLocationIcons({ kind, id }: { kind: "booking" | "courier"; id: string }) {
+  const { data } = useLiveTracking(kind, id);
+  const agent = data?.agent;
+  const code = data?.code ?? "";
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5">
+      {agent && (
+        <IconShare label={kind === "courier" ? "Rider" : "Expert"} lat={agent.lat} lng={agent.lng}
+          message={(u) => `Badiyos ${code} — ${agent.name ?? "Partner"} live location${agent.phone ? ` (${agent.phone})` : ""}: ${u}`} />
+      )}
+      {data?.pickup && (
+        <IconShare label="Pick-up" lat={data.pickup.lat} lng={data.pickup.lng}
+          message={(u) => `Badiyos ${code} — Pick-up${data.pickup?.address ? `: ${data.pickup.address}` : ""}\n${u}`} />
+      )}
+      <IconShare label={kind === "courier" ? "Drop" : "Job"} lat={data?.drop?.lat} lng={data?.drop?.lng}
+        message={(u) => `Badiyos ${code} — ${kind === "courier" ? "Drop" : "Order location"}${data?.drop?.address ? `: ${data.drop.address}` : ""}\n${u}`} />
+    </div>
+  );
+}
+
 export function ShareLocation({ kind, id }: { kind: "booking" | "courier"; id: string }) {
   const qc = useQueryClient();
   const { data, isFetching } = useLiveTracking(kind, id);

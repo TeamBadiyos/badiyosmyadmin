@@ -1,4 +1,11 @@
 import { TripLeftBehind } from "@/components/left-behind";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FilterBar, FilterField, filterInputCls, filterSelectCls, countLabel } from "@/components/section-chrome";
 import { StopProofs } from "@/components/drop-proofs";
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +22,7 @@ import {
   Power,
   Truck,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   COURIER_STATUSES,
@@ -53,7 +61,7 @@ import {
   type VehicleTypeRow,
 } from "@/lib/courier.functions";
 import { LiveTrackingMap } from "@/components/live-tracking-map";
-import { ShareLocation } from "@/components/share-location";
+import { ShareLocationIcons } from "@/components/share-location";
 import { listBusinesses } from "@/lib/bulk-courier.functions";
 import { ExpertsPage } from "@/components/experts-page";
 import { BulkCourierPage } from "@/components/bulk-courier-page";
@@ -1079,6 +1087,7 @@ export function OrderDetail({
   const [resolveAmount, setResolveAmount] = useState(String(order.total_amount));
   const [payRider, setPayRider] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [panel, setPanel] = useState<null | "history" | "cancel" | "refund" | "resolve">(null);
 
   const { data: events } = useQuery({
     queryKey: ["courier", "events", order.id],
@@ -1105,127 +1114,122 @@ export function OrderDetail({
 
   return (
     <Modal title={`Order ${order.order_code}`} onClose={onClose} wide>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-[12px] border border-border p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Pill tone="info">{order.status}</Pill>
-            {order.city ? <Pill tone="off">{order.city}</Pill> : null}
-            {order.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
-          </div>
-          <p className="mt-2 text-[12px] text-muted-foreground">
-            Customer: {order.customerName ?? "—"}
-            <br />
-            Rider: {order.riderName ?? "Not assigned"}
-            <br />
-            Amount: ₹{order.total_amount} · Payment {order.payment_status ?? "—"}
-            {order.refund_status ? ` · Refund ${order.refund_status}` : ""}
-          </p>
-          <p className="mt-2 text-[12px] text-muted-foreground">
-            Pickup: {order.pickup_address ?? "—"}
-            <br />
-            Drop: {order.drop_address ?? "—"}
-          </p>
-          {isCancelled && cancelFee ? (
-            <div className="mt-2 rounded-[10px] bg-muted p-2 text-[12px] text-foreground">
-              <p className="font-bold">Cancellation</p>
-              <p>Fee: ₹{cancelFee.feeBase} · GST on fee: ₹{cancelFee.feeGst}</p>
-              <p>Refund to customer: ₹{cancelFee.refund} · Rider share: ₹{cancelFee.riderShare}</p>
-            </div>
-          ) : null}
-          {order.incident_code ? (
-            <p className="mt-2 text-[12px] font-semibold text-warning">
-              Incident: {order.incident_code}
-              {order.incident_resolution ? ` · resolved (${order.incident_resolution})` : ""}
-            </p>
-          ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Pill tone="info">{order.status}</Pill>
+          <Pill tone="off">Parcel</Pill>
+          {order.city ? <Pill tone="off">{order.city}</Pill> : null}
+          {order.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+          <span className="text-[13px] font-bold text-foreground">₹{order.total_amount}</span>
+          <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.payment_status === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+            {order.payment_status ?? "—"}
+          </span>
         </div>
+        {canWrite && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button aria-label="More actions" className="shrink-0 w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
+                <MoreHorizontal size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onSelect={() => setPanel("history")}>Event history</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPanel("refund")}>Refund…</DropdownMenuItem>
+              {order.status === "FAILED_DELIVERY" && <DropdownMenuItem onSelect={() => setPanel("resolve")}>Resolve failed delivery</DropdownMenuItem>}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onSelect={() => setPanel("cancel")}>Cancel order…</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      <p className="mt-1 text-[12px] text-muted-foreground truncate">
+        Placed {new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+        {order.refund_status ? ` · Refund ${order.refund_status}` : ""}
+        {order.incident_code ? ` · Incident ${order.incident_code}${order.incident_resolution ? ` (resolved: ${order.incident_resolution})` : ""}` : ""}
+      </p>
 
-        <div className="rounded-[12px] border border-border p-3">
-          <div className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
-            <History size={14} className="text-primary" /> Event history
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="space-y-3 min-w-0">
+          <div className="rounded-[14px] border border-border px-3 py-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Customer</p>
+            <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName ?? "—"}</p>
           </div>
-          <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
-            {(events ?? []).map((ev) => (
-              <div key={ev.id} className="text-[12px]">
-                <span className="font-semibold text-foreground">
-                  {ev.from_status ? `${ev.from_status} → ` : ""}
-                  {ev.to_status}
-                </span>
-                <span className="ml-2 text-muted-foreground">
-                  {new Date(ev.created_at).toLocaleString()} · {ev.actor_type ?? "system"}
-                </span>
-              </div>
-            ))}
-            {(events ?? []).length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">No events yet.</p>
-            ) : null}
+          <div className="rounded-[14px] border border-border px-3 py-2.5 text-[12px] space-y-1">
+            <p><span className="font-semibold text-foreground">Pick-up: </span><span className="text-muted-foreground">{order.pickup_address ?? "—"}</span></p>
+            <p><span className="font-semibold text-foreground">Drop: </span><span className="text-muted-foreground">{order.drop_address ?? "—"}</span></p>
           </div>
+        </div>
+        <div className="min-w-0">
+          <LiveTrackingMap kind="courier" id={order.id} compact />
+          <ShareLocationIcons kind="courier" id={order.id} />
         </div>
       </div>
 
+      <div className="mt-3 rounded-[14px] border border-border px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Rider</p>
+          <p className="text-[13px] font-semibold text-foreground truncate">{order.riderName ?? "Not assigned"}</p>
+        </div>
+        {canWrite && (["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(order.status)) && (
+          <div className="mt-1.5 max-h-48 overflow-y-auto divide-y divide-border rounded-[10px] border border-border">
+            {(riders ?? []).length === 0 && <p className="px-3 py-2 text-[12px] text-muted-foreground">No eligible riders.</p>}
+            {[...(riders ?? [])]
+              .sort((x, y) => Number(y.is_online) - Number(x.is_online) || (x.distance_km ?? 1e9) - (y.distance_km ?? 1e9))
+              .map((r) => (
+                <button key={r.id} type="button" disabled={busy}
+                  onClick={() => {
+                    if (!confirm(`${order.riderName ? "Reassign to" : "Assign"} ${r.name}?`)) return;
+                    void run(async () => { await doReassign({ data: { orderId: order.id, expertId: r.id } }); await refetchRiders(); }, "Rider assigned and notified");
+                  }}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-50">
+                  <span className="text-[13px] font-semibold text-foreground truncate">{r.name}</span>
+                  <span className="shrink-0 flex items-center gap-1.5 text-[11px]">
+                    <span className="text-muted-foreground">{r.distance_km != null ? `${r.distance_km} km` : "— km"}</span>
+                    <span className={`rounded-full px-1.5 py-0.5 font-bold ${r.is_online ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{r.is_online ? "Free" : "Offline"}</span>
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {isCancelled && cancelFee ? (
+        <p className="mt-3 rounded-[10px] bg-muted px-3 py-2 text-[12px] text-foreground">
+          Cancellation fee ₹{cancelFee.feeBase} + GST ₹{cancelFee.feeGst} · Refund to customer ₹{cancelFee.refund} · Rider share ₹{cancelFee.riderShare}
+        </p>
+      ) : null}
       {order.stopsFee > 0 ? (
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          Fare breakdown · Extra stops fee: <span className="font-semibold text-foreground">₹{order.stopsFee}</span>
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          Extra stops fee: <span className="font-semibold text-foreground">₹{order.stopsFee}</span>
         </p>
       ) : null}
 
       <MultiStopSections order={order} fetchStops={fetchStops} onChanged={onChanged} />
 
-      <div className="mt-4">
-        <ShareLocation kind="courier" id={order.id} />
-        <LiveTrackingMap kind="courier" id={order.id} />
-      </div>
+      {panel === "history" && (
+        <div className="mt-3 rounded-[12px] border border-border p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[13px] font-bold text-foreground">
+              <History size={14} className="text-primary" /> Event history
+            </div>
+            <button onClick={() => setPanel(null)} className="text-[12px] font-semibold text-muted-foreground">Close</button>
+          </div>
+          <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
+            {(events ?? []).map((ev) => (
+              <div key={ev.id} className="text-[12px]">
+                <span className="font-semibold text-foreground">{ev.from_status ? `${ev.from_status} → ` : ""}{ev.to_status}</span>
+                <span className="ml-2 text-muted-foreground">{new Date(ev.created_at).toLocaleString()} · {ev.actor_type ?? "system"}</span>
+              </div>
+            ))}
+            {(events ?? []).length === 0 ? <p className="text-[12px] text-muted-foreground">No events yet.</p> : null}
+          </div>
+        </div>
+      )}
 
       {canWrite ? (
-        <div className="mt-4 space-y-4">
-          <div className="rounded-[12px] border border-border p-3">
-            <h4 className="text-[13px] font-bold text-foreground">
-              {order.riderName ? "Reassign rider" : "Assign rider"}
-            </h4>
-            {!["REQUESTED", "SEARCHING", "DRIVER_ASSIGNED", "ARRIVED_PICKUP"].includes(
-              order.status,
-            ) ? (
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Riders can only be assigned before pickup.
-              </p>
-            ) : (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <select
-                  className={`${inputCls} max-w-xs`}
-                  value={riderId}
-                  onChange={(e) => setRiderId(e.target.value)}
-                >
-                  <option value="">
-                    {riders && riders.length === 0 ? "No eligible riders" : "Select rider"}
-                  </option>
-                  {(riders ?? []).map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.is_online ? "● " : "○ "}
-                      {r.name} · {r.phone}
-                      {r.distance_km != null ? ` · ${r.distance_km} km` : ""}
-                      {r.is_online ? "" : " (offline)"}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  disabled={busy || !riderId}
-                  onClick={() =>
-                    run(async () => {
-                      await doReassign({ data: { orderId: order.id, expertId: riderId } });
-                      setRiderId("");
-                      await refetchRiders();
-                    }, "Rider assigned and notified")
-                  }
-                  className="rounded-[10px] bg-primary px-3.5 py-2 text-[12px] font-bold text-primary-foreground disabled:opacity-50"
-                >
-                  {order.riderName ? "Reassign" : "Assign"}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-[12px] border border-border p-3">
-            <h4 className="text-[13px] font-bold text-foreground">Force cancel</h4>
+        <div className="mt-3 space-y-3">
+          {panel === "cancel" && <div className="rounded-[12px] border border-destructive/40 p-3">
+            <h4 className="text-[13px] font-bold text-foreground">Cancel order (reason required)</h4>
             <div className="mt-2 flex flex-wrap gap-2">
               <input
                 placeholder="Reason"
@@ -1262,9 +1266,9 @@ export function OrderDetail({
                 </span>
               </button>
             </div>
-          </div>
+          </div>}
 
-          <div className="rounded-[12px] border border-border p-3">
+          {panel === "refund" && <div className="rounded-[12px] border border-border p-3">
             <h4 className="text-[13px] font-bold text-foreground">Refund</h4>
             <div className="mt-2 flex flex-wrap gap-2">
               <input
@@ -1299,9 +1303,9 @@ export function OrderDetail({
                 Refund
               </button>
             </div>
-          </div>
+          </div>}
 
-          {order.status === "FAILED_DELIVERY" ? (
+          {order.status === "FAILED_DELIVERY" && panel === "resolve" ? (
             <div className="rounded-[12px] border border-warning/40 bg-warning/10 p-3">
               <h4 className="text-[13px] font-bold text-foreground">Resolve failed delivery</h4>
               <div className="mt-2 flex flex-wrap items-center gap-2">

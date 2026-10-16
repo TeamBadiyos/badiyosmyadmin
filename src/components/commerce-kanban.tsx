@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Bike, Store, User, Volume2, VolumeX, X } from "lucide-react";
+import { AlertTriangle, Bike, MoreHorizontal, Store, User, Volume2, VolumeX, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LiveTrackingMap } from "@/components/live-tracking-map";
+import { ShareLocationIcons } from "@/components/share-location";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -179,6 +188,7 @@ export function OrderSheet({
   const cancel = useServerFn(cancelStoreOrderWithRefund);
   const [mode, setMode] = useState<"none" | "rider" | "cancel">("none");
   const [reason, setReason] = useState("");
+  const [showSplit, setShowSplit] = useState(false);
 
   const reassignM = useMutation({
     mutationFn: () => reassign({ data: { orderId: order.id } }),
@@ -204,122 +214,151 @@ export function OrderSheet({
   const canReassign = order.paymentStatus === "paid";
   const now = Date.now();
 
+  const steps: CommerceStatus[] = ["pending", "accepted", "preparing", "ready", "completed"];
+  const curIdx = steps.indexOf(order.status);
+  const paidLabel = order.paymentStatus === "paid" ? "Paid" : order.paymentStatus ?? "—";
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/30" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50" onClick={onClose}>
       <div
-        className="h-full w-full max-w-md bg-card border-l border-border p-5 overflow-y-auto"
+        className="bg-card w-full sm:max-w-[820px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0">
-            <p className="text-[11px] font-mono text-muted-foreground">
-              {order.orderNumber || `#${order.id.slice(0, 6)}`}
-            </p>
-            <h3 className="text-[16px] font-bold text-foreground truncate">{order.merchantName}</h3>
-          </div>
-          <button onClick={onClose} aria-label="Close" className="h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-muted">
-            <X size={16} />
-          </button>
-        </div>
-
-        {order.alerts.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {order.alerts.map((a) => (
-              <span key={a} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold px-2 py-1">
-                <AlertTriangle size={11} /> {ALERT_LABEL[a]}
+        <header className="px-4 sm:px-5 py-3 border-b border-border shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h3 className="text-[17px] font-bold text-foreground">{order.orderNumber || `#${order.id.slice(0, 6)}`}</h3>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-tint text-primary">
+                {STATUS_LABEL[order.status]}
               </span>
-            ))}
-          </div>
-        )}
-
-        <dl className="grid grid-cols-[110px_1fr] gap-y-2 text-[13px] mb-5">
-          <dt className="text-muted-foreground">Customer</dt><dd className="text-foreground">{order.customerName}</dd>
-          <dt className="text-muted-foreground">Rider</dt><dd><RiderLine o={order} /></dd>
-          <dt className="text-muted-foreground">Status</dt><dd className="text-foreground">{STATUS_LABEL[order.status]}</dd>
-          <dt className="text-muted-foreground">Placed</dt><dd className="text-foreground">{ago(order.createdAt, now)}</dd>
-          {order.readyAt && (<><dt className="text-muted-foreground">Ready</dt><dd className="text-foreground">{ago(order.readyAt, now)}</dd></>)}
-          <dt className="text-muted-foreground">Amount</dt><dd className="text-foreground font-semibold">{inr.format(order.totalAmount)} <span className="text-muted-foreground font-normal">· {order.paymentMode ?? "—"} / {order.paymentStatus ?? "—"}</span></dd>
-        </dl>
-
-        <div className="mb-5 rounded-[14px] border border-border p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-            Money split
-          </p>
-          <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-[13px]">
-            <dt className="text-muted-foreground">Items</dt>
-            <dd className="text-foreground text-right">{inr2.format(order.itemsTotal)}</dd>
-            <dt className="text-muted-foreground">Commission ({order.commissionPct}%)</dt>
-            <dd className="text-foreground text-right">− {inr2.format(order.commissionAmount)}</dd>
-            <dt className="text-muted-foreground">GST on commission</dt>
-            <dd className="text-foreground text-right">− {inr2.format(order.commissionGstAmount)}</dd>
-            <dt className="text-foreground font-semibold">Merchant gets</dt>
-            <dd className="text-foreground font-semibold text-right">{inr2.format(order.merchantNet)}</dd>
-            <dt className="text-muted-foreground">Delivery fee (Rider)</dt>
-            <dd className="text-foreground text-right">{inr2.format(order.deliveryFee)}</dd>
-          </dl>
-        </div>
-
-        {!canManage ? (
-          <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this order.</p>
-        ) : closed ? (
-          <p className="text-[12px] text-muted-foreground">Completed orders can't be changed.</p>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setMode(mode === "rider" ? "none" : "rider")}
-                disabled={!canReassign}
-                title={canReassign ? "" : "Only paid, open orders can be reassigned"}
-                className="flex-1 h-10 rounded-[14px] border border-primary text-primary text-[13px] font-bold disabled:opacity-40"
-              >
-                Reassign rider
-              </button>
-              <button
-                onClick={() => setMode(mode === "cancel" ? "none" : "cancel")}
-                className="flex-1 h-10 rounded-[14px] border border-destructive text-destructive text-[13px] font-bold"
-              >
-                Cancel + refund
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-foreground">{order.merchantName}</span>
+              <span className="text-[13px] font-bold text-foreground">{inr.format(order.paidAmount || order.totalAmount)}</span>
+              <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>{paidLabel}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canManage && !closed && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button aria-label="More actions" className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem disabled={!canReassign} onSelect={() => setMode("rider")}>Reassign rider</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive" onSelect={() => setMode("cancel")}>Cancel + refund…</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted">
+                <X size={18} />
               </button>
             </div>
+          </div>
+          <p className="mt-1 text-[12px] text-muted-foreground truncate">
+            Placed {ago(order.createdAt, now)}{order.readyAt ? ` · Ready ${ago(order.readyAt, now)}` : ""} · {order.paymentMode ?? "—"}
+          </p>
+        </header>
 
-            {mode === "rider" && (
-              <div className="rounded-[14px] border border-border p-3 space-y-2">
-                <p className="text-[12px] text-foreground">
-                  The rider search will restart and the nearest free rider will be offered this job. If the old delivery was cancelled, a new one is created.
-                </p>
-                <button
-                  disabled={reassignM.isPending}
-                  onClick={() => reassignM.mutate()}
-                  className="w-full h-10 rounded-[14px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50"
-                >
-                  {reassignM.isPending ? "Searching…" : "Re-search rider"}
-                </button>
-              </div>
-            )}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 pt-3 pb-16 sm:pb-4 space-y-3">
+          <ol className="flex items-center gap-0.5 w-full min-w-0">
+            {steps.map((st, i) => (
+              <li key={st} className="flex items-center gap-0.5 min-w-0 flex-1 last:flex-none">
+                <span title={STATUS_LABEL[st]} className={`truncate px-1.5 py-1 rounded-full text-[11px] font-semibold ${i === curIdx ? "bg-primary-tint text-primary" : i < curIdx ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                  {STATUS_LABEL[st]}
+                </span>
+                {i < steps.length - 1 && <span className="flex-1 min-w-[4px] h-px bg-border" />}
+              </li>
+            ))}
+          </ol>
 
-            {mode === "cancel" && (
-              <div className="rounded-[14px] border border-destructive/40 p-3 space-y-2">
-                <p className="text-[12px] text-foreground">
-                  The order will be cancelled and the full paid amount refunded to the customer. The delivery will also be cancelled.
-                </p>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Reason (required)"
-                  rows={3}
-                  className="w-full rounded-[10px] border border-border bg-background p-2 text-[13px]"
-                />
-                <button
-                  disabled={!reason.trim() || cancelM.isPending}
-                  onClick={() => cancelM.mutate()}
-                  className="w-full h-10 rounded-[14px] bg-destructive text-destructive-foreground text-[13px] font-bold disabled:opacity-50"
-                >
-                  {cancelM.isPending ? "Cancelling…" : "Confirm cancel + full refund"}
-                </button>
+          {order.alerts.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {order.alerts.map((a) => (
+                <span key={a} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold px-2 py-1">
+                  <AlertTriangle size={11} /> {ALERT_LABEL[a]}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-3 min-w-0">
+              <div className="rounded-[14px] border border-border px-3 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Customer</p>
+                <p className="text-[14px] font-semibold text-foreground truncate">{order.customerName}</p>
               </div>
+              <div className="rounded-[14px] border border-border px-3 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Rider</p>
+                <p className="text-[13px]"><RiderLine o={order} /></p>
+              </div>
+            </div>
+            <div className="min-w-0">
+              {order.courierOrderId ? (
+                <>
+                  <LiveTrackingMap kind="courier" id={order.courierOrderId} compact />
+                  <ShareLocationIcons kind="courier" id={order.courierOrderId} />
+                </>
+              ) : (
+                <div className="h-[220px] rounded-[12px] border border-border bg-muted grid place-items-center text-[12px] text-muted-foreground">
+                  Map shows once a delivery is created
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div className="rounded-[14px] border border-border px-3 py-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Payment</span>
+              <span className="font-semibold text-foreground">
+                Items {inr2.format(order.itemsTotal)} + delivery {inr2.format(order.deliveryFee)} = {inr.format(order.paidAmount || order.totalAmount)}
+              </span>
+              <span className="text-muted-foreground">· {paidLabel} · {order.paymentMode ?? "—"}</span>
+              <button type="button" onClick={() => setShowSplit((v) => !v)} className="ml-auto text-[11px] font-semibold text-muted-foreground hover:text-foreground">
+                Split {showSplit ? "▾" : "▸"}
+              </button>
+            </div>
+            {showSplit && (
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Commission ({order.commissionPct}%) − {inr2.format(order.commissionAmount)} · GST on commission − {inr2.format(order.commissionGstAmount)} · Merchant gets {inr2.format(order.merchantNet)}
+              </p>
             )}
           </div>
-        )}
+
+          {!canManage && <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this order.</p>}
+
+          {canManage && !closed && mode === "rider" && (
+            <div className="rounded-[14px] border border-border p-3 space-y-2">
+              <p className="text-[12px] text-foreground">
+                The rider search will restart and the nearest free rider will be offered this job. If the old delivery was cancelled, a new one is created.
+              </p>
+              <div className="flex gap-2">
+                <button disabled={reassignM.isPending} onClick={() => reassignM.mutate()}
+                  className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
+                  {reassignM.isPending ? "Searching…" : "Re-search rider"}
+                </button>
+                <button onClick={() => setMode("none")} className="h-9 px-4 rounded-full border border-border text-[13px] font-semibold">Back</button>
+              </div>
+            </div>
+          )}
+
+          {canManage && !closed && mode === "cancel" && (
+            <div className="rounded-[14px] border border-destructive/40 p-3 space-y-2">
+              <p className="text-[12px] text-foreground">
+                The order will be cancelled and the full paid amount refunded to the customer. The delivery will also be cancelled.
+              </p>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (required)" rows={2}
+                className="w-full rounded-[10px] border border-border bg-background p-2 text-[13px]" />
+              <div className="flex gap-2">
+                <button disabled={!reason.trim() || cancelM.isPending} onClick={() => cancelM.mutate()}
+                  className="h-9 px-4 rounded-full bg-destructive text-destructive-foreground text-[13px] font-bold disabled:opacity-50">
+                  {cancelM.isPending ? "Cancelling…" : "Confirm cancel + full refund"}
+                </button>
+                <button onClick={() => setMode("none")} className="h-9 px-4 rounded-full border border-border text-[13px] font-semibold">Back</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
