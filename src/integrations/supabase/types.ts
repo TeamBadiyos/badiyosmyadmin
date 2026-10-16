@@ -2404,6 +2404,38 @@ export type Database = {
         }
         Relationships: []
       }
+      city_ops_settings: {
+        Row: {
+          city_id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          city_id: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          city_id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_ops_settings_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       city_price_options: {
         Row: {
           city_id: string
@@ -4948,6 +4980,7 @@ export type Database = {
         Row: {
           amount: number
           amount_type: string
+          city_id: string | null
           created_at: string
           ends_at: string | null
           gst_key: string | null
@@ -4960,6 +4993,7 @@ export type Database = {
         Insert: {
           amount?: number
           amount_type?: string
+          city_id?: string | null
           created_at?: string
           ends_at?: string | null
           gst_key?: string | null
@@ -4972,6 +5006,7 @@ export type Database = {
         Update: {
           amount?: number
           amount_type?: string
+          city_id?: string | null
           created_at?: string
           ends_at?: string | null
           gst_key?: string | null
@@ -4982,6 +5017,13 @@ export type Database = {
           starts_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fee_rules_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fee_rules_gst_key_fkey"
             columns: ["gst_key"]
@@ -11075,6 +11117,7 @@ export type Database = {
         Returns: Json
       }
       city_id_by_name: { Args: { _name: string }; Returns: string }
+      city_ops_keys: { Args: never; Returns: string[] }
       city_opt: {
         Args: { _city: string; _opt: string }
         Returns: {
@@ -12859,6 +12902,10 @@ export type Database = {
         Returns: string
       }
       staff_generate_subscription_invoices: { Args: never; Returns: Json }
+      staff_get_city_ops: {
+        Args: { _city_id: string; _keys: string[] }
+        Returns: Json
+      }
       staff_get_referral_config: { Args: never; Returns: Json }
       staff_handover_booking_expert: {
         Args: {
@@ -13320,8 +13367,16 @@ export type Database = {
         Args: { _city_ids: string[]; _staff_user_id: string }
         Returns: undefined
       }
+      staff_set_city_ops: {
+        Args: { _city_id: string; _values: Json }
+        Returns: undefined
+      }
       staff_set_city_price: {
         Args: { _city_id: string; _opt: string; _patch: Json }
+        Returns: undefined
+      }
+      staff_set_city_service: {
+        Args: { _city_id: string; _patch: Json; _service_key: string }
         Returns: undefined
       }
       staff_set_city_status: {
