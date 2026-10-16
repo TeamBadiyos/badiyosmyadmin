@@ -536,6 +536,9 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
         (extMap.get(e.booking_id) ?? 0) + Number(e.extra_minutes ?? 0),
       );
     }
+    for (const a of ((adjRes as { data?: unknown[] | null }).data ?? []) as Array<{ booking_id: string; delta_minutes: number | null }>) {
+      extMap.set(a.booking_id, (extMap.get(a.booking_id) ?? 0) + Number(a.delta_minutes ?? 0));
+    }
     if ("error" in usersRes && usersRes.error) {
       throw new Error(usersRes.error.message);
     }
