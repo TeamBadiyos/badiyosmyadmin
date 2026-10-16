@@ -29,7 +29,7 @@ import {
   Ban,
   AlertTriangle,
 } from "lucide-react";
-import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine } from "@/components/detail-panel";
+import { ActionBar, ActionBtn, CustomerBlock, HistorySection, MapActionBar, PanelSection, StepLine, PhaseBanner, waitText } from "@/components/detail-panel";
 import {
   COURIER_STATUSES,
   confirmRate,
@@ -1146,7 +1146,13 @@ export function OrderDetail({
         {order.refund_status ? ` · Refund ${order.refund_status}` : ""}
         {order.incident_code ? ` · Incident ${order.incident_code}${order.incident_resolution ? ` (resolved: ${order.incident_resolution})` : ""}` : ""}
       </p>
-      <StepLine steps={PARCEL_STEPS} current={stepKey} bad={isCancelled ? "Cancelled" : order.status === "FAILED_DELIVERY" ? "Failed delivery" : null} />
+      {isCancelled || order.status === "FAILED_DELIVERY"
+        ? <PhaseBanner phase="bad" title={isCancelled ? "Cancelled" : "Failed delivery"} />
+        : order.status === "DELIVERED"
+          ? <PhaseBanner phase="done" title="✓ Delivered" detail={order.riderName ? `by ${order.riderName}` : null} />
+          : !order.riderName
+            ? <PhaseBanner phase="assign" title="Needs rider · searching" detail={`Waiting ${waitText(order.created_at)}`} />
+            : <PhaseBanner phase="assigned" title={`Rider ${order.riderName}`} steps={PARCEL_STEPS.slice(1)} current={stepKey} />}
 
       <div className="mt-3 space-y-3">
         <CustomerBlock
