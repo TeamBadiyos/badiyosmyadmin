@@ -24,6 +24,7 @@ export type ZoneRow = {
   id: string;
   name: string;
   city: string;
+  cityId: string | null;
   status: "active" | "inactive";
   deletedAt: string | null;
   deleteReason: string | null;

@@ -81,7 +81,7 @@ export function RequireCity({ children }: { children: ReactNode }) {
   if (!city)
     return (
       <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        This setting is different for each city. Pick one city in the top bar to view or change it.
+        Pick a city to edit. This setting is different for each city — choose one city in the top bar.
       </div>
     );
   return <>{children}</>;
