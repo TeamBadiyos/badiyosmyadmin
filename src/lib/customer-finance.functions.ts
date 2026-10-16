@@ -13,6 +13,7 @@ export type CustomerInvoice = {
   service: string; ref_type: string; ref_code: string | null; lines: InvoiceLine[]; discount: number;
   taxable_value: number; cgst: number; sgst: number; igst: number; total: number; company: Record<string, string>;
   merchant_goods?: { merchant_name: string | null; merchant_gstin: string | null; items: { desc: string; qty: number; amount: number }[]; total: number } | null;
+  payments?: { bill_total: number; coupon: number; amount_due: number; wallet: number; online: number } | null;
 };
 export type CreditNote = {
   id: string; credit_note_no: string; note_date: string; invoice_no: string; customer_name: string | null;
