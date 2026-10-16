@@ -387,6 +387,11 @@ export type BookingDetails = {
   deletedBy: string | null;
   deleteReason: string | null;
   /** Customer's bookings up to and including this one, and avg rating they gave. */
+  gstAmount: number;
+  gstPercent: number | null;
+  totalAmount: number | null;
+  couponCode: string | null;
+  discountAmount: number;
   customerStats: { bookingCount: number; avgRatingGiven: number | null };
   /** Staff time adjustments that change the job length now (not the "charge customer" ones, which wait for payment). */
   adjustMinutes: number;
@@ -420,7 +425,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at",
+      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at, gst_amount, gst_percent, total_amount, coupon_code, discount_amount",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -516,7 +521,13 @@ async function loadBookingDetails(
     ...(b.refund_status ? [{ at: (b.updated_at ?? b.created_at) as string, what: `Refund ${b.refund_status}${b.refund_amount != null ? ` · ₹${b.refund_amount}` : ""}`, who: null }] : []),
   ];
 
+  const bx = b as Record<string, unknown>;
   return {
+    gstAmount: Number(bx.gst_amount ?? 0),
+    gstPercent: bx.gst_percent != null ? Number(bx.gst_percent) : null,
+    totalAmount: bx.total_amount != null ? Number(bx.total_amount) : null,
+    couponCode: (bx.coupon_code as string | null) ?? null,
+    discountAmount: Number(bx.discount_amount ?? 0),
     customerStats,
     adjustments,
     adjustMinutes: adjustments.filter((a) => a.moneyMode !== "charge").reduce((x, a) => x + a.deltaMinutes, 0),
