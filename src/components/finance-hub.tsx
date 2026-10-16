@@ -346,7 +346,7 @@ function DeliveryGstCheck({ month }: { month: string }) {
           <h2 className="text-lg font-semibold">Delivery GST check</h2>
           <p className="text-xs text-muted-foreground">Store, Food and Parcel orders whose delivery GST differs from the Tax Settings rate. Report only.</p>
         </div>
-        <Button size="sm" variant="outline" disabled={!rows.length} onClick={() => csvDownload(`delivery-gst-check-${month}.csv`, [["Service", "Order", "Date", "Delivery fee", "Rate charged %", "GST charged", "GST at setting", "Difference"], ...rows.map((x) => [x.service, x.order_no, x.date, f2(x.delivery_fee), x.rate_charged ?? "", f2(x.gst_charged), f2(x.gst_at_rate), f2(x.difference)])])}>Export CSV</Button>
+        <Button size="sm" variant="outline" disabled={!rows.length} onClick={() => csvDownload(`delivery-gst-check-${month}.csv`, [["Service", "Order", "Date", "Delivery fee", "Rate charged %", "GST charged", "GST at setting", "Difference"], ...rows.map((x) => [x.service, x.order_no, x.date, fix2(x.delivery_fee), x.rate_charged ?? "", fix2(x.gst_charged), fix2(x.gst_at_rate), fix2(x.difference)])])}>Export CSV</Button>
       </div>
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
