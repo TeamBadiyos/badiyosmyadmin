@@ -1,3 +1,4 @@
+import { fssaiState, isFssaiDoc } from "@/lib/fssai";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -202,6 +203,11 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     {m.ownerName || "—"} · <span className="font-mono">{m.phone}</span> · applied{" "}
                     {fmt(m.createdAt)}
                   </p>
+                  <p className="text-[12px] text-muted-foreground mt-1">
+                    Email {m.email || "—"} · UPI {m.upiId || "—"} · GSTIN {m.gstin || "—"} · Udyam/Shop Act {m.udyamNumber || "—"}
+                    {m.serviceType === "food" && <> · FSSAI {m.fssaiNumber || "—"} (expires {m.fssaiExpiry || "—"})</>}
+                  </p>
+                  {fssaiBlock(m).length > 0 && <p className="text-[12px] text-destructive font-semibold mt-1">Cannot approve: {fssaiBlock(m).join(" · ")}</p>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -221,7 +227,8 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                   {canManage && (m.status === "pending_review" || m.status === "draft") && (
                     <>
                       <button
-                        disabled={mutation.isPending}
+                        disabled={mutation.isPending || fssaiBlock(m).length > 0}
+                        title={fssaiBlock(m).join(" · ") || undefined}
                         onClick={() => mutation.mutate({ merchantId: m.id, decision: "approved" })}
                         className="h-9 px-3 rounded-[12px] bg-primary text-white font-bold text-[13px] inline-flex items-center gap-1 disabled:opacity-50"
                       >
@@ -662,4 +669,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <p className="text-foreground mt-0.5 break-words">{children}</p>
     </div>
   );
+}
+
+function fssaiBlock(m: MerchantRow): string[] {
+  if (m.serviceType !== "food") return [];
+  return fssaiState({ fssai_number: m.fssaiNumber, fssai_expiry: m.fssaiExpiry, has_fssai_doc: m.docs.some((d) => isFssaiDoc(d.docType)) }).problems;
 }
