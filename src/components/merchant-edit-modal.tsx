@@ -33,6 +33,8 @@ type FormState = {
   address: string;
   city: string;
   pincode: string;
+  lat: string;
+  lng: string;
   state: string;
   isAcceptingOrders: boolean;
   status: MerchantStatus;
@@ -55,6 +57,8 @@ const EMPTY: FormState = {
   address: "",
   city: "",
   pincode: "",
+  lat: "",
+  lng: "",
   state: "",
   isAcceptingOrders: true,
   status: "pending_review",
@@ -104,6 +108,8 @@ export function MerchantEditModal({
       address: detail.address ?? "",
       city: detail.city ?? "",
       pincode: detail.pincode ?? "",
+      lat: detail.latitude != null ? String(detail.latitude) : "",
+      lng: detail.longitude != null ? String(detail.longitude) : "",
       state: detail.state ?? "",
       isAcceptingOrders: detail.isAcceptingOrders,
       status: detail.status,
@@ -133,6 +139,8 @@ export function MerchantEditModal({
           address: form.address || null,
           city: form.city || null,
           pincode: form.pincode || null,
+          latitude: form.lat.trim() ? Number(form.lat) : null,
+          longitude: form.lng.trim() ? Number(form.lng) : null,
           state: form.state || null,
           isAcceptingOrders: form.isAcceptingOrders,
           status: form.status,
@@ -242,6 +250,8 @@ export function MerchantEditModal({
               <Text label="Address" value={form.address} onChange={(v) => set("address", v)} />
               <Text label="City" value={form.city} onChange={(v) => set("city", v)} />
               <Text label="Pincode" value={form.pincode} onChange={(v) => set("pincode", v)} />
+              <LocationPin lat={form.lat} lng={form.lng} address={[form.address, form.city, form.pincode].filter(Boolean).join(", ")}
+                onChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))} />
               <Text label="State" value={form.state} onChange={(v) => set("state", v)} />
             </Section>
 
@@ -577,6 +587,39 @@ function CommissionModeBox({ merchantId, detail }: { merchantId: string; detail:
       <button type="button" disabled={m.isPending} onClick={() => m.mutate()} className="h-9 px-4 rounded-[10px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
         {m.isPending ? "Saving…" : "Save commission mode"}
       </button>
+    </div>
+  );
+}
+
+function parseMapsLink(t: string): [string, string] | null {
+  const m = t.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+    || t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || t.match(/^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$/);
+  return m ? [m[1], m[2]] : null;
+}
+
+function LocationPin({ lat, lng, address, onChange }: { lat: string; lng: string; address: string; onChange: (lat: string, lng: string) => void }) {
+  const [paste, setPaste] = useState("");
+  const has = lat.trim() !== "" && lng.trim() !== "";
+  const mapUrl = has ? `https://www.google.com/maps?q=${lat},${lng}` : `https://www.google.com/maps/search/${encodeURIComponent(address)}`;
+  return (
+    <div className="sm:col-span-2 rounded-[14px] border border-border p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[13px] font-bold">Store location (GPS pin)</p>
+        {has ? <span className="text-[12px] text-primary font-semibold">Pin set</span>
+          : <span className="text-[12px] text-destructive font-semibold">No pin — customers can't get delivery</span>}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input className="h-9 rounded-[10px] border border-border bg-background px-3 text-[13px]" placeholder="Latitude e.g. 18.4048" value={lat} onChange={(e) => onChange(e.target.value, lng)} />
+        <input className="h-9 rounded-[10px] border border-border bg-background px-3 text-[13px]" placeholder="Longitude e.g. 76.5834" value={lng} onChange={(e) => onChange(lat, e.target.value)} />
+      </div>
+      <div className="flex gap-2">
+        <input className="flex-1 h-9 rounded-[10px] border border-border bg-background px-3 text-[13px]" placeholder="Or paste a Google Maps link / “lat, lng”" value={paste} onChange={(e) => setPaste(e.target.value)} />
+        <button type="button" className="h-9 px-3 rounded-[10px] border border-border text-[13px] font-semibold"
+          onClick={() => { const r = parseMapsLink(paste); if (!r) { toast.error("Couldn't read a location from that link. Open the pin in Google Maps and copy the full link."); return; } onChange(r[0], r[1]); setPaste(""); }}>Use</button>
+        <button type="button" className="h-9 px-3 rounded-[10px] border border-border text-[13px] font-semibold"
+          onClick={() => navigator.geolocation?.getCurrentPosition((p) => onChange(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)), () => toast.error("Couldn't get your location"))}>My location</button>
+      </div>
+      <a href={mapUrl} target="_blank" rel="noreferrer" className="text-[12px] text-primary underline">{has ? "Check pin on Google Maps" : "Find address on Google Maps"}</a>
     </div>
   );
 }

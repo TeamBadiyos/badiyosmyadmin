@@ -268,6 +268,8 @@ export type MerchantDetail = {
   id: string;
   storeName: string | null;
   ownerName: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   phone: string;
   status: MerchantStatus;
   storeCategoryId: string | null;
@@ -305,7 +307,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -320,6 +322,8 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       storeCategoryId: m.store_category_id,
       segmentId: m.segment_id,
       zoneId: m.zone_id,
+      latitude: m.latitude == null ? null : Number(m.latitude),
+      longitude: m.longitude == null ? null : Number(m.longitude),
       address: m.address,
       city: m.city,
       pincode: m.pincode,
@@ -378,6 +382,8 @@ export type UpdateMerchantInput = {
   bankAccount?: string | null;
   bankIfsc?: string | null;
   pan?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export const updateMerchantDetails = createServerFn({ method: "POST" })
@@ -397,6 +403,10 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       throw new Error("PAN must look like ABCDE1234F");
     if (input.bankAccount?.trim() && !/^\d{6,18}$/.test(input.bankAccount.trim()))
       throw new Error("Account number must be 6-18 digits");
+    const la = input.latitude, lo = input.longitude;
+    if ((la == null) !== (lo == null)) throw new Error("Enter both latitude and longitude");
+    if (la != null && (!Number.isFinite(la) || la < -90 || la > 90 || !Number.isFinite(lo!) || lo! < -180 || lo! > 180))
+      throw new Error("Location pin is not valid");
     return input;
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
@@ -436,6 +446,7 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       bank_account_number: trimmed(data.bankAccount),
       bank_ifsc: trimmed(data.bankIfsc)?.toUpperCase() ?? null,
       pan: trimmed(data.pan)?.toUpperCase() ?? null,
+      ...(data.latitude !== undefined ? { latitude: data.latitude, longitude: data.longitude ?? null } : {}),
     };
 
     const { data: after, error } = await db
