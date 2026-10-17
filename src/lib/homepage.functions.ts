@@ -166,8 +166,8 @@ export const uploadCleanMediaImage = createServerFn({ method: "POST" })
   });
 
 // ---- Clean Home / Clean Auto app content ("<service>_content") ----
-type SvcKey = "clean" | "wash";
-const svc = (k: unknown): SvcKey => { if (k !== "clean" && k !== "wash") throw new Error("Invalid service"); return k; };
+type SvcKey = "clean" | "wash" | "courier";
+const svc = (k: unknown): SvcKey => { if (k !== "clean" && k !== "wash" && k !== "courier") throw new Error("Invalid service"); return k; };
 
 export const getServiceContent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
