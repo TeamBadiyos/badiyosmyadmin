@@ -196,6 +196,7 @@ const NAV_ITEMS = [
   { key: "courier-rates", label: "Rates", icon: IndianRupee },
   { key: "courier-types", label: "Types", icon: Boxes },
   { key: "courier-bulk", label: "Business", icon: Truck },
+  { key: "courier-app-content", label: "App content", icon: LayoutTemplate },
   { key: "courier-settings", label: "Settings", icon: Settings },
   { key: "store-orders", label: "Store", icon: Receipt },
   { key: "food-orders", label: "Food", icon: UtensilsCrossed },
@@ -248,7 +249,7 @@ const NAV_GROUPS = [
     id: "courier",
     label: "Parcel",
     icon: PackageCheck,
-    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-riders", "courier-settings"],
+    keys: ["courier-orders", "courier-rates", "courier-types", "courier-bulk", "courier-riders", "courier-app-content", "courier-settings"],
   },
   {
     id: "rewards",
@@ -805,8 +806,8 @@ function Shell() {
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Skill approvals</h2><SkillApprovalsPage role={role} /></section>
             <section><h2 className="mb-3 text-[16px] font-bold text-foreground">Training address</h2><TrainingAddressTab /></section>
           </div>
-        ) : active === "maid-app-content" || active === "wash-app-content" ? (
-          <RequireCity><ServiceAppContent key={active} service={active === "wash-app-content" ? "wash" : "clean"} /></RequireCity>
+        ) : active === "maid-app-content" || active === "wash-app-content" || active === "courier-app-content" ? (
+          <RequireCity><ServiceAppContent key={active} service={active === "wash-app-content" ? "wash" : active === "courier-app-content" ? "courier" : "clean"} /></RequireCity>
         ) : active === "maid-settings" || active === "wash-settings" ? (
           <RequireCity><CleanSettingsPage key={active} group={active === "wash-settings" ? "wash" : "clean"} /></RequireCity>
         ) : active === "courier-settings" ? (

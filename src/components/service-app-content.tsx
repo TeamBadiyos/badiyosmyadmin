@@ -99,6 +99,17 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
+          {service === "courier" && <Box title="Header texts" help="Title and sub-line at the top of the Parcel tab.">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input value={m.hero.heading} maxLength={80} placeholder="Title" onChange={(e) => setHero({ heading: e.target.value })} />
+              <Input value={m.hero.heading_mr} maxLength={80} placeholder="शीर्षक (मराठी)" onChange={(e) => setHero({ heading_mr: e.target.value })} />
+              <Input value={m.hero.subline} maxLength={120} placeholder="Sub-line" onChange={(e) => setHero({ subline: e.target.value })} />
+              <Input value={m.hero.subline_mr} maxLength={120} placeholder="उप-ओळ (मराठी)" onChange={(e) => setHero({ subline_mr: e.target.value })} />
+              <Input value={m.hero.button} maxLength={30} placeholder="Button text" onChange={(e) => setHero({ button: e.target.value })} />
+              <Input value={m.hero.button_mr} maxLength={30} placeholder="बटण (मराठी)" onChange={(e) => setHero({ button_mr: e.target.value })} />
+            </div>
+          </Box>}
+          {service !== "courier" && <>
           <Box title="Hero & cards" help="The big card at the top and the 3 cards under it.">
             <div className="grid gap-2 sm:grid-cols-2">
               <Input value={m.hero.card_title} maxLength={30} placeholder="Card title (small card on Clean tab)" onChange={(e) => setHero({ card_title: e.target.value })} />
@@ -181,8 +192,9 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
               ))}
             </div>
           </Box>
+          </>}
 
-          {service === "clean" && <Box title="Top banner" hint="1080×600" help="Images by time of day, text by state, and an optional campaign.">
+          {service !== "wash" && <Box title="Top banner" hint="1080×600" help="Images by time of day, text by state, and an optional campaign.">
             <div className="mb-1 text-xs font-semibold">Banner images by time</div>
             <div className="overflow-x-auto">
             <div className="min-w-[640px]">
@@ -213,12 +225,14 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
             {m.banner.slabs.length < 12 && <button className="mt-1 text-xs text-primary underline" onClick={() => setM({ ...m, banner: { ...m.banner, slabs: [...m.banner.slabs, { from: "00:00", to: "01:00", label: "", image_url: null, text_color: "light" }] } })}>+ Add slab</button>}
             {slabError(m.banner.slabs) && <p className="mt-1 text-xs text-destructive">{slabError(m.banner.slabs)}</p>}
             {!slabError(m.banner.slabs) && uncoveredRanges(m.banner.slabs).length > 0 && <p className="mt-1 rounded bg-muted px-2 py-1 text-xs">⚠ No image for: {uncoveredRanges(m.banner.slabs).join(", ")}</p>}
+            {service === "clean" && <>
             <div className="mb-1 mt-3 text-xs font-semibold">Banner text by state</div>
             <p className="mb-2 text-xs text-muted-foreground">Placeholders: {PLACEHOLDERS.map((p) => `{${p}}`).join(" ")}</p>
             {BANNER_STATES.map(({ key, label }) => (
               <TextFields key={key} label={label} b={m.banner.texts[key]}
                 onChange={(p) => setM({ ...m, banner: { ...m.banner, texts: { ...m.banner.texts, [key]: { ...m.banner.texts[key], ...p } } } })} />
             ))}
+            </>}
             <div className="mt-2 rounded-md border border-dashed border-border p-2">
               <div className="flex items-center gap-2 text-sm font-semibold">Campaign banner <span className="text-xs font-normal text-muted-foreground">replaces the time image and state text while active</span>
                 <Switch className="ml-auto" checked={m.campaign.enabled} onCheckedChange={(v) => setCamp({ enabled: v })} />
@@ -235,7 +249,7 @@ export function ServiceAppContent({ service }: { service: ServiceKey }) {
           }
           <Button disabled={busy} onClick={onSave}>Save app content</Button>
         </div>
-        <div className="lg:sticky lg:top-4 lg:self-start"><Preview m={m} live={live} lang={lang} setLang={setLang} service={service} /></div>
+        {service !== "courier" && <div className="lg:sticky lg:top-4 lg:self-start"><Preview m={m} live={live} lang={lang} setLang={setLang} service={service} /></div>}
       </div>
     </section>
   );
