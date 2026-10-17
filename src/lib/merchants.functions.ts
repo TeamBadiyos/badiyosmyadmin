@@ -14,6 +14,8 @@ export type MerchantRow = {
   id: string;
   storeName: string | null;
   ownerName: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   phone: string;
   status: MerchantStatus;
   isGstRegistered: boolean | null;
@@ -268,6 +270,8 @@ export type MerchantDetail = {
   id: string;
   storeName: string | null;
   ownerName: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   phone: string;
   status: MerchantStatus;
   storeCategoryId: string | null;
@@ -320,6 +324,8 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       storeCategoryId: m.store_category_id,
       segmentId: m.segment_id,
       zoneId: m.zone_id,
+      latitude: m.latitude == null ? null : Number(m.latitude),
+      longitude: m.longitude == null ? null : Number(m.longitude),
       address: m.address,
       city: m.city,
       pincode: m.pincode,
@@ -397,6 +403,10 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       throw new Error("PAN must look like ABCDE1234F");
     if (input.bankAccount?.trim() && !/^\d{6,18}$/.test(input.bankAccount.trim()))
       throw new Error("Account number must be 6-18 digits");
+    const la = input.latitude, lo = input.longitude;
+    if ((la == null) !== (lo == null)) throw new Error("Enter both latitude and longitude");
+    if (la != null && (!Number.isFinite(la) || la < -90 || la > 90 || !Number.isFinite(lo!) || lo! < -180 || lo! > 180))
+      throw new Error("Location pin is not valid");
     return input;
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
@@ -436,6 +446,7 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       bank_account_number: trimmed(data.bankAccount),
       bank_ifsc: trimmed(data.bankIfsc)?.toUpperCase() ?? null,
       pan: trimmed(data.pan)?.toUpperCase() ?? null,
+      ...(data.latitude !== undefined ? { latitude: data.latitude, longitude: data.longitude ?? null } : {}),
     };
 
     const { data: after, error } = await db
