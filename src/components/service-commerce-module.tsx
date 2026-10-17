@@ -17,6 +17,8 @@ import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, MapPin, MessageCircle, M
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
 import { MerchantEditModal } from "@/components/merchant-edit-modal";
+import { RefundChoice, type RefundMode } from "@/components/refund-choice";
+import { CancelPolicyEditor } from "@/components/cancel-rules";
 import { decideMerchant, setMerchantCommission, getStoreCommissionSettings, deleteRejectedMerchant } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -247,8 +249,10 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
   const reassignFn = useServerFn(reassignStoreRider);
   const r = useQuery({ queryKey: ["svc", service, "order", id], queryFn: () => fn({ data: { id, service } }) });
   const [reason, setReason] = useState("");
+  const [rMode, setRMode] = useState<RefundMode>("full");
+  const [rAmt, setRAmt] = useState("");
   const done = () => { qc.invalidateQueries({ queryKey: ["svc", service] }); };
-  const cancel = useMutation({ mutationFn: () => cancelFn({ data: { orderId: id, reason } }), onSuccess: () => { toast.success("Cancelled; refund started"); done(); }, onError: (e) => toast.error(errMsg(e)) });
+  const cancel = useMutation({ mutationFn: () => cancelFn({ data: { orderId: id, reason, mode: rMode, amount: rMode === "partial" ? Number(rAmt) : null } }), onSuccess: () => { toast.success(rMode === "none" ? "Cancelled" : "Cancelled; refund started"); done(); }, onError: (e) => toast.error(errMsg(e)) });
   const reassign = useMutation({ mutationFn: () => reassignFn({ data: { orderId: id } }), onSuccess: () => { toast.success("Rider search restarted"); done(); }, onError: (e) => toast.error(errMsg(e)) });
   const o: any = r.data?.order;
   const snap = (o?.tax_rates_snapshot ?? {}) as Record<string, any>;
@@ -299,9 +303,10 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
               {timeline.filter(([, t]) => t).map(([k, t]) => <Row key={k} k={k} v={dt(t)} />)}
             </div>
             <div className="space-y-2 border-t pt-3">
+              <RefundChoice mode={rMode} onMode={setRMode} amount={rAmt} onAmount={setRAmt} />
               <Input placeholder="Reason (needed to cancel)" value={reason} onChange={(e) => setReason(e.target.value)} />
               <div className="flex gap-2">
-                <Button variant="destructive" size="sm" disabled={!reason.trim() || cancel.isPending} onClick={() => cancel.mutate()}>Cancel & refund</Button>
+                <Button variant="destructive" size="sm" disabled={!reason.trim() || cancel.isPending || (rMode === "partial" && !(Number(rAmt) > 0))} onClick={() => cancel.mutate()}>Cancel order</Button>
                 <Button variant="outline" size="sm" disabled={reassign.isPending} onClick={() => reassign.mutate()}>Reassign rider</Button>
               </div>
             </div>
@@ -1354,6 +1359,12 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
           <div className="max-w-xs"><Input type="number" min={0} max={100} placeholder="Hidden" disabled={!canEdit} value={launch} onChange={(e) => setLaunch(e.target.value)} />
             <p className="mt-1 text-xs text-muted-foreground">0–100, shown in the Customer App for this city. Leave blank to hide.</p></div>
           {canEdit && <Button onClick={() => saveLaunch.mutate()} disabled={saveLaunch.isPending}>Save</Button>}
+        </div>
+      )}
+      {(service === "store" || service === "food") && (
+        <div className="space-y-2">
+          <p className="font-semibold">Customer messages</p>
+          <CancelPolicyEditor group={service} />
         </div>
       )}
       {(service === "store" || service === "food") && (

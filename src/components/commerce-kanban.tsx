@@ -1,3 +1,4 @@
+import { RefundChoice, type RefundMode } from "@/components/refund-choice";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -193,6 +194,8 @@ export function OrderSheet({
   const cancel = useServerFn(cancelStoreOrderWithRefund);
   const [mode, setMode] = useState<"none" | "rider" | "cancel">("none");
   const [reason, setReason] = useState("");
+  const [rMode, setRMode] = useState<RefundMode>("full");
+  const [rAmt, setRAmt] = useState("");
   const [showSplit, setShowSplit] = useState(false);
 
   const reassignM = useMutation({
@@ -206,7 +209,7 @@ export function OrderSheet({
   });
 
   const cancelM = useMutation({
-    mutationFn: () => cancel({ data: { orderId: order.id, reason } }),
+    mutationFn: () => cancel({ data: { orderId: order.id, reason, mode: rMode, amount: rMode === "partial" ? Number(rAmt) : null } }),
     onSuccess: () => {
       toast.success("Order cancelled · refund started");
       qc.invalidateQueries({ queryKey: ["commerce", "board"] });
@@ -355,15 +358,14 @@ export function OrderSheet({
 
           {canManage && !closed && mode === "cancel" && (
             <div className="rounded-[14px] border border-destructive/40 p-3 space-y-2">
-              <p className="text-[12px] text-foreground">
-                The order will be cancelled and the full paid amount refunded to the customer. The delivery will also be cancelled.
-              </p>
+              <p className="text-[12px] text-foreground">The order and its delivery will be cancelled.</p>
+              <RefundChoice mode={rMode} onMode={setRMode} amount={rAmt} onAmount={setRAmt} />
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (required)" rows={2}
                 className="w-full rounded-[10px] border border-border bg-background p-2 text-[13px]" />
               <div className="flex gap-2">
-                <button disabled={!reason.trim() || cancelM.isPending} onClick={() => cancelM.mutate()}
+                <button disabled={!reason.trim() || cancelM.isPending || (rMode === "partial" && !(Number(rAmt) > 0))} onClick={() => cancelM.mutate()}
                   className="h-9 px-4 rounded-full bg-destructive text-destructive-foreground text-[13px] font-bold disabled:opacity-50">
-                  {cancelM.isPending ? "Cancelling…" : "Confirm cancel + full refund"}
+                  {cancelM.isPending ? "Cancelling…" : "Confirm cancel"}
                 </button>
                 <button onClick={() => setMode("none")} className="h-9 px-4 rounded-full border border-border text-[13px] font-semibold">Back</button>
               </div>
