@@ -14,8 +14,6 @@ export type MerchantRow = {
   id: string;
   storeName: string | null;
   ownerName: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
   phone: string;
   status: MerchantStatus;
   isGstRegistered: boolean | null;
@@ -309,7 +307,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -384,6 +382,8 @@ export type UpdateMerchantInput = {
   bankAccount?: string | null;
   bankIfsc?: string | null;
   pan?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export const updateMerchantDetails = createServerFn({ method: "POST" })
