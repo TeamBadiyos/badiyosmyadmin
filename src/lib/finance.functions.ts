@@ -135,7 +135,7 @@ export const getDashboardMoney = createServerFn({ method: "GET" })
   .inputValidator((i: { from: string; to: string }) => ({ from: String(i.from).slice(0, 10), to: String(i.to).slice(0, 10) }))
   .handler(async ({ data, context }) => {
     const r = await rpc(context.supabase, "staff_dashboard_money", { _from: data.from, _to: data.to }); chk(r);
-    return (r.data ?? {}) as Record<string, { gross: number; discount: number; refund?: number; net: number; orders?: number; earning?: number }>;
+    return (r.data ?? {}) as Record<string, { gross: number; discount: number; refund?: number; net: number; orders?: number; earning?: number; delivery_failure_refunds?: number }>;
   });
 
 export type DrillRow = { svc: string; kind: string; id: string; num: string; name: string | null; phone: string | null; status: string; label: string | null; at: string | null; amount: number };

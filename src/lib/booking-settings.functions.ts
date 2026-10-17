@@ -25,7 +25,7 @@ const CITY_KEYS = new Set(["slot_capacity_enabled", "slot_capacity_mode", "defau
   "clean_band_morning_end", "clean_band_day_end", "wash_band_morning_end", "wash_band_day_end",
   "slot_first_start_hour", "slot_last_start_hour", "slot_step_minutes", "instant_booking_enabled", "wash_instant_booking_enabled",
   "clean_auto_cancel_minutes", "wash_auto_cancel_minutes", "clean_last_slot_before_close_minutes", "wash_last_slot_before_close_minutes",
-  "clean_cancel_fee_percent", "wash_cancel_fee_percent", "clean_no_refund_after_arrived", "wash_no_refund_after_arrived", "clean_cancel_policy", "wash_cancel_policy", "store_cancel_policy", "food_cancel_policy"]);
+  "clean_cancel_fee_percent", "wash_cancel_fee_percent", "clean_no_refund_after_arrived", "wash_no_refund_after_arrived", "clean_cancel_policy", "wash_cancel_policy", "store_cancel_policy", "food_cancel_policy", "store_no_rider_cancel_minutes", "food_no_rider_cancel_minutes"]);
 
 /** City-wise keys come only from the city's own row; other keys from shared ops_settings. */
 async function readOps(sb: any, keys: string[], cityId?: string | null): Promise<Record<string, string>> {
@@ -476,5 +476,45 @@ export const saveCancelRules = createServerFn({ method: "POST" })
     if (data.feePercent != null) await writeOps(sb, `${g}_cancel_fee_percent`, String(data.feePercent), data.cityId);
     if (data.noRefundAfterArrived != null) await writeOps(sb, `${g}_no_refund_after_arrived`, data.noRefundAfterArrived ? "1" : "0", data.cityId);
     if (data.policy) await writeOps(sb, `${g}_cancel_policy`, JSON.stringify(data.policy), data.cityId);
+    return { ok: true };
+  });
+
+/** Store/Food: auto-cancel when no rider is found (minutes, per city, default 30). */
+export const getNoRiderMinutes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: "store" | "food"; cityId?: string | null }) => ({ service: i?.service === "food" ? "food" : "store", cityId: i?.cityId ?? null }))
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context as Ctx);
+    const k = `${data.service}_no_rider_cancel_minutes`;
+    const c = await readOps((context as Ctx).supabase, [k], data.cityId);
+    const n = Number(c[k]);
+    return { minutes: Number.isFinite(n) && n > 0 ? n : 30, canEdit: role === "super_admin" || role === "ops_manager" };
+  });
+
+export const saveNoRiderMinutes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: "store" | "food"; cityId?: string | null; minutes: number }) => {
+    const m = Math.round(Number(i?.minutes));
+    if (!Number.isFinite(m) || m < 5 || m > 240) throw new Error("Enter 5–240 minutes");
+    return { service: i.service === "food" ? "food" : "store", cityId: i.cityId ?? null, minutes: m };
+  })
+  .handler(async ({ data, context }) => {
+    await staffRole(context as Ctx);
+    await writeOps((context as Ctx).supabase, `${data.service}_no_rider_cancel_minutes`, String(data.minutes), data.cityId);
+    return { ok: true };
+  });
+
+/** Staff: stop paying the merchant for an order that failed after the store accepted. */
+export const switchOffMerchantPay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { orderId: string; reason: string }) => {
+    const reason = String(i?.reason ?? "").trim().slice(0, 300);
+    if (!i?.orderId) throw new Error("Order required");
+    if (!reason) throw new Error("Reason required");
+    return { orderId: i.orderId, reason };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context as Ctx).supabase.rpc("staff_set_merchant_pay_on_failure", { _order_id: data.orderId, _on: false, _reason: data.reason });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });

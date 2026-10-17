@@ -163,6 +163,11 @@ export function DashboardOverview({ role, onNavigate }: { role: StaffRole | null
             </tbody>
           </table>
         </div>
+        {ready && (Number(money?.store?.delivery_failure_refunds ?? 0) + Number(money?.food?.delivery_failure_refunds ?? 0)) > 0 && (
+          <p className="text-[12px] text-muted-foreground">
+            Delivery failure refunds (badiyos cost, included in Refunds): Store ₹{Number(money?.store?.delivery_failure_refunds ?? 0).toFixed(2)} · Food ₹{Number(money?.food?.delivery_failure_refunds ?? 0).toFixed(2)}
+          </p>
+        )}
       </div>
 
       {alerts.length > 0 && (
