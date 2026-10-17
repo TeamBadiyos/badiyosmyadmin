@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, MapPin, MessageCircle, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
+import { MerchantEditModal } from "@/components/merchant-edit-modal";
 import { decideMerchant, setMerchantCommission, getStoreCommissionSettings, deleteRejectedMerchant } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -532,6 +533,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
     onError: (e) => toast.error(errMsg(e)),
   });
   const [t, setT] = useState<DTab>("profile");
+  const [editing, setEditing] = useState(false);
   const s: any = r.data?.store;
   return (
     <div className="space-y-3">
@@ -546,6 +548,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               <p className="text-xs text-muted-foreground">{(r.data?.storeTypes ?? []).find((x: any) => x.id === s.store_category_id)?.name ?? (service === "food" ? "Restaurant" : "Store type not set")} · {s.status === "suspended" ? "Suspended" : s.status}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit details</Button>
               <span className="text-sm">{s.is_open ? "Open" : "Closed"}</span>
               <Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} />
               {s.phone && <Button size="icon" variant="outline" asChild aria-label="WhatsApp"><a href={`https://wa.me/91${String(s.phone).replace(/\D/g, "").slice(-10)}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /></a></Button>}
@@ -562,6 +565,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               </DropdownMenu>
             </div>
           </div>
+          {editing && <MerchantEditModal merchantId={storeId} onClose={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["svc", service] }); }} />}
           <div className="flex gap-1 border-b overflow-x-auto">
             {([["profile", "Overview"], ["products", L.products], ["commercials", "Commercials"], ["staff", "Staff"], ["settlements", "Settlements"], ["agreement", "Agreement"]] as [DTab, string][]).map(([k, l]) => (
               <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
