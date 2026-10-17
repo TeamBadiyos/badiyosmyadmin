@@ -193,7 +193,7 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                   <td className="px-4 py-3">{r.bookings_count}</td>
                   <td className="px-4 py-3">{inr(r.total_spend)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {r.successful_referrals} · {r.total_coins_earned} coins
+                    {r.successful_referrals} · Wallet {inr(r.wallet_balance)}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(r.created_at)}</td>
                   {isSuperAdmin && (
@@ -489,7 +489,10 @@ function CustomerProfileModal({
                     label: "Avg rating",
                     value: data.stats.avg_rating ? data.stats.avg_rating.toFixed(1) : "—",
                   },
-                  { label: "Coin balance", value: String(data.stats.coin_balance) },
+                  {
+                    label: "Wallet balance",
+                    value: `${inr(data.stats.wallet_balance)} (cash ${inr(data.stats.wallet_cash)} · bonus ${inr(data.stats.wallet_bonus)})`,
+                  },
                 ].map((s) => (
                   <div key={s.label} className="border border-border rounded-[14px] p-3">
                     <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -657,7 +660,7 @@ function CustomerProfileModal({
                 )}
               </Section>
 
-              <Section title="Wallet & coins ledger">
+              <Section title="Wallet history">
                 {data.wallet.length === 0 ? (
                   <Empty label="No wallet activity." />
                 ) : (
@@ -667,16 +670,16 @@ function CustomerProfileModal({
                         <div>
                           <div className="text-foreground">{w.description}</div>
                           <div className="text-[11px] text-muted-foreground">
-                            {fmtDate(w.created_at)} · {w.type}
+                            {fmtDate(w.created_at)} · {w.type.replace(/_/g, " ")} · {w.bucket} · balance {inr(w.balance_after)}
                           </div>
                         </div>
                         <span
                           className={
-                            w.type === "debit" ? "text-destructive font-semibold" : "text-emerald-700 font-semibold"
+                            w.amount < 0 ? "text-destructive font-semibold" : "text-primary font-semibold"
                           }
                         >
-                          {w.type === "debit" ? "-" : "+"}
-                          {w.amount}
+                          {w.amount < 0 ? "−" : "+"}
+                          {inr(Math.abs(w.amount))}
                         </span>
                       </li>
                     ))}
@@ -1055,7 +1058,7 @@ function ReferralsSection({ referrals }: { referrals: RefItem[] }) {
           </button>
         ))}
         <div className="rounded-[14px] border border-border p-3">
-          <div className="text-[11px] uppercase text-muted-foreground">Coins earned</div>
+          <div className="text-[11px] uppercase text-muted-foreground">Rewards earned</div>
           <div className="text-[20px] font-bold text-foreground">{coins}</div>
         </div>
       </div>
@@ -1079,7 +1082,7 @@ function ReferralsSection({ referrals }: { referrals: RefItem[] }) {
                     >
                       {r.successful ? "Successful" : "Pending"}
                     </span>
-                    <div className="text-[11px] text-muted-foreground">{r.reward_amount} coins</div>
+                    <div className="text-[11px] text-muted-foreground">₹{r.reward_amount} reward</div>
                   </div>
                 </li>
               ))}
