@@ -1,4 +1,4 @@
-export type ServiceKey = "clean" | "wash";
+export type ServiceKey = "clean" | "wash" | "courier";
 export type Line = { en: string; mr: string };
 export type Hero = { heading: string; heading_mr: string; subline: string; subline_mr: string; button: string; button_mr: string; image_url: string | null; bg_color: string; card_title: string; card_title_mr: string; cards_title: string; cards_title_mr: string };
 export type Card = { title: string; title_mr: string; image_url: string | null; included: Line[]; not_included: Line[]; enabled: boolean; price_option_id: string | null };
@@ -21,9 +21,11 @@ export const BANNER_STATES: { key: BannerState; label: string }[] = [
 export const PLACEHOLDERS = ["greeting", "name", "open_time", "day", "next_slot"] as const;
 export const NOTE_ICONS: Record<string, string> = { supplies: "🧴", water: "💧", info: "ℹ️", clock: "⏰", star: "⭐", alert: "⚠️" };
 
+const COURIER_TEXT: BannerText = { title: "Send anything, anywhere in the city", title_mr: "शहरात कुठेही, काहीही पाठवा", subline: "Doorstep pickup · Live tracking · OTP delivery", subline_mr: "दारातून पिकअप · लाईव्ह ट्रॅकिंग · OTP डिलिव्हरी" };
+
 export function defaultExtras(key: ServiceKey): Pick<ServiceContent, "details" | "banner" | "campaign"> {
   const w = key === "wash";
-  return {
+  const out = {
     details: {
       included_title: "The expert will do", included_title_mr: "एक्सपर्ट हे करेल",
       excluded_title: "Not included", excluded_title_mr: "यात समाविष्ट नाही",
@@ -47,6 +49,8 @@ export function defaultExtras(key: ServiceKey): Pick<ServiceContent, "details" |
     },
     campaign: { enabled: false, image_url: null, title: "", title_mr: "", subline: "", subline_mr: "", link: "", starts_at: "", ends_at: "" },
   };
+  if (key === "courier") out.banner.texts = { open_free: { ...COURIER_TEXT }, open_busy: { ...COURIER_TEXT }, closed: { ...COURIER_TEXT }, holiday: { ...COURIER_TEXT } };
+  return out;
 }
 
 const s = (v: unknown) => (typeof v === "string" ? v : "");
@@ -105,6 +109,17 @@ export function validateServiceContent(m: ServiceContent, live: LiveOption[], se
   }
   if (!m.details.included_title.trim() || !m.details.excluded_title.trim()) return "Details sheet section titles (English) are required";
   if (service === "wash") return null;
+  if (service === "courier") {
+    if (!m.hero.heading.trim()) return "Title (English) is required";
+    const sl = slabError(m.banner.slabs); if (sl) return sl;
+    const c = m.campaign;
+    if (c.enabled) {
+      if (!c.title.trim()) return "Campaign needs an English title";
+      if (!c.starts_at || !c.ends_at) return "Campaign needs a start and end date";
+      if (new Date(c.ends_at) <= new Date(c.starts_at)) return "Campaign end must be after start";
+    }
+    return null;
+  }
   for (const { key, label } of BANNER_STATES) {
     const b = m.banner.texts[key];
     if (!b.title.trim()) return `Banner "${label}" needs an English title`;
