@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { useCity } from "@/lib/city-scope";
-import { fetchOsmCityBoundary, snapLineToRoads } from "@/lib/zones-v2.functions";
+import { snapLineToRoads } from "@/lib/zones-v2.functions";
 import { ZonesPage } from "@/components/zones-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,18 @@ type LL = { lat: number; lng: number };
 type GJ = { type: string; coordinates: any };
 type Cell = { id: string; name: string; colour: string; area_m2: number; geom: GJ };
 type State = { boundary: GJ | null; gap: GJ | null; gap_pct: number; undo_count: number; cells: Cell[]; old_zones: { id: string; name: string; geom: GJ }[] };
-type Mode = "view" | "boundary" | "split" | "merge";
+type Mode = "view" | "boundary" | "draw" | "split" | "merge";
+
+// Convex hull (monotone chain) — wraps all given points in one outer border.
+function hull(pts: LL[]): LL[] {
+  const a = [...pts].sort((p, q) => p.lng - q.lng || p.lat - q.lat);
+  if (a.length < 3) return a;
+  const cr = (o: LL, p: LL, q: LL) => (p.lng - o.lng) * (q.lat - o.lat) - (p.lat - o.lat) * (q.lng - o.lng);
+  const lo: LL[] = [], up: LL[] = [];
+  for (const p of a) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of a.reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
+}
 
 const rings = (g: GJ | null): LL[][] => {
   if (!g) return [];
@@ -50,7 +61,6 @@ function SplitEditor({ role }: { role: string | null }) {
   const cityId = city?.id ?? "";
   const qc = useQueryClient();
   const canEdit = role === "super_admin" || role === "ops_manager";
-  const osm = useServerFn(fetchOsmCityBoundary);
   const snap = useServerFn(snapLineToRoads);
   const key = ["zones-v2", cityId];
   const q = useQuery({
@@ -68,6 +78,7 @@ function SplitEditor({ role }: { role: string | null }) {
   const [busy, setBusy] = useState(false);
   const [draftBoundary, setDraftBoundary] = useState<LL[] | null>(null);
   const [clicks, setClicks] = useState<LL[]>([]);
+  const [dots, setDots] = useState<LL[]>([]);
   const [line, setLine] = useState<LL[]>([]);
   const [snapNote, setSnapNote] = useState<string | null>(null);
   const [showOld, setShowOld] = useState(true);
@@ -103,9 +114,10 @@ function SplitEditor({ role }: { role: string | null }) {
     loadGoogleMaps().then(() => {
       if (dead || !mapDiv.current) return;
       const g = window.google;
-      map.current = new g.maps.Map(mapDiv.current, { center: { lat: 18.4, lng: 76.57 }, zoom: 12, clickableIcons: false, mapTypeControl: false, streetViewControl: false });
+      map.current = new g.maps.Map(mapDiv.current, { center: { lat: 18.4088, lng: 76.5604 }, zoom: 13, clickableIcons: false, mapTypeControl: false, streetViewControl: false });
       map.current.addListener("click", (e: { latLng: { lat: () => number; lng: () => number } }) => {
-        if (modeRef.current === "split") setClicks((c) => [...c, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+        if (modeRef.current === "draw") setDots((d) => [...d, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+        else if (modeRef.current === "split") setClicks((c) => [...c, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
       });
       setReady(true);
     }).catch((e) => toast.error(e.message));
@@ -118,8 +130,10 @@ function SplitEditor({ role }: { role: string | null }) {
     if (!ready || !st || fitted.current === cityId) return;
     const g = window.google;
     const b = new g.maps.LatLngBounds();
-    [...rings(st.boundary), ...st.old_zones.flatMap((z) => rings(z.geom))].flat().forEach((p) => b.extend(p));
+    const pts = st.cells.length > 1 ? st.cells.flatMap((c) => rings(c.geom)).flat() : st.old_zones.flatMap((z) => rings(z.geom)).flat();
+    pts.forEach((p) => b.extend(p));
     if (!b.isEmpty()) map.current.fitBounds(b);
+    else { map.current.setCenter({ lat: 18.4088, lng: 76.5604 }); map.current.setZoom(13); }
     fitted.current = cityId;
   }, [ready, st, cityId]);
 
@@ -172,6 +186,13 @@ function SplitEditor({ role }: { role: string | null }) {
     }
     if (st.gap) for (const r of rings(st.gap))
       add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: "#DC2626", fillColor: "#DC2626", fillOpacity: 0.45, strokeWeight: 1, clickable: false, zIndex: 6 }));
+    if (mode === "draw" && dots.length) {
+      add(new g.maps.Polyline({ map: map.current, path: dots.length > 2 ? [...dots, dots[0]] : dots, strokeColor: "#0F172A", strokeWeight: 3, zIndex: 7, clickable: false }));
+      dots.forEach((pt, i) => {
+        const m = add(new g.maps.Marker({ map: map.current, position: pt, draggable: true, label: String(i + 1), zIndex: 8 }));
+        m.addListener("dragend", () => setDots((d) => d.map((x, j) => (j === i ? { lat: m.getPosition().lat(), lng: m.getPosition().lng() } : x))));
+      });
+    }
     if (mode === "split") {
       if (line.length) add(new g.maps.Polyline({ map: map.current, path: line, strokeColor: "#DC2626", strokeWeight: 3, zIndex: 7, clickable: false }));
       clicks.forEach((pt, i) => {
@@ -180,20 +201,24 @@ function SplitEditor({ role }: { role: string | null }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, st, sel, mode, line, clicks, showOld, draftBoundary === null]);
+  }, [ready, st, sel, mode, line, clicks, dots, showOld, draftBoundary === null]);
 
   // keep boundary edits without redrawing on every drag
   const boundaryRef = useRef<LL[] | null>(null);
   function setDraftBoundaryQuiet(p: LL[]) { boundaryRef.current = p; }
 
-  async function loadOsm() {
-    if (!city) return;
-    setBusy(true);
-    try {
-      const r = await osm({ data: { city: city.name, state: city.state } });
-      setDraftBoundary(r.path); boundaryRef.current = r.path; setMode("boundary");
-      toast.success(`Loaded draft: ${r.label}`);
-    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  function startDraw() { setDots([]); setDraftBoundary(null); setMode("draw"); }
+  function wrapOldZones() {
+    const pts = (st?.old_zones ?? []).flatMap((z) => rings(z.geom)).flat();
+    if (pts.length < 3) return toast.error("No current zones to wrap.");
+    setDots(hull(pts)); setMode("draw");
+    toast.success("Border drawn around current zones — drag dots to adjust.");
+  }
+  async function saveDots() {
+    if (dots.length < 3) return toast.error("Place at least 3 dots.");
+    if (st?.cells.length && !confirm("This replaces the old border and all draft zones with one city zone. Continue?")) return;
+    const ok = await run("zv2_save_boundary", { _city: cityId, _geojson: toPolygon(dots), _source: "manual", _reset: true }, "City border saved — now split it into zones");
+    if (ok) { setMode("view"); setDots([]); fitted.current = ""; }
   }
   function editBoundary() {
     const r = rings(st?.boundary ?? null)[0];
@@ -222,7 +247,8 @@ function SplitEditor({ role }: { role: string | null }) {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           {canEdit && <>
-            <Button size="sm" variant="outline" disabled={busy} onClick={loadOsm}>Load draft boundary</Button>
+            <Button size="sm" variant={mode === "draw" ? "default" : "outline"} disabled={busy} onClick={startDraw}>Draw city border</Button>
+            <Button size="sm" variant="outline" disabled={busy || !st?.old_zones.length} onClick={wrapOldZones}>Border around current zones</Button>
             <Button size="sm" variant="outline" disabled={busy || !st?.boundary} onClick={editBoundary}>Edit boundary</Button>
             <Button size="sm" variant={mode === "split" ? "default" : "outline"} disabled={busy || !st?.cells.length} onClick={() => { setMode(mode === "split" ? "view" : "split"); setClicks([]); }}>Split line</Button>
             <Button size="sm" variant={mode === "merge" ? "default" : "outline"} disabled={busy || !sel} onClick={() => setMode(mode === "merge" ? "view" : "merge")}>Merge</Button>
@@ -240,6 +266,15 @@ function SplitEditor({ role }: { role: string | null }) {
             <Button size="sm" variant="ghost" onClick={() => { setMode("view"); setDraftBoundary(null); }}>Cancel</Button>
           </div>
         )}
+        {mode === "draw" && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted p-2 text-sm">
+            Click on the map to place dots around Latur city ({dots.length} placed). Drag a dot to move it.
+            <Button size="sm" disabled={busy || dots.length < 3} onClick={saveDots}>Save border</Button>
+            <Button size="sm" variant="ghost" disabled={!dots.length} onClick={() => setDots((d) => d.slice(0, -1))}>Remove last dot</Button>
+            <Button size="sm" variant="ghost" disabled={!dots.length} onClick={() => setDots([])}>Clear</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setMode("view"); setDots([]); }}>Cancel</Button>
+          </div>
+        )}
         {mode === "split" && (
           <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted p-2 text-sm">
             {sel ? <>Splitting <b>{selCell?.name}</b>. Click points across it, starting and ending outside the zone. Drag numbered points to adjust.</> : "Select a zone first, then click points."}
@@ -254,7 +289,7 @@ function SplitEditor({ role }: { role: string | null }) {
 
       <div className="space-y-3">
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
-          {!st?.boundary ? <p className="text-muted-foreground">No city boundary yet. Click "Load draft boundary".</p>
+          {!st?.boundary ? <p className="text-muted-foreground">No city border yet. Click "Draw city border" and place dots around the city.</p>
             : st.gap_pct > 0 ? <p className="font-semibold text-destructive">{st.gap_pct}% of the city is in no zone (red on map)</p>
             : <p className="font-semibold text-primary">Whole city covered · no overlaps</p>}
           <p className="mt-1 text-xs text-muted-foreground">Overlaps are rejected by the server. Pieces under 2,000 m² merge into the neighbour automatically.</p>
