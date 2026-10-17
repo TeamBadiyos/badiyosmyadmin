@@ -25,7 +25,7 @@ const COURIER_TEXT: BannerText = { title: "Send anything, anywhere in the city",
 
 export function defaultExtras(key: ServiceKey): Pick<ServiceContent, "details" | "banner" | "campaign"> {
   const w = key === "wash";
-  const out = {
+  const out: Pick<ServiceContent, "details" | "banner" | "campaign"> = {
     details: {
       included_title: "The expert will do", included_title_mr: "एक्सपर्ट हे करेल",
       excluded_title: "Not included", excluded_title_mr: "यात समाविष्ट नाही",
