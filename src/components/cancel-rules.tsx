@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useCity } from "@/lib/city-scope";
-import { DEFAULT_CANCEL_POLICY, getCancelRules, saveCancelRules, type CapGroup } from "@/lib/booking-settings.functions";
+import { defaultPolicyFor, getCancelRules, saveCancelRules, type CapGroup, type PolicyGroup } from "@/lib/booking-settings.functions";
 
 const btn = "h-10 rounded-[10px] bg-primary px-4 text-[13px] font-bold text-primary-foreground disabled:opacity-50 whitespace-nowrap";
 
-function useRules(group: CapGroup) {
+function useRules(group: PolicyGroup) {
   const { cityId } = useCity();
   const getFn = useServerFn(getCancelRules);
   return { cityId, q: useQuery({ queryKey: ["cancel-rules", group, cityId], queryFn: () => getFn({ data: { group, cityId } }) }) };
@@ -50,7 +50,7 @@ export function CancelFeeRows({ group }: { group: CapGroup }) {
 }
 
 /** Customer messages: cancellation policy text shown in the Customer App. */
-export function CancelPolicyEditor({ group }: { group: CapGroup }) {
+export function CancelPolicyEditor({ group }: { group: PolicyGroup }) {
   const qc = useQueryClient();
   const { cityId, q } = useRules(group);
   const saveFn = useServerFn(saveCancelRules);
@@ -74,7 +74,7 @@ export function CancelPolicyEditor({ group }: { group: CapGroup }) {
       </div>
       <div className="mt-3 flex justify-end gap-2">
         <button type="button" className="h-10 rounded-[10px] border border-border px-4 text-[13px] font-semibold text-foreground"
-          onClick={() => { setEn(DEFAULT_CANCEL_POLICY.en.join("\n")); setMr(DEFAULT_CANCEL_POLICY.mr.join("\n")); }}>Use default text</button>
+          onClick={() => { setEn(defaultPolicyFor(group).en.join("\n")); setMr(defaultPolicyFor(group).mr.join("\n")); }}>Use default text</button>
         <button className={btn} disabled={mut.isPending || q.data?.canEdit === false} onClick={() => mut.mutate({ en: lines(en), mr: lines(mr) })}>Save</button>
       </div>
     </section>
