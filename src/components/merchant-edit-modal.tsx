@@ -358,7 +358,7 @@ function ModulesSection({ merchantId }: { merchantId: string }) {
     <div>
       <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-3">Modules</p>
       <div className="grid sm:grid-cols-2 gap-4">
-        <Toggle label="badiyos Store" checked={!!store} onChange={(v) => canWrite && setStore(v)} />
+        <Toggle label="Show in customer app (Store)" checked={!!store} onChange={(v) => canWrite && setStore(v)} />
         <Toggle label="Bulk Delivery" checked={!!delivery} onChange={(v) => canWrite && setDelivery(v)} />
       </div>
       <p className="mt-2 text-[12px] text-muted-foreground">
