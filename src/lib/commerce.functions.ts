@@ -327,16 +327,20 @@ export const reassignStoreRider = createServerFn({ method: "POST" })
 // courier cancel, restock and refund marking. No Razorpay call here.
 export const cancelStoreOrderWithRefund = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; reason: string }) => {
+  .inputValidator((input: { orderId: string; reason: string; mode?: "full" | "partial" | "none"; amount?: number | null }) => {
     if (!input?.orderId) throw new Error("orderId required");
     const reason = String(input.reason ?? "").trim().slice(0, 300);
     if (!reason) throw new Error("Reason required");
-    return { orderId: input.orderId, reason };
+    const mode = input.mode ?? "full";
+    if (mode === "partial" && !(Number(input.amount) > 0)) throw new Error("Enter the refund amount");
+    return { orderId: input.orderId, reason, mode, amount: mode === "partial" ? Number(input.amount) : null };
   })
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase.rpc as any)("staff_store_cancel_refund", {
       _order_id: data.orderId,
       _reason: data.reason,
+      _mode: data.mode,
+      _amount: data.amount,
     });
     if (error) throw new Error(friendlyStoreError(error.message));
     return { ok: true as const };
