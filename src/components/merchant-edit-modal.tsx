@@ -362,7 +362,7 @@ function ModulesSection({ merchantId }: { merchantId: string }) {
         <Toggle label="Bulk Delivery" checked={!!delivery} onChange={(v) => canWrite && setDelivery(v)} />
       </div>
       <p className="mt-2 text-[12px] text-muted-foreground">
-        Store lets them list products and take online orders. Bulk Delivery gives them parcel trips and a delivery wallet.
+        Turn Store off to keep the store approved but hidden from the customer app until it should go live. Bulk Delivery gives them parcel trips and a delivery wallet.
         {data.delivery_status ? ` Delivery status: ${data.delivery_status}.` : ""}
       </p>
       {!canWrite ? (
