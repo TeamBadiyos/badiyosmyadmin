@@ -37,7 +37,7 @@ import {
   type Svc,
   listServiceOrders, getServiceOrder, listServiceStores, getStoreDetail, storeAction,
   listProductApprovals, reviewProduct, listCatalogCategories, saveCatalogCategory, reorderCatalogCategories,
-  listBankChanges, decideBankChange,
+  listBankChanges, decideBankChange, listLocationChanges, decideLocationChange,
   listStoreTypes, saveStoreType, reorderStoreTypes,
   listSponsored, saveSponsoredSlot, deleteSponsoredSlot, getServiceSettings, saveServiceSettings, saveHideLowItemSections, createDraftMerchant,
 } from "@/lib/service-commerce.functions";
@@ -347,7 +347,7 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
   const setComm = useServerFn(setMerchantCommission);
   const r = useQuery({ queryKey: ["svc", service, "stores"], queryFn: () => fn({ data: { service } }) });
   const def = useQuery({ queryKey: ["store", "commission-settings"], queryFn: () => settingsFn() });
-  const [chip, setChip] = useState<SChip>("live");
+  const [chip, setChip] = useState<SChip | "nopin">("live");
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [approveFor, setApproveFor] = useState<any | null>(null);
@@ -380,7 +380,9 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
   const all = (r.data ?? []) as any[];
   const counts = all.reduce((m: Record<string, number>, s) => { const c = chipOf(s); if (c) m[c] = (m[c] ?? 0) + 1; return m; }, {});
   const needle = q.trim().toLowerCase();
-  const rows = all.filter((s) => chipOf(s) === chip && (!needle || [s.store_name, s.owner_name, s.phone, s.city].some((v) => String(v ?? "").toLowerCase().includes(needle))));
+  const noPin = (s: any) => s.latitude == null || s.longitude == null;
+  const noPinCount = all.filter(noPin).length;
+  const rows = all.filter((s) => (chip === "nopin" ? noPin(s) : chipOf(s) === chip) && (!needle || [s.store_name, s.owner_name, s.phone, s.city].some((v) => String(v ?? "").toLowerCase().includes(needle))));
   const noComm = (s: any) => s.commission_pct == null || Number(s.commission_pct) === 0;
   return (
     <div className="space-y-4">
@@ -391,6 +393,10 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
             {CHIP_LABEL[c]} {counts[c] ?? 0}
           </button>
         ))}
+        <button onClick={() => setChip("nopin")}
+          className={`h-9 px-4 rounded-full text-sm font-semibold border whitespace-nowrap ${chip === "nopin" ? "bg-destructive text-destructive-foreground border-destructive" : "bg-card text-muted-foreground border-border hover:text-foreground"}`}>
+          No map pin {noPinCount}
+        </button>
         <div className="relative ml-auto">
           <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
           <Input className="pl-8 w-60" placeholder={`Search ${L.stores.toLowerCase()}`} value={q} onChange={(e) => setQ(e.target.value)} />
@@ -418,13 +424,14 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
                   <p className="text-xs text-muted-foreground truncate">{s.store_type || (service === "food" ? "Restaurant" : "Store type not set")}</p>
                   {showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={s.city_id} /></p>}
                   <p className="text-xs text-muted-foreground">{todayHours(s.store_hours)} · {s.live_items} live items</p>
+                  {noPin(s) && <p className="text-xs font-semibold text-destructive">No map pin — set it in Edit details</p>}
                   {service === "food" && <FssaiBadge st={fssaiState(s)} />}
                   {review && noComm(s) && <p className="text-xs text-muted-foreground">Commission will be {defPct}% (default)</p>}
                 </div>
               </button>
               {review && canManage && (
                 <div className="px-4 pb-4 flex gap-2">
-                  <Button size="sm" disabled={service === "food" && fssaiState(s).problems.length > 0} title={service === "food" ? fssaiState(s).problems.join(" · ") : undefined} onClick={() => { setApproveFor(s); setCommission(noComm(s) ? "" : String(s.commission_pct)); }}>Approve</Button>
+                  <Button size="sm" disabled={noPin(s) || (service === "food" && fssaiState(s).problems.length > 0)} title={noPin(s) ? "Set the map pin first" : service === "food" ? fssaiState(s).problems.join(" · ") : undefined} onClick={() => { setApproveFor(s); setCommission(noComm(s) ? "" : String(s.commission_pct)); }}>Approve</Button>
                   <Button size="sm" variant="outline" onClick={() => setQueryFor(s)}>Raise query</Button>
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setRejectFor(s)}>Reject</Button>
                 </div>
@@ -958,11 +965,14 @@ function AddonGroups({ addons, before }: { addons: any[] | null | undefined; bef
 }
 
 function ApprovalsTab({ service }: { service: Svc }) {
-  const [view, setView] = useState<"items" | "bank">("items");
+  const [view, setView] = useState<"items" | "bank" | "loc">("items");
+  const locFn = useServerFn(listLocationChanges);
+  const loc = useQuery({ queryKey: ["svc", service, "location-changes"], queryFn: () => locFn({ data: { service } }) });
+  const ln = loc.data?.requests.length ?? 0;
   const bankFn = useServerFn(listBankChanges);
   const bank = useQuery({ queryKey: ["svc", service, "bank-changes"], queryFn: () => bankFn({ data: { service } }) });
   const n = bank.data?.requests.length ?? 0;
-  const chip = (k: "items" | "bank", label: string, count?: number) => (
+  const chip = (k: "items" | "bank" | "loc", label: string, count?: number) => (
     <button type="button" onClick={() => setView(k)}
       className={`rounded-full border px-3 py-1 text-sm ${view === k ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}>
       {label}{count ? <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[11px] text-destructive-foreground">{count}</span> : null}
@@ -970,8 +980,53 @@ function ApprovalsTab({ service }: { service: Svc }) {
   );
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">{chip("items", "Items")}{chip("bank", "Bank changes", n)}</div>
-      {view === "items" ? <ItemApprovals service={service} /> : <BankChanges service={service} q={bank} />}
+      <div className="flex gap-2">{chip("items", "Items")}{chip("bank", "Bank changes", n)}{loc.data?.canDecide && chip("loc", "Location changes", ln)}</div>
+      {view === "items" ? <ItemApprovals service={service} /> : view === "bank" ? <BankChanges service={service} q={bank} /> : <LocationChanges service={service} q={loc} />}
+    </div>
+  );
+}
+
+const mapSrc = (lat: number, lng: number) => `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
+const fmtDist = (km: number | null) => km == null ? "—" : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`;
+function LocationChanges({ service, q }: { service: Svc; q: any }) {
+  const qc = useQueryClient();
+  const decide = useServerFn(decideLocationChange);
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const m = useMutation({
+    mutationFn: (v: { id: string; approve: boolean }) => decide({ data: { ...v, reason: reasons[v.id] ?? null } }),
+    onSuccess: (_r, v) => { toast.success(v.approve ? "Store location updated" : "Location change rejected"); qc.invalidateQueries({ queryKey: ["svc", service] }); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.error) return <p className="text-sm text-destructive">{errMsg(q.error)}</p>;
+  const reqs = (q.data?.requests ?? []) as any[];
+  if (!reqs.length) return <p className="text-sm text-muted-foreground">No location changes waiting.</p>;
+  const side = (label: string, p: any) => (
+    <div className="flex-1 min-w-[260px] space-y-1">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      {p.lat != null && p.lng != null
+        ? <iframe title={label} src={mapSrc(p.lat, p.lng)} className="h-48 w-full rounded border" loading="lazy" />
+        : <div className="h-48 w-full rounded border bg-muted flex items-center justify-center text-sm text-muted-foreground">No pin</div>}
+      <p className="text-sm">{p.address || "—"}</p>
+      {p.lat != null && <a className="text-xs text-primary underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${p.lat},${p.lng}`}>{Number(p.lat).toFixed(6)}, {Number(p.lng).toFixed(6)}</a>}
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      {reqs.map((r) => (
+        <div key={r.id} className="rounded-lg border bg-card p-3 space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-semibold">{r.storeName}{r.ownerName && <span className="ml-2 text-xs font-normal text-muted-foreground">{r.ownerName}</span>}</p>
+            <p className="text-xs text-muted-foreground">Submitted {dt(r.submittedAt)} · Moved <span className="font-semibold text-foreground">{fmtDist(r.distanceKm)}</span></p>
+          </div>
+          <div className="flex flex-wrap gap-4">{side("Current", r.old)}{side("New", r.next)}</div>
+          <div className="flex gap-2">
+            <Input placeholder="Reason (required to reject)" value={reasons[r.id] ?? ""} onChange={(e) => setReasons({ ...reasons, [r.id]: e.target.value })} />
+            <Button size="sm" disabled={m.isPending} onClick={() => { if (confirm(`Move ${r.storeName}'s pin ${fmtDist(r.distanceKm)}?`)) m.mutate({ id: r.id, approve: true }); }}>Approve</Button>
+            <Button size="sm" variant="destructive" disabled={m.isPending} onClick={() => m.mutate({ id: r.id, approve: false })}>Reject</Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

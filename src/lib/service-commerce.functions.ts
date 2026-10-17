@@ -122,7 +122,7 @@ export const listServiceStores = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     const r = await scopeMerchants(
-      db.from("merchants").select("id, store_name, owner_name, phone, city, city_id, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number, service_type, fssai_number, fssai_expiry").is("deleted_at", null),
+      db.from("merchants").select("id, store_name, owner_name, phone, city, city_id, status, is_open, rating_avg, rating_count, commission_pct, shop_photo_url, store_category_id, store_hours, bank_account_number, service_type, fssai_number, fssai_expiry, latitude, longitude").is("deleted_at", null),
       data.service,
     ).order("store_name"); chk(r);
     const rows = r.data ?? [];
@@ -374,6 +374,53 @@ export const decideBankChange = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (!data.approve && !data.reason) throw new Error("Please add a reason when rejecting.");
     chk(await (context.supabase.rpc as any)("admin_decide_bank_change", { _request_id: data.id, _approve: data.approve, _reason: data.reason }));
+    return { ok: true as const };
+  });
+
+const kmBetween = (a: number, b: number, c: number, d: number) => {
+  const r = (x: number) => (x * Math.PI) / 180;
+  const h = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+};
+
+export const listLocationChanges = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { service: Svc }) => ({ service: svcOk(i?.service) }))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as any;
+    const st = await db.from("staff_users").select("status, role").eq("auth_user_id", context.userId).maybeSingle();
+    const canDecide = st.data?.status === "active" && ["super_admin", "ops_manager"].includes(st.data?.role);
+    if (!canDecide) return { canDecide, requests: [] as any[] };
+    const ids = await serviceMerchantIds(db, data.service);
+    if (!ids.length) return { canDecide, requests: [] as any[] };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const r = await (supabaseAdmin as any).from("merchant_location_change_requests").select("*").eq("status", "pending").in("merchant_id", ids).order("created_at");
+    chk(r);
+    const reqs = (r.data ?? []) as any[];
+    if (!reqs.length) return { canDecide, requests: [] as any[] };
+    const m = await db.from("merchants").select("id, store_name, owner_name, latitude, longitude, address").in("id", reqs.map((x) => x.merchant_id));
+    const mm = new Map(((m.data ?? []) as any[]).map((x) => [x.id, x]));
+    return {
+      canDecide,
+      requests: reqs.map((x) => {
+        const mer: any = mm.get(x.merchant_id) ?? {};
+        const oLat = mer.latitude ?? x.old_latitude, oLng = mer.longitude ?? x.old_longitude;
+        return {
+          id: x.id, storeName: mer.store_name ?? "—", ownerName: mer.owner_name ?? null, submittedAt: x.created_at,
+          old: { lat: oLat, lng: oLng, address: mer.address ?? x.old_address ?? null },
+          next: { lat: x.latitude, lng: x.longitude, address: x.address },
+          distanceKm: oLat != null && oLng != null ? kmBetween(Number(oLat), Number(oLng), Number(x.latitude), Number(x.longitude)) : null,
+        };
+      }),
+    };
+  });
+
+export const decideLocationChange = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { id: string; approve: boolean; reason?: string | null }) => ({ id: String(i.id), approve: !!i.approve, reason: i.reason?.trim() || null }))
+  .handler(async ({ data, context }) => {
+    if (!data.approve && !data.reason) throw new Error("Please add a reason when rejecting.");
+    chk(await (context.supabase.rpc as any)("admin_decide_location_change", { _request_id: data.id, _approve: data.approve, _reason: data.reason }));
     return { ok: true as const };
   });
 
