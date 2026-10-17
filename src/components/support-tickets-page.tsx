@@ -501,7 +501,7 @@ function ContactPanel({ ticket }: { ticket: SupportTicket }) {
             <Stat label="Bookings" value={String(data.stats.bookings)} />
             <Stat label="Completed" value={String(data.stats.completed)} />
             <Stat label="Spend" value={money(data.stats.spend)} />
-            <Stat label="Coins" value={String(Math.round(data.coinBalance))} />
+            <Stat label="Wallet" value={money(data.coinBalance)} />
           </div>
 
           <div>

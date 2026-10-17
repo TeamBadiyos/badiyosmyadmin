@@ -30,6 +30,7 @@ export type CustomerRow = {
   referral_code: string | null;
   successful_referrals: number;
   total_coins_earned: number;
+  wallet_balance: number;
   bookings_count: number;
   total_spend: number;
   deleted_at: string | null;
@@ -57,7 +58,9 @@ export type CustomerProfile = {
     cancelled: number;
     lifetime_spend: number;
     avg_rating: number | null;
-    coin_balance: number;
+    wallet_balance: number;
+    wallet_cash: number;
+    wallet_bonus: number;
   };
   addresses: Array<{
     id: string;
@@ -98,7 +101,9 @@ export type CustomerProfile = {
     id: string;
     amount: number;
     type: string;
+    bucket: string;
     description: string;
+    balance_after: number;
     created_at: string;
   }>;
   referrals: Array<{
@@ -215,7 +220,7 @@ export const listCustomers = createServerFn({ method: "GET" })
     }
 
     const ids = users.map((u: { id: string }) => u.id);
-    const [bookingsRes, addressRes] = await Promise.all([
+    const [bookingsRes, addressRes, walletsRes] = await Promise.all([
       !globalSort && ids.length
         ? db.from("bookings").select("user_id, price, status").eq("is_training", false).in("user_id", ids)
         : Promise.resolve({ data: [], error: null }),
@@ -225,7 +230,15 @@ export const listCustomers = createServerFn({ method: "GET" })
             .select("user_id, area, city, is_default")
             .in("user_id", ids)
         : Promise.resolve({ data: [], error: null }),
+      ids.length
+        ? db.from("customer_wallets").select("user_id, cash_balance, bonus_balance").in("user_id", ids)
+        : Promise.resolve({ data: [], error: null }),
     ]);
+    if (walletsRes.error) throw new Error(walletsRes.error.message);
+    const walletMap = new Map<string, number>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const w of (walletsRes.data ?? []) as any[])
+      walletMap.set(w.user_id, Number(w.cash_balance ?? 0) + Number(w.bonus_balance ?? 0));
     if (bookingsRes.error) throw new Error(bookingsRes.error.message);
     if (addressRes.error) throw new Error(addressRes.error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -250,6 +263,7 @@ export const listCustomers = createServerFn({ method: "GET" })
       referral_code: u.referral_code ?? null,
       successful_referrals: Number(u.successful_referrals ?? 0),
       total_coins_earned: Number(u.total_coins_earned ?? 0),
+      wallet_balance: walletMap.get(u.id) ?? 0,
       bookings_count: agg.get(u.id)?.count ?? 0,
       total_spend: agg.get(u.id)?.spend ?? 0,
       deleted_at: u.deleted_at ?? null,
@@ -279,7 +293,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     if (uErr) throw new Error(uErr.message);
     if (!user) throw new Error("Customer not found");
 
-    const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes] = await Promise.all([
+    const [addrRes, bookRes, walletRes, refRes, ticketRes, courierRes, balRes] = await Promise.all([
       db
         .from("addresses")
         .select("id, label, full_address, area, city, pincode, latitude, longitude, is_default")
@@ -294,8 +308,8 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(200),
       db
-        .from("wallet_transactions")
-        .select("id, amount, type, description, created_at")
+        .from("customer_wallet_ledger")
+        .select("id, amount, type, bucket, reason, cash_after, bonus_after, created_at")
         .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(200),
@@ -320,7 +334,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         .eq("customer_id", uid)
         .order("created_at", { ascending: false })
         .limit(200),
+      db.from("customer_wallets").select("cash_balance, bonus_balance").eq("user_id", uid).maybeSingle(),
     ]);
+    if (balRes.error) throw new Error(balRes.error.message);
     if (addrRes.error) throw new Error(addrRes.error.message);
     if (bookRes.error) throw new Error(bookRes.error.message);
     if (walletRes.error) throw new Error(walletRes.error.message);
@@ -378,10 +394,8 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
     const ratings = bookingRows.map((b) => b.rating).filter((r) => typeof r === "number");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const walletRows = (walletRes.data ?? []) as any[];
-    const coinBalance = walletRows.reduce(
-      (sum, w) => sum + (w.type === "debit" ? -Number(w.amount ?? 0) : Number(w.amount ?? 0)),
-      0,
-    );
+    const walletCash = Number(balRes.data?.cash_balance ?? 0);
+    const walletBonus = Number(balRes.data?.bonus_balance ?? 0);
 
     return {
       user: {
@@ -407,7 +421,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         avg_rating: ratings.length
           ? ratings.reduce((s: number, r: number) => s + r, 0) / ratings.length
           : null,
-        coin_balance: coinBalance,
+        wallet_balance: walletCash + walletBonus,
+        wallet_cash: walletCash,
+        wallet_bonus: walletBonus,
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       addresses: ((addrRes.data ?? []) as any[]).map((a) => ({
@@ -449,7 +465,9 @@ export const getCustomerProfile = createServerFn({ method: "GET" })
         id: w.id,
         amount: Number(w.amount ?? 0),
         type: w.type,
-        description: w.description,
+        bucket: w.bucket,
+        description: w.reason ?? w.type,
+        balance_after: Number(w.cash_after ?? 0) + Number(w.bonus_after ?? 0),
         created_at: w.created_at,
       })),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

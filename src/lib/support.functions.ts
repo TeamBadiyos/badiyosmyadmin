@@ -341,7 +341,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(25),
-        db.from("wallet_transactions").select("amount").eq("user_id", uid).limit(500),
+        db.from("customer_wallets").select("cash_balance, bonus_balance").eq("user_id", uid).maybeSingle(),
       ]);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -351,10 +351,8 @@ export const getTicketContact = createServerFn({ method: "POST" })
       const spend = bookings
         .filter((b) => b.status === "completed")
         .reduce((s, b) => s + Number(b.price ?? 0), 0);
-      const coins = ((walletRes.data ?? []) as Array<{ amount: number | null }>).reduce(
-        (s, w) => s + Number(w.amount ?? 0),
-        0,
-      );
+      const wb = walletRes.data as { cash_balance: number | null; bonus_balance: number | null } | null;
+      const walletBalance = Number(wb?.cash_balance ?? 0) + Number(wb?.bonus_balance ?? 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const addr = (addrRes.data ?? [])[0] as any;
 
@@ -369,7 +367,7 @@ export const getTicketContact = createServerFn({ method: "POST" })
         address: addr
           ? [addr.full_address, addr.area, addr.city].filter(Boolean).join(", ")
           : null,
-        coinBalance: coins || Number(u.total_coins_earned ?? 0),
+        coinBalance: walletBalance,
         stats: { bookings: bookings.length, completed, cancelled, spend },
         bookings: bookings.map((b) => ({
           id: b.id,
