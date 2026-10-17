@@ -19,6 +19,7 @@ import { RejectModal, QueryModal } from "@/components/merchant-approvals-page";
 import { MerchantEditModal } from "@/components/merchant-edit-modal";
 import { RefundChoice, type RefundMode } from "@/components/refund-choice";
 import { CancelPolicyEditor } from "@/components/cancel-rules";
+import { NoRiderMinutesBox, MerchantPayOnFailure } from "@/components/no-rider-pay";
 import { decideMerchant, setMerchantCommission, getStoreCommissionSettings, deleteRejectedMerchant } from "@/lib/merchants.functions";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -298,6 +299,7 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
               <Row k="Merchant net" v={inr(o.merchant_net)} strong />
               <p className="text-xs text-muted-foreground mt-2">Payment: {o.payment_mode} / {o.payment_status} · Refund: {o.refund_status}</p>
             </div>
+            <MerchantPayOnFailure order={o} onDone={() => { qc.invalidateQueries({ queryKey: ["svc", service, "order", id] }); done(); }} />
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Timeline</p>
               {timeline.filter(([, t]) => t).map(([k, t]) => <Row key={k} k={k} v={dt(t)} />)}
@@ -1352,6 +1354,7 @@ function SettingsTab({ service, role }: { service: Svc; role: string }) {
         <div className="max-w-xs"><Label>Accept timeout (min)</Label><Input type="number" disabled={!canEdit} value={timeout} onChange={(e) => setTimeoutV(e.target.value)} />
           <p className="mt-1 text-xs text-muted-foreground">Store must accept the order within this time.</p></div>
         {canEdit && <Button onClick={() => saveRules.mutate()} disabled={saveRules.isPending}>Save</Button>}
+        {(service === "store" || service === "food") && <div className="border-t pt-3"><NoRiderMinutesBox service={service} /></div>}
       </div>
       {service === "food" && (
         <div className="rounded-lg border bg-card p-4 space-y-3">
