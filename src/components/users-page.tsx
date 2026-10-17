@@ -1059,7 +1059,7 @@ function ReferralsSection({ referrals }: { referrals: RefItem[] }) {
         ))}
         <div className="rounded-[14px] border border-border p-3">
           <div className="text-[11px] uppercase text-muted-foreground">Rewards earned</div>
-          <div className="text-[20px] font-bold text-foreground">{coins}</div>
+          <div className="text-[20px] font-bold text-foreground">₹{coins}</div>
         </div>
       </div>
       {filter && (
