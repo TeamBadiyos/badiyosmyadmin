@@ -13,7 +13,7 @@ import { catalogImageUrl } from "@/lib/catalog-images";
 import { useCity } from "@/lib/city-scope";
 import {
   listCategories, saveCategory, reorderCategories, deleteCategory, copyDefaultCategories,
-  listUnmappedProductLabels, applyProductCategoryMap, type CatKind,
+  listUnmappedProductLabels, applyProductCategoryMap, listCategoryBusinesses, type CatKind,
 } from "@/lib/categories.functions";
 import { CategorySuggestionsChip } from "@/components/category-suggestions";
 import { CATEGORY_ICONS, CATEGORY_ICON_NAMES } from "@/lib/category-icons";
@@ -57,6 +57,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
   const [rows, setRows] = useState<any[]>([]);
   const [edit, setEdit] = useState<any | null>(null);
   const [del, setDel] = useState<any | null>(null);
+  const [view, setView] = useState<any | null>(null);
   useEffect(() => setRows(r.data?.rows ?? []), [r.data]);
   const canEdit = role === "super_admin";
   const inv = () => qc.invalidateQueries({ queryKey: ["categories", kind] });
@@ -93,7 +94,11 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
             <Icon path={c.image_path} fallback={c.icon_url} icon={c.icon} />
             <div className="min-w-0 flex-1">
               <p className={`truncate text-sm font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>{c.name} <span className="text-muted-foreground">/ {c.name_mr ?? "—"}</span></p>
-              <p className="text-xs text-muted-foreground">{c.used} {usedLabel}{c.used === 1 ? "" : "s"}</p>
+              <button type="button" className="text-xs text-primary hover:underline disabled:text-muted-foreground disabled:no-underline" disabled={!c.used} onClick={() => setView(c)}>
+                {kind === "store_type"
+                  ? `${c.used} live store${c.used === 1 ? "" : "s"}`
+                  : `${c.items} live ${usedLabel}${c.items === 1 ? "" : "s"} · ${c.used} ${kind === "food" ? "restaurant" : "store"}${c.used === 1 ? "" : "s"}`}
+              </button>
             </div>
             {canEdit && (c.is_other ? <span className="flex items-center gap-1 text-xs text-muted-foreground"><Lock size={12} /> Always last</span> : <>
               <Switch checked={c.is_active} onCheckedChange={(v) => save.mutate({ id: c.id, name: c.name, name_mr: c.name_mr ?? c.name, image_path: c.image_path, is_active: v })} />
@@ -101,7 +106,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
                 <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move up" onClick={() => move(i, -1)}><ArrowUp size={14} /></Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move down" onClick={() => move(i, 1)}><ArrowDown size={14} /></Button>
               </span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Delete" onClick={() => setDel(c)}><Trash2 size={14} /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Delete" onClick={() => setDel(kind === "store_type" ? c : { ...c, used: c.items })}><Trash2 size={14} /></Button>
             </>)}
             {canEdit && <Button size="sm" variant="ghost" onClick={() => setEdit(c)}>Edit</Button>}
           </div>
@@ -109,6 +114,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
       </div>
       {!canEdit && <p className="text-xs text-muted-foreground">Only super admin can change categories.</p>}
       {edit && <Editor kind={kind} c={edit} busy={save.isPending} onClose={() => setEdit(null)} onSave={(v) => save.mutate(v)} />}
+      {view && <BusinessesSheet kind={kind} cityId={city} c={view} onClose={() => setView(null)} />}
       {del && <DeleteSheet kind={kind} c={del} others={rows.filter((x) => x.id !== del.id)} usedLabel={usedLabel}
         onClose={() => setDel(null)}
         onDone={async (moveTo) => { try { await delFn({ data: { kind, id: del.id, moveTo } }); toast.success("Deleted"); setDel(null); inv(); } catch (e) { toast.error(err(e)); } }} />}
@@ -160,6 +166,32 @@ function Editor({ kind, c, busy, onClose, onSave }: { kind: CatKind; c: any; bus
         </div>
         <SheetFooter><Button variant="outline" onClick={onClose}>Close</Button>
           <Button disabled={busy || up} onClick={() => onSave({ id: c.id ?? null, name, name_mr: mr, image_path: img, icon, is_active: active })}>Save</Button></SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function BusinessesSheet({ kind, cityId, c, onClose }: { kind: CatKind; cityId: string | null; c: any; onClose: () => void }) {
+  const fn = useServerFn(listCategoryBusinesses);
+  const q = useQuery({ queryKey: ["category-businesses", kind, cityId, c.name], queryFn: () => fn({ data: { kind, cityId, name: c.name } }) });
+  return (
+    <Sheet open onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetHeader><SheetTitle>{c.name} — live {kind === "food" ? "restaurants" : "stores"}</SheetTitle></SheetHeader>
+        <div className="space-y-3 py-4">
+          {q.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {q.data?.length === 0 && <p className="text-sm text-muted-foreground">No live businesses in this category.</p>}
+          {(q.data ?? []).map((s: any) => (
+            <div key={s.id} className="rounded-lg border p-3">
+              <p className="text-sm font-medium">{s.store_name ?? "Unnamed"}</p>
+              <p className="text-xs text-muted-foreground">{[s.owner_name, s.phone].filter(Boolean).join(" · ")}</p>
+              {s.address && <p className="text-xs text-muted-foreground">{s.address}</p>}
+              {kind !== "store_type" && <ul className="mt-2 space-y-0.5 text-xs">
+                {s.items.map((p: any) => <li key={p.id} className="flex justify-between gap-2"><span>{p.name}</span><span className="text-muted-foreground">₹{p.price}</span></li>)}
+              </ul>}
+            </div>
+          ))}
+        </div>
       </SheetContent>
     </Sheet>
   );
