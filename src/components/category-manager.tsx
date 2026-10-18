@@ -16,6 +16,7 @@ import {
   listUnmappedProductLabels, applyProductCategoryMap, type CatKind,
 } from "@/lib/categories.functions";
 import { CategorySuggestionsChip } from "@/components/category-suggestions";
+import { CATEGORY_ICONS, CATEGORY_ICON_NAMES } from "@/lib/category-icons";
 
 const err = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong");
 
@@ -35,10 +36,11 @@ async function upload(file: File, kind: CatKind) {
   return path;
 }
 
-function Icon({ path, fallback }: { path?: string | null; fallback?: string | null }) {
+function Icon({ path, fallback, icon }: { path?: string | null; fallback?: string | null; icon?: string | null }) {
   const u = catalogImageUrl(path) ?? (fallback && /^https?:/.test(fallback) ? fallback : null);
+  const L = icon ? CATEGORY_ICONS[icon] : null;
   return u ? <img src={u} alt="" className="h-10 w-10 rounded-md object-cover" />
-    : <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground"><ImageIcon size={16} /></div>;
+    : <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">{L ? <L size={18} /> : <ImageIcon size={16} />}</div>;
 }
 
 export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: CatKind; title: string; help: string; usedLabel: string; role: string }) {

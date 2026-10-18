@@ -41,10 +41,11 @@ export const listCategories = createServerFn({ method: "POST" })
 
 export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { kind: CatKind; id?: string | null; cityId?: string | null; name: string; name_mr: string; image_path?: string | null; is_active: boolean }) => ({
+  .inputValidator((i: { kind: CatKind; id?: string | null; cityId?: string | null; name: string; name_mr: string; image_path?: string | null; icon?: string | null; is_active: boolean }) => ({
     kind: kindOk(i.kind), id: i.id || null, cityId: cityOk(i.cityId),
     name: String(i.name ?? "").trim().slice(0, 60), name_mr: String(i.name_mr ?? "").trim().slice(0, 60),
     image_path: i.image_path || null, is_active: !!i.is_active,
+    icon: i.icon === undefined ? undefined : (typeof i.icon === "string" && /^[A-Za-z0-9]{1,40}$/.test(i.icon) ? i.icon : null),
   }))
   .handler(async ({ data, context }) => {
     if (!data.name || !data.name_mr) throw new Error("Enter both English and मराठी names");
@@ -52,6 +53,7 @@ export const saveCategory = createServerFn({ method: "POST" })
     const isType = data.kind === "store_type";
     const table = isType ? "store_categories" : "catalog_categories";
     const patch: Record<string, unknown> = { name: data.name, name_mr: data.name_mr, image_path: data.image_path, is_active: data.is_active };
+    if (data.icon !== undefined) patch.icon = data.icon;
     let id = data.id;
     if (id) {
       const b = await db.from(table).select("*").eq("id", id).maybeSingle();
