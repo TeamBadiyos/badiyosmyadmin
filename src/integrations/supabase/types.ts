@@ -12222,6 +12222,10 @@ export type Database = {
         Args: { _party_id: string; _party_type: string }
         Returns: Json
       }
+      ap_check_assign: {
+        Args: { _booking_id: string; _expert_id: string }
+        Returns: undefined
+      }
       ap_require_booking: {
         Args: { _booking_id: string }
         Returns: {
