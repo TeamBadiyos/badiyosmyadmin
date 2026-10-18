@@ -14697,16 +14697,6 @@ export type Database = {
         }
         Returns: Json
       }
-      staff_cancel_store_order_apply: {
-        Args: {
-          _order_id: string
-          _reason: string
-          _refund_amount: number
-          _refund_id: string
-          _refund_status: string
-        }
-        Returns: Json
-      }
       staff_category_copy_default: {
         Args: { _city_id: string; _kind: string }
         Returns: number
