@@ -6189,6 +6189,27 @@ export type Database = {
           },
         ]
       }
+      merchant_onboarding_settings: {
+        Row: {
+          id: boolean
+          require_signed_agreement: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          require_signed_agreement?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          require_signed_agreement?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       merchant_order_items: {
         Row: {
           addons: Json | null
@@ -7198,6 +7219,9 @@ export type Database = {
         Row: {
           accept_timeout_minutes: number | null
           address: string | null
+          agreement_deposit_amount: number
+          agreement_fee_amount: number
+          agreement_required: boolean
           approved_at: string | null
           approved_by: string | null
           auth_user_id: string | null
@@ -7273,6 +7297,9 @@ export type Database = {
         Insert: {
           accept_timeout_minutes?: number | null
           address?: string | null
+          agreement_deposit_amount?: number
+          agreement_fee_amount?: number
+          agreement_required?: boolean
           approved_at?: string | null
           approved_by?: string | null
           auth_user_id?: string | null
@@ -7348,6 +7375,9 @@ export type Database = {
         Update: {
           accept_timeout_minutes?: number | null
           address?: string | null
+          agreement_deposit_amount?: number
+          agreement_fee_amount?: number
+          agreement_required?: boolean
           approved_at?: string | null
           approved_by?: string | null
           auth_user_id?: string | null
@@ -11919,6 +11949,7 @@ export type Database = {
         Returns: Json
       }
       app_merchant_issue_signup_agreement: { Args: never; Returns: string }
+      app_merchant_onboarding_state: { Args: never; Returns: Json }
       app_my_agreements: { Args: never; Returns: Json }
       app_ops_value: { Args: { _city: string; _key: string }; Returns: string }
       app_order_again: { Args: { _service_key: string }; Returns: Json }
@@ -13373,6 +13404,7 @@ export type Database = {
         Args: { _new_status: string; _order_id: string }
         Returns: undefined
       }
+      merchant_agreement_ok: { Args: { _m: string }; Returns: boolean }
       merchant_bank_change_request_otp: {
         Args: { _store_id: string }
         Returns: Json
@@ -15037,6 +15069,14 @@ export type Database = {
       staff_set_lead_status: {
         Args: { _kind: string; _lead_id: string; _status: string }
         Returns: boolean
+      }
+      staff_set_merchant_agreement_setting: {
+        Args: { _require: boolean }
+        Returns: undefined
+      }
+      staff_set_merchant_agreement_terms: {
+        Args: { _deposit: number; _fee: number; _merchant_id: string }
+        Returns: undefined
       }
       staff_set_merchant_commission: {
         Args: { _merchant_id: string; _pct: number }
