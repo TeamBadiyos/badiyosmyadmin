@@ -363,11 +363,14 @@ export function BookingDetailsModal({
   const [assignOpen, setAssignOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
 
-  const showAssign = !!data && data.status === "accepted" && canEdit;
+  const isAP = role === "area_partner";
+  const showAssign = !!data && data.status === "accepted" && (canEdit || isAP);
   const canReassign =
     !!data &&
     ["expert_assigned", "on_the_way", "arrived"].includes(data.status) &&
-    canEdit;
+    (canEdit || isAP);
+  const [apLocOpen, setApLocOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
 
   const expertsQuery = useQuery({
     queryKey: ["bookings", "assignable-experts", bookingId],
@@ -523,10 +526,11 @@ export function BookingDetailsModal({
               <CustomerBlock
                 name={data.customer.name}
                 phone={data.customer.phone}
+                masked={isAP}
                 bookingCount={data.customerStats.bookingCount}
                 avgRatingGiven={data.customerStats.avgRatingGiven}
                 address={data.address}
-                contact={data.customer.phone ? <ContactButtons phone={data.customer.phone} /> : null}
+                contact={isAP ? null : data.customer.phone ? <ContactButtons phone={data.customer.phone} /> : null}
               />
 
               <div>
@@ -681,7 +685,21 @@ export function BookingDetailsModal({
                   }
                 />
               )}
-              {!canEdit && <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this booking.</p>}
+              {isAP && !isDeleted && (
+                <ActionBar
+                  normal={
+                    <>
+                      {showAssign && <ActionBtn icon={<UserPlus size={13} />} onClick={() => setAssignOpen(true)}>Assign</ActionBtn>}
+                      {canReassign && <ActionBtn icon={<RefreshCw size={13} />} onClick={() => setReassignOpen(true)}>Reassign</ActionBtn>}
+                      {!isTerminal && <ActionBtn icon={<Pencil size={13} />} onClick={() => setApLocOpen(true)}>Update location</ActionBtn>}
+                      <ActionBtn icon={<Send size={13} />} onClick={() => setConnectOpen(true)}>Connect via badiyos</ActionBtn>
+                    </>
+                  }
+                />
+              )}
+              {apLocOpen && data && <ApLocationDialog bookingId={bookingId} onClose={() => setApLocOpen(false)} onDone={() => { setApLocOpen(false); invalidateBooking(); }} />}
+              {connectOpen && <ApConnectDialog bookingId={bookingId} onClose={() => setConnectOpen(false)} />}
+              {!canEdit && !isAP && <p className="text-[12px] text-muted-foreground">Only super admin or ops manager can change this booking.</p>}
 
               {adjustOpen && (
                 <AdjustTimeDialog
@@ -1679,6 +1697,70 @@ function NearestList({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+
+function ApLocationDialog({ bookingId, onClose, onDone }: { bookingId: string; onClose: () => void; onDone: () => void }) {
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [address, setAddress] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    const la = Number(lat), lo = Number(lng);
+    if (!lat || !lng || !Number.isFinite(la) || !Number.isFinite(lo)) return toast.error("Enter a valid pin (latitude and longitude)");
+    if (!reason.trim()) return toast.error("Reason is required");
+    setBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)("staff_update_booking_location", { _booking_id: bookingId, _lat: la, _lng: lo, _address: address.trim() || null, _reason: reason.trim() });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Location updated");
+    onDone();
+  }
+  const inp = "w-full h-9 rounded-md border border-input bg-background px-2 text-sm";
+  return (
+    <div className="rounded-[14px] border border-border bg-card p-3 space-y-2">
+      <p className="text-[13px] font-bold text-foreground">Update job location</p>
+      <div className="grid grid-cols-2 gap-2">
+        <input className={inp} placeholder="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} aria-label="Latitude" />
+        <input className={inp} placeholder="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} aria-label="Longitude" />
+      </div>
+      <button type="button" className="text-[12px] font-semibold underline text-foreground" onClick={() => navigator.geolocation?.getCurrentPosition((p) => { setLat(String(p.coords.latitude)); setLng(String(p.coords.longitude)); }, () => toast.error("Could not read your location"))}>Use my location</button>
+      <input className={inp} placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} aria-label="Address" />
+      <input className={inp} placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason" />
+      <div className="flex gap-2 justify-end">
+        <ActionBtn onClick={onClose}>Cancel</ActionBtn>
+        <ActionBtn variant="primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save location"}</ActionBtn>
+      </div>
+    </div>
+  );
+}
+
+function ApConnectDialog({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    if (!reason.trim()) return toast.error("Tell badiyos why the customer should be called");
+    setBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)("staff_connect_via_badiyos", { _booking_id: bookingId, _reason: reason.trim() });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("badiyos support will call the customer");
+    onClose();
+  }
+  return (
+    <div className="rounded-[14px] border border-border bg-card p-3 space-y-2">
+      <p className="text-[13px] font-bold text-foreground">Connect via badiyos</p>
+      <p className="text-[12px] text-muted-foreground">badiyos support calls the customer for you. The customer's number stays hidden.</p>
+      <input className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm" placeholder="What should support tell the customer?" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason" />
+      <div className="flex gap-2 justify-end">
+        <ActionBtn onClick={onClose}>Cancel</ActionBtn>
+        <ActionBtn variant="primary" disabled={busy} onClick={send}>{busy ? "Sending…" : "Request call"}</ActionBtn>
+      </div>
     </div>
   );
 }
