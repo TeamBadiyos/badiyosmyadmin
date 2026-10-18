@@ -258,7 +258,9 @@ export const getBookingsDrilldown = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false });
     q = applyZone(q, zone);
     if (wantNone) q = q.is("zone_id", null);
-    if (data.status) q = q.eq("status", data.status);
+    if (data.status === "__cancelled") q = q.in("status", ["cancelled", "rejected"]);
+    else if (data.status === "__other") q = q.not("status", "in", "(completed,cancelled,rejected)");
+    else if (data.status) q = q.eq("status", data.status);
     const { data: rows, error } = await q.limit(2000);
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
