@@ -33,6 +33,7 @@ import { BannersPage } from "@/components/banners-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
+import { ApApplicationsPage, ApEarningsPage } from "@/components/area-partner-pages";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
 import { SettlementsPage } from "@/components/settlements-page";
@@ -210,6 +211,8 @@ const NAV_ITEMS = [
   { key: "fin-invoices", label: "Commission Invoices", icon: Receipt },
   { key: "fin-tax", label: "Tax", icon: Percent },
   { key: "company-profile", label: "Company", icon: Settings },
+  { key: "ap-applications", label: "Applications", icon: ClipboardList },
+  { key: "ap-earnings", label: "My Earnings", icon: IndianRupee },
 ] as const;
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
@@ -261,7 +264,7 @@ const NAV_GROUPS = [
     id: "people",
     label: "People",
     icon: Users,
-    keys: ["experts", "users", "partners", "deletion-requests"],
+    keys: ["experts", "users", "partners", "deletion-requests", "ap-applications", "ap-earnings"],
   },
   {
     id: "growth",
@@ -304,14 +307,14 @@ const SUPER_ONLY_KEYS: ReadonlyArray<string> = [
   "roles", "cities", "company-profile", "legal", "agreements", "tax-settings", "fees",
   "fin-overview", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "fin-settlements", "fin-instant", "fin-invoices",
   "settlements", "wallets", "merchant-billing", "reports",
-  "offers", "event-offers", "rewards", "referrals", "lucky-draw", "campaigns",
+  "rewards", "referrals", "lucky-draw", "campaigns",
   "catalogue", "maid-catalogue", "wash-catalogue", "courier-rates",
 ];
 
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
-  super_admin: NAV_ITEMS.map((n) => n.key),
-  ops_manager: NAV_ITEMS.map((n) => n.key).filter((k) => !SUPER_ONLY_KEYS.includes(k)),
-  area_partner: ["dashboard", "maid-bookings", "wash-bookings", "clean-experts", "wash-team", "waitlist"],
+  super_admin: NAV_ITEMS.map((n) => n.key).filter((k) => !k.startsWith("ap-")),
+  ops_manager: NAV_ITEMS.map((n) => n.key).filter((k) => !SUPER_ONLY_KEYS.includes(k) && !k.startsWith("ap-")),
+  area_partner: ["dashboard", "maid-bookings", "wash-bookings", "clean-experts", "wash-team", "waitlist", "ap-applications", "ap-earnings"],
 };
 
 function Shell() {
@@ -851,6 +854,10 @@ function Shell() {
             canEdit={role === "super_admin" || role === "ops_manager"}
             isSuperAdmin={role === "super_admin"}
           />
+        ) : active === "ap-applications" ? (
+          <ApApplicationsPage />
+        ) : active === "ap-earnings" ? (
+          <ApEarningsPage />
         ) : active === "settlements" ? (
           <CollectionsPage onPartner={() => { if (isNavKey("partners")) setActive("partners"); }} />
         ) : active === "reports" ? (

@@ -22,7 +22,7 @@ const ICONS = { coupons: Ticket, lucky: Gift, events: CalendarDays, programs: Aw
 export function RewardsHub({ role, initialTab = "coupons" }: { role: string | null; initialTab?: RewardsTab }) {
   const access = useOffersAccess();
   const isSuper = role === "super_admin";
-  const tabs: RewardsTab[] = isSuper ? ["coupons", "lucky", "events", "programs"] : ["coupons"];
+  const tabs: RewardsTab[] = isSuper ? ["coupons", "lucky", "events", "programs"] : ["events"];
   const [tab, setTab] = useState<RewardsTab>(tabs.includes(initialTab) ? initialTab : "coupons");
   useReportPageTab(LABELS[tab]);
 

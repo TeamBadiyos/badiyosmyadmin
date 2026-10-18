@@ -53,7 +53,9 @@ function ZoneEditor({ role }: { role: string | null }) {
   const { city, cities, setCityId } = useCity();
   const cityId = city?.id ?? "";
   const qc = useQueryClient();
-  const canEdit = role === "super_admin" || role === "ops_manager";
+  // Drawing/editing zones and city areas is super admin only; Ops can only turn zones On/Off.
+  const canEdit = role === "super_admin";
+  const canToggle = role === "super_admin" || role === "ops_manager";
   const key = ["zones-v2", cityId];
   const q = useQuery({
     queryKey: key, enabled: !!cityId,
@@ -324,7 +326,7 @@ function ZoneEditor({ role }: { role: string | null }) {
                   <span className="flex-1">{c.name}{c.is_off && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Off</span>}</span>
                   <span className="text-xs text-muted-foreground">{(c.area_m2 / 1e6).toFixed(2)} km²</span>
                 </button>
-                {canEdit && <Switch checked={!c.is_off} disabled={busy} onCheckedChange={(v) => toggleOff(c, !v)} aria-label={`${c.name} on/off`} />}
+                {canToggle && <Switch checked={!c.is_off} disabled={busy} onCheckedChange={(v) => toggleOff(c, !v)} aria-label={`${c.name} on/off`} />}
               </div>
             ))}
           </div>
