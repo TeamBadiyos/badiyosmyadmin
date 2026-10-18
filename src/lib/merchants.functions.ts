@@ -293,6 +293,13 @@ export type MerchantDetail = {
   otherCommissionPct: number;
   deletedAt: string | null;
   deleteReason: string | null;
+  serviceType: string | null;
+  email: string | null;
+  upiId: string | null;
+  fssaiNumber: string | null;
+  fssaiExpiry: string | null;
+  udyamNumber: string | null;
+  shopPhotoUrl: string | null;
 };
 
 export const getMerchantDetail = createServerFn({ method: "GET" })
@@ -307,7 +314,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason, service_type, email, upi_id, fssai_number, fssai_expiry, udyam_number, shop_photo_url",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -342,6 +349,13 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       otherCommissionPct: Number((m as any).other_commission_pct ?? 0), // eslint-disable-line @typescript-eslint/no-explicit-any
       deletedAt: m.deleted_at ?? null,
       deleteReason: m.delete_reason ?? null,
+      serviceType: m.service_type ?? null,
+      email: m.email ?? null,
+      upiId: m.upi_id ?? null,
+      fssaiNumber: m.fssai_number ?? null,
+      fssaiExpiry: m.fssai_expiry ?? null,
+      udyamNumber: m.udyam_number ?? null,
+      shopPhotoUrl: m.shop_photo_url ?? null,
     };
   });
 
@@ -384,6 +398,13 @@ export type UpdateMerchantInput = {
   pan?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  serviceType?: "store" | "food";
+  email?: string | null;
+  upiId?: string | null;
+  fssaiNumber?: string | null;
+  fssaiExpiry?: string | null;
+  udyamNumber?: string | null;
+  shopPhotoUrl?: string | null;
 };
 
 export const updateMerchantDetails = createServerFn({ method: "POST" })
@@ -403,6 +424,14 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       throw new Error("PAN must look like ABCDE1234F");
     if (input.bankAccount?.trim() && !/^\d{6,18}$/.test(input.bankAccount.trim()))
       throw new Error("Account number must be 6-18 digits");
+    if (input.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim()))
+      throw new Error("Enter a valid email");
+    if (input.upiId?.trim() && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(input.upiId.trim()))
+      throw new Error("UPI ID must look like name@bank");
+    if (input.fssaiNumber?.trim() && !/^\d{14}$/.test(input.fssaiNumber.trim()))
+      throw new Error("FSSAI licence no. must be 14 digits");
+    if (input.fssaiExpiry?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(input.fssaiExpiry.trim()))
+      throw new Error("FSSAI expiry is not a valid date");
     const la = input.latitude, lo = input.longitude;
     if ((la == null) !== (lo == null)) throw new Error("Enter both latitude and longitude");
     if (la != null && (!Number.isFinite(la) || la < -90 || la > 90 || !Number.isFinite(lo!) || lo! < -180 || lo! > 180))
@@ -447,6 +476,13 @@ export const updateMerchantDetails = createServerFn({ method: "POST" })
       bank_ifsc: trimmed(data.bankIfsc)?.toUpperCase() ?? null,
       pan: trimmed(data.pan)?.toUpperCase() ?? null,
       ...(data.latitude !== undefined ? { latitude: data.latitude, longitude: data.longitude ?? null } : {}),
+      ...(data.serviceType !== undefined ? { service_type: data.serviceType === "food" ? "food" : "store" } : {}),
+      ...(data.email !== undefined ? { email: trimmed(data.email)?.toLowerCase() ?? null } : {}),
+      ...(data.upiId !== undefined ? { upi_id: trimmed(data.upiId) } : {}),
+      ...(data.fssaiNumber !== undefined ? { fssai_number: trimmed(data.fssaiNumber) } : {}),
+      ...(data.fssaiExpiry !== undefined ? { fssai_expiry: trimmed(data.fssaiExpiry) } : {}),
+      ...(data.udyamNumber !== undefined ? { udyam_number: trimmed(data.udyamNumber)?.toUpperCase() ?? null } : {}),
+      ...(data.shopPhotoUrl !== undefined ? { shop_photo_url: trimmed(data.shopPhotoUrl) } : {}),
     };
 
     const { data: after, error } = await db

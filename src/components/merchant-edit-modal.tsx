@@ -13,6 +13,40 @@ import {
   type MerchantStatus,
 } from "@/lib/merchants.functions";
 import { getMerchantModules, setBusinessModules } from "@/lib/bulk-courier.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { catalogImageUrl } from "@/lib/catalog-images";
+
+/** Store photo: upload / replace / remove. Saved with "Save changes". */
+function ShopPhoto({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const url = value ? catalogImageUrl(value) : null;
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("Choose an image");
+    setBusy(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `merchants/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("catalog-images").upload(path, file, { upsert: false, contentType: file.type });
+      if (error) throw new Error(error.message);
+      onChange(path);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="flex items-center gap-4">
+      {url ? <img src={url} alt="" className="h-16 w-16 rounded-xl object-cover border border-border" /> : <div className="h-16 w-16 rounded-xl bg-muted" />}
+      <label className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold inline-flex items-center cursor-pointer">
+        {busy ? "Uploading…" : url ? "Change photo" : "Upload photo"}
+        <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(e) => pick(e.target.files?.[0])} />
+      </label>
+      {url && <button type="button" onClick={() => onChange("")} className="text-[13px] font-semibold text-destructive">Remove</button>}
+    </div>
+  );
+}
 
 
 const STATUSES: { value: MerchantStatus; label: string }[] = [
@@ -45,6 +79,13 @@ type FormState = {
   bankAccount: string;
   bankIfsc: string;
   pan: string;
+  serviceType: "store" | "food";
+  email: string;
+  upiId: string;
+  fssaiNumber: string;
+  fssaiExpiry: string;
+  udyamNumber: string;
+  shopPhotoUrl: string;
 };
 
 const EMPTY: FormState = {
@@ -69,6 +110,13 @@ const EMPTY: FormState = {
   bankAccount: "",
   bankIfsc: "",
   pan: "",
+  serviceType: "store",
+  email: "",
+  upiId: "",
+  fssaiNumber: "",
+  fssaiExpiry: "",
+  udyamNumber: "",
+  shopPhotoUrl: "",
 };
 
 export function MerchantEditModal({
@@ -120,6 +168,13 @@ export function MerchantEditModal({
       bankAccount: detail.bankAccount ?? "",
       bankIfsc: detail.bankIfsc ?? "",
       pan: detail.pan ?? "",
+      serviceType: detail.serviceType === "food" ? "food" : "store",
+      email: detail.email ?? "",
+      upiId: detail.upiId ?? "",
+      fssaiNumber: detail.fssaiNumber ?? "",
+      fssaiExpiry: detail.fssaiExpiry ? String(detail.fssaiExpiry).slice(0, 10) : "",
+      udyamNumber: detail.udyamNumber ?? "",
+      shopPhotoUrl: detail.shopPhotoUrl ?? "",
     });
   }, [detail]);
 
@@ -151,6 +206,13 @@ export function MerchantEditModal({
           bankAccount: form.bankAccount || null,
           bankIfsc: form.bankIfsc || null,
           pan: form.pan || null,
+          serviceType: form.serviceType,
+          email: form.email || null,
+          upiId: form.upiId || null,
+          fssaiNumber: form.fssaiNumber || null,
+          fssaiExpiry: form.fssaiExpiry || null,
+          udyamNumber: form.udyamNumber || null,
+          shopPhotoUrl: form.shopPhotoUrl || null,
         },
       }),
     onSuccess: () => {
@@ -207,10 +269,33 @@ export function MerchantEditModal({
           </div>
         ) : (
           <div className="p-6 space-y-6">
+            <ShopPhoto value={form.shopPhotoUrl} onChange={(v) => set("shopPhotoUrl", v)} />
+
             <Section title="Store & owner">
               <Text label="Store name" value={form.storeName} onChange={(v) => set("storeName", v)} />
+              <Select
+                label="Business type"
+                value={form.serviceType}
+                onChange={(v) => set("serviceType", v === "food" ? "food" : "store")}
+                options={[
+                  { value: "store", label: "Store (shop)" },
+                  { value: "food", label: "Food (restaurant)" },
+                ]}
+              />
               <Text label="Owner name" value={form.ownerName} onChange={(v) => set("ownerName", v)} />
               <Text label="Phone" value={form.phone} onChange={(v) => set("phone", v)} />
+              <Text label="Email" value={form.email} onChange={(v) => set("email", v)} />
+              <Text label="UPI ID" value={form.upiId} onChange={(v) => set("upiId", v)} />
+            </Section>
+
+            <Section title="Licences">
+              <Text label="FSSAI licence no." value={form.fssaiNumber} onChange={(v) => set("fssaiNumber", v.replace(/\D/g, "").slice(0, 14))} />
+              <label className="block">
+                <span className="block text-[12px] font-semibold text-muted-foreground mb-1.5">FSSAI expiry</span>
+                <input type="date" value={form.fssaiExpiry} onChange={(e) => set("fssaiExpiry", e.target.value)}
+                  className="w-full h-10 rounded-[12px] border border-border bg-background px-3 text-[14px]" />
+              </label>
+              <Text label="Udyam / Shop Act no." value={form.udyamNumber} onChange={(v) => set("udyamNumber", v.toUpperCase())} />
             </Section>
 
             <Section title="Category & placement">
