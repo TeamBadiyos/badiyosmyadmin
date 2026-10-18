@@ -13,6 +13,40 @@ import {
   type MerchantStatus,
 } from "@/lib/merchants.functions";
 import { getMerchantModules, setBusinessModules } from "@/lib/bulk-courier.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { catalogImageUrl } from "@/lib/catalog-images";
+
+/** Store photo: upload / replace / remove. Saved with "Save changes". */
+function ShopPhoto({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const url = value ? catalogImageUrl(value) : null;
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("Choose an image");
+    setBusy(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `merchants/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("catalog-images").upload(path, file, { upsert: false, contentType: file.type });
+      if (error) throw new Error(error.message);
+      onChange(path);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="flex items-center gap-4">
+      {url ? <img src={url} alt="" className="h-16 w-16 rounded-xl object-cover border border-border" /> : <div className="h-16 w-16 rounded-xl bg-muted" />}
+      <label className="h-10 px-4 rounded-[12px] border border-border text-[13px] font-semibold inline-flex items-center cursor-pointer">
+        {busy ? "Uploading…" : url ? "Change photo" : "Upload photo"}
+        <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(e) => pick(e.target.files?.[0])} />
+      </label>
+      {url && <button type="button" onClick={() => onChange("")} className="text-[13px] font-semibold text-destructive">Remove</button>}
+    </div>
+  );
+}
 
 
 const STATUSES: { value: MerchantStatus; label: string }[] = [
