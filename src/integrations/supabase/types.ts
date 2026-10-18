@@ -11765,6 +11765,7 @@ export type Database = {
       }
     }
     Functions: {
+      _send_action_otp: { Args: { _digits: string }; Returns: undefined }
       admin_alert_claim_batch: {
         Args: { _limit?: number }
         Returns: {
@@ -12935,6 +12936,7 @@ export type Database = {
       cron_fast_tick: { Args: never; Returns: undefined }
       cron_minute_tick: { Args: never; Returns: undefined }
       current_merchant_id: { Args: never; Returns: string }
+      current_user_phone_digits: { Args: never; Returns: string }
       customer_cancel_booking_apply: {
         Args: {
           _booking_id: string
