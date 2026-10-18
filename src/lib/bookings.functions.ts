@@ -577,7 +577,7 @@ async function loadBookingDetails(
     customer: {
       id: userRes.data?.id ?? null,
       name: userRes.data?.full_name ?? null,
-      phone: userRes.data?.phone ?? null,
+      phone: role === "area_partner" ? maskPhone(userRes.data?.phone ?? null) : userRes.data?.phone ?? null,
     },
     address: addrRes.data
       ? {
@@ -1166,3 +1166,9 @@ export const adjustBookingTime = createServerFn({ method: "POST" })
     if (error) throw new Error((error as { message: string }).message);
     return res as unknown as { customer_amount: number; expert_pay_delta: number; extension_id: string | null };
   });
+
+function maskPhone(p: string | null): string | null {
+  if (!p) return null;
+  const d = p.replace(/\D/g, "").slice(-10);
+  return d.length < 5 ? "xxxxx" : `${d.slice(0, 2)}xxxxx${d.slice(-3)}`;
+}
