@@ -1,3 +1,4 @@
+import { exportPhone, knownRole } from "@/lib/export-guard";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,7 +17,7 @@ function csv(rows: DemandRow[]) {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = ["City", "Area", "Services", "Phone", "Source", "Latitude", "Longitude", "Status", "Submitted (IST)"];
   const body = rows.map((r) =>
-    [r.city, r.area, r.services.map((s) => DEMAND_LABEL[s] ?? s).join("; "), r.phone, SOURCE_LABEL[r.source] ?? r.source,
+    [r.city, r.area, r.services.map((s) => DEMAND_LABEL[s] ?? s).join("; "), exportPhone(r.phone, knownRole()), SOURCE_LABEL[r.source] ?? r.source,
       r.latitude, r.longitude, r.notified ? "Notified" : "Waiting", fmt(r.createdAt)].map(esc).join(","),
   );
   const blob = new Blob([[head.join(","), ...body].join("\n")], { type: "text/csv" });

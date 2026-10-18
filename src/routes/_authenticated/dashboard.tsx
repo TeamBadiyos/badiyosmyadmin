@@ -33,6 +33,7 @@ import { BannersPage } from "@/components/banners-page";
 import { WalletsPage } from "@/components/wallets-page";
 import { ReferralsPage } from "@/components/referrals-page";
 import { RolesPage } from "@/components/roles-page";
+import { installExportAudit } from "@/lib/export-guard";
 import { ApApplicationsPage, ApEarningsPage } from "@/components/area-partner-pages";
 import { AuditLogsPage } from "@/components/audit-logs-page";
 import { ReportsPage } from "@/components/reports-page";
@@ -346,6 +347,7 @@ function Shell() {
     setActiveState((cur) => (cur === raw ? cur : raw));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.tab]);
+  useEffect(() => { installExportAudit(); }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);

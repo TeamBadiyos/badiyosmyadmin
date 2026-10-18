@@ -1,3 +1,4 @@
+import { exportPhone, knownRole } from "@/lib/export-guard";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -47,7 +48,7 @@ export function SpinRedemptions({ eventId, name, onClose }: { eventId: string; n
   const by = (r: Row) => r.method === "app" ? "Customer app" : [r.staff, r.gate].filter(Boolean).join(" · ");
   const csv = () => {
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = rows.map((r) => [r.winner, r.phone, r.prize, r.code, LABEL[r.status], fmt(r.won_at), fmt(r.redeemed_at), by(r), r.reason].map(esc).join(","));
+    const lines = rows.map((r) => [r.winner, knownRole() === "super_admin" ? r.phone : (r.phone_masked || exportPhone(r.phone, knownRole())), r.prize, r.code, LABEL[r.status], fmt(r.won_at), fmt(r.redeemed_at), by(r), r.reason].map(esc).join(","));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([["Winner,Phone,Prize,Code,Status,Won (IST),Redeemed (IST),By / gate,Reason", ...lines].join("\n")], { type: "text/csv" }));
     a.download = `spin-redemptions-${name.replace(/\W+/g, "-")}.csv`; a.click();

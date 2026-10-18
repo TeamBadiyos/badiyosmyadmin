@@ -1,3 +1,4 @@
+import { exportPhone, knownRole } from "@/lib/export-guard";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -120,7 +121,7 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const fmt = (v: string | null) => (v ? new Date(v).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (data as any[]).map((r) => [r.name, r.phone, r.prize, TYPE_LABEL[r.prize_type as PrizeType], fmt(r.won_at), r.redemption_code, r.prize_type === "physical" ? (r.redeemed_at ? `Yes ${fmt(r.redeemed_at)}` : "No") : "Issued"].map(esc).join(","));
+    const rows = (data as any[]).map((r) => [r.name, exportPhone(r.phone, knownRole()), r.prize, TYPE_LABEL[r.prize_type as PrizeType], fmt(r.won_at), r.redemption_code, r.prize_type === "physical" ? (r.redeemed_at ? `Yes ${fmt(r.redeemed_at)}` : "No") : "Issued"].map(esc).join(","));
     const csv = ["Name,Phone,Prize,Type,Time (IST),Code,Redeemed", ...rows].join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));

@@ -1,3 +1,4 @@
+import { exportPhone, knownRole } from "@/lib/export-guard";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,7 +12,7 @@ const fmt = (s: string) =>
 function exportCsv(rows: TopName[]) {
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = ["City", "Service", "Name", "Customers", "Latest", "Spellings", "Phones"];
-  const body = rows.map((r) => [r.city, DEMAND_LABEL[r.service] ?? r.service, r.name, r.customers, fmt(r.latest_at), r.spellings.join("; "), r.phones.join("; ")].map(esc).join(","));
+  const body = rows.map((r) => [r.city, DEMAND_LABEL[r.service] ?? r.service, r.name, r.customers, fmt(r.latest_at), r.spellings.join("; "), r.phones.map((p) => exportPhone(p, knownRole())).join("; ")].map(esc).join(","));
   const blob = new Blob([[head.join(","), ...body].join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
