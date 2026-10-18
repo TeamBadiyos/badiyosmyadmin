@@ -7284,7 +7284,7 @@ export type Database = {
           city?: string | null
           city_id?: string | null
           commission_mode?: string
-          commission_pct: number
+          commission_pct?: number
           commission_type?: string
           commission_value?: number
           country?: string | null
