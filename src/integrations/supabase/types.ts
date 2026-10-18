@@ -4884,6 +4884,9 @@ export type Database = {
           preferred_zone_id: string | null
           query_note: string | null
           query_reason: string | null
+          recommend_note: string | null
+          recommended_at: string | null
+          recommended_by: string | null
           reject_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -4911,6 +4914,9 @@ export type Database = {
           preferred_zone_id?: string | null
           query_note?: string | null
           query_reason?: string | null
+          recommend_note?: string | null
+          recommended_at?: string | null
+          recommended_by?: string | null
           reject_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -4938,6 +4944,9 @@ export type Database = {
           preferred_zone_id?: string | null
           query_note?: string | null
           query_reason?: string | null
+          recommend_note?: string | null
+          recommended_at?: string | null
+          recommended_by?: string | null
           reject_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -5022,6 +5031,35 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      expert_leave_days: {
+        Row: {
+          created_at: string
+          expert_id: string
+          leave_date: string
+          marked_by: string
+        }
+        Insert: {
+          created_at?: string
+          expert_id: string
+          leave_date: string
+          marked_by: string
+        }
+        Update: {
+          created_at?: string
+          expert_id?: string
+          leave_date?: string
+          marked_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expert_leave_days_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "experts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expert_zones: {
         Row: {
@@ -10473,7 +10511,9 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          last_login_at: string | null
           name: string
+          phone: string | null
           role: string
           status: string
           zone_id: string | null
@@ -10483,7 +10523,9 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          last_login_at?: string | null
           name: string
+          phone?: string | null
           role: string
           status?: string
           zone_id?: string | null
@@ -10493,7 +10535,9 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          last_login_at?: string | null
           name?: string
+          phone?: string | null
           role?: string
           status?: string
           zone_id?: string | null
@@ -12148,6 +12192,90 @@ export type Database = {
         Args: { _party_id: string; _party_type: string }
         Returns: Json
       }
+      ap_require_booking: {
+        Args: { _booking_id: string }
+        Returns: {
+          address_id: string | null
+          arrived_at: string | null
+          assigned_expert_id: string | null
+          booking_lat: number | null
+          booking_lng: number | null
+          booking_number: string | null
+          broadcast_started_at: string | null
+          cancellation_fee: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          city_id: string | null
+          commission_rule_id: string | null
+          coupon_code: string | null
+          coupon_id: string | null
+          created_at: string | null
+          current_search_radius_km: number | null
+          customer_note: string | null
+          delete_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          discount_amount: number
+          dispatch_alert_sent: boolean
+          dispatch_exhausted_at: string | null
+          end_otp: string | null
+          expert_assigned_at: string | null
+          expert_payout_batch_id: string | null
+          expert_slot_reminder_sent: boolean
+          gst_amount: number
+          gst_percent: number
+          id: string
+          is_training: boolean
+          last_rebroadcast_at: string | null
+          no_expert_alert_sent: boolean
+          on_the_way_at: string | null
+          onway_alert_sent: boolean
+          paid_at: string | null
+          partner_payout_batch_id: string | null
+          price: number
+          price_option_id: string | null
+          rating: number | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          refund_amount: number | null
+          refund_attempts: number
+          refund_destination: string | null
+          refund_error: string | null
+          refund_id: string | null
+          refund_next_attempt_at: string | null
+          refund_status: string | null
+          refund_wallet_amount: number | null
+          reminder_sent: boolean
+          review_text: string | null
+          scheduled_date: string | null
+          scheduled_reminder_sent: boolean
+          scheduled_time_slot: string | null
+          service_category_id: string | null
+          service_duration_minutes: number
+          service_end_at: string | null
+          service_label: string
+          slot_type: string
+          snapshot_expert_payout: number | null
+          snapshot_hourly_rate: number | null
+          snapshot_hq_share: number | null
+          snapshot_partner_payout: number | null
+          staff_note: string | null
+          start_otp: string | null
+          started_at: string | null
+          status: string
+          total_amount: number
+          updated_at: string | null
+          user_id: string | null
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       app_agreement_accept: {
         Args: {
           _agreement_id: string
@@ -13726,6 +13854,7 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: number
       }
+      mask_phone: { Args: { _p: string }; Returns: string }
       merchant_access: { Args: { _store_id: string }; Returns: string }
       merchant_add_referral_invite: {
         Args: { _name: string; _phone: string }
@@ -14572,6 +14701,10 @@ export type Database = {
         Args: { _batch_id: string }
         Returns: undefined
       }
+      staff_connect_via_badiyos: {
+        Args: { _booking_id: string; _reason: string }
+        Returns: string
+      }
       staff_coupon_grant_phones: {
         Args: { _id: string; _phones: string[] }
         Returns: Json
@@ -14979,6 +15112,7 @@ export type Database = {
         Returns: undefined
       }
       staff_my_cities: { Args: never; Returns: Json }
+      staff_my_zone_ids: { Args: never; Returns: string[] }
       staff_notify_summary: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -15051,6 +15185,10 @@ export type Database = {
       staff_reassign_store_rider: {
         Args: { _expert_id: string; _order_id: string }
         Returns: Json
+      }
+      staff_recommend_application: {
+        Args: { _id: string; _note: string }
+        Returns: undefined
       }
       staff_record_payout_payment: {
         Args: {
@@ -15200,6 +15338,7 @@ export type Database = {
           total_value: number
         }[]
       }
+      staff_role: { Args: never; Returns: string }
       staff_run_reward_period_jobs: {
         Args: { _period_start?: string }
         Returns: number
@@ -15396,6 +15535,10 @@ export type Database = {
       }
       staff_set_expert_growth_partner: {
         Args: { _expert_id: string; _partner_id: string }
+        Returns: undefined
+      }
+      staff_set_expert_leave_today: {
+        Args: { _expert_id: string; _on: boolean }
         Returns: undefined
       }
       staff_set_expert_onboarding: {
@@ -15659,11 +15802,22 @@ export type Database = {
           tds_total: number
         }[]
       }
+      staff_touch_login: { Args: never; Returns: undefined }
       staff_transfer_completed_work: {
         Args: { _booking_id: string; _new_expert_id: string; _reason: string }
         Returns: Json
       }
       staff_undo_service_focus: { Args: { _undo_token: string }; Returns: Json }
+      staff_update_booking_location: {
+        Args: {
+          _address: string
+          _booking_id: string
+          _lat: number
+          _lng: number
+          _reason: string
+        }
+        Returns: undefined
+      }
       staff_update_booking_status: {
         Args: { _booking_id: string; _new_status: string; _note?: string }
         Returns: undefined
