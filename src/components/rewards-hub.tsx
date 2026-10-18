@@ -30,7 +30,7 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
       <SectionTabs items={tabs.map((t) => ({ key: t, label: LABELS[t], icon: ICONS[t] }))} active={tab} onChange={setTab} />
       {tab === "coupons" && <CouponsTab canWrite={access?.canWrite ?? false} />}
       {tab === "lucky" && <LuckyDrawPage />}
-      {tab === "events" && <EventOffersPage />}
+      {tab === "events" && <EventsSection />}
       {tab === "programs" && <RewardsPage />}
     </div>
   );
