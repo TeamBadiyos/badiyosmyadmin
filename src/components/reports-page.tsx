@@ -21,6 +21,7 @@ import {
 import {
   getRevenueReport,
   getBookingsReport,
+  getBookingsDrilldown,
   getExpertPerformance,
   getReferralReport,
   getPayoutReport,
@@ -323,6 +324,7 @@ function BookingsTab({ range }: { range: ReportRange }) {
     catch (e) { setZipErr((e as Error).message); }
     finally { setZipBusy(false); }
   };
+  const [drill, setDrill] = useState<Drill | null>(null);
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
   if (!data) return null;
@@ -383,8 +385,52 @@ function BookingsTab({ range }: { range: ReportRange }) {
           columns={["Zone", "Count"]}
           rows={data.byZone.map((z) => [z.zoneName, String(z.count)])}
           emptyText="No bookings in range."
+          onRowClick={(i) => {
+            const z = data.byZone[i];
+            setDrill({ title: `${z.zoneName} — ${z.count} bookings`, zoneId: z.zoneId ?? "none" });
+          }}
         />
       </Card>
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-4">Bookings by status</h3>
+        <SimpleTable
+          columns={["Status", "Count"]}
+          rows={data.byStatus.map((s) => [s.status, String(s.count)])}
+          emptyText="No bookings in range."
+          onRowClick={(i) => {
+            const s = data.byStatus[i];
+            setDrill({ title: `${s.status} — ${s.count} bookings`, status: s.status });
+          }}
+        />
+      </Card>
+      {drill && <BookingDrilldown range={range} drill={drill} onClose={() => setDrill(null)} />}
+    </div>
+  );
+}
+
+type Drill = { title: string; zoneId?: string; status?: string };
+function BookingDrilldown({ range, drill, onClose }: { range: ReportRange; drill: Drill; onClose: () => void }) {
+  const fetchFn = useServerFn(getBookingsDrilldown);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "bookings-drill", range, drill],
+    queryFn: () => fetchFn({ data: { ...range, zoneId: drill.zoneId ?? range.zoneId ?? null, status: drill.status ?? null } }),
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/30" onClick={onClose}>
+      <div className="h-full w-full max-w-3xl overflow-y-auto bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-[16px] font-bold text-foreground">{drill.title}</h3>
+          <button onClick={onClose} className="h-8 px-3 rounded-[10px] bg-muted text-[12px] font-semibold">Close</button>
+        </div>
+        {isLoading ? <Loading /> : error ? <ErrorMsg msg={(error as Error).message} /> : (
+          <SimpleTable
+            columns={["Booking", "Date", "Service", "Customer", "Expert", "Status", "Amount"]}
+            rows={(data ?? []).map((r) => [r.number, r.date, r.service, r.customer, r.expert, r.status, inr.format(r.amount)])}
+            rightAlign={[6]}
+            emptyText="No bookings."
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -735,11 +781,13 @@ function SimpleTable({
   rows,
   emptyText,
   rightAlign = [],
+  onRowClick,
 }: {
   columns: string[];
   rows: string[][];
   emptyText: string;
   rightAlign?: number[];
+  onRowClick?: (index: number) => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -761,7 +809,8 @@ function SimpleTable({
       {rows.map((r, ri) => (
         <div
           key={ri}
-          className="grid gap-4 items-center px-5 py-3 border-b border-border last:border-b-0 text-[13px]"
+          onClick={onRowClick ? () => onRowClick(ri) : undefined}
+          className={`grid gap-4 items-center px-5 py-3 border-b border-border last:border-b-0 text-[13px] ${onRowClick ? "cursor-pointer hover:bg-muted/50" : ""}`}
           style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
         >
           {r.map((cell, ci) => (
@@ -769,7 +818,7 @@ function SimpleTable({
               key={ci}
               className={`truncate ${
                 rightAlign.includes(ci) ? "text-right font-semibold" : "text-foreground"
-              }`}
+              } ${onRowClick && ci === r.length - 1 ? "text-primary underline" : ""}`}
             >
               {cell}
             </span>

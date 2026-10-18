@@ -232,6 +232,52 @@ export const getBookingsReport = createServerFn({ method: "POST" })
     };
   });
 
+export type BookingDrillRow = { id: string; number: string; date: string; service: string; customer: string; expert: string; status: string; amount: number };
+export const getBookingsDrilldown = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: ReportRange & { status?: string | null }) => ({ ...validateRange(i), status: i?.status ?? null }))
+  .handler(async ({ data, context }): Promise<BookingDrillRow[]> => {
+    const scope = await getScope(context.supabase, context.userId);
+    const wantNone = data.zoneId === "none";
+    const zone = scopeZone(scope, wantNone ? null : data.zoneId);
+    if (zone === "empty") return [];
+    let q = context.supabase
+      .from("bookings")
+      .select("id, booking_number, status, price, created_at, service_label, user_id, assigned_expert_id, zone_id")
+      .eq("is_training", false)
+      .is("deleted_at", null)
+      .gte("created_at", rangeFrom(data.from))
+      .lte("created_at", rangeTo(data.to))
+      .order("created_at", { ascending: false });
+    q = applyZone(q, zone);
+    if (wantNone) q = q.is("zone_id", null);
+    if (data.status) q = q.eq("status", data.status);
+    const { data: rows, error } = await q.limit(2000);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (rows ?? []) as any[];
+    const userIds = [...new Set(list.map((r) => r.user_id).filter(Boolean))];
+    const expertIds = [...new Set(list.map((r) => r.assigned_expert_id).filter(Boolean))];
+    const [u, e] = await Promise.all([
+      userIds.length ? context.supabase.from("users").select("id, name, phone").in("id", userIds) : Promise.resolve({ data: [] }),
+      expertIds.length ? context.supabase.from("experts").select("id, name").in("id", expertIds) : Promise.resolve({ data: [] }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const um = new Map(((u.data ?? []) as any[]).map((x) => [x.id, x.name || x.phone || "—"]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const em = new Map(((e.data ?? []) as any[]).map((x) => [x.id, x.name || "—"]));
+    return list.map((r) => ({
+      id: r.id,
+      number: r.booking_number ? String(r.booking_number) : r.id.slice(0, 8),
+      date: new Date(r.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
+      service: r.service_label ?? "—",
+      customer: (um.get(r.user_id) as string) ?? "—",
+      expert: r.assigned_expert_id ? ((em.get(r.assigned_expert_id) as string) ?? "—") : "Not assigned",
+      status: r.status,
+      amount: Number(r.price ?? 0),
+    }));
+  });
+
 // ============ Expert Performance ============
 export type ExpertPerformanceRow = {
   expertId: string;
