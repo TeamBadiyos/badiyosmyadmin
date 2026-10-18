@@ -297,15 +297,21 @@ const LEGACY_NAV_ALIASES: Partial<Record<NavKey, NavKey>> = {
   "unassigned-trips": "dashboard",
 };
 
-type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
+type StaffRole = "super_admin" | "ops_manager" | "area_partner";
+
+// Super-admin-only pages (also blocked on the server).
+const SUPER_ONLY_KEYS: ReadonlyArray<string> = [
+  "roles", "cities", "company-profile", "legal", "agreements", "tax-settings", "fees",
+  "fin-overview", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "fin-settlements", "fin-instant", "fin-invoices",
+  "settlements", "wallets", "merchant-billing", "reports",
+  "offers", "event-offers", "rewards", "referrals", "lucky-draw", "campaigns",
+  "catalogue", "maid-catalogue", "wash-catalogue", "courier-rates",
+];
 
 const ROLE_ALLOWED: Record<StaffRole, ReadonlyArray<NavKey>> = {
   super_admin: NAV_ITEMS.map((n) => n.key),
-  ops_manager: NAV_ITEMS.map((n) => n.key).filter(
-    (k) => k !== "roles" && k !== "fin-expenses" && k !== "event-offers" && k !== "catalogue" && k !== "maid-catalogue" && k !== "wash-catalogue" && k !== "referrals" && k !== "rewards",
-  ),
-  finance: ["fin-overview", "settlements", "fin-settlements", "wallets", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "reports"],
-  area_partner: ["dashboard", "bookings", "maid-bookings", "wash-bookings", "experts", "clean-experts", "wash-team", "reports"],
+  ops_manager: NAV_ITEMS.map((n) => n.key).filter((k) => !SUPER_ONLY_KEYS.includes(k)),
+  area_partner: ["dashboard", "maid-bookings", "wash-bookings", "clean-experts", "wash-team", "waitlist"],
 };
 
 function Shell() {
