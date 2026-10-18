@@ -139,8 +139,6 @@ function ZoneEditor({ role }: { role: string | null }) {
       map: map.current, position: pos, clickable: false, zIndex: z,
       icon: { path: g.maps.SymbolPath.CIRCLE, scale: 0 }, label: { text, color: colour, fontSize: "11px", fontWeight: "700" },
     }));
-    // current live zones (until switch-over), grey dashed behind everything
-    for (const z of st.old_zones) for (const r of rings(z.geom)) { dashed(r, "#94A3B8", 2, 1); label(centre(r), z.name, "#64748B", 1); }
     // city area: thick dashed line
     if (st.boundary && !(mode.kind === "city" && mode.cityId === cityId)) for (const r of rings(st.boundary)) dashed(r, "#0F172A", 4, 4);
     for (const c of st.cells) {
@@ -297,7 +295,7 @@ function ZoneEditor({ role }: { role: string | null }) {
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">Thick dashed line = city area. Grey dashed outlines = current live zones (used until you switch over). Hatched grey = zone Off.</p>
+          <p className="text-xs text-muted-foreground">Thick dashed line = city area. Hatched grey = zone Off.</p>
         </div>
 
         <div className="space-y-3">
@@ -308,7 +306,7 @@ function ZoneEditor({ role }: { role: string | null }) {
               Gaps: {st?.gap_km2 ?? 0} km² {st?.gap ? <button className="underline ml-1" onClick={() => setShowGaps(true)}>Show</button> : null}
             </p>
             {st?.overlap && <p className="font-semibold text-destructive">Overlap found</p>}
-            <p className="pt-1 text-xs text-muted-foreground">On save, parts outside the city or over other zones are trimmed, and points within 50 m of a neighbour or the city edge snap onto it.</p>
+            <p className="pt-1 text-xs text-muted-foreground">On save: the edited zone keeps its new shape and neighbours give way (no overlaps), points snap to the city edge and nearby zones, and small gaps under 0.1 km² join the nearest zone automatically.</p>
           </div>
           {selCell && canEdit && mode.kind === "idle" && (
             <ZoneForm key={selCell.id} title="Selected zone" initialName={selCell.name} initialColour={selCell.colour} busy={busy}
