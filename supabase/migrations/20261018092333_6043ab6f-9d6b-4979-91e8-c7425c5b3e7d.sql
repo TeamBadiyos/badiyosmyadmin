@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.merchant_agreement_ok(uuid) FROM PUBLIC, anon, authenticated;
