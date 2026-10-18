@@ -90,7 +90,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
         {r.isLoading && <p className="p-3 text-sm text-muted-foreground">Loading…</p>}
         {rows.map((c, i) => (
           <div key={c.id} className="flex items-center gap-3 p-2">
-            <Icon path={c.image_path} fallback={c.icon_url} />
+            <Icon path={c.image_path} fallback={c.icon_url} icon={c.icon} />
             <div className="min-w-0 flex-1">
               <p className={`truncate text-sm font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>{c.name} <span className="text-muted-foreground">/ {c.name_mr ?? "—"}</span></p>
               <p className="text-xs text-muted-foreground">{c.used} {usedLabel}{c.used === 1 ? "" : "s"}</p>
@@ -120,29 +120,46 @@ function Editor({ kind, c, busy, onClose, onSave }: { kind: CatKind; c: any; bus
   const [name, setName] = useState(c.name ?? "");
   const [mr, setMr] = useState(c.name_mr ?? "");
   const [img, setImg] = useState<string | null>(c.image_path ?? null);
+  const [icon, setIcon] = useState<string | null>(c.icon ?? null);
   const [active, setActive] = useState(c.is_active !== false);
   const [up, setUp] = useState(false);
   return (
     <Sheet open onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader><SheetTitle>{c.id ? "Edit category" : "Add category"}</SheetTitle></SheetHeader>
         <div className="space-y-3 py-4">
           <div><Label>Name (English)</Label><Input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} /></div>
           <div><Label>Name (मराठी)</Label><Input value={mr} maxLength={60} onChange={(e) => setMr(e.target.value)} /></div>
           <div className="flex items-center gap-3">
-            <Icon path={img} fallback={c.icon_url} />
+            <Icon path={img} fallback={c.icon_url} icon={icon} />
             <label className="inline-flex cursor-pointer items-center gap-1 text-sm text-primary"><Upload size={14} /> {up ? "Uploading…" : "Upload photo"}
               <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                 const f = e.target.files?.[0]; if (!f) return; setUp(true);
                 try { setImg(await upload(f, kind)); } catch (er) { toast.error(err(er)); } finally { setUp(false); }
               }} /></label>
-            {img && <Button size="sm" variant="ghost" onClick={() => setImg(null)}>Remove</Button>}
+            {img && <Button size="sm" variant="ghost" onClick={() => setImg(null)}>Remove photo</Button>}
           </div>
           <p className="text-xs text-muted-foreground">Square photo, saved as 200×200.</p>
+          <div className="space-y-2">
+            <Label>Icon (shown when there is no photo)</Label>
+            <div className="grid grid-cols-6 gap-1.5">
+              {CATEGORY_ICON_NAMES.map((n) => {
+                const I = CATEGORY_ICONS[n];
+                const on = icon === n;
+                return (
+                  <button key={n} type="button" title={n} aria-label={n} aria-pressed={on} onClick={() => setIcon(on ? null : n)}
+                    className={`flex h-10 items-center justify-center rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                    <I size={18} />
+                  </button>
+                );
+              })}
+            </div>
+            {icon && <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setIcon(null)}>Clear icon</button>}
+          </div>
           {!c.is_other && <div className="flex items-center justify-between"><Label>On</Label><Switch checked={active} onCheckedChange={setActive} /></div>}
         </div>
         <SheetFooter><Button variant="outline" onClick={onClose}>Close</Button>
-          <Button disabled={busy || up} onClick={() => onSave({ id: c.id ?? null, name, name_mr: mr, image_path: img, is_active: active })}>Save</Button></SheetFooter>
+          <Button disabled={busy || up} onClick={() => onSave({ id: c.id ?? null, name, name_mr: mr, image_path: img, icon, is_active: active })}>Save</Button></SheetFooter>
       </SheetContent>
     </Sheet>
   );
