@@ -451,7 +451,7 @@ export const getPayoutReport = createServerFn({ method: "POST" })
 export type CustomerReport = {
   newCustomers: number;
   repeatCustomers: number;
-  topZones: Array<{ zoneName: string; customers: number }>;
+  topZones: Array<{ zoneId: string | null; zoneName: string; customers: number }>;
 };
 
 export const getCustomerReport = createServerFn({ method: "POST" })
@@ -520,6 +520,7 @@ export const getCustomerReport = createServerFn({ method: "POST" })
     }
     const topZones = Array.from(zoneCustomers.entries())
       .map(([zid, set]) => ({
+        zoneId: zid || null,
         zoneName: zid ? zoneNameById.get(zid) ?? "—" : "Unassigned",
         customers: set.size,
       }))
@@ -865,4 +866,51 @@ export const getPayoutOverview = createServerFn({ method: "POST" })
         gross: Number(r.total_gross ?? 0), tds: Number(r.total_tds ?? 0), net: Number(r.total_net ?? 0) });
     }
     return out.sort((a, b) => b.from.localeCompare(a.from));
+  });
+
+// ============ Generic drilldown (Experts / Riders / Stores) ============
+export type EntityDrillRow = { id: string; number: string; date: string; status: string; amount: number };
+export const getEntityDrilldown = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: ReportRange & { kind: "expert" | "rider" | "store"; id: string }) => ({
+    ...validateRange(i),
+    kind: i.kind,
+    id: String(i.id ?? ""),
+  }))
+  .handler(async ({ data, context }): Promise<EntityDrillRow[]> => {
+    if (!data.id || !["expert", "rider", "store"].includes(data.kind)) return [];
+    const scope = await getScope(context.supabase, context.userId);
+    const db = context.supabase;
+    const fmt = (d: string) => new Date(d).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    if (data.kind === "expert") {
+      const zone = scopeZone(scope, data.zoneId);
+      if (zone === "empty") return [];
+      let q = db.from("bookings").select("id, booking_number, status, updated_at, snapshot_expert_payout")
+        .eq("is_training", false).is("deleted_at", null).eq("status", "completed").eq("assigned_expert_id", data.id)
+        .gte("updated_at", rangeFrom(data.from)).lte("updated_at", rangeTo(data.to)).order("updated_at", { ascending: false });
+      q = applyZone(q, zone);
+      const { data: rows, error } = await q.limit(2000);
+      if (error) throw new Error(error.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((rows ?? []) as any[]).map((r) => ({ id: r.id, number: r.booking_number ?? r.id.slice(0, 8), date: fmt(r.updated_at), status: r.status, amount: Number(r.snapshot_expert_payout ?? 0) }));
+    }
+    if (scope.role === "area_partner") return [];
+    if (data.kind === "rider") {
+      let q = db.from("courier_orders").select("id, status, created_at, total_amount, razorpay_payment_id")
+        .eq("assigned_expert_id", data.id).in("payment_status", ["paid", "PAID"])
+        .gte("created_at", rangeFrom(data.from)).lte("created_at", rangeTo(data.to)).order("created_at", { ascending: false });
+      if (data.zoneId) q = q.eq("zone_id", data.zoneId);
+      const { data: rows, error } = await q.limit(2000);
+      if (error) throw new Error(error.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((rows ?? []) as any[])
+        .filter((r) => ["DELIVERED", "COMPLETED"].includes(String(r.status ?? "").toUpperCase()) && !String(r.razorpay_payment_id ?? "").toLowerCase().startsWith("free_"))
+        .map((r) => ({ id: r.id, number: r.id.slice(0, 8).toUpperCase(), date: fmt(r.created_at), status: r.status, amount: Number(r.total_amount ?? 0) }));
+    }
+    const { data: rows, error } = await db.from("merchant_orders").select("id, order_number, status, created_at, total_amount")
+      .eq("is_training", false).eq("status", "completed").eq("merchant_id", data.id)
+      .gte("created_at", rangeFrom(data.from)).lte("created_at", rangeTo(data.to)).order("created_at", { ascending: false }).limit(2000);
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((rows ?? []) as any[]).map((r) => ({ id: r.id, number: r.order_number ?? r.id.slice(0, 8), date: fmt(r.created_at), status: r.status, amount: Number(r.total_amount ?? 0) }));
   });
