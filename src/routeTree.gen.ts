@@ -25,6 +25,7 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedScanRedeemRouteImport } from './routes/_authenticated/scan-redeem'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as ApiPublicBannersRouteImport } from './routes/api/public/banners'
@@ -117,6 +118,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedScanRedeemRoute = AuthenticatedScanRedeemRouteImport.update({
+  id: '/scan-redeem',
+  path: '/scan-redeem',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const MyadminLoginRoute = MyadminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/scan-redeem': typeof AuthenticatedScanRedeemRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/scan-redeem': typeof AuthenticatedScanRedeemRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/scan-redeem': typeof AuthenticatedScanRedeemRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
@@ -284,6 +293,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/terms-and-conditions'
     | '/dashboard'
+    | '/scan-redeem'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/banners'
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/terms-and-conditions'
     | '/dashboard'
+    | '/scan-redeem'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/banners'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/terms-and-conditions'
     | '/_authenticated/dashboard'
+    | '/_authenticated/scan-redeem'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/banners'
@@ -496,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/scan-redeem': {
+      id: '/_authenticated/scan-redeem'
+      path: '/scan-redeem'
+      fullPath: '/scan-redeem'
+      preLoaderRoute: typeof AuthenticatedScanRedeemRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/myadmin/login': {
       id: '/myadmin/login'
       path: '/login'
@@ -578,10 +597,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedScanRedeemRoute: typeof AuthenticatedScanRedeemRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedScanRedeemRoute: AuthenticatedScanRedeemRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
