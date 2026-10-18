@@ -6,6 +6,7 @@ import { CouponsTab, useOffersAccess } from "@/components/offers-page";
 import { LuckyDrawPage } from "@/components/lucky-draw-page";
 import { EventOffersPage } from "@/components/event-offers-page";
 import { RewardsPage } from "@/components/rewards-page";
+import { SpinWinPage } from "@/components/spin-win-page";
 
 export type RewardsTab = "coupons" | "lucky" | "events" | "programs";
 const LABELS: Record<RewardsTab, string> = {
@@ -32,6 +33,23 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
       {tab === "lucky" && <LuckyDrawPage />}
       {tab === "events" && <EventsSection />}
       {tab === "programs" && <RewardsPage />}
+    </div>
+  );
+}
+
+function EventsSection() {
+  const [kind, setKind] = useState<"offers" | "spin">("offers");
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex rounded-md border p-1">
+        {(["offers", "spin"] as const).map((k) => (
+          <button key={k} onClick={() => setKind(k)}
+            className={`rounded px-3 py-1 text-sm ${kind === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            {k === "offers" ? "Counter offers" : "Spin & Win"}
+          </button>
+        ))}
+      </div>
+      {kind === "offers" ? <EventOffersPage /> : <SpinWinPage />}
     </div>
   );
 }
