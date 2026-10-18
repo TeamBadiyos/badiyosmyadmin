@@ -91,6 +91,7 @@ function Templates({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         ))}
       </div>
       {!isSuperAdmin && <p className="text-[12px] text-muted-foreground">Only super admins can edit agreements.</p>}
+      {(type === "store" || type === "restaurant") && <MerchantGoLiveSetting isSuperAdmin={isSuperAdmin} />}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="bg-card border border-border rounded-[14px] p-3 space-y-2">
           <input className="h-9 w-full rounded-[10px] border border-border bg-background px-3 text-[14px] font-semibold" value={title} disabled={!isSuperAdmin} onChange={(e) => set({ title: e.target.value })} placeholder="Agreement title" />
