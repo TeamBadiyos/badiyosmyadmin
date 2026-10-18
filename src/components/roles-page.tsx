@@ -13,6 +13,15 @@ import {
   type StaffStatus,
 } from "@/lib/staff.functions";
 import { listZones } from "@/lib/zones.functions";
+import { supabase } from "@/integrations/supabase/client";
+
+function useCities() {
+  return useQuery({
+    queryKey: ["cities", "team-picker"],
+    queryFn: async () => ((await supabase.from("cities").select("id, name").order("name")).data ?? []) as { id: string; name: string }[],
+    staleTime: 60_000,
+  });
+}
 
 function randomPassword(len = 14) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
@@ -22,7 +31,7 @@ function randomPassword(len = 14) {
 }
 
 function roleLabel(r: StaffRole) {
-  return r === "super_admin" ? "Super Admin" : r === "ops_manager" ? "Ops Manager" : r === "finance" ? "Finance" : "Area Partner";
+  return r === "super_admin" ? "Super Admin" : r === "ops_manager" ? "Ops Manager" : "Area Partner";
 }
 
 function roleBadgeClass(r: StaffRole) {
@@ -51,7 +60,7 @@ export function RolesPage() {
           className="h-[52px] px-5 rounded-[14px] bg-primary text-white text-[14px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0 hover:opacity-95"
         >
           <Plus size={18} />
-          Add staff
+          + Add member
         </button>
       </div>
 
@@ -63,7 +72,7 @@ export function RolesPage() {
           <span>Role</span>
           <span>Zone</span>
           <span>Status</span>
-          <span>Created</span>
+          <span>Last login</span>
           <span></span>
         </div>
 
@@ -101,12 +110,12 @@ export function RolesPage() {
                 ? u.zoneNames?.length
                   ? u.zoneNames.join(", ")
                   : u.zoneName ?? "—"
-                : "—"}
-
+                : u.cityIds.length ? `${u.cityIds.length} cit${u.cityIds.length === 1 ? "y" : "ies"}` : "All cities"}
+              {u.phone ? <span className="block text-[12px]">{u.phone}</span> : null}
             </span>
             <span><StatusToggle user={u} /></span>
             <span className="text-muted-foreground text-[13px]">
-              {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kolkata" })}
+              {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "Never"}
             </span>
             <button
               onClick={() => setEditing(u)}
@@ -159,7 +168,10 @@ function CreateModal({ onClose }: { onClose: () => void }) {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"ops_manager" | "area_partner" | "finance">("ops_manager");
+  const [phone, setPhone] = useState("");
+  const [cityIds, setCityIds] = useState<string[]>([]);
+  const { data: cities = [] } = useCities();
+  const [role, setRole] = useState<"ops_manager" | "area_partner">("ops_manager");
   const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [password, setPassword] = useState(() => randomPassword());
   const [error, setError] = useState<string | null>(null);
@@ -170,9 +182,11 @@ function CreateModal({ onClose }: { onClose: () => void }) {
     mutationFn: (payload: {
       name: string;
       email: string;
-      role: "ops_manager" | "area_partner" | "finance";
+      role: "ops_manager" | "area_partner";
       zone_ids: string[];
       password: string;
+      phone: string;
+      city_ids: string[];
     }) => create({ data: payload }),
 
     onSuccess: () => {
@@ -187,7 +201,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
       <div className="bg-card rounded-[24px] w-full max-w-md p-6 space-y-5">
         <div className="flex items-start justify-between">
           <h2 className="text-[18px] font-bold text-foreground">
-            {createdPassword ? "Staff user created" : "Add staff"}
+            {createdPassword ? "Staff user created" : "Add member"}
           </h2>
           <button
             onClick={onClose}
@@ -235,7 +249,8 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 email: email.trim(),
                 role,
                 zone_ids: role === "area_partner" ? zoneIds : [],
-
+                phone,
+                city_ids: cityIds,
                 password,
               });
             }}
@@ -258,15 +273,27 @@ function CreateModal({ onClose }: { onClose: () => void }) {
                 className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
               />
             </Field>
+            <Field label="Phone">
+              <input
+                value={phone}
+                inputMode="numeric"
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="10-digit mobile"
+                className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
+              />
+            </Field>
             <Field label="Role">
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as "ops_manager" | "area_partner" | "finance")}
+                onChange={(e) => setRole(e.target.value as "ops_manager" | "area_partner")}
                 className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]"
               >
                 <option value="ops_manager">Ops Manager</option>
-                <option value="finance">Finance</option>
+                <option value="area_partner">Area Partner</option>
               </select>
+            </Field>
+            <Field label={role === "area_partner" ? "City" : "Cities (none = all cities)"}>
+              <ZonePicker zones={cities} value={cityIds} onChange={(v) => setCityIds(role === "area_partner" ? v.slice(-1) : v)} />
             </Field>
             {role === "area_partner" && (
               <Field label="Zones">
@@ -327,6 +354,9 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
 
   const [status, setStatus] = useState<StaffStatus>(user.status);
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState(user.phone ?? "");
+  const [cityIds, setCityIds] = useState<string[]>(user.cityIds ?? []);
+  const { data: cities = [] } = useCities();
 
   const selfRoleLocked = user.isSelf;
   const selfDeactivateLocked = user.isSelf;
@@ -339,6 +369,8 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
           role,
           zone_ids: role === "area_partner" ? zoneIds : [],
           status,
+          phone,
+          city_ids: user.isSelf ? undefined : cityIds,
         },
       }),
     onSuccess: () => {
@@ -350,7 +382,7 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
 
   const roleOptions = useMemo(() => {
     if (user.role === "super_admin") return ["super_admin"] as StaffRole[];
-    return (user.role === "area_partner" ? ["ops_manager", "finance", "area_partner"] : ["ops_manager", "finance"]) as StaffRole[];
+    return ["ops_manager", "area_partner"] as StaffRole[];
   }, [user.role]);
 
   return (
@@ -399,6 +431,15 @@ function EditModal({ user, onClose }: { user: StaffUserRow; onClose: () => void 
             )}
           </Field>
 
+          <Field label="Phone">
+            <input value={phone} inputMode="numeric" onChange={(e) => setPhone(e.target.value)}
+              className="w-full h-[46px] px-3 rounded-[14px] border border-border bg-background text-[14px]" />
+          </Field>
+          {!user.isSelf && (
+            <Field label={role === "area_partner" ? "City" : "Cities (none = all cities)"}>
+              <ZonePicker zones={cities} value={cityIds} onChange={(v) => setCityIds(role === "area_partner" ? v.slice(-1) : v)} />
+            </Field>
+          )}
           {role === "area_partner" && (
             <Field label="Zones">
               <ZonePicker zones={zones} value={zoneIds} onChange={setZoneIds} />
