@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ImagePlus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { type MerchantProduct, updateMerchantProduct } from "@/lib/merchants.functions";
+import { type MerchantProduct, type ProductCategoryOption, updateMerchantProduct } from "@/lib/merchants.functions";
 
 type PhotoState =
   | { kind: "keep"; url: string | null }
@@ -69,18 +69,22 @@ function UnitPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
 export function ProductEditDialog({
   product,
+  categories = [],
   onClose,
   onSaved,
 }: {
   product: MerchantProduct;
+  categories?: ProductCategoryOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const save = useServerFn(updateMerchantProduct);
   const [busy, setBusy] = useState(false);
+  const [catQuery, setCatQuery] = useState("");
   const [f, setF] = useState({
     name: product.name,
     description: product.description ?? "",
+    categoryId: product.categoryId ?? "",
     categoryLabel: product.categoryLabel ?? "",
     price: String(product.price),
     unit: product.unit ?? "",
@@ -132,6 +136,7 @@ export function ProductEditDialog({
           name: f.name,
           description: f.description,
           categoryLabel: f.categoryLabel,
+          ...(f.categoryId !== (product.categoryId ?? "") ? { categoryId: f.categoryId || null } : {}),
           price: Number(f.price),
           unit: f.unit,
           stockQuantity: Number(f.stockQuantity),
@@ -198,7 +203,24 @@ export function ProductEditDialog({
             <textarea className={`${input} h-20 py-2`} value={f.description} onChange={(e) => set("description", e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><span className={label}>Category</span><input className={input} value={f.categoryLabel} onChange={(e) => set("categoryLabel", e.target.value)} /></div>
+            <div>
+              <span className={label}>Category</span>
+              <input className={`${input} mb-1.5`} value={catQuery} onChange={(e) => setCatQuery(e.target.value)} placeholder="Search category…" />
+              <select className={input} value={f.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
+                <option value="">— Choose category —</option>
+                {categories
+                  .filter((c) => {
+                    const q = catQuery.trim().toLowerCase();
+                    return !q || c.id === f.categoryId || c.name.toLowerCase().includes(q) || (c.nameMr ?? "").includes(catQuery.trim());
+                  })
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}{c.nameMr ? ` / ${c.nameMr}` : ""}</option>
+                  ))}
+              </select>
+              {!f.categoryId && product.categoryLabel && (
+                <span className="text-[11px] text-muted-foreground">Current label: {product.categoryLabel}</span>
+              )}
+            </div>
             <div className="col-span-2"><span className={label}>Unit (quantity + type)</span><UnitPicker value={f.unit} onChange={(v) => set("unit", v)} /></div>
             <div><span className={label}>Price (₹)</span><input type="number" min={0} className={input} value={f.price} onChange={(e) => set("price", e.target.value)} /></div>
             <div><span className={label}>Stock</span><input type="number" min={0} className={input} value={f.stockQuantity} onChange={(e) => set("stockQuantity", e.target.value)} /></div>

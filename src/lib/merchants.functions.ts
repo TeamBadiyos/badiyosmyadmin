@@ -475,6 +475,7 @@ export type MerchantProduct = {
   name: string;
   description: string | null;
   categoryLabel: string | null;
+  categoryId?: string | null;
   price: number;
   unit: string | null;
   stockQuantity: number;
@@ -492,11 +493,14 @@ export type MerchantProduct = {
   createdAt: string;
 };
 
+export type ProductCategoryOption = { id: string; name: string; nameMr: string | null };
+
 export type MerchantProductsResult = {
   role: "super_admin" | "ops_manager";
   storeName: string | null;
   ownerName: string | null;
   phone: string | null;
+  categories?: ProductCategoryOption[];
   products: MerchantProduct[];
 };
 
@@ -526,13 +530,13 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     const [{ data: merchant }, { data: rows, error }] = await Promise.all([
       db
         .from("merchants")
-        .select("store_name, owner_name, phone")
+        .select("store_name, owner_name, phone, service_type, city_id")
         .eq("id", data.merchantId)
         .maybeSingle(),
       db
         .from("products")
         .select(
-          "id, name, description, category_label, price, unit, stock_quantity, low_stock_threshold, hsn_sac_code, gst_rate, is_mrp, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, image_url_2, created_at",
+          "id, name, description, category_id, category_label, price, unit, stock_quantity, low_stock_threshold, hsn_sac_code, gst_rate, is_mrp, is_active, admin_hidden, admin_hidden_reason, approval_status, approval_reason, image_url, image_url_2, created_at",
         )
         .eq("merchant_id", data.merchantId)
         .order("created_at", { ascending: false })
@@ -540,20 +544,40 @@ export const listMerchantProducts = createServerFn({ method: "GET" })
     ]);
     if (error) throw new Error(error.message);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const m = merchant as any;
+    const svc = m?.service_type === "food" ? "food" : "store";
+    const { data: catRows } = await db
+      .from("catalog_categories")
+      .select("id, name, name_mr, city_id, sort_order, is_active, service_type")
+      .eq("service_type", svc)
+      .order("sort_order", { ascending: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allCats = ((catRows ?? []) as any[]);
+    const cityCats = m?.city_id ? allCats.filter((c) => c.city_id === m.city_id) : [];
+    const pickedCats = (cityCats.length ? cityCats : allCats.filter((c) => !c.city_id));
+    const usedIds = new Set(((rows ?? []) as { category_id: string | null }[]).map((r) => r.category_id).filter(Boolean));
+    const categories = allCats
+      .filter((c) => (pickedCats.includes(c) && c.is_active) || usedIds.has(c.id))
+      .filter((c, i, a) => a.findIndex((x) => x.id === c.id) === i)
+      .map((c) => ({ id: c.id as string, name: c.name as string, nameMr: (c.name_mr ?? null) as string | null }));
+
     // Product photos live in the public catalog bucket (custom-domain URLs).
     const { catalogImageUrl } = await import("@/lib/catalog-images");
     const resolve = (u: string | null | undefined) => catalogImageUrl(u);
 
     return {
       role,
-      storeName: merchant?.store_name ?? null,
-      ownerName: merchant?.owner_name ?? null,
-      phone: merchant?.phone ?? null,
+      storeName: m?.store_name ?? null,
+      ownerName: m?.owner_name ?? null,
+      phone: m?.phone ?? null,
+      categories,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       products: ((rows ?? []) as any[]).map((r) => ({
         id: r.id,
         name: r.name,
         description: r.description ?? null,
+        categoryId: r.category_id ?? null,
         categoryLabel: r.category_label ?? null,
         price: Number(r.price ?? 0),
         unit: r.unit ?? null,
@@ -623,6 +647,7 @@ export type UpdateProductInput = {
   name: string;
   description: string | null;
   categoryLabel: string | null;
+  categoryId?: string | null;
   price: number;
   unit: string | null;
   stockQuantity: number;
@@ -678,11 +703,22 @@ export const updateMerchantProduct = createServerFn({ method: "POST" })
     };
 
     const t = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
+    let catPatch: Record<string, unknown> = { category_label: t(data.categoryLabel) };
+    if (data.categoryId !== undefined) {
+      if (data.categoryId) {
+        const { data: cat } = await admin
+          .from("catalog_categories").select("id, name").eq("id", data.categoryId).maybeSingle();
+        if (!cat) throw new Error("Category not found");
+        catPatch = { category_id: cat.id, category_label: cat.name };
+      } else {
+        catPatch = { category_id: null, category_label: null };
+      }
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const patch: Record<string, any> = {
       name: data.name.trim(),
       description: t(data.description),
-      category_label: t(data.categoryLabel),
+      ...catPatch,
       price: Number(data.price),
       unit: t(data.unit),
       stock_quantity: Math.floor(Number(data.stockQuantity)),
