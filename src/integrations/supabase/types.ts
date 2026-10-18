@@ -11493,7 +11493,12 @@ export type Database = {
           created_at: string
           geom: unknown
           id: string
+          is_off: boolean
+          live_zone_id: string | null
           name: string
+          off_by: string | null
+          off_reason: string | null
+          off_until: string | null
           updated_at: string
         }
         Insert: {
@@ -11502,7 +11507,12 @@ export type Database = {
           created_at?: string
           geom: unknown
           id?: string
+          is_off?: boolean
+          live_zone_id?: string | null
           name: string
+          off_by?: string | null
+          off_reason?: string | null
+          off_until?: string | null
           updated_at?: string
         }
         Update: {
@@ -11511,7 +11521,12 @@ export type Database = {
           created_at?: string
           geom?: unknown
           id?: string
+          is_off?: boolean
+          live_zone_id?: string | null
           name?: string
+          off_by?: string | null
+          off_reason?: string | null
+          off_until?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11520,6 +11535,13 @@ export type Database = {
             columns: ["city_id"]
             isOneToOne: false
             referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zone_draft_cells_live_zone_id_fkey"
+            columns: ["live_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
@@ -11571,7 +11593,11 @@ export type Database = {
           deleted_by: string | null
           geom: unknown
           id: string
+          is_off: boolean
           name: string
+          off_by: string | null
+          off_reason: string | null
+          off_until: string | null
           segment_id: string
           status: string
           version: number
@@ -11587,7 +11613,11 @@ export type Database = {
           deleted_by?: string | null
           geom?: unknown
           id?: string
+          is_off?: boolean
           name: string
+          off_by?: string | null
+          off_reason?: string | null
+          off_until?: string | null
           segment_id: string
           status?: string
           version?: number
@@ -11603,7 +11633,11 @@ export type Database = {
           deleted_by?: string | null
           geom?: unknown
           id?: string
+          is_off?: boolean
           name?: string
+          off_by?: string | null
+          off_reason?: string | null
+          off_until?: string | null
           segment_id?: string
           status?: string
           version?: number
@@ -11985,6 +12019,16 @@ export type Database = {
         Returns: Json
       }
       app_wallet_summary: { Args: never; Returns: Json }
+      app_zone_off_notify: {
+        Args: {
+          _lat: number
+          _lng: number
+          _phone?: string
+          _services?: string[]
+        }
+        Returns: Json
+      }
+      app_zone_status: { Args: { _lat: number; _lng: number }; Returns: Json }
       apply_referral_code: { Args: { _code: string }; Returns: string }
       auto_cancel_minutes: {
         Args: { _city_id: string; _service_key: string }
@@ -15223,6 +15267,15 @@ export type Database = {
         Args: { _days: number }
         Returns: undefined
       }
+      staff_set_zone_off: {
+        Args: {
+          _cell: string
+          _off: boolean
+          _reason?: string
+          _until?: string
+        }
+        Returns: Json
+      }
       staff_slot_band_summary:
         | { Args: { _date: string; _service_key: string }; Returns: Json }
         | {
@@ -15976,11 +16029,31 @@ export type Database = {
         Returns: Json
       }
       zone_delete_impact: { Args: { _zone_id: string }; Returns: Json }
+      zone_is_off_at: { Args: { _lat: number; _lng: number }; Returns: boolean }
       zone_lookup: { Args: { _lat: number; _lng: number }; Returns: Json }
       zv2_assert_no_overlap: { Args: { _city: string }; Returns: undefined }
+      zv2_cell_refs: { Args: { _cell: string }; Returns: Json }
+      zv2_cities: { Args: never; Returns: Json }
       zv2_clean: { Args: { _g: unknown }; Returns: unknown }
-      zv2_delete_cell: { Args: { _cell: string }; Returns: Json }
+      zv2_delete_cell: {
+        Args: { _cell: string; _move_to?: string }
+        Returns: Json
+      }
+      zv2_fill_gaps_apply: {
+        Args: { _as_new?: number[]; _city: string }
+        Returns: Json
+      }
+      zv2_fill_gaps_preview: { Args: { _city: string }; Returns: Json }
       zv2_from_jsonb: { Args: { _b: Json }; Returns: unknown }
+      zv2_gap_pieces: {
+        Args: { _city: string }
+        Returns: {
+          area_m2: number
+          geom: unknown
+          idx: number
+          target: string
+        }[]
+      }
       zv2_merge: { Args: { _a: string; _b: string }; Returns: Json }
       zv2_move_point: {
         Args: {
@@ -15993,6 +16066,10 @@ export type Database = {
         Returns: Json
       }
       zv2_normalize: { Args: { _city: string }; Returns: number }
+      zv2_remap_zone: {
+        Args: { _new: string; _old: string }
+        Returns: undefined
+      }
       zv2_require: {
         Args: { _city: string; _super?: boolean }
         Returns: undefined
@@ -16028,6 +16105,7 @@ export type Database = {
         Returns: Json
       }
       zv2_switchover_preview: { Args: { _city: string }; Returns: Json }
+      zv2_sync_live: { Args: { _cell: string }; Returns: undefined }
       zv2_to_jsonb: { Args: { _g: unknown }; Returns: Json }
       zv2_undo: { Args: { _city: string }; Returns: Json }
       zv2_update_cell: {
