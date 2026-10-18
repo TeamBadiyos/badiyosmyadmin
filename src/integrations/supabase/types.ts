@@ -13752,6 +13752,7 @@ export type Database = {
       is_active_staff:
         | { Args: { _uid: string }; Returns: boolean }
         | { Args: { _roles: string[]; _uid: string }; Returns: boolean }
+      is_area_partner_staff: { Args: never; Returns: boolean }
       is_delivery_rider: { Args: { _expert_id: string }; Returns: boolean }
       is_finance_staff: { Args: never; Returns: boolean }
       is_internal_tester: { Args: never; Returns: boolean }
@@ -14856,6 +14857,14 @@ export type Database = {
       staff_create_service_catalogue_row: {
         Args: { _payload: Json }
         Returns: string
+      }
+      staff_customer_brief: {
+        Args: { _ids: string[] }
+        Returns: {
+          full_name: string
+          id: string
+          phone: string
+        }[]
       }
       staff_dashboard_drill: {
         Args: { _from: string; _metric: string; _service: string; _to: string }
