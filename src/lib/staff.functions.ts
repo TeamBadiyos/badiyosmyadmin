@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
+export type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 export type StaffStatus = "active" | "inactive";
 
 export type StaffUserRow = {
@@ -17,6 +17,9 @@ export type StaffUserRow = {
   status: StaffStatus;
   createdAt: string;
   isSelf: boolean;
+  phone: string | null;
+  lastLoginAt: string | null;
+  cityIds: string[];
 };
 
 
@@ -39,7 +42,7 @@ export const listStaffUsers = createServerFn({ method: "GET" })
     await requireSuperAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("staff_users")
-      .select("id, auth_user_id, name, email, role, zone_id, status, created_at")
+      .select("id, auth_user_id, name, email, role, zone_id, status, created_at, phone, last_login_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,6 +61,15 @@ export const listStaffUsers = createServerFn({ method: "GET" })
       const list = zonesByStaff.get(l.staff_user_id) ?? [];
       list.push(l.zone_id);
       zonesByStaff.set(l.staff_user_id, list);
+    }
+
+    const { data: cityLinks } = await context.supabase
+      .from("staff_city_access")
+      .select("staff_user_id, city_id")
+      .in("staff_user_id", rows.map((r) => r.id));
+    const citiesByStaff = new Map<string, string[]>();
+    for (const c of (cityLinks ?? []) as { staff_user_id: string; city_id: string }[]) {
+      citiesByStaff.set(c.staff_user_id, [...(citiesByStaff.get(c.staff_user_id) ?? []), c.city_id]);
     }
 
     const zoneIds = Array.from(
@@ -93,6 +105,9 @@ export const listStaffUsers = createServerFn({ method: "GET" })
         status: r.status,
         createdAt: r.created_at,
         isSelf: r.auth_user_id === context.userId,
+        phone: r.phone ?? null,
+        lastLoginAt: r.last_login_at ?? null,
+        cityIds: citiesByStaff.get(r.id) ?? [],
       };
     });
 
@@ -101,7 +116,9 @@ export const listStaffUsers = createServerFn({ method: "GET" })
 export type CreateStaffUserInput = {
   name: string;
   email: string;
-  role: "ops_manager" | "area_partner" | "finance";
+  role: "ops_manager" | "area_partner";
+  phone?: string | null;
+  city_ids?: string[] | null;
   zone_id?: string | null;
   zone_ids?: string[] | null;
   password: string;
@@ -125,12 +142,14 @@ export const createStaffUser = createServerFn({ method: "POST" })
     const password = input?.password ?? "";
     if (!name) throw new Error("Name required");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Valid email required");
-    if (!["ops_manager", "area_partner", "finance"].includes(input?.role))
+    if (!["ops_manager", "area_partner"].includes(input?.role))
       throw new Error("Invalid role");
     const zone_ids = normalizeZoneIds(input?.role, input?.zone_ids, input?.zone_id);
     if (input.role === "area_partner" && zone_ids.length === 0)
       throw new Error("At least one zone is required for an area partner");
-    return { ...input, name, email, zone_ids, zone_id: zone_ids[0] ?? null };
+    const phone = (input?.phone ?? "").replace(/\D/g, "").slice(-10) || null;
+    if (phone && phone.length !== 10) throw new Error("Phone must be 10 digits");
+    return { ...input, name, email, phone, city_ids: input.city_ids ?? [], zone_ids, zone_id: zone_ids[0] ?? null };
   })
 
   .handler(async ({ data, context }) => {
@@ -155,6 +174,7 @@ export const createStaffUser = createServerFn({ method: "POST" })
       role: data.role,
       zone_id: data.role === "area_partner" ? data.zone_id : null,
       status: "active" as const,
+      phone: data.phone,
     };
 
     const { data: inserted, error: insertErr } = await supabaseAdmin
@@ -178,6 +198,12 @@ export const createStaffUser = createServerFn({ method: "POST" })
       if (zErr) throw new Error(zErr.message);
     }
 
+    if (data.city_ids?.length) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: cErr } = await (context.supabase.rpc as any)("staff_set_city_access", { _staff_user_id: inserted.id, _city_ids: data.city_ids });
+      if (cErr) throw new Error(cErr.message);
+    }
+
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,
       action: "create_staff_user",
@@ -196,13 +222,15 @@ export type UpdateStaffUserInput = {
   zone_id?: string | null;
   zone_ids?: string[] | null;
   status: StaffStatus;
+  city_ids?: string[] | null;
+  phone?: string | null;
 };
 
 export const updateStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: UpdateStaffUserInput) => {
     if (!input?.id) throw new Error("id required");
-    if (!["super_admin", "ops_manager", "area_partner", "finance"].includes(input?.role))
+    if (!["super_admin", "ops_manager", "area_partner"].includes(input?.role))
       throw new Error("Invalid role");
     if (!["active", "inactive"].includes(input?.status)) throw new Error("Invalid status");
     const zone_ids = normalizeZoneIds(input.role, input.zone_ids, input.zone_id);
@@ -240,6 +268,7 @@ export const updateStaffUser = createServerFn({ method: "POST" })
       role: data.role,
       zone_id: data.role === "area_partner" ? data.zone_id : null,
       status: data.status,
+      ...(data.phone !== undefined ? { phone: (data.phone ?? "").replace(/\D/g, "").slice(-10) || null } : {}),
     };
 
     const { data: after, error: updErr } = await supabaseAdmin
@@ -256,6 +285,19 @@ export const updateStaffUser = createServerFn({ method: "POST" })
       { _staff_user_id: data.id, _zone_ids: data.zone_ids },
     );
     if (zErr) throw new Error(zErr.message);
+
+    if (data.city_ids && before.auth_user_id !== context.userId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: cErr } = await (context.supabase.rpc as any)("staff_set_city_access", { _staff_user_id: data.id, _city_ids: data.city_ids });
+      if (cErr) throw new Error(cErr.message);
+    }
+
+    // Deactivate = log out now: block the login and revoke sessions; reactivate lifts the block.
+    if (before.status !== data.status) {
+      await supabaseAdmin.auth.admin.updateUserById(before.auth_user_id, {
+        ban_duration: data.status === "inactive" ? "876000h" : "none",
+      });
+    }
 
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: context.userId,

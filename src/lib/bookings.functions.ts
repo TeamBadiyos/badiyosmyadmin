@@ -577,7 +577,7 @@ async function loadBookingDetails(
     customer: {
       id: userRes.data?.id ?? null,
       name: userRes.data?.full_name ?? null,
-      phone: userRes.data?.phone ?? null,
+      phone: role === "area_partner" ? maskPhone(userRes.data?.phone ?? null) : userRes.data?.phone ?? null,
     },
     address: addrRes.data
       ? {
