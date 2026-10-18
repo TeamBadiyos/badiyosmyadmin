@@ -57,6 +57,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
   const [rows, setRows] = useState<any[]>([]);
   const [edit, setEdit] = useState<any | null>(null);
   const [del, setDel] = useState<any | null>(null);
+  const [view, setView] = useState<any | null>(null);
   useEffect(() => setRows(r.data?.rows ?? []), [r.data]);
   const canEdit = role === "super_admin";
   const inv = () => qc.invalidateQueries({ queryKey: ["categories", kind] });
@@ -93,7 +94,11 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
             <Icon path={c.image_path} fallback={c.icon_url} icon={c.icon} />
             <div className="min-w-0 flex-1">
               <p className={`truncate text-sm font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>{c.name} <span className="text-muted-foreground">/ {c.name_mr ?? "—"}</span></p>
-              <p className="text-xs text-muted-foreground">{c.used} {usedLabel}{c.used === 1 ? "" : "s"}</p>
+              <button type="button" className="text-xs text-primary hover:underline disabled:text-muted-foreground disabled:no-underline" disabled={!c.used} onClick={() => setView(c)}>
+                {kind === "store_type"
+                  ? `${c.used} live store${c.used === 1 ? "" : "s"}`
+                  : `${c.items} live ${usedLabel}${c.items === 1 ? "" : "s"} · ${c.used} ${kind === "food" ? "restaurant" : "store"}${c.used === 1 ? "" : "s"}`}
+              </button>
             </div>
             {canEdit && (c.is_other ? <span className="flex items-center gap-1 text-xs text-muted-foreground"><Lock size={12} /> Always last</span> : <>
               <Switch checked={c.is_active} onCheckedChange={(v) => save.mutate({ id: c.id, name: c.name, name_mr: c.name_mr ?? c.name, image_path: c.image_path, is_active: v })} />
