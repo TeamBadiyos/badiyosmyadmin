@@ -272,3 +272,25 @@ export function PartyAgreementCard({ partyType, partyId, canManage = true }: { p
     </div>
   );
 }
+
+function MerchantGoLiveSetting({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["merchant-onboarding-settings"], queryFn: async () => {
+    const { data, error } = await db.from("merchant_onboarding_settings").select("require_signed_agreement").maybeSingle();
+    if (error) throw error; return (data?.require_signed_agreement ?? true) as boolean;
+  } });
+  const m = useMutation({
+    mutationFn: async (v: boolean) => { const { error } = await db.rpc("staff_set_merchant_agreement_setting", { _require: v }); if (error) throw error; },
+    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["merchant-onboarding-settings"] }); },
+    onError: (e) => toast.error(err(e)),
+  });
+  return (
+    <div className="bg-card border border-border rounded-[14px] p-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[14px] font-semibold">Signed agreement required to go live</p>
+        <p className="text-[12px] text-muted-foreground">Flow: merchant registers → you approve (commission, fee, deposit) → agreement sent → merchant signs → store shows in customer app. Turn off to show stores right after approval.</p>
+      </div>
+      <Switch checked={q.data ?? true} disabled={!isSuperAdmin || m.isPending || q.isLoading} onCheckedChange={(v) => m.mutate(v)} />
+    </div>
+  );
+}
