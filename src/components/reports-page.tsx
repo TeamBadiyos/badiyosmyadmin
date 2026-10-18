@@ -22,6 +22,7 @@ import {
   getRevenueReport,
   getBookingsReport,
   getBookingsDrilldown,
+  getEntityDrilldown,
   getExpertPerformance,
   getReferralReport,
   getPayoutReport,
@@ -435,6 +436,34 @@ function BookingDrilldown({ range, drill, onClose }: { range: ReportRange; drill
   );
 }
 
+type EntityDrill = { kind: "expert" | "rider" | "store"; id: string; title: string };
+function EntityDrilldown({ range, drill, onClose }: { range: ReportRange; drill: EntityDrill; onClose: () => void }) {
+  const fetchFn = useServerFn(getEntityDrilldown);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "entity-drill", range, drill.kind, drill.id],
+    queryFn: () => fetchFn({ data: { ...range, kind: drill.kind, id: drill.id } }),
+  });
+  const amountLabel = drill.kind === "expert" ? "Expert pay" : "Amount";
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/30" onClick={onClose}>
+      <div className="h-full w-full max-w-3xl overflow-y-auto bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-[16px] font-bold text-foreground">{drill.title}</h3>
+          <button onClick={onClose} className="h-8 px-3 rounded-[10px] bg-muted text-[12px] font-semibold">Close</button>
+        </div>
+        {isLoading ? <Loading /> : error ? <ErrorMsg msg={(error as Error).message} /> : (
+          <SimpleTable
+            columns={["Order", "Date", "Status", amountLabel]}
+            rows={(data ?? []).map((r) => [r.number, r.date, r.status, inr.format(r.amount)])}
+            rightAlign={[3]}
+            emptyText="No orders."
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ============ Experts ============
 function lastWeekIst() {
   const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
@@ -473,6 +502,7 @@ function WeeklyPdfButton() {
 function ExpertsTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getExpertPerformance);
   const [sort, setSort] = useState<"completed" | "earnings">("completed");
+  const [ed, setEd] = useState<EntityDrill | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", "experts", range],
     queryFn: () => fetchFn({ data: range }),
@@ -527,7 +557,9 @@ function ExpertsTab({ range }: { range: ReportRange }) {
         ])}
         rightAlign={[3, 4]}
         emptyText="No experts to show."
+        onRowClick={(i) => setEd({ kind: "expert", id: rows[i].expertId, title: `${rows[i].name} — ${rows[i].completed} completed bookings` })}
       />
+      {ed && <EntityDrilldown range={range} drill={ed} onClose={() => setEd(null)} />}
     </Card>
   );
 }
@@ -635,6 +667,7 @@ function PayoutsTab({ range }: { range: ReportRange }) {
                   columns={["Period", "Status", "Gross", "TDS", "Net", ""]}
                   rightAlign={[2, 3, 4]}
                   emptyText="No batches in range."
+                  onRowClick={g === "Area Partners" ? undefined : (i) => { const r = gr[i]; setOpenBatch({ id: r.id, week_start: r.from, week_end: r.to, status: r.status as "pending" | "paid", total_amount: r.net, created_at: r.from, batch_type: r.batchType ?? "expert" }); }}
                   rows={gr.map((r) => [
                     `${fmtShortDate(r.from)} – ${fmtShortDate(r.to)}`,
                     r.status.toUpperCase(),
@@ -669,6 +702,7 @@ function PayoutsTab({ range }: { range: ReportRange }) {
 // ============ Riders ============
 function RidersTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getRiderReport);
+  const [ed, setEd] = useState<EntityDrill | null>(null);
   const { data, isLoading, error } = useQuery({ queryKey: ["reports", "riders", range], queryFn: () => fetchFn({ data: range }) });
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
@@ -693,9 +727,11 @@ function RidersTab({ range }: { range: ReportRange }) {
             rightAlign={[1, 2, 3, 4, 5, 6, 7]}
             emptyText="No delivered orders in range."
             rows={data.rows.map((r) => [r.name, String(r.orders), String(r.delivery), String(r.store), String(r.bulk), inr.format(r.collected), inr.format(r.riderPayout), inr.format(r.platformEarning)])}
+            onRowClick={(i) => setEd({ kind: "rider", id: data.rows[i].riderId, title: `${data.rows[i].name} — ${data.rows[i].orders} deliveries` })}
           />
         </div></div>
       </Card>
+      {ed && <EntityDrilldown range={range} drill={ed} onClose={() => setEd(null)} />}
     </div>
   );
 }
@@ -703,6 +739,7 @@ function RidersTab({ range }: { range: ReportRange }) {
 // ============ Store-wise ============
 function StoresTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getStoreReport);
+  const [ed, setEd] = useState<EntityDrill | null>(null);
   const { data, isLoading, error } = useQuery({ queryKey: ["reports", "stores", range], queryFn: () => fetchFn({ data: range }) });
   if (isLoading) return <Loading />;
   if (error) return <ErrorMsg msg={(error as Error).message} />;
@@ -725,9 +762,11 @@ function StoresTab({ range }: { range: ReportRange }) {
             rightAlign={[1, 2, 3, 4, 5, 6, 7]}
             emptyText="No completed store orders in range."
             rows={rows.map((r) => [r.storeName, String(r.orders), inr.format(r.sales), inr.format(r.refunds), inr.format(r.commission), `${r.commissionPct.toFixed(1)}%`, inr.format(r.commissionGst), inr.format(r.merchantPayout)])}
+            onRowClick={(i) => setEd({ kind: "store", id: rows[i].merchantId, title: `${rows[i].storeName} — ${rows[i].orders} orders` })}
           />
         </div></div>
       </Card>
+      {ed && <EntityDrilldown range={range} drill={ed} onClose={() => setEd(null)} />}
     </div>
   );
 }
@@ -735,6 +774,7 @@ function StoresTab({ range }: { range: ReportRange }) {
 // ============ Customers ============
 function CustomersTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getCustomerReport);
+  const [drill, setDrill] = useState<Drill | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", "customers", range],
     queryFn: () => fetchFn({ data: range }),
@@ -769,8 +809,10 @@ function CustomersTab({ range }: { range: ReportRange }) {
           rows={data.topZones.map((z) => [z.zoneName, String(z.customers)])}
           rightAlign={[1]}
           emptyText="No customers in range."
+          onRowClick={(i) => { const z = data.topZones[i]; setDrill({ title: `${z.zoneName} — bookings`, zoneId: z.zoneId ?? "none" }); }}
         />
       </Card>
+      {drill && <BookingDrilldown range={range} drill={drill} onClose={() => setDrill(null)} />}
     </div>
   );
 }
