@@ -23,7 +23,7 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
   const access = useOffersAccess();
   const isSuper = role === "super_admin";
   const tabs: RewardsTab[] = isSuper ? ["coupons", "lucky", "events", "programs"] : ["events"];
-  const [tab, setTab] = useState<RewardsTab>(tabs.includes(initialTab) ? initialTab : "coupons");
+  const [tab, setTab] = useState<RewardsTab>(tabs.includes(initialTab) ? initialTab : tabs[0]);
   useReportPageTab(LABELS[tab]);
 
   return (
@@ -31,14 +31,15 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
       <SectionTabs items={tabs.map((t) => ({ key: t, label: LABELS[t], icon: ICONS[t] }))} active={tab} onChange={setTab} />
       {tab === "coupons" && <CouponsTab canWrite={access?.canWrite ?? false} />}
       {tab === "lucky" && <LuckyDrawPage />}
-      {tab === "events" && <EventsSection />}
+      {tab === "events" && <EventsSection isSuper={isSuper} />}
       {tab === "programs" && <RewardsPage />}
     </div>
   );
 }
 
-function EventsSection() {
-  const [kind, setKind] = useState<"offers" | "spin">("offers");
+function EventsSection({ isSuper }: { isSuper: boolean }) {
+  const [kind, setKind] = useState<"offers" | "spin">(isSuper ? "offers" : "spin");
+  if (!isSuper) return <SpinWinPage canEdit={false} />;
   return (
     <div className="space-y-4">
       <div className="inline-flex rounded-md border p-1">
@@ -49,7 +50,7 @@ function EventsSection() {
           </button>
         ))}
       </div>
-      {kind === "offers" ? <EventOffersPage /> : <SpinWinPage />}
+      {kind === "offers" ? <EventOffersPage /> : <SpinWinPage canEdit />}
     </div>
   );
 }
