@@ -192,9 +192,26 @@ function EventForm({ initial, cities, onClose, onSaved }: {
 
   const save = useMutation({
     mutationFn: async () => {
+      const NUM_FIELDS: [keyof Prize, string, boolean][] = [
+        ["value", "Amount / % off", false], ["max_discount", "Max ₹ discount", false], ["min_order", "Min order ₹", false],
+        ["valid_days", "Valid days", true], ["stock_limit", "Stock", true], ["weight", "Weight", true],
+      ];
+      const cleaned = prizes.map((p, i) => {
+        const out: Record<string, unknown> = { ...p };
+        for (const [k, label, int] of NUM_FIELDS) {
+          const raw = String(p[k] ?? "").trim();
+          if (raw === "" || (k === "stock_limit" && p.is_fallback)) { out[k] = null; continue; }
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n < 0 || (int && !Number.isInteger(n))) {
+            throw new Error(`Prize ${i + 1}${p.label ? ` (${p.label})` : ""}: "${label}" must be ${int ? "a whole number" : "a number"} of 0 or more`);
+          }
+          out[k] = n;
+        }
+        return out;
+      });
       const { error } = await db.rpc("staff_spin_save", {
         _event: { ...ev, starts_at: fromLocal(ev.starts_at), ends_at: fromLocal(ev.ends_at) },
-        _prizes: prizes.map((p) => ({ ...p, stock_limit: p.is_fallback ? "" : p.stock_limit })),
+        _prizes: cleaned,
       });
       if (error) throw error;
       // prize expiry (physical prizes)
