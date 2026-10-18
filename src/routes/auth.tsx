@@ -52,6 +52,8 @@ function AuthPage() {
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.rpc as any)("staff_touch_login").then(() => {}, () => {});
     navigate({ to: "/dashboard", replace: true });
   }
 
