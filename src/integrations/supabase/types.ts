@@ -9967,6 +9967,206 @@ export type Database = {
           },
         ]
       }
+      spin_draws: {
+        Row: {
+          created_at: string
+          device_id: string
+          event_id: string
+          id: string
+          phone: string
+          prize_id: string
+          prize_type: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          redemption_code: string | null
+          ref_id: string | null
+          request_id: string
+          slice_index: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          event_id: string
+          id?: string
+          phone: string
+          prize_id: string
+          prize_type: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redemption_code?: string | null
+          ref_id?: string | null
+          request_id: string
+          slice_index: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          event_id?: string
+          id?: string
+          phone?: string
+          prize_id?: string
+          prize_type?: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redemption_code?: string | null
+          ref_id?: string | null
+          request_id?: string
+          slice_index?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spin_draws_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "spin_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spin_draws_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "spin_prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spin_events: {
+        Row: {
+          city_id: string | null
+          created_at: string
+          created_by: string | null
+          eligibility: string
+          ends_at: string
+          id: string
+          is_active: boolean
+          name: string
+          name_mr: string | null
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligibility?: string
+          ends_at: string
+          id?: string
+          is_active?: boolean
+          name: string
+          name_mr?: string | null
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligibility?: string
+          ends_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_mr?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spin_events_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spin_prizes: {
+        Row: {
+          color: string
+          coupon_id: string | null
+          created_at: string
+          event_id: string
+          given: number
+          icon: string | null
+          id: string
+          is_deleted: boolean
+          is_fallback: boolean
+          label: string
+          label_mr: string | null
+          max_discount: number | null
+          min_order: number
+          prize_type: string
+          services: string[]
+          sort_order: number
+          stock_limit: number | null
+          valid_days: number
+          value: number
+          weight: number
+        }
+        Insert: {
+          color?: string
+          coupon_id?: string | null
+          created_at?: string
+          event_id: string
+          given?: number
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_fallback?: boolean
+          label: string
+          label_mr?: string | null
+          max_discount?: number | null
+          min_order?: number
+          prize_type: string
+          services?: string[]
+          sort_order?: number
+          stock_limit?: number | null
+          valid_days?: number
+          value?: number
+          weight?: number
+        }
+        Update: {
+          color?: string
+          coupon_id?: string | null
+          created_at?: string
+          event_id?: string
+          given?: number
+          icon?: string | null
+          id?: string
+          is_deleted?: boolean
+          is_fallback?: boolean
+          label?: string
+          label_mr?: string | null
+          max_discount?: number | null
+          min_order?: number
+          prize_type?: string
+          services?: string[]
+          sort_order?: number
+          stock_limit?: number | null
+          valid_days?: number
+          value?: number
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spin_prizes_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spin_prizes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "spin_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sponsored_slots: {
         Row: {
           category_id: string | null
@@ -11997,6 +12197,15 @@ export type Database = {
         Returns: Json
       }
       app_set_offer_notifications: { Args: { _on: boolean }; Returns: Json }
+      app_spin: {
+        Args: { _device_id: string; _event_id: string; _request_id: string }
+        Returns: Json
+      }
+      app_spin_event: { Args: { _city_id?: string }; Returns: Json }
+      app_spin_status: {
+        Args: { _device_id: string; _event_id: string }
+        Returns: Json
+      }
       app_store_cancel_order: {
         Args: { _destination?: string; _order_id: string; _reason?: string }
         Returns: Json
@@ -14119,6 +14328,11 @@ export type Database = {
           last_min: number
         }[]
       }
+      spin_draw_json: {
+        Args: { _d: Database["public"]["Tables"]["spin_draws"]["Row"] }
+        Returns: Json
+      }
+      spin_slice_index: { Args: { _prize: string }; Returns: number }
       staff_accept_booking: {
         Args: { _booking_id: string }
         Returns: undefined
@@ -15294,6 +15508,24 @@ export type Database = {
         Args: { _reason: string; _zone_id: string }
         Returns: undefined
       }
+      staff_spin_export: {
+        Args: { _event_id: string }
+        Returns: {
+          name: string
+          phone: string
+          prize: string
+          prize_type: string
+          redeemed_at: string
+          redemption_code: string
+          won_at: string
+        }[]
+      }
+      staff_spin_redeem: { Args: { _code: string }; Returns: Json }
+      staff_spin_save: {
+        Args: { _event: Json; _prizes: Json }
+        Returns: string
+      }
+      staff_spin_stats: { Args: { _event_id: string }; Returns: Json }
       staff_store_cancel_refund: {
         Args: {
           _amount?: number
