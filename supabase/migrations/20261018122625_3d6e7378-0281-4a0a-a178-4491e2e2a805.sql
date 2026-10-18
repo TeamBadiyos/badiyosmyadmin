@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.zz_spin_lt_call(uuid,uuid,text,text);

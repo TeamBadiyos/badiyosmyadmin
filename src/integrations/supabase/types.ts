@@ -16450,10 +16450,6 @@ export type Database = {
         Args: { _cell: string; _colour: string; _name: string }
         Returns: Json
       }
-      zz_spin_lt_call: {
-        Args: { _dev: string; _event: string; _req: string; _uid: string }
-        Returns: Json
-      }
     }
     Enums: {
       [_ in never]: never
