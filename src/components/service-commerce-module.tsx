@@ -365,12 +365,16 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
   });
   const canManage = role === "super_admin" || role === "ops_manager";
   const defPct = Number(def.data?.defaultPct ?? 10);
+  const [agFee, setAgFee] = useState("");
+  const [agDep, setAgDep] = useState("");
   const approve = useMutation({
     mutationFn: async () => {
       const pct = Number(commission);
       if (commission.trim() && Number.isFinite(pct) && pct !== Number(approveFor.commission_pct ?? -1)) {
         await setComm({ data: { merchantId: approveFor.id, pct } });
       }
+      const { error: tErr } = await (supabase as any).rpc("staff_set_merchant_agreement_terms", { _merchant_id: approveFor.id, _fee: Number(agFee) || 0, _deposit: Number(agDep) || 0 });
+      if (tErr) throw tErr;
       await decide({ data: { merchantId: approveFor.id, decision: "approved" } });
     },
     onSuccess: () => { toast.success(`${L.store} approved`); setApproveFor(null); qc.invalidateQueries({ queryKey: ["svc", service] }); qc.invalidateQueries({ queryKey: ["merchants"] }); },
@@ -471,6 +475,11 @@ function StoresTab({ service, role }: { service: Svc; role: string }) {
               <Input type="number" min={0} max={50} placeholder={`${defPct} (default)`} value={commission} onChange={(e) => setCommission(e.target.value)} />
               <p className="text-xs text-muted-foreground">{commission.trim() ? `Commission will be ${commission}%` : `Commission will be ${defPct}% (default)`}</p>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1"><Label>Onboarding fee ₹</Label><Input type="number" min={0} placeholder="0" value={agFee} onChange={(e) => setAgFee(e.target.value)} /></div>
+              <div className="space-y-1"><Label>Deposit ₹</Label><Input type="number" min={0} placeholder="0" value={agDep} onChange={(e) => setAgDep(e.target.value)} /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">After approval the agreement with these terms is sent to the merchant. The store goes live in the customer app only after they sign it.</p>
             <DialogFooter>
               <Button variant="outline" onClick={() => setApproveFor(null)}>Cancel</Button>
               <Button disabled={approve.isPending} onClick={() => approve.mutate()}>{approve.isPending ? "Approving…" : "Approve"}</Button>
