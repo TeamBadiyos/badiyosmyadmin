@@ -16403,6 +16403,10 @@ export type Database = {
         }
         Returns: Json
       }
+      zv2_nearest_live_zone: {
+        Args: { _lat: number; _lng: number }
+        Returns: string
+      }
       zv2_normalize: { Args: { _city: string }; Returns: number }
       zv2_remap_zone: {
         Args: { _new: string; _old: string }
