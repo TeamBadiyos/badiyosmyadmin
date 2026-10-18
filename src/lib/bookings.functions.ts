@@ -215,7 +215,7 @@ export const listBookings = createServerFn({ method: "POST" })
 
     const [usersRes, zonesRes, expertsRes] = await Promise.all([
       userIds.length
-        ? context.supabase.from("users").select("id, full_name").in("id", userIds)
+        ? (context.supabase.rpc as any)("staff_customer_brief", { _ids: userIds })
         : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
       zoneIds.length
         ? context.supabase.from("zones").select("id, name").in("id", zoneIds)
@@ -443,7 +443,7 @@ async function loadBookingDetails(
 
   const [userRes, addrRes, zoneRes, expertRes] = await Promise.all([
     b.user_id
-      ? supabase.from("users").select("id, full_name, phone").eq("id", b.user_id).maybeSingle()
+      ? supabase.rpc("staff_customer_brief", { _ids: [b.user_id] }).then((r: { data: unknown[] | null; error: unknown }) => ({ data: (r.data ?? [])[0] ?? null, error: r.error }))
       : Promise.resolve({ data: null }),
     b.address_id
       ? supabase
