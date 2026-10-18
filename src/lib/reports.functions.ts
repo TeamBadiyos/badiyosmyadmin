@@ -164,7 +164,7 @@ export const getRevenueReport = createServerFn({ method: "POST" })
 // ============ Bookings Report ============
 export type BookingsReport = {
   byStatus: Array<{ status: string; count: number }>;
-  byZone: Array<{ zoneId: string | null; zoneName: string; count: number }>;
+  byZone: Array<{ zoneId: string | null; zoneName: string; count: number; completed: number; cancelled: number; other: number }>;
   cancellationReasons: Array<{ reason: string; count: number }>;
   total: number;
 };
@@ -190,6 +190,7 @@ export const getBookingsReport = createServerFn({ method: "POST" })
 
     const statusMap = new Map<string, number>();
     const zoneMap = new Map<string | null, number>();
+    const zoneSplit = new Map<string | null, { completed: number; cancelled: number; other: number }>();
     const reasonMap = new Map<string, number>();
     for (const r of (rows ?? []) as Array<{
       status: string;
@@ -198,6 +199,11 @@ export const getBookingsReport = createServerFn({ method: "POST" })
     }>) {
       statusMap.set(r.status, (statusMap.get(r.status) ?? 0) + 1);
       zoneMap.set(r.zone_id, (zoneMap.get(r.zone_id) ?? 0) + 1);
+      const sp = zoneSplit.get(r.zone_id) ?? { completed: 0, cancelled: 0, other: 0 };
+      if (r.status === "completed") sp.completed++;
+      else if (r.status === "cancelled" || r.status === "rejected") sp.cancelled++;
+      else sp.other++;
+      zoneSplit.set(r.zone_id, sp);
       if (r.status === "cancelled" || r.status === "rejected") {
         const k = r.cancellation_reason ?? "UNSPECIFIED";
         reasonMap.set(k, (reasonMap.get(k) ?? 0) + 1);
@@ -224,6 +230,7 @@ export const getBookingsReport = createServerFn({ method: "POST" })
           zoneId,
           zoneName: zoneId ? zoneNameById.get(zoneId) ?? "—" : "Unassigned",
           count,
+          ...(zoneSplit.get(zoneId) ?? { completed: 0, cancelled: 0, other: 0 }),
         }))
         .sort((a, b) => b.count - a.count),
       cancellationReasons: Array.from(reasonMap.entries())
