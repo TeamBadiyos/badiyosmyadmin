@@ -15937,6 +15937,7 @@ export type Database = {
       zone_lookup: { Args: { _lat: number; _lng: number }; Returns: Json }
       zv2_assert_no_overlap: { Args: { _city: string }; Returns: undefined }
       zv2_clean: { Args: { _g: unknown }; Returns: unknown }
+      zv2_delete_cell: { Args: { _cell: string }; Returns: Json }
       zv2_from_jsonb: { Args: { _b: Json }; Returns: unknown }
       zv2_merge: { Args: { _a: string; _b: string }; Returns: Json }
       zv2_move_point: {
@@ -15960,6 +15961,16 @@ export type Database = {
           _geojson: Json
           _reset: boolean
           _source: string
+        }
+        Returns: Json
+      }
+      zv2_save_zone: {
+        Args: {
+          _cell: string
+          _city: string
+          _colour: string
+          _geojson: Json
+          _name: string
         }
         Returns: Json
       }
