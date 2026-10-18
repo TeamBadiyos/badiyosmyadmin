@@ -293,6 +293,13 @@ export type MerchantDetail = {
   otherCommissionPct: number;
   deletedAt: string | null;
   deleteReason: string | null;
+  serviceType: string | null;
+  email: string | null;
+  upiId: string | null;
+  fssaiNumber: string | null;
+  fssaiExpiry: string | null;
+  udyamNumber: string | null;
+  shopPhotoUrl: string | null;
 };
 
 export const getMerchantDetail = createServerFn({ method: "GET" })
@@ -307,7 +314,7 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
     const { data: m, error } = await db
       .from("merchants")
       .select(
-        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason",
+        "id, store_name, owner_name, phone, status, store_category_id, segment_id, zone_id, latitude, longitude, address, city, pincode, state, is_accepting_orders, is_gst_registered, gstin, gst_legal_name, bank_account_holder_name, bank_account_number, bank_ifsc, pan, commission_value, commission_mode, mrp_commission_pct, other_commission_pct, deleted_at, delete_reason, service_type, email, upi_id, fssai_number, fssai_expiry, udyam_number, shop_photo_url",
       )
       .eq("id", data.merchantId)
       .maybeSingle();
@@ -342,6 +349,13 @@ export const getMerchantDetail = createServerFn({ method: "GET" })
       otherCommissionPct: Number((m as any).other_commission_pct ?? 0), // eslint-disable-line @typescript-eslint/no-explicit-any
       deletedAt: m.deleted_at ?? null,
       deleteReason: m.delete_reason ?? null,
+      serviceType: m.service_type ?? null,
+      email: m.email ?? null,
+      upiId: m.upi_id ?? null,
+      fssaiNumber: m.fssai_number ?? null,
+      fssaiExpiry: m.fssai_expiry ?? null,
+      udyamNumber: m.udyam_number ?? null,
+      shopPhotoUrl: m.shop_photo_url ?? null,
     };
   });
 
