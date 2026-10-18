@@ -844,7 +844,7 @@ function Shell() {
         ) : active === "fin-wallet" ? (
           <CustomerWalletPage isSuperAdmin={role === "super_admin"} />
         ) : active === "fin-expenses" ? (
-          role === "super_admin" || role === "finance" ? <ExpensesPage /> : null
+          role === "super_admin" ? <ExpensesPage /> : null
         ) : active.startsWith("fin-") || active === "company-profile" ? (
           <FinanceHub
             tab={(active === "company-profile" ? "company" : active.slice(4)) as FinanceTab}
