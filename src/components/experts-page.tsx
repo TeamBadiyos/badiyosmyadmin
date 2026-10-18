@@ -2,7 +2,8 @@ import { CityName, useShowCity } from "@/lib/city-scope";
 import { useUrlState } from "@/components/ui/data-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, UserRound } from "lucide-react";
 import { listExperts, workHourRanges, type ExpertLevel, type KycStatus, type ExpertRow } from "@/lib/experts.functions";
@@ -95,6 +96,25 @@ export function ExpertsPage({
   }, [initialOnlineOnly]);
 
   const fetchExperts = useServerFn(listExperts);
+  const qc = useQueryClient();
+  const leaveQ = useQuery({
+    queryKey: ["experts", "leave-today"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+      const { data } = await supabase.from("expert_leave_days" as never).select("expert_id").eq("leave_date", today);
+      return new Set(((data ?? []) as Array<{ expert_id: string }>).map((r) => r.expert_id));
+    },
+  });
+  const canLeave = role === "area_partner" || role === "super_admin" || role === "ops_manager";
+  async function toggleLeave(id: string, on: boolean) {
+    if (!confirm(on ? "Mark this expert on leave today? They won't be assigned today." : "Clear today's leave?")) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)("staff_set_expert_leave_today", { _expert_id: id, _on: on });
+    if (error) return toast.error(error.message);
+    toast.success(on ? "Marked on leave today" : "Leave cleared");
+    qc.invalidateQueries({ queryKey: ["experts", "leave-today"] });
+  }
   const fetchZones = useServerFn(listZoneOptions);
 
   const filters = useMemo(
@@ -395,6 +415,8 @@ export function ExpertsPage({
             key={e.id}
             expert={e}
             noDevice={noDevice.has(e.id)}
+            onLeave={leaveQ.data?.has(e.id) ?? false}
+            onToggleLeave={canLeave && e.status === "active" ? (on) => toggleLeave(e.id, on) : undefined}
             onOpen={() => setDetailsId(e.id)}
           />
         ))}
@@ -465,7 +487,7 @@ function Filter({
   );
 }
 
-function ExpertRowItem({ expert, noDevice, onOpen }: { expert: ExpertRow; noDevice?: boolean; onOpen: () => void }) {
+function ExpertRowItem({ expert, noDevice, onOpen, onLeave, onToggleLeave }: { expert: ExpertRow; noDevice?: boolean; onOpen: () => void; onLeave?: boolean; onToggleLeave?: (on: boolean) => void }) {
   const showCity = useShowCity();
   return (
     <button
@@ -481,6 +503,17 @@ function ExpertRowItem({ expert, noDevice, onOpen }: { expert: ExpertRow; noDevi
             <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold whitespace-nowrap"
               title="No phone registered for job alerts — not counted as available">
               Not receiving job alerts
+            </span>
+          )}
+          {onLeave && (
+            <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-foreground text-[11px] font-bold">On leave today</span>
+          )}
+          {onToggleLeave && (
+            <span role="button" tabIndex={0}
+              onClick={(ev) => { ev.stopPropagation(); onToggleLeave(!onLeave); }}
+              onKeyDown={(ev) => { if (ev.key === "Enter") { ev.stopPropagation(); onToggleLeave(!onLeave); } }}
+              className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border border-border text-[11px] font-semibold text-foreground hover:bg-muted">
+              {onLeave ? "Clear leave" : "Mark on leave today"}
             </span>
           )}
           {expert.isBusy && (
