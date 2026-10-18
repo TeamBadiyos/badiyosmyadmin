@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.staff_cancel_store_order_apply(uuid, text, text, text, numeric);
