@@ -10392,6 +10392,36 @@ export type Database = {
           },
         ]
       }
+      staff_login_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          phone: string
+          sent_count: number
+          window_start: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          phone: string
+          sent_count?: number
+          window_start?: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          phone?: string
+          sent_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       staff_notification_state: {
         Row: {
           auth_user_id: string
