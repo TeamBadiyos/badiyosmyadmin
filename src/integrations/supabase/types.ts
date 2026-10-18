@@ -12226,6 +12226,8 @@ export type Database = {
         Args: { _booking_id: string; _expert_id: string }
         Returns: undefined
       }
+      ap_list_expert_applications: { Args: { _status?: string }; Returns: Json }
+      ap_my_earnings: { Args: never; Returns: Json }
       ap_require_booking: {
         Args: { _booking_id: string }
         Returns: {

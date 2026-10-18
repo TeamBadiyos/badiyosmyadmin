@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import badiyoLogo from "@/assets/badiyos-wordmark-green.png.asset.json";
+import { useServerFn } from "@tanstack/react-start";
+import { requestStaffOtp, verifyStaffOtp } from "@/lib/staff-otp.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -21,6 +23,36 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [method, setMethod] = useState<"otp" | "email">("otp");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const reqOtp = useServerFn(requestStaffOtp);
+  const verOtp = useServerFn(verifyStaffOtp);
+
+  async function sendCode(e?: FormEvent) {
+    e?.preventDefault();
+    setError(null); setInfo(null); setSubmitting(true);
+    try {
+      const r = await reqOtp({ data: { phone } });
+      if (r.ok) { setSent(true); setInfo(r.message); } else setError(r.message);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not send the code"); }
+    setSubmitting(false);
+  }
+  async function verifyCode(e: FormEvent) {
+    e.preventDefault();
+    setError(null); setSubmitting(true);
+    try {
+      const r = await verOtp({ data: { phone, code } });
+      if (!r.ok) { setError(r.message); setSubmitting(false); return; }
+      const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: r.tokenHash, type: "magiclink" });
+      if (vErr) { setError("Could not sign in. Try again."); setSubmitting(false); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.rpc as any)("staff_touch_login").then(() => {}, () => {});
+      navigate({ to: "/dashboard", replace: true });
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not sign in"); setSubmitting(false); }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -68,7 +100,24 @@ function AuthPage() {
           Sign in to the Command Center
         </p>
 
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+        <div className="mt-6 grid grid-cols-2 rounded-[14px] border border-border p-1 text-[13px] font-semibold">
+          <button type="button" onClick={() => { setMethod("otp"); setError(null); }} className={`h-9 rounded-[10px] ${method === "otp" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Mobile + WhatsApp code</button>
+          <button type="button" onClick={() => { setMethod("email"); setError(null); }} className={`h-9 rounded-[10px] ${method === "email" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Email + password</button>
+        </div>
+        {method === "otp" ? (
+          <form className="mt-6 space-y-4" onSubmit={sent ? verifyCode : sendCode}>
+            <Field label="Mobile number" type="tel" placeholder="98765 43210" value={phone} onChange={(v) => { setPhone(v); setSent(false); }} autoComplete="tel" required />
+            {sent && <Field label="WhatsApp code" type="text" placeholder="Enter code" value={code} onChange={setCode} autoComplete="one-time-code" required />}
+            <button type="submit" disabled={submitting} className="w-full h-[52px] rounded-[14px] bg-primary text-primary-foreground font-bold text-[15px] transition-opacity hover:opacity-90 disabled:opacity-60">
+              {submitting ? "Please wait…" : sent ? "Verify & sign in" : "Send code on WhatsApp"}
+            </button>
+            {sent && <button type="button" className="w-full text-[13px] font-semibold text-muted-foreground underline" disabled={submitting} onClick={() => sendCode()}>Resend code</button>}
+            {info && !error && <p className="text-[13px] text-muted-foreground text-center">{info}</p>}
+            {error ? <p className="text-sm text-destructive text-center" role="alert">{error}</p> : null}
+            <p className="text-[12px] text-muted-foreground text-center">For Ops Managers and Area Partners. Super admin signs in with email.</p>
+          </form>
+        ) : (
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <Field
             label="Email"
             type="email"
@@ -102,6 +151,7 @@ function AuthPage() {
             </p>
           ) : null}
         </form>
+        )}
       </div>
     </main>
   );

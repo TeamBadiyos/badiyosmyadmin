@@ -1,3 +1,4 @@
+import { exportPhone, knownRole } from "@/lib/export-guard";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -43,7 +44,7 @@ const blankPrize = (i: number, fallback = false): Prize => ({
   max_discount: "", min_order: "", valid_days: "30", services: [], stock_limit: fallback ? "" : "", weight: "1", is_fallback: fallback, expires_at: "",
 });
 
-export function SpinWinPage() {
+export function SpinWinPage({ canEdit = true }: { canEdit?: boolean } = {}) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<{ ev: Ev; prizes: Prize[] } | null>(null);
   const events = useQuery({
@@ -84,13 +85,13 @@ export function SpinWinPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Wheel events — every spin wins, prizes are drawn on the server.</p>
-        <Button onClick={openNew}><Plus className="mr-1 h-4 w-4" />New Spin & Win</Button>
+        {canEdit && <Button onClick={openNew}><Plus className="mr-1 h-4 w-4" />New Spin & Win</Button>}
       </div>
       {events.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {events.data?.length === 0 && <p className="text-sm text-muted-foreground">No Spin & Win events yet.</p>}
       <div className="grid gap-4 md:grid-cols-2">
         {events.data?.map((e) => (
-          <EventCard key={e.id} ev={e} cityName={cities.data?.find((c) => c.id === e.city_id)?.name ?? "All cities"} onEdit={() => openEdit(e)} />
+          <EventCard key={e.id} ev={e} cityName={cities.data?.find((c) => c.id === e.city_id)?.name ?? "All cities"} onEdit={canEdit ? () => openEdit(e) : undefined} />
         ))}
       </div>
       {editing && (
@@ -101,7 +102,7 @@ export function SpinWinPage() {
   );
 }
 
-function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName: string; onEdit: () => void }) {
+function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName: string; onEdit?: () => void }) {
   const [code, setCode] = useState("");
   const stats = useQuery({
     queryKey: ["spin-stats", ev.id],
@@ -120,7 +121,7 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const fmt = (v: string | null) => (v ? new Date(v).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (data as any[]).map((r) => [r.name, r.phone, r.prize, TYPE_LABEL[r.prize_type as PrizeType], fmt(r.won_at), r.redemption_code, r.prize_type === "physical" ? (r.redeemed_at ? `Yes ${fmt(r.redeemed_at)}` : "No") : "Issued"].map(esc).join(","));
+    const rows = (data as any[]).map((r) => [r.name, exportPhone(r.phone, knownRole()), r.prize, TYPE_LABEL[r.prize_type as PrizeType], fmt(r.won_at), r.redemption_code, r.prize_type === "physical" ? (r.redeemed_at ? `Yes ${fmt(r.redeemed_at)}` : "No") : "Issued"].map(esc).join(","));
     const csv = ["Name,Phone,Prize,Type,Time (IST),Code,Redeemed", ...rows].join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -160,7 +161,7 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
           })}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
+          {onEdit && <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>}
           <Button size="sm" variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
           <Button size="sm" variant="outline" onClick={() => setShowRed(true)}>Redemptions</Button>
           <Button size="sm" variant="secondary" asChild><Link to="/scan-redeem">Scan & Redeem</Link></Button>
