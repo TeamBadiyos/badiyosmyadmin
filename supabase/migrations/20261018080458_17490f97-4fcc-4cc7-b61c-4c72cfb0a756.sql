@@ -1,0 +1,1 @@
+ALTER TABLE public.catalog_categories ADD COLUMN IF NOT EXISTS icon text;

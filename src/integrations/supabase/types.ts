@@ -2401,6 +2401,7 @@ export type Database = {
         Row: {
           city_id: string | null
           created_at: string
+          icon: string | null
           id: string
           image_path: string | null
           is_active: boolean
@@ -2413,6 +2414,7 @@ export type Database = {
         Insert: {
           city_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           image_path?: string | null
           is_active?: boolean
@@ -2425,6 +2427,7 @@ export type Database = {
         Update: {
           city_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           image_path?: string | null
           is_active?: boolean
