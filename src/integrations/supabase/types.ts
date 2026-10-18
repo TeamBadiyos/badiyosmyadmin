@@ -15075,6 +15075,10 @@ export type Database = {
         Args: { _city_id: string; _service_key: string }
         Returns: Json
       }
+      staff_log_export: {
+        Args: { _has_phone: boolean; _name: string; _rows: number }
+        Returns: undefined
+      }
       staff_lucky_draw_delete_campaign: {
         Args: { _id: string }
         Returns: undefined
