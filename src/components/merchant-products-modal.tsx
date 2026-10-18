@@ -350,6 +350,7 @@ export function MerchantProductsModal({
       {editing && (
         <ProductEditDialog
           product={editing}
+          categories={data?.categories ?? []}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
