@@ -382,15 +382,51 @@ function BookingsTab({ range }: { range: ReportRange }) {
       </div>
       <Card>
         <h3 className="text-[15px] font-bold text-foreground mb-4">Bookings by zone</h3>
-        <SimpleTable
-          columns={["Zone", "Count"]}
-          rows={data.byZone.map((z) => [z.zoneName, String(z.count)])}
-          emptyText="No bookings in range."
-          onRowClick={(i) => {
-            const z = data.byZone[i];
-            setDrill({ title: `${z.zoneName} — ${z.count} bookings`, zoneId: z.zoneId ?? "none" });
-          }}
-        />
+        {data.byZone.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground text-center py-10">No bookings in range.</p>
+        ) : (
+          <div className="border border-border rounded-[14px] overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead className="bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left px-3 py-3">Zone</th>
+                  <th className="text-right px-3 py-3">Completed</th>
+                  <th className="text-right px-3 py-3">Cancelled</th>
+                  <th className="text-right px-3 py-3">Other</th>
+                  <th className="text-right px-3 py-3">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.byZone.map((z) => {
+                  const zid = z.zoneId ?? "none";
+                  const cell = (n: number, label: string, status?: string) => (
+                    <td className="text-right px-3 py-3">
+                      {n > 0 ? (
+                        <button
+                          className="text-primary underline font-semibold"
+                          onClick={() => setDrill({ title: `${z.zoneName} — ${n} ${label}`, zoneId: zid, status })}
+                        >
+                          {n}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </td>
+                  );
+                  return (
+                    <tr key={zid} className="border-t border-border">
+                      <td className="px-3 py-3 text-foreground">{z.zoneName}</td>
+                      {cell(z.completed, "completed", "completed")}
+                      {cell(z.cancelled, "cancelled", "__cancelled")}
+                      {cell(z.other, "other (pending/ongoing)", "__other")}
+                      {cell(z.count, "bookings")}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
       <Card>
         <h3 className="text-[15px] font-bold text-foreground mb-4">Bookings by status</h3>
