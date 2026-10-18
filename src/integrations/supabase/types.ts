@@ -14383,6 +14383,7 @@ export type Database = {
         }
         Returns: string
       }
+      spin_is_staff: { Args: never; Returns: boolean }
       spin_mask_phone: { Args: { _p: string }; Returns: string }
       spin_send_prize_reminders: { Args: never; Returns: number }
       spin_slice_index: { Args: { _prize: string }; Returns: number }
