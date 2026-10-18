@@ -205,8 +205,28 @@ export const listActiveExperts = createServerFn({ method: "POST" })
           counts.set(k, (counts.get(k) ?? 0) + 1);
         }
       }
+      // Area partners only see experts from their own zones who are not on leave today.
+      const { data: myRole } = await db.rpc("staff_role" as never);
+      let allowed: Set<string> | null = null;
+      if (myRole === "area_partner") {
+        const { data: zIds } = await db.rpc("staff_my_zone_ids" as never);
+        const zones = (zIds ?? []) as string[];
+        allowed = new Set<string>();
+        if (zones.length && ids.length) {
+          const [{ data: ez }, { data: ex }, { data: lv }] = await Promise.all([
+            db.from("expert_zones").select("expert_id").in("zone_id", zones).in("expert_id", ids),
+            db.from("experts").select("id").in("zone_id", zones).in("id", ids),
+            db.from("expert_leave_days").select("expert_id").in("expert_id", ids)
+              .eq("leave_date", new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10)),
+          ]);
+          for (const r of ez ?? []) allowed.add(r.expert_id as string);
+          for (const r of ex ?? []) allowed.add(r.id as string);
+          for (const r of lv ?? []) allowed.delete(r.expert_id as string);
+        }
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return ((experts ?? []) as any[])
+        .filter((e) => !allowed || allowed.has(e.id))
         .filter((e) => (counts.get(e.id) ?? 0) < 2 && (!e.is_busy || (counts.get(e.id) ?? 0) === 1))
         .map((e) => ({
           busy: !!e.is_busy || (counts.get(e.id) ?? 0) > 0,
