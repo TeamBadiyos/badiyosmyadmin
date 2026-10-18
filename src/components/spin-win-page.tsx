@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SpinRedemptions } from "@/components/spin-redemptions";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,7 +20,7 @@ type PrizeType = "physical" | "percent_coupon" | "flat_coupon" | "wallet_bonus";
 type Prize = {
   id?: string; label: string; label_mr: string; color: string; icon: string; prize_type: PrizeType;
   value: string; max_discount: string; min_order: string; valid_days: string; services: string[];
-  stock_limit: string; weight: string; is_fallback: boolean; given?: number;
+  stock_limit: string; weight: string; is_fallback: boolean; given?: number; expires_at: string;
 };
 type Ev = {
   id?: string; name: string; name_mr: string; city_id: string; starts_at: string; ends_at: string;
@@ -38,7 +40,7 @@ const toLocal = (iso: string) => {
 const fromLocal = (v: string) => new Date(v + ":00+05:30").toISOString();
 const blankPrize = (i: number, fallback = false): Prize => ({
   label: "", label_mr: "", color: COLORS[i % COLORS.length], icon: "", prize_type: "wallet_bonus", value: "",
-  max_discount: "", min_order: "", valid_days: "30", services: [], stock_limit: fallback ? "" : "", weight: "1", is_fallback: fallback,
+  max_discount: "", min_order: "", valid_days: "30", services: [], stock_limit: fallback ? "" : "", weight: "1", is_fallback: fallback, expires_at: "",
 });
 
 export function SpinWinPage() {
@@ -73,7 +75,7 @@ export function SpinWinPage() {
         id: p.id, label: p.label, label_mr: p.label_mr ?? "", color: p.color, icon: p.icon ?? "", prize_type: p.prize_type,
         value: String(p.value ?? ""), max_discount: p.max_discount == null ? "" : String(p.max_discount),
         min_order: String(p.min_order ?? ""), valid_days: String(p.valid_days ?? 30), services: p.services ?? [],
-        stock_limit: p.stock_limit == null ? "" : String(p.stock_limit), weight: String(p.weight), is_fallback: p.is_fallback, given: p.given,
+        stock_limit: p.stock_limit == null ? "" : String(p.stock_limit), weight: String(p.weight), is_fallback: p.is_fallback, given: p.given, expires_at: p.expires_at ? toLocal(p.expires_at) : "",
       })),
     });
   };
@@ -111,15 +113,7 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
         prizes: { id: string; label: string; type: PrizeType; given: number; stock_limit: number | null }[] };
     },
   });
-  const redeem = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await db.rpc("staff_spin_redeem", { _code: code });
-      if (error) throw error;
-      return data as { prize: string };
-    },
-    onSuccess: (d) => { toast.success(`Redeemed: ${d.prize}`); setCode(""); stats.refetch(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [showRed, setShowRed] = useState(false);
   const exportCsv = async () => {
     const { data, error } = await db.rpc("staff_spin_export", { _event_id: ev.id });
     if (error) return toast.error(error.message);
@@ -166,13 +160,12 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
           })}
         </div>
         <div className="flex gap-2">
-          <Input placeholder="Prize code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="h-9" />
-          <Button size="sm" variant="secondary" disabled={!code || redeem.isPending} onClick={() => redeem.mutate()}>Redeem</Button>
-        </div>
-        <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
           <Button size="sm" variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
+          <Button size="sm" variant="outline" onClick={() => setShowRed(true)}>Redemptions</Button>
+          <Button size="sm" variant="secondary" asChild><Link to="/scan-redeem">Scan & Redeem</Link></Button>
         </div>
+        {showRed && <SpinRedemptions eventId={ev.id} name={ev.name} onClose={() => setShowRed(false)} />}
       </CardContent>
     </Card>
   );
@@ -203,6 +196,23 @@ function EventForm({ initial, cities, onClose, onSaved }: {
         _prizes: prizes.map((p) => ({ ...p, stock_limit: p.is_fallback ? "" : p.stock_limit })),
       });
       if (error) throw error;
+      // prize expiry (physical prizes)
+      let evId = ev.id;
+      if (!evId) {
+        const { data: e2 } = await db.from("spin_events").select("id").eq("name", ev.name).order("created_at", { ascending: false }).limit(1);
+        evId = e2?.[0]?.id;
+      }
+      if (evId) {
+        const { data: ps } = await db.from("spin_prizes").select("id,sort_order,prize_type").eq("event_id", evId).eq("is_deleted", false).order("sort_order");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const [i, row] of ((ps ?? []) as any[]).entries()) {
+          const p = prizes[i];
+          if (row.prize_type === "physical" && p) {
+            const { error: e3 } = await db.rpc("staff_spin_set_prize_expiry", { _prize_id: row.id, _expires_at: p.expires_at ? fromLocal(p.expires_at) : null });
+            if (e3) throw e3;
+          }
+        }
+      }
     },
     onSuccess: () => { toast.success("Spin & Win saved"); onSaved(); },
     onError: (e: Error) => toast.error(e.message),
@@ -263,6 +273,11 @@ function EventForm({ initial, cities, onClose, onSaved }: {
                     <Input placeholder="Min order ₹" type="number" value={p.min_order} onChange={(e) => setP(i, { min_order: e.target.value })} />
                     <Input placeholder="Valid days" type="number" value={p.valid_days} onChange={(e) => setP(i, { valid_days: e.target.value })} />
                   </>
+                )}
+                {p.prize_type === "physical" && (
+                  <Label className="flex items-center gap-1 text-xs sm:col-span-2">Collect by (IST)
+                    <Input type="datetime-local" className="h-9" value={p.expires_at} onChange={(e) => setP(i, { expires_at: e.target.value })} />
+                  </Label>
                 )}
                 {p.prize_type === "wallet_bonus" && <p className="self-center text-xs text-muted-foreground">Bonus expires in 30 days</p>}
               </div>
