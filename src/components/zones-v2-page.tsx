@@ -27,6 +27,7 @@ type State = {
 };
 type CityRow = { id: string; name: string; state: string; status: string; area_km2: number | null; zones: number; live_zones: number };
 type Mode = { kind: "idle" } | { kind: "zone" } | { kind: "city"; cityId: string; name: string };
+type TrimHit = { id: string; name: string; lose_m2: number; partner: string | null };
 const COLOURS = ["#00B97A", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#84CC16", "#F97316"];
 const OFF_GREY = "#64748B";
 
@@ -81,6 +82,22 @@ function ZoneEditor({ role }: { role: string | null }) {
   const [offFor, setOffFor] = useState<Cell | null>(null);
   const [deleteFor, setDeleteFor] = useState<{ cell: Cell; total: number } | null>(null);
   const [addCity, setAddCity] = useState(false);
+  const [showPins, setShowPins] = useState(false);
+  const [trimFor, setTrimFor] = useState<{ cell: string; name: string; colour: string; geo: GJ; hits: TrimHit[] } | null>(null);
+  const outsideQ = useQuery({
+    queryKey: ["zones-outside", cityId], enabled: !!cityId && canToggle,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("zv2_outside_zone_bookings", { _city: cityId });
+      if (error) throw error;
+      return data as { policy: "allow" | "allow_outer" | "block"; pins: { id: string; number: string | null; lat: number; lng: number; at: string }[] };
+    },
+  });
+  async function setPolicy(p: string) {
+    const { error } = await db.rpc("staff_set_outside_zone_policy", { _city: cityId, _policy: p });
+    if (error) return toast.error(errMsg(error));
+    toast.success("Saved");
+    qc.invalidateQueries({ queryKey: ["zones-outside", cityId] });
+  }
   const osm = useServerFn(fetchOsmCityBoundary);
 
   const mapDiv = useRef<HTMLDivElement>(null);
@@ -182,6 +199,9 @@ function ZoneEditor({ role }: { role: string | null }) {
     }
     if (showGaps && st.gap) for (const r of rings(st.gap))
       add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: "#DC2626", fillColor: "#DC2626", fillOpacity: 0.5, strokeWeight: 1, clickable: false, zIndex: 6 }));
+    if (showPins) for (const pin of outsideQ.data?.pins ?? [])
+      add(new g.maps.Marker({ map: map.current, position: { lat: Number(pin.lat), lng: Number(pin.lng) }, zIndex: 9, title: `${pin.number ?? ""} · ${new Date(pin.at).toLocaleDateString("en-IN")}`,
+        icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#DC2626", fillOpacity: 1, strokeColor: "#FFFFFF", strokeWeight: 2 } }));
     if (mode.kind !== "idle" && dots.length) {
       const colour = mode.kind === "city" ? "#0F172A" : "#2563EB";
       add(new g.maps.Polyline({ map: map.current, path: dots.length >= 3 ? [...dots, dots[0]] : dots, strokeColor: colour, strokeWeight: 3, zIndex: 7, clickable: false }));
@@ -193,7 +213,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, st, sel, dots, mode, showGaps]);
+  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data]);
 
   function select(c: Cell) { setSel(c.id); editRef.current = rings(c.geom)[0] ?? null; }
   function startZone() {
@@ -239,8 +259,18 @@ function ZoneEditor({ role }: { role: string | null }) {
     if (!sel) return;
     const p = editRef.current;
     if (!p || p.length < 3) return toast.error("A zone needs at least 3 points.");
-    const ok = await run("zv2_save_zone", { _city: cityId, _cell: sel, _name: name, _colour: colour, _geojson: toPolygon(p) }, "Zone saved");
-    if (ok) { const c = (ok as State).cells?.find((x) => x.id === sel); if (c) select(c); }
+    const geo = toPolygon(p);
+    const { data: hits, error } = await db.rpc("zv2_trim_preview", { _city: cityId, _cell: sel, _geojson: geo });
+    if (error) return toast.error(errMsg(error));
+    const list = (hits ?? []) as TrimHit[];
+    if (list.length) return setTrimFor({ cell: sel, name, colour, geo, hits: list });
+    await doSave(sel, name, colour, geo, null);
+  }
+  async function doSave(cell: string, name: string, colour: string, geo: GJ, reason: string | null) {
+    const ok = reason
+      ? await run("zv2_save_zone_confirmed", { _city: cityId, _cell: cell, _name: name, _colour: colour, _geojson: geo, _reason: reason }, "Zone saved")
+      : await run("zv2_save_zone", { _city: cityId, _cell: cell, _name: name, _colour: colour, _geojson: geo }, "Zone saved");
+    if (ok) { setTrimFor(null); const c = (ok as State).cells?.find((x) => x.id === cell); if (c) select(c); }
   }
   async function askDelete(c: Cell) {
     const { data, error } = await db.rpc("zv2_cell_refs", { _cell: c.id });
