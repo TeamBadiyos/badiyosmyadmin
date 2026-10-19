@@ -19,6 +19,7 @@ import {
 } from "@/lib/partner-program.functions";
 import { PartyAgreementCard } from "@/components/agreements";
 import { PartnerPaymentsPanel } from "@/components/partner-payments";
+import { LifecyclePanel, ActivitiesPanel, StatusChip, STATUS_LABEL, renewalDue } from "@/components/partner-lifecycle";
 
 const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   growth: "Growth Partner",
@@ -73,13 +74,15 @@ function usePartnerData() {
 function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
   const q = usePartnerData();
   const [filter, setFilter] = useState<"all" | PartnerProgram>("all");
-  const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
+  const [status, setStatus] = useState<string>("all");
+  const [planF, setPlanF] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<PartnerRow> | null>(null);
-  const [detail, setDetail] = useState<PartnerRow | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const rows = useMemo(
-    () => (q.data?.partners ?? []).filter((p) => (filter === "all" || p.program === filter) && (status === "all" || p.status === status)),
-    [q.data, filter, status],
+    () => (q.data?.partners ?? []).filter((p) => (filter === "all" || p.program === filter) && (status === "all" || p.status === status) && (planF === "all" || p.plan_id === planF)),
+    [q.data, filter, status, planF],
   );
+  const detail = q.data?.partners.find((x) => x.id === detailId) ?? null;
   const zoneName = (id: string | null) => q.data?.zones.find((z) => z.id === id)?.name ?? "—";
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
@@ -92,11 +95,16 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           {Object.entries(PROGRAM_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         </FilterField>
+        <FilterField label="Plan">
+        <select className={filterSelectCls} value={planF} onChange={(e) => setPlanF(e.target.value)}>
+          <option value="all">All plans</option>
+          {(q.data?.plans ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        </FilterField>
         <FilterField label="Status">
-        <select className={filterSelectCls} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        <select className={filterSelectCls} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         </FilterField>
         {isAdmin && (
@@ -118,7 +126,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
             {rows.length === 0 && <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">No partners yet.</td></tr>}
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-border">
-                <td className="p-2 font-semibold"><button className="text-primary hover:underline" onClick={() => setDetail(p)}>{p.name}</button></td>
+                <td className="p-2 font-semibold"><button className="text-primary hover:underline" onClick={() => setDetailId(p.id)}>{p.name}</button></td>
                 <td className="p-2">{p.phone}</td>
                 <td className="p-2">{q.data?.plans.find((x) => x.id === p.plan_id)?.name ?? "—"}</td>
                 <td className="p-2">{p.city}</td>
@@ -127,7 +135,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
                 <td className="p-2">{inr(p.fee_paid)}{p.fee_collected_at && <div className="text-xs text-muted-foreground">{fmtDate(p.fee_collected_at)}</div>}</td>
                 <td className="p-2">{p.program === "growth" ? q.data?.expertCounts[p.id] ?? 0 : "—"}</td>
                 <td className="p-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.status === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{p.status === "active" ? "Active" : "Inactive"}</span>
+                  <div className="flex flex-wrap gap-1"><StatusChip s={p.status} />{renewalDue(p.agreement_end, p.status) && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">Renewal due</span>}</div>
                 </td>
                 <td className="p-2">{isAdmin && <button className="text-primary" onClick={() => setEditing(p)}><Pencil className="h-4 w-4" /></button>}</td>
               </tr>
@@ -135,22 +143,24 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           </tbody>
         </table>
       </div>
-      {detail && <PartnerDetail p={detail} isAdmin={isAdmin} onClose={() => setDetail(null)} />}
+      {detail && <PartnerDetail p={detail} plans={q.data?.plans ?? []} isAdmin={isAdmin} onClose={() => setDetailId(null)} />}
       {editing && <PartnerForm initial={editing} zones={q.data?.zones ?? []} plans={q.data?.plans ?? []} onClose={() => setEditing(null)} />}
     </div>
   );
 }
 
-function PartnerDetail({ p, isAdmin, onClose }: { p: PartnerRow; isAdmin: boolean; onClose: () => void }) {
-  const [t, setT] = useState<"payments" | "agreement">("payments");
+function PartnerDetail({ p, plans, isAdmin, onClose }: { p: PartnerRow; plans: CommissionPlan[]; isAdmin: boolean; onClose: () => void }) {
+  const [t, setT] = useState<"status" | "activities" | "payments" | "agreement">("status");
   return (
     <Modal title={p.name} onClose={onClose}>
-      <div className="mb-3 flex gap-1 border-b border-border">
-        {([["payments", "Payments"], ["agreement", "Agreement"]] as const).map(([k, l]) => (
+      <div className="mb-3 flex gap-1 overflow-x-auto border-b border-border">
+        {([["status", "Status"], ["activities", "Activities"], ["payments", "Payments"], ["agreement", "Agreement"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
-      {t === "payments" ? <PartnerPaymentsPanel partnerId={p.id} canEdit={isAdmin} /> : <PartyAgreementCard partyType="partner" partyId={p.id} canManage={isAdmin} />}
+      {t === "status" ? <LifecyclePanel p={p} plans={plans as never} isAdmin={isAdmin} />
+        : t === "activities" ? <ActivitiesPanel partnerId={p.id} isAdmin={isAdmin} />
+        : t === "payments" ? <PartnerPaymentsPanel partnerId={p.id} canEdit={isAdmin} /> : <PartyAgreementCard partyType="partner" partyId={p.id} canManage={isAdmin} />}
     </Modal>
   );
 }
@@ -250,11 +260,6 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
         <label className="text-sm">Agreement end<DateInput  className={input} value={f.agreement_end ?? ""} onChange={(e) => set("agreement_end", e.target.value)} /></label>
         <label className="text-sm">Fee collected date<DateInput  className={input} value={f.fee_collected_at ?? ""} onChange={(e) => set("fee_collected_at", e.target.value || null)} /></label>
         <label className="text-sm">Deposit / Fee collected (₹)<input type="number" min={0} className={input} value={f.fee_paid ?? 0} onChange={(e) => set("fee_paid", Number(e.target.value))} /></label>
-        <label className="text-sm">Status
-          <select className={input} value={f.status} onChange={(e) => set("status", e.target.value as PartnerRow["status"])}>
-            <option value="active">Active</option><option value="inactive">Inactive</option>
-          </select>
-        </label>
         <label className="text-sm sm:col-span-2">Notes<textarea className={input} value={f.notes ?? ""} onChange={(e) => set("notes", e.target.value)} /></label>
       </div>
       <div className="mt-4 flex justify-end gap-2">
