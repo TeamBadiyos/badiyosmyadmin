@@ -193,7 +193,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       const isSel = c.id === sel;
       const rs = rings(c.geom);
       rs.forEach((r, i) => {
-        const colour = c.is_off ? OFF_GREY : TYPE_COLOUR[c.zone_type ?? "core"];
+        const zt = c.zone_type ?? "core"; const colour = c.is_off ? OFF_GREY : zt === "core" ? (c.colour || TYPE_COLOUR.core) : TYPE_COLOUR[zt];
         const p = add(new g.maps.Polygon({
           map: map.current, paths: r, strokeColor: colour, strokeWeight: isSel ? 3 : 1.5, fillColor: colour,
           fillOpacity: c.is_off ? 0.45 : isSel ? 0.35 : 0.2, editable: isSel && canEdit && mode.kind === "idle" && i === 0, zIndex: isSel ? 3 : 2,
@@ -423,7 +423,7 @@ function ZoneEditor({ role }: { role: string | null }) {
               return (
                 <div key={c.id} className={`flex items-center gap-2 px-3 py-2 text-sm ${c.id === sel ? "bg-muted" : ""}`}>
                   <button onClick={() => select(c)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                    <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: c.is_off ? OFF_GREY : TYPE_COLOUR[t] }} />
+                    <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: c.is_off ? OFF_GREY : t === "core" ? (c.colour || TYPE_COLOUR.core) : TYPE_COLOUR[t] }} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{c.name}{c.is_off && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Off</span>}{c.is_active === false && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Inactive</span>}</span>
                       <span className="block truncate text-xs text-muted-foreground">
