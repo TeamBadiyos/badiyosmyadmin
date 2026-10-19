@@ -26,7 +26,8 @@ type State = {
   overlap?: boolean; switched: boolean; cells: Cell[]; old_zones: { id: string; name: string; geom: GJ }[];
 };
 type CityRow = { id: string; name: string; state: string; status: string; area_km2: number | null; zones: number; live_zones: number };
-type Mode = { kind: "idle" } | { kind: "zone" } | { kind: "city"; cityId: string; name: string };
+type Mode = { kind: "idle" } | { kind: "zone" } | { kind: "city"; cityId: string; name: string } | { kind: "pocket"; cell: string };
+type PocketRow = { cell: string; pockets: LL[][]; fee: number };
 type TrimHit = { id: string; name: string; lose_m2: number; partner: string | null };
 const COLOURS = ["#00B97A", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#84CC16", "#F97316"];
 const OFF_GREY = "#64748B";
@@ -92,6 +93,29 @@ function ZoneEditor({ role }: { role: string | null }) {
       return data as { policy: "allow" | "allow_outer" | "block"; pins: { id: string; number: string | null; lat: number; lng: number; at: string }[] };
     },
   });
+  const pocketsQ = useQuery({
+    queryKey: ["zones-pockets", cityId], enabled: !!cityId && canToggle,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("zv2_outer_pockets", { _city: cityId });
+      if (error) throw error;
+      return (data ?? []) as PocketRow[];
+    },
+  });
+  const pocketsOf = (cell: string) => pocketsQ.data?.find((p) => p.cell === cell) ?? null;
+  async function savePockets(cell: string, pockets: LL[][], fee: number) {
+    setBusy(true);
+    const { error } = await db.rpc("staff_set_zone_outer_pockets", { _cell: cell, _pockets: pockets, _fee: fee });
+    setBusy(false);
+    if (error) { toast.error(errMsg(error)); return false; }
+    toast.success("Outer areas saved");
+    await qc.invalidateQueries({ queryKey: ["zones-pockets", cityId] });
+    return true;
+  }
+  async function finishPocket() {
+    if (mode.kind !== "pocket" || dots.length < 3) return toast.error("Place at least 3 points");
+    const cur = pocketsOf(mode.cell);
+    if (await savePockets(mode.cell, [...(cur?.pockets ?? []), dots], cur?.fee ?? 20)) cancelDraw();
+  }
   async function setPolicy(p: string) {
     const { error } = await db.rpc("staff_set_outside_zone_policy", { _city: cityId, _policy: p });
     if (error) return toast.error(errMsg(error));
