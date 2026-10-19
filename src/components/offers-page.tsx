@@ -1936,6 +1936,7 @@ function CampaignImageInput({ value, onChange }: { value: string; onChange: (v: 
           <button type="button" className="text-[12px] text-destructive" onClick={() => onChange("")}>Remove</button>
         )}
       </div>
+      <p className="text-[11px] text-muted-foreground">Best size: 1024 × 512 px (2:1, wide). JPG, PNG or WebP, under 1 MB. Keep text in the centre.</p>
       <input className={inputCls} placeholder="…or paste image URL" value={value} onChange={(e) => onChange(e.target.value)} />
       {value && <img src={value} alt="" className="h-20 rounded-md border border-border object-cover" />}
     </div>
