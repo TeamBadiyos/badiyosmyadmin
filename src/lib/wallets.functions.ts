@@ -69,6 +69,8 @@ export type PayoutItem = {
   payment_mode: string | null;
   payment_notes: string | null;
   bonus_amount: number;
+  /** Expert travel pay included in gross (shown separately). */
+  travel_amount?: number;
   removed: boolean;
   removed_reason: string | null;
 };
@@ -224,12 +226,17 @@ export const listPayoutItems = createServerFn({ method: "GET" })
     const merchantIds = ids("merchant");
     const none = Promise.resolve({ data: [], error: null });
 
-    const [expertsRes, merchantsRes] = await Promise.all([
+    const [expertsRes, merchantsRes, travelRes] = await Promise.all([
       expertIds.length ? db.from("experts").select("id, name, phone").in("id", expertIds) : none,
       merchantIds.length
         ? db.from("merchants").select("id, store_name, owner_name, phone").in("id", merchantIds)
         : none,
+      expertIds.length ? db.rpc("staff_payout_batch_travel", { _batch_id: data.batch_id }) : none,
     ]);
+    if (travelRes.error) throw new Error(travelRes.error.message);
+    const travelMap = new Map<string, number>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const t of (travelRes.data ?? []) as any[]) travelMap.set(t.owner_id, Number(t.travel ?? 0));
     if (expertsRes.error) throw new Error(expertsRes.error.message);
     if (merchantsRes.error) throw new Error(merchantsRes.error.message);
 
@@ -263,6 +270,7 @@ export const listPayoutItems = createServerFn({ method: "GET" })
         payment_mode: r.payment_mode ?? null,
         payment_notes: r.payment_notes ?? null,
         bonus_amount: Number(r.bonus_amount ?? 0),
+        travel_amount: r.owner_type === "expert" ? travelMap.get(r.owner_id) ?? 0 : 0,
         removed: !!r.removed,
         removed_reason: r.removed_reason ?? null,
       };

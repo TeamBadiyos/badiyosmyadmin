@@ -708,6 +708,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
   const unpaid = active.filter((i) => !i.paid).length;
   const tdsTotal = active.reduce((s, i) => s + (i.tds_amount ?? 0), 0);
   const bonusTotal = active.reduce((s, i) => s + (i.bonus_amount ?? 0), 0);
+  const travelTotal = active.reduce((s, i) => s + (i.travel_amount ?? 0), 0);
   const netTotal = active.reduce((s, i) => s + i.net_amount, 0);
   const paidNet = active.filter((i) => i.paid).reduce((s, i) => s + i.net_amount, 0);
   const anyPaid = data.some((i) => i.paid);
@@ -823,6 +824,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
         <p className="text-[13px] text-muted-foreground">
           Gross <span className="font-semibold text-foreground">{inr.format(batch.total_amount)}</span>
           {bonusTotal > 0 && <> · Bonus incl. <span className="font-semibold text-foreground">{inr.format(bonusTotal)}</span></>}
+          {travelTotal > 0 && <> · Travel incl. <span className="font-semibold text-foreground">{inr.format(travelTotal)}</span></>}
           {tdsTotal > 0 && <> · TDS <span className="font-semibold text-foreground">{inr.format(tdsTotal)}</span></>}
           {" · "}Net <span className="font-semibold text-foreground">{inr.format(netTotal)}</span>
           {" · "}Paid <span className="font-semibold text-foreground">{inr.format(paidNet)}</span>
@@ -860,7 +862,10 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               {i.owner_type === "expert" ? "Expert" : i.owner_type === "merchant" ? "Merchant" : "Partner"}
             </span>
-            <span className="text-right font-semibold">{inr.format(i.gross_amount)}</span>
+            <span className="text-right">
+              <span className="font-semibold">{inr.format(i.gross_amount)}</span>
+              {(i.travel_amount ?? 0) > 0 && <span className="block text-[11px] text-muted-foreground">Travel {inr.format(i.travel_amount ?? 0)}</span>}
+            </span>
             <span className="text-right text-muted-foreground">{i.bonus_amount > 0 ? inr.format(i.bonus_amount) : "—"}</span>
             <span className="text-right text-muted-foreground">
               {i.tds_amount > 0 ? `${inr.format(i.tds_amount)} (${i.tds_rate}%)` : "—"}
