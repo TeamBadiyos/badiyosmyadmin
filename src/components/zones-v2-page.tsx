@@ -291,6 +291,25 @@ function ZoneEditor({ role }: { role: string | null }) {
 
   return (
     <div className="space-y-6">
+      {canToggle && outsideQ.data && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm">
+          <span className="font-semibold">Address not in any zone:</span>
+          <select aria-label="Address not in any zone" value={outsideQ.data.policy} disabled={!canEdit}
+            onChange={(e) => setPolicy(e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm">
+            <option value="allow">Allow (no Travel Fee)</option>
+            <option value="allow_outer">Allow as Outer (₹20 Travel Fee)</option>
+            <option value="block">Block</option>
+          </select>
+          <span className="text-muted-foreground">Outside-zone bookings (30 days): <b className="text-foreground">{outsideQ.data.pins.length}</b></span>
+          <Button size="sm" variant={showPins ? "default" : "outline"} disabled={!outsideQ.data.pins.length} onClick={() => setShowPins((v) => !v)}>
+            {showPins ? "Hide pins" : "Show pins"}
+          </Button>
+        </div>
+      )}
+      <Dialog open={!!trimFor} onOpenChange={(o) => { if (!o) setTrimFor(null); }}>
+        {trimFor && <TrimDialog hits={trimFor.hits} isSuper={role === "super_admin"} busy={busy} onCancel={() => setTrimFor(null)}
+          onConfirm={(reason) => doSave(trimFor.cell, trimFor.name, trimFor.colour, trimFor.geo, reason)} />}
+      </Dialog>
       <div className="grid gap-4 lg:grid-cols-[1fr_330px]">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
