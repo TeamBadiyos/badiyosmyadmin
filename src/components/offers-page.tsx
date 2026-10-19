@@ -1473,11 +1473,10 @@ function CampaignModal({
           />
         </Field>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Image URL (optional)">
-            <input
-              className={inputCls}
+          <Field label="Image (optional)">
+            <CampaignImageInput
               value={form.image_url ?? ""}
-              onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+              onChange={(v) => setForm({ ...form, image_url: v })}
             />
           </Field>
           <Field label="Opens in app (tap par kya khulega)">
