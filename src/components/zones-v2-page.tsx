@@ -801,3 +801,37 @@ function TrimDialog({ hits, isSuper, busy, onCancel, onConfirm }: { hits: TrimHi
     </DialogContent>
   );
 }
+
+function OuterAreasForm({ cell, row, canEdit, busy, onDraw, onSave }: {
+  cell: Cell; row: PocketRow | null; canEdit: boolean; busy: boolean;
+  onDraw: () => void; onSave: (pockets: LL[][], fee: number) => Promise<boolean> | void;
+}) {
+  const pockets = row?.pockets ?? [];
+  const [fee, setFee] = useState(String(row?.fee ?? 20));
+  if (!cell.live) return null;
+  const feeNum = Number(fee);
+  const feeOk = Number.isFinite(feeNum) && feeNum >= 0 && feeNum <= 1000;
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="font-semibold">{cell.name} · Outer areas</div>
+      <p className="text-xs text-muted-foreground">Mark only part of this zone as Outer. Bookings inside an orange area get the Travel Fee; the rest of the zone stays Core. Same franchise partner.</p>
+      <label className="flex items-center justify-between gap-2">Travel Fee ₹
+        <Input className="h-8 w-24" inputMode="decimal" value={fee} disabled={!canEdit} onChange={(e) => setFee(e.target.value)} />
+      </label>
+      {pockets.length === 0 && <p className="text-xs text-muted-foreground">No outer areas yet.</p>}
+      {pockets.map((p, i) => (
+        <div key={i} className="flex items-center justify-between rounded-md bg-muted px-2 py-1">
+          <span>Outer area {i + 1} · {areaKm2(p).toFixed(2)} km²</span>
+          {canEdit && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { if (confirm(`Remove outer area ${i + 1}?`)) onSave(pockets.filter((_, j) => j !== i), feeOk ? feeNum : 20); }}>Remove</Button>}
+        </div>
+      ))}
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={busy} onClick={onDraw}>+ Draw outer area</Button>
+          <Button size="sm" disabled={busy || !feeOk} onClick={() => onSave(pockets, feeNum)}>Save fee</Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">Services charged: {(cell.travel_fee_services ?? ["clean", "auto_care"]).map((s) => (s === "clean" ? "Clean" : "Auto Care")).join(", ") || "none"}</p>
+    </div>
+  );
+}
