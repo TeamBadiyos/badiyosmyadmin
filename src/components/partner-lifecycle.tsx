@@ -213,3 +213,61 @@ export function ActivitiesPanel({ partnerId, isAdmin }: { partnerId: string; isA
     </div>
   );
 }
+
+const KPI_ROWS: [string, string, string][] = [
+  ["active_experts", "min_active_experts", "Active experts"],
+  ["new_experts", "min_new_experts", "New experts"],
+  ["new_customers", "min_new_customers", "New customers"],
+  ["promo_activities", "min_promo_activities", "Promos"],
+];
+const monthLbl = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+
+export function KpiPanel({ partnerId, program, isAdmin }: { partnerId: string; program: string; isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const live = useQuery({ queryKey: ["partner-kpi-live", partnerId], queryFn: async () => { const { data, error } = await db.rpc("staff_partner_kpi_live", { _partner_id: partnerId }); if (error) throw error; return data as { month: string; actuals: Record<string, number>; targets: Record<string, number | boolean>; review_meeting_done: boolean }; } });
+  const hist = useQuery({ queryKey: ["partner-kpi-hist", partnerId], queryFn: async () => { const { data, error } = await db.from("partner_kpi_results").select("*").eq("partner_id", partnerId).not("evaluated_at", "is", null).order("month", { ascending: false }).limit(12); if (error) throw error; return data as { id: string; month: string; kpi_met: boolean | null; skipped_reason: string | null; status_before: string; status_after: string; active_experts: number; new_experts: number; new_customers: number; promo_activities: number }[]; } });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["partner-kpi-live", partnerId] }); qc.invalidateQueries({ queryKey: ["partner-kpi-hist", partnerId] }); qc.invalidateQueries({ queryKey: ["partner-program"] }); qc.invalidateQueries({ queryKey: ["partner-history", partnerId] }); };
+  const rerun = useMutation({
+    mutationFn: async () => { const r = window.prompt("Reason for re-running last month's KPI check?"); if (!r || r.trim().length < 3) throw new Error("Reason is required"); const { data, error } = await db.rpc("staff_partner_kpi_rerun", { _partner_id: partnerId, _reason: r.trim() }); if (error) throw error; return data as { kpi_met?: boolean; skipped?: boolean }; },
+    onSuccess: (d) => { toast.success(d.skipped ? "Skipped (partner not active)" : d.kpi_met ? "KPI met" : "KPI missed"); refresh(); },
+    onError: (e) => toast.error(err(e)),
+  });
+  const meet = useMutation({
+    mutationFn: async (done: boolean) => { const { error } = await db.rpc("staff_partner_review_meeting", { _partner_id: partnerId, _month: live.data!.month, _done: done }); if (error) throw error; },
+    onSuccess: refresh, onError: (e) => toast.error(err(e)),
+  });
+  const d = live.data;
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex justify-between"><b>{d ? monthLbl(d.month) : "This month"} · live</b>{d?.targets.rampup && <span className="text-xs text-muted-foreground">Ramp-up: 50% targets</span>}</div>
+        {live.isLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : live.error ? <p className="text-xs text-destructive">{err(live.error)}</p> : (
+          <div className="space-y-2">
+            {KPI_ROWS.filter(([, t]) => d!.targets[t] != null).map(([a, t, l]) => {
+              const act = Number(d!.actuals[a] ?? 0), tgt = Number(d!.targets[t]); const pct = tgt > 0 ? Math.min(100, (act / tgt) * 100) : 100;
+              return (<div key={a}><div className="flex justify-between text-xs"><span>{l}</span><span className="tabular-nums">{act} / {tgt}</span></div>
+                <div className="h-2 rounded-full bg-muted"><div className={`h-2 rounded-full ${act >= tgt ? "bg-success" : "bg-primary"}`} style={{ width: `${pct}%` }} /></div></div>);
+            })}
+            {Object.keys(d!.targets).filter((k) => k.startsWith("min_")).length === 0 && <p className="text-xs text-muted-foreground">No KPI set on this plan.</p>}
+            {(d!.targets.review_meeting_required || program === "city_master") && (
+              <label className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={!isAdmin || meet.isPending} checked={d!.review_meeting_done} onChange={(e) => meet.mutate(e.target.checked)} /> Review meeting done this month</label>
+            )}
+          </div>
+        )}
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between"><b>Last 12 months</b>{isAdmin && <Button size="sm" variant="outline" disabled={rerun.isPending} onClick={() => rerun.mutate()}>{rerun.isPending ? "Running…" : "Re-run last month"}</Button>}</div>
+        {(hist.data ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No monthly checks yet. The first runs on the 1st at 2:00 AM.</p> : (
+          <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1">Month</th><th>Met</th><th>Experts / New / Cust / Promo</th><th>Status</th></tr></thead>
+            <tbody>{hist.data!.map((h) => (
+              <tr key={h.id} className="border-t border-border">
+                <td className="py-1">{monthLbl(h.month)}</td>
+                <td>{h.kpi_met == null ? <span title={h.skipped_reason ?? ""}>Skipped</span> : h.kpi_met ? "✓" : "✗"}</td>
+                <td className="tabular-nums">{h.kpi_met == null ? "—" : `${h.active_experts} / ${h.new_experts} / ${h.new_customers} / ${h.promo_activities}`}</td>
+                <td>{h.status_before === h.status_after ? <StatusChip s={h.status_after} /> : <><StatusChip s={h.status_before} /> → <StatusChip s={h.status_after} /></>}</td>
+              </tr>))}</tbody></table>
+        )}
+      </div>
+    </div>
+  );
+}
