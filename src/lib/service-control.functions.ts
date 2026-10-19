@@ -12,6 +12,7 @@ async function requireStaffRead(context: Ctx) {
     .from("staff_users")
     .select("role, status")
     .eq("auth_user_id", context.userId)
+    .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data || data.status !== "active") throw new Error("Forbidden");
@@ -136,18 +137,18 @@ async function guardConcurrentEdit(
   knownUpdatedAt: string | null,
 ) {
   if (!knownUpdatedAt) return;
+  // Never use .single()/.maybeSingle() here: a service can have more than one
+  // row (per city), which made PostgREST fail with "multiple (or no) rows".
   const { data, error } = await db
     .from("service_flags")
     .select("updated_at, status_updated_at")
-    .eq("service_key", serviceKey)
-    .maybeSingle();
+    .eq("service_key", serviceKey);
   if (error) throw new Error(error.message);
-  // A token is still valid if it matches either timestamp — different sections
-  // (status vs hours) hold different fields as their "known" token.
-  const candidates = [
-    data?.status_updated_at as string | null,
-    data?.updated_at as string | null,
-  ].filter(Boolean) as string[];
+  // A token is still valid if it matches either timestamp of any row — different
+  // sections (status vs hours) hold different fields as their "known" token.
+  const candidates = ((data ?? []) as { updated_at: string | null; status_updated_at: string | null }[])
+    .flatMap((r) => [r.status_updated_at, r.updated_at])
+    .filter(Boolean) as string[];
   if (knownUpdatedAt && candidates.length > 0 && !candidates.includes(knownUpdatedAt)) {
     throw new Error("Kisi ne abhi is service ko badla hai — refresh karke dobara dekhiye.");
   }
