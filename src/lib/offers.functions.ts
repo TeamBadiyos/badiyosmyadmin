@@ -56,7 +56,8 @@ export type CouponRow = {
   code: string;
   title: string;
   description: string | null;
-  discount_type: "flat" | "percent" | "free_minutes";
+  discount_type: "flat" | "percent" | "free_minutes" | "free_service";
+  free_price_option_id?: string | null;
   discount_value: number;
   max_discount: number | null;
   min_order_amount: number;
@@ -233,7 +234,7 @@ export type CouponInput = {
   code: string;
   title: string;
   description?: string | null;
-  discount_type: "flat" | "percent" | "free_minutes";
+  discount_type: "flat" | "percent" | "free_minutes" | "free_service";
   discount_value: number;
   max_discount?: number | null;
   min_order_amount?: number | null;
@@ -244,7 +245,7 @@ export type CouponInput = {
   audience: "all" | "targeted" | "referral_reward" | "new_customers" | "existing_customers";
   applicable_category_ids?: string[] | null;
   show_in_list?: boolean;
-
+  free_price_option_id?: string | null;
 };
 
 export const saveCoupon = createServerFn({ method: "POST" })
@@ -252,6 +253,10 @@ export const saveCoupon = createServerFn({ method: "POST" })
   .inputValidator((input: CouponInput) => {
     if (!input?.code?.trim()) throw new Error("Code is required");
     if (!input.title?.trim()) throw new Error("Title is required");
+    if (input.discount_type === "free_service") {
+      if (!input.free_price_option_id) throw new Error("Choose the free service");
+      input.discount_value = 100;
+    }
     if (!(Number(input.discount_value) > 0)) throw new Error("Discount must be greater than 0");
     if (input.discount_type === "percent" && Number(input.discount_value) > 100)
       throw new Error("Percentage cannot exceed 100");
@@ -286,6 +291,17 @@ export const saveCoupon = createServerFn({ method: "POST" })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       if (catError) throw new Error(catError.message);
+    }
+    if (couponId) {
+      const { error: fsError } = await context.supabase.rpc(
+        "staff_set_coupon_free_service" as never,
+        {
+          _id: couponId,
+          _price_option_id:
+            data.discount_type === "free_service" ? (data.free_price_option_id ?? null) : null,
+        } as never,
+      );
+      if (fsError) throw new Error(fsError.message);
     }
     return { id: couponId };
   });
