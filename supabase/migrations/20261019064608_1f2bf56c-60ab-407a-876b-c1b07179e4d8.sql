@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.partner_kpi_actuals(uuid,date), public.partner_kpi_targets(uuid,date), public.partner_status_at(uuid,timestamptz), public.partner_evaluate_kpi(uuid,date,text,uuid), public.partner_monthly_kpi(), public.partner_daily_lifecycle() TO service_role;
