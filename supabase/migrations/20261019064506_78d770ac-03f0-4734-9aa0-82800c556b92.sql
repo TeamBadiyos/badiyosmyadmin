@@ -1,0 +1,1 @@
+ALTER FUNCTION public.partner_kpi_actuals(uuid,date) VOLATILE;
