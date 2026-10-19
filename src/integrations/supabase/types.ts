@@ -16981,6 +16981,10 @@ export type Database = {
         }
         Returns: Json
       }
+      zone_decide: {
+        Args: { _city: string; _lat: number; _lng: number }
+        Returns: Json
+      }
       zone_delete_impact: { Args: { _zone_id: string }; Returns: Json }
       zone_is_off_at: { Args: { _lat: number; _lng: number }; Returns: boolean }
       zone_lookup: { Args: { _lat: number; _lng: number }; Returns: Json }
