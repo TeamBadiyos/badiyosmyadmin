@@ -26,7 +26,8 @@ type State = {
   overlap?: boolean; switched: boolean; cells: Cell[]; old_zones: { id: string; name: string; geom: GJ }[];
 };
 type CityRow = { id: string; name: string; state: string; status: string; area_km2: number | null; zones: number; live_zones: number };
-type Mode = { kind: "idle" } | { kind: "zone" } | { kind: "city"; cityId: string; name: string };
+type Mode = { kind: "idle" } | { kind: "zone" } | { kind: "city"; cityId: string; name: string } | { kind: "pocket"; cell: string };
+type PocketRow = { cell: string; pockets: LL[][]; fee: number };
 type TrimHit = { id: string; name: string; lose_m2: number; partner: string | null };
 const COLOURS = ["#00B97A", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#84CC16", "#F97316"];
 const OFF_GREY = "#64748B";
@@ -92,6 +93,29 @@ function ZoneEditor({ role }: { role: string | null }) {
       return data as { policy: "allow" | "allow_outer" | "block"; pins: { id: string; number: string | null; lat: number; lng: number; at: string }[] };
     },
   });
+  const pocketsQ = useQuery({
+    queryKey: ["zones-pockets", cityId], enabled: !!cityId && canToggle,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("zv2_outer_pockets", { _city: cityId });
+      if (error) throw error;
+      return (data ?? []) as PocketRow[];
+    },
+  });
+  const pocketsOf = (cell: string) => pocketsQ.data?.find((p) => p.cell === cell) ?? null;
+  async function savePockets(cell: string, pockets: LL[][], fee: number) {
+    setBusy(true);
+    const { error } = await db.rpc("staff_set_zone_outer_pockets", { _cell: cell, _pockets: pockets, _fee: fee });
+    setBusy(false);
+    if (error) { toast.error(errMsg(error)); return false; }
+    toast.success("Outer areas saved");
+    await qc.invalidateQueries({ queryKey: ["zones-pockets", cityId] });
+    return true;
+  }
+  async function finishPocket() {
+    if (mode.kind !== "pocket" || dots.length < 3) return toast.error("Place at least 3 points");
+    const cur = pocketsOf(mode.cell);
+    if (await savePockets(mode.cell, [...(cur?.pockets ?? []), dots], cur?.fee ?? 20)) cancelDraw();
+  }
   async function setPolicy(p: string) {
     const { error } = await db.rpc("staff_set_outside_zone_policy", { _city: cityId, _policy: p });
     if (error) return toast.error(errMsg(error));
@@ -197,13 +221,28 @@ function ZoneEditor({ role }: { role: string | null }) {
         }
       });
     }
+    // custom outer areas inside zones: orange overlay with dashed edge
+    for (const row of pocketsQ.data ?? []) {
+      const cell = st.cells.find((c) => c.id === row.cell);
+      if (!cell) continue;
+      for (const r of row.pockets ?? []) {
+        if (!Array.isArray(r) || r.length < 3) continue;
+        const p = add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: TYPE_COLOUR.outer, strokeWeight: 2, fillColor: TYPE_COLOUR.outer, fillOpacity: 0.45, zIndex: 4 }));
+        dashed(r, "#9A3412", 2, 5);
+        label(centre(r), `Outer ₹${row.fee}`, "#7C2D12", 6);
+        p.addListener("click", (e: { latLng: { lat: () => number; lng: () => number } }) => {
+          if (drawingRef.current) { setDots((d) => [...d, { lat: e.latLng.lat(), lng: e.latLng.lng() }]); return; }
+          select(cell);
+        });
+      }
+    }
     if (showGaps && st.gap) for (const r of rings(st.gap))
       add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: "#DC2626", fillColor: "#DC2626", fillOpacity: 0.5, strokeWeight: 1, clickable: false, zIndex: 6 }));
     if (showPins) for (const pin of outsideQ.data?.pins ?? [])
       add(new g.maps.Marker({ map: map.current, position: { lat: Number(pin.lat), lng: Number(pin.lng) }, zIndex: 9, title: `${pin.number ?? ""} · ${new Date(pin.at).toLocaleDateString("en-IN")}`,
         icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#DC2626", fillOpacity: 1, strokeColor: "#FFFFFF", strokeWeight: 2 } }));
     if (mode.kind !== "idle" && dots.length) {
-      const colour = mode.kind === "city" ? "#0F172A" : "#2563EB";
+      const colour = mode.kind === "city" ? "#0F172A" : mode.kind === "pocket" ? TYPE_COLOUR.outer : "#2563EB";
       add(new g.maps.Polyline({ map: map.current, path: dots.length >= 3 ? [...dots, dots[0]] : dots, strokeColor: colour, strokeWeight: 3, zIndex: 7, clickable: false }));
       dots.forEach((pt, i) => {
         const m = add(new g.maps.Marker({ map: map.current, position: pt, draggable: true, label: dots.length <= 60 ? String(i + 1) : undefined, zIndex: 8 }));
@@ -213,7 +252,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data]);
+  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data, pocketsQ.data]);
 
   function select(c: Cell) { setSel(c.id); editRef.current = rings(c.geom)[0] ?? null; }
   function startZone() {
@@ -228,6 +267,7 @@ function ZoneEditor({ role }: { role: string | null }) {
   function finishDrawing() {
     if (mode.kind === "zone") setNamingOpen(true);
     else if (mode.kind === "city") saveCity();
+    else if (mode.kind === "pocket") finishPocket();
   }
   async function saveCity() {
     if (mode.kind !== "city" || dots.length < 3) return toast.error("Place at least 3 points");
@@ -329,6 +369,16 @@ function ZoneEditor({ role }: { role: string | null }) {
               <Button size="sm" variant="ghost" onClick={cancelDraw}>Cancel</Button>
             </div>
           )}
+          {mode.kind === "pocket" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border-2 border-primary bg-muted p-2 text-sm">
+              <span className="font-semibold">Drawing outer area in {st?.cells.find((c) => c.id === mode.cell)?.name}</span>
+              <span className="text-muted-foreground">{dots.length} points · {areaKm2(dots).toFixed(2)} km²</span>
+              <Button size="sm" disabled={busy || dots.length < 3} onClick={finishPocket}>Save outer area</Button>
+              <Button size="sm" variant="ghost" disabled={!dots.length} onClick={() => setDots((d) => d.slice(0, -1))}>Remove last point</Button>
+              <Button size="sm" variant="ghost" onClick={cancelDraw}>Cancel</Button>
+              <span className="w-full text-xs text-muted-foreground">Click inside the zone to add points. Customers inside this area pay the zone's outer Travel Fee; the rest of the zone stays Core.</span>
+            </div>
+          )}
           {mode.kind === "city" && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border-2 border-foreground bg-muted p-2 text-sm">
               <span className="font-semibold">Drawing city area: {mode.name}</span>
@@ -372,6 +422,11 @@ function ZoneEditor({ role }: { role: string | null }) {
           {selCell && canToggle && mode.kind === "idle" && (
             <PricingForm key={`p-${selCell.id}`} cell={selCell} busy={busy}
               onSave={(v) => run("staff_set_zone_pricing", { _cell: selCell.id, ...v }, "Zone saved")} />
+          )}
+          {selCell && canToggle && mode.kind === "idle" && (selCell.zone_type ?? "core") === "core" && (
+            <OuterAreasForm key={`o-${selCell.id}-${pocketsOf(selCell.id)?.fee ?? 20}`} cell={selCell} row={pocketsOf(selCell.id)} canEdit={canEdit} busy={busy}
+              onDraw={() => { setDots([]); setMode({ kind: "pocket", cell: selCell.id }); }}
+              onSave={(pockets, fee) => savePockets(selCell.id, pockets, fee)} />
           )}
           <div className="rounded-lg border border-border bg-card">
             <div className="border-b border-border px-3 py-2 text-sm font-semibold">Zones ({st?.cells.length ?? 0}){st?.switched ? " · live" : ""}</div>
@@ -744,5 +799,39 @@ function TrimDialog({ hits, isSuper, busy, onCancel, onConfirm }: { hits: TrimHi
         <Button disabled={busy || blocked || (needsReason && !reason.trim())} onClick={() => onConfirm(needsReason ? reason.trim() : null)}>Trim and save</Button>
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+function OuterAreasForm({ cell, row, canEdit, busy, onDraw, onSave }: {
+  cell: Cell; row: PocketRow | null; canEdit: boolean; busy: boolean;
+  onDraw: () => void; onSave: (pockets: LL[][], fee: number) => Promise<boolean> | void;
+}) {
+  const pockets = row?.pockets ?? [];
+  const [fee, setFee] = useState(String(row?.fee ?? 20));
+  if (!cell.live) return null;
+  const feeNum = Number(fee);
+  const feeOk = Number.isFinite(feeNum) && feeNum >= 0 && feeNum <= 1000;
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="font-semibold">{cell.name} · Outer areas</div>
+      <p className="text-xs text-muted-foreground">Mark only part of this zone as Outer. Bookings inside an orange area get the Travel Fee; the rest of the zone stays Core. Same franchise partner.</p>
+      <label className="flex items-center justify-between gap-2">Travel Fee ₹
+        <Input className="h-8 w-24" inputMode="decimal" value={fee} disabled={!canEdit} onChange={(e) => setFee(e.target.value)} />
+      </label>
+      {pockets.length === 0 && <p className="text-xs text-muted-foreground">No outer areas yet.</p>}
+      {pockets.map((p, i) => (
+        <div key={i} className="flex items-center justify-between rounded-md bg-muted px-2 py-1">
+          <span>Outer area {i + 1} · {areaKm2(p).toFixed(2)} km²</span>
+          {canEdit && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { if (confirm(`Remove outer area ${i + 1}?`)) onSave(pockets.filter((_, j) => j !== i), feeOk ? feeNum : 20); }}>Remove</Button>}
+        </div>
+      ))}
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={busy} onClick={onDraw}>+ Draw outer area</Button>
+          <Button size="sm" disabled={busy || !feeOk} onClick={() => onSave(pockets, feeNum)}>Save fee</Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">Services charged: {(cell.travel_fee_services ?? ["clean", "auto_care"]).map((s) => (s === "clean" ? "Clean" : "Auto Care")).join(", ") || "none"}</p>
+    </div>
   );
 }
