@@ -481,6 +481,34 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
   );
 }
 
+const KPI_FIELDS: [string, string][] = [
+  ["min_active_experts", "Min active experts"], ["min_new_experts", "Min new experts / mo"],
+  ["min_new_customers", "Min new customers / mo"], ["min_promo_activities", "Min promo activities / mo"],
+];
+const RULE_FIELDS: [string, string][] = [
+  ["active_expert_min_hours", "Active expert: min hours"], ["active_expert_min_jobs", "Active expert: min jobs"],
+  ["rampup_days", "Ramp-up days (50% KPI)"], ["warning_after_misses", "Warning after misses"],
+  ["inactive_after_consecutive_misses", "Inactive after misses in a row"], ["no_activity_days_to_inactive", "No-activity days → inactive"],
+  ["termination_after_consecutive_inactive", "Terminate after inactive months"], ["max_suspensions_per_year", "Max suspensions / yr"],
+  ["renewal_min_active_months", "Renewal: min active months"], ["refund_window_days", "Refund window days"],
+  ["exit_notice_days", "Exit notice days"], ["agreement_months", "Agreement months"],
+];
+const RULE_DEFAULTS: Record<string, number> = {
+  active_expert_min_hours: 20, active_expert_min_jobs: 10, rampup_days: 60, warning_after_misses: 1,
+  inactive_after_consecutive_misses: 2, no_activity_days_to_inactive: 30, termination_after_consecutive_inactive: 4,
+  max_suspensions_per_year: 3, renewal_min_active_months: 8, refund_window_days: 7, exit_notice_days: 30, agreement_months: 12,
+};
+function kpiLine(k?: Record<string, number | boolean> | null) {
+  if (!k) return "";
+  const parts: string[] = [];
+  if (k.min_active_experts != null) parts.push(`${k.min_active_experts} experts`);
+  if (k.min_new_experts != null) parts.push(`${k.min_new_experts} new experts`);
+  if (k.min_new_customers != null) parts.push(`${k.min_new_customers} customers`);
+  if (k.min_promo_activities != null) parts.push(`${k.min_promo_activities} promos`);
+  if (k.review_meeting_required) parts.push("review meeting");
+  return parts.join(" · ");
+}
+
 function PlansSection({ isAdmin, plans, lines }: { isAdmin: boolean; plans: CommissionPlan[]; lines: { key: string; label: string }[] }) {
   const [editing, setEditing] = useState<Partial<CommissionPlan> | null>(null);
   return (
@@ -515,6 +543,7 @@ function PlansSection({ isAdmin, plans, lines }: { isAdmin: boolean; plans: Comm
                 );
               })}
             </div>
+            {kpiLine(p.kpi) && <p className="mt-1.5 text-[11px] text-muted-foreground">KPI: {kpiLine(p.kpi)}</p>}
           </div>
         ))}
       </div>
@@ -533,6 +562,20 @@ function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan
       return { line_key: bl.key, label: bl.label, enabled: l?.enabled ?? false, pct: Number(l?.pct ?? 0) };
     }),
   );
+  const toStr = (o: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => typeof v === "number").map(([k, v]) => [k, String(v)]));
+  const [kpi, setKpi] = useState<Record<string, string>>(() => toStr(initial.kpi));
+  const [meeting, setMeeting] = useState(!!initial.kpi?.review_meeting_required);
+  const [rules, setRules] = useState<Record<string, string>>(() => ({ ...toStr(RULE_DEFAULTS), ...toStr(initial.rules) }));
+  const numObj = (o: Record<string, string>) => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(o)) {
+      if (String(v).trim() === "") continue;
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 0) throw new Error(`"${k.replace(/_/g, " ")}" must be a whole number of 0 or more`);
+      out[k] = n;
+    }
+    return out;
+  };
   const m = useMutation({
     mutationFn: () =>
       save({
@@ -544,6 +587,9 @@ function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan
           sort_order: Number(f.sort_order ?? 0),
           status: f.status ?? "active",
           lines: rows.map(({ line_key, enabled, pct }) => ({ line_key, enabled, pct })),
+          description: f.description ?? "",
+          kpi: { ...numObj(kpi), ...(meeting ? { review_meeting_required: true } : {}) },
+          rules: numObj(rules),
         },
       }),
     onSuccess: () => { toast.success("Plan saved"); qc.invalidateQueries({ queryKey: ["partner-program"] }); onClose(); },
@@ -584,6 +630,35 @@ function PlanForm({ initial, lines, onClose }: { initial: Partial<CommissionPlan
               onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, pct: Number(e.target.value) } : y)))} />
           </div>
         ))}
+      </div>
+      <div className="mt-4 space-y-2">
+        <p className="text-xs font-bold uppercase text-muted-foreground">Description</p>
+        <textarea maxLength={300} rows={3} className={input} value={f.description ?? ""} onChange={(e) => setF((x) => ({ ...x, description: e.target.value }))} />
+        <p className="text-right text-[11px] text-muted-foreground">{(f.description ?? "").length}/300</p>
+      </div>
+      <div className="mt-2 space-y-2">
+        <p className="text-xs font-bold uppercase text-muted-foreground">Monthly KPI <span className="font-normal normal-case">(blank = not applied)</span></p>
+        <div className="grid grid-cols-2 gap-2">
+          {KPI_FIELDS.map(([k, label]) => (
+            <label key={k} className="text-xs">{label}
+              <input type="number" min={0} step={1} className={input} value={kpi[k] ?? ""} onChange={(e) => setKpi((x) => ({ ...x, [k]: e.target.value }))} />
+            </label>
+          ))}
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={meeting} onChange={(e) => setMeeting(e.target.checked)} /> Review meeting required
+          </label>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2">
+        <p className="text-xs font-bold uppercase text-muted-foreground">Rules</p>
+        <div className="grid grid-cols-2 gap-2">
+          {RULE_FIELDS.map(([k, label]) => (
+            <label key={k} className="text-xs">{label}
+              <input type="number" min={0} step={1} className={input} value={rules[k] ?? ""} onChange={(e) => setRules((x) => ({ ...x, [k]: e.target.value }))} />
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">KPI and rule changes apply from the next monthly check.</p>
       </div>
       <div className="mt-4 flex justify-end gap-2">
         <button className={btnGhost} onClick={onClose}>Cancel</button>

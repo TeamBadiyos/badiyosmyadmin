@@ -36,11 +36,17 @@ export type CommissionPlan = {
   status: "active" | "inactive";
   lines: PlanLine[];
   partnerCount: number;
+  description?: string | null;
+  kpi?: Record<string, number | boolean>;
+  rules?: Record<string, number>;
 };
 
 export const saveCommissionPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id?: string; name: string; partner_type: PartnerProgram; suggested_fee: number; sort_order: number; status: string; lines: PlanLine[] }) => d)
+  .inputValidator((d: { id?: string; name: string; partner_type: PartnerProgram; suggested_fee: number; sort_order: number; status: string; lines: PlanLine[]; description?: string; kpi?: Record<string, number | boolean>; rules?: Record<string, number> }) => {
+    if ((d.description ?? "").length > 300) throw new Error("Description max 300 characters");
+    return d;
+  })
   .handler(async ({ data, context }) => {
     await requireStaff(context.supabase, context.userId, true);
     const id = await rpc(context.supabase, "staff_partner_plan_upsert", { _p: data });
