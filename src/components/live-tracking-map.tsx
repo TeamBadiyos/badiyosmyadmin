@@ -351,6 +351,29 @@ export function LiveTrackingMap({
           </div>
         )}
       </div>
+      {(() => {
+        let m = routeQuery.data?.distanceMeters ?? null;
+        if (m == null && stops.length >= 2) {
+          const R = 6371000, r = Math.PI / 180;
+          m = 0;
+          for (let i = 1; i < stops.length; i++) {
+            const a = stops[i - 1], b = stops[i];
+            const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+            m += 2 * R * Math.asin(Math.sqrt(h));
+          }
+        }
+        if (m == null) return null;
+        const walkMin = Math.max(1, Math.round(m / (5000 / 60)));
+        const walk = walkMin >= 60 ? `${Math.floor(walkMin / 60)} h ${walkMin % 60} min` : `${walkMin} min`;
+        const dist = m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
+        return (
+          <p className="px-3 py-1.5 text-[11px] text-muted-foreground border-t border-border">
+            Distance <span className="font-semibold text-foreground">{dist}</span> · Walk about <span className="font-semibold text-foreground">{walk}</span>
+          </p>
+        );
+      })()}
+
 
       {!compact && <div className="px-3 py-2 space-y-1.5 text-[12px]">
         {isError && (
