@@ -143,7 +143,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
           </tbody>
         </table>
       </div>
-      {detail && <PartnerDetail p={detail} plans={q.data?.plans ?? []} isAdmin={isAdmin} onClose={() => setDetailId(null)} />
+      {detail && <PartnerDetail p={detail} plans={q.data?.plans ?? []} isAdmin={isAdmin} onClose={() => setDetailId(null)} />}
       {editing && <PartnerForm initial={editing} zones={q.data?.zones ?? []} plans={q.data?.plans ?? []} onClose={() => setEditing(null)} />}
     </div>
   );
