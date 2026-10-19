@@ -7980,6 +7980,77 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_kpi_results: {
+        Row: {
+          active_experts: number | null
+          counters_before: Json | null
+          created_at: string
+          evaluated_at: string | null
+          evaluated_by: string | null
+          id: string
+          kpi_met: boolean | null
+          month: string
+          new_customers: number | null
+          new_experts: number | null
+          partner_id: string
+          plan_id: string | null
+          promo_activities: number | null
+          review_meeting_done: boolean
+          skipped_reason: string | null
+          status_after: string | null
+          status_before: string | null
+          targets: Json
+        }
+        Insert: {
+          active_experts?: number | null
+          counters_before?: Json | null
+          created_at?: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          id?: string
+          kpi_met?: boolean | null
+          month: string
+          new_customers?: number | null
+          new_experts?: number | null
+          partner_id: string
+          plan_id?: string | null
+          promo_activities?: number | null
+          review_meeting_done?: boolean
+          skipped_reason?: string | null
+          status_after?: string | null
+          status_before?: string | null
+          targets?: Json
+        }
+        Update: {
+          active_experts?: number | null
+          counters_before?: Json | null
+          created_at?: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          id?: string
+          kpi_met?: boolean | null
+          month?: string
+          new_customers?: number | null
+          new_experts?: number | null
+          partner_id?: string
+          plan_id?: string | null
+          promo_activities?: number | null
+          review_meeting_done?: boolean
+          skipped_reason?: string | null
+          status_after?: string | null
+          status_before?: string | null
+          targets?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_kpi_results_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_payments: {
         Row: {
           amount: number
@@ -8254,6 +8325,57 @@ export type Database = {
           },
           {
             foreignKeyName: "partner_payout_lines_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_payout_skips: {
+        Row: {
+          amount: number
+          batch_id: string
+          created_at: string
+          id: string
+          order_completed_at: string | null
+          order_id: string
+          order_type: string
+          partner_id: string
+          reason: string
+        }
+        Insert: {
+          amount?: number
+          batch_id: string
+          created_at?: string
+          id?: string
+          order_completed_at?: string | null
+          order_id: string
+          order_type: string
+          partner_id: string
+          reason: string
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          created_at?: string
+          id?: string
+          order_completed_at?: string | null
+          order_id?: string
+          order_type?: string
+          partner_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payout_skips_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "partner_payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payout_skips_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
@@ -14352,12 +14474,24 @@ export type Database = {
         Args: { _decision: string; _extension_id: string }
         Returns: Json
       }
+      partner_evaluate_kpi: {
+        Args: { _by: string; _month: string; _pid: string; _uid?: string }
+        Returns: Json
+      }
       partner_growth_window: {
         Args: { _expert_id: string }
         Returns: {
           win_end: string
           win_start: string
         }[]
+      }
+      partner_kpi_actuals: {
+        Args: { _month: string; _pid: string }
+        Returns: Json
+      }
+      partner_kpi_targets: {
+        Args: { _month: string; _pid: string }
+        Returns: Json
       }
       partner_log_action: {
         Args: {
@@ -14371,12 +14505,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      partner_monthly_kpi: { Args: never; Returns: undefined }
       partner_program_on_at: {
         Args: { _at: string; _program: string }
         Returns: boolean
       }
       partner_recalc_batch: { Args: { _batch_id: string }; Returns: undefined }
       partner_require_admin: { Args: never; Returns: string }
+      partner_status_at: {
+        Args: { _at: string; _pid: string }
+        Returns: string
+      }
       party_agreement_types: {
         Args: { _party_id: string; _party_type: string }
         Returns: string[]
@@ -15386,6 +15525,11 @@ export type Database = {
         Args: { _item_id: string; _reason: string }
         Returns: undefined
       }
+      staff_partner_kpi_live: { Args: { _partner_id: string }; Returns: Json }
+      staff_partner_kpi_rerun: {
+        Args: { _partner_id: string; _reason: string }
+        Returns: Json
+      }
       staff_partner_lifecycle: {
         Args: {
           _action: string
@@ -15404,6 +15548,10 @@ export type Database = {
         Returns: undefined
       }
       staff_partner_plan_upsert: { Args: { _p: Json }; Returns: string }
+      staff_partner_review_meeting: {
+        Args: { _done: boolean; _month: string; _partner_id: string }
+        Returns: undefined
+      }
       staff_partner_set_kyc: {
         Args: {
           _bank_verified: boolean
