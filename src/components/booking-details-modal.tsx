@@ -593,6 +593,9 @@ export function BookingDetailsModal({
                   >
                     <PayRow label="Price" value={data.price != null ? inr.format(data.price) : "—"} />
                     {data.gstAmount > 0 && <PayRow label={`GST${data.gstPercent ? ` (${data.gstPercent}%)` : ""}`} value={inr.format(data.gstAmount)} />}
+                    {data.travelFee > 0 && <PayRow label="Travel" value={inr.format(data.travelFee)} />}
+                    {data.travelFeeGst > 0 && <PayRow label="Travel GST" value={inr.format(data.travelFeeGst)} />}
+                    {data.travelFee > 0 && data.status === "completed" && <PayRow label="Expert travel pay" value={inr.format(Math.round(data.travelFee * (data.travelExpertSharePct ?? 100)) / 100)} />}
                     {data.discountAmount > 0 && <PayRow label={`Coupon${data.couponCode ? ` ${data.couponCode}` : ""}`} value={`− ${inr.format(data.discountAmount)}`} />}
                     {data.extensionAmount > 0 && <PayRow label={`Extra time (${data.extensionMinutes} min)`} value={inr.format(data.extensionAmount)} />}
                     <PayRow bold label="Total" value={inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)} />

@@ -16,7 +16,11 @@ const db = supabase as any;
 type LL = { lat: number; lng: number };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GJ = { type: string; coordinates: any };
-type Cell = { id: string; name: string; colour: string; area_m2: number; geom: GJ; is_off: boolean; off_reason: string | null; off_until: string | null; live: boolean };
+type ZoneType = "core" | "outer" | "not_serviceable";
+type Cell = { id: string; name: string; colour: string; area_m2: number; geom: GJ; is_off: boolean; off_reason: string | null; off_until: string | null; live: boolean;
+  zone_type?: ZoneType; travel_fee?: number; travel_fee_services?: string[]; expert_share_pct?: number; is_active?: boolean; partner?: string | null };
+const TYPE_COLOUR: Record<ZoneType, string> = { core: "#16A34A", outer: "#F97316", not_serviceable: "#94A3B8" };
+const TYPE_LABEL: Record<ZoneType, string> = { core: "Core", outer: "Outer", not_serviceable: "Not serviceable" };
 type State = {
   boundary: GJ | null; city_area_km2: number | null; gap: GJ | null; gap_pct: number; gap_km2: number; covered_pct: number | null;
   overlap?: boolean; switched: boolean; cells: Cell[]; old_zones: { id: string; name: string; geom: GJ }[];
@@ -147,7 +151,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       const isSel = c.id === sel;
       const rs = rings(c.geom);
       rs.forEach((r, i) => {
-        const colour = c.is_off ? OFF_GREY : c.colour;
+        const colour = c.is_off ? OFF_GREY : TYPE_COLOUR[c.zone_type ?? "core"];
         const p = add(new g.maps.Polygon({
           map: map.current, paths: r, strokeColor: colour, strokeWeight: isSel ? 3 : 1.5, fillColor: colour,
           fillOpacity: c.is_off ? 0.45 : isSel ? 0.35 : 0.2, editable: isSel && canEdit && mode.kind === "idle" && i === 0, zIndex: isSel ? 3 : 2,
@@ -316,19 +320,30 @@ function ZoneEditor({ role }: { role: string | null }) {
               off={selCell} onToggleOff={(v) => toggleOff(selCell, v)}
               onSave={saveSel} onDelete={() => askDelete(selCell)} onClose={() => setSel(null)} />
           )}
+          {selCell && canToggle && mode.kind === "idle" && (
+            <PricingForm key={`p-${selCell.id}`} cell={selCell} busy={busy}
+              onSave={(v) => run("staff_set_zone_pricing", { _cell: selCell.id, ...v }, "Zone saved")} />
+          )}
           <div className="rounded-lg border border-border bg-card">
             <div className="border-b border-border px-3 py-2 text-sm font-semibold">Zones ({st?.cells.length ?? 0}){st?.switched ? " · live" : ""}</div>
             {!st?.cells.length && <p className="px-3 py-3 text-sm text-muted-foreground">No zones yet. Click "+ New zone".</p>}
-            {st?.cells.map((c) => (
-              <div key={c.id} className={`flex items-center gap-2 px-3 py-2 text-sm ${c.id === sel ? "bg-muted" : ""}`}>
-                <button onClick={() => select(c)} className="flex flex-1 items-center gap-2 text-left">
-                  <span className="h-3 w-3 rounded-sm" style={{ background: c.is_off ? OFF_GREY : c.colour }} />
-                  <span className="flex-1">{c.name}{c.is_off && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Off</span>}</span>
-                  <span className="text-xs text-muted-foreground">{(c.area_m2 / 1e6).toFixed(2)} km²</span>
-                </button>
-                {canToggle && <Switch checked={!c.is_off} disabled={busy} onCheckedChange={(v) => toggleOff(c, !v)} aria-label={`${c.name} on/off`} />}
-              </div>
-            ))}
+            {st?.cells.map((c) => {
+              const t = c.zone_type ?? "core";
+              return (
+                <div key={c.id} className={`flex items-center gap-2 px-3 py-2 text-sm ${c.id === sel ? "bg-muted" : ""}`}>
+                  <button onClick={() => select(c)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: c.is_off ? OFF_GREY : TYPE_COLOUR[t] }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{c.name}{c.is_off && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Off</span>}{c.is_active === false && <span className="ml-1 rounded bg-muted px-1 text-[10px] font-bold">Inactive</span>}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {TYPE_LABEL[t]}{t === "outer" ? ` · ₹${c.travel_fee ?? 0}` : ""} · {c.partner ?? "No partner"}
+                      </span>
+                    </span>
+                  </button>
+                  {canToggle && <Switch checked={!c.is_off} disabled={busy} onCheckedChange={(v) => toggleOff(c, !v)} aria-label={`${c.name} on/off`} />}
+                </div>
+              );
+            })}
           </div>
           {role === "super_admin" && !st?.switched && (
             <>
@@ -415,6 +430,47 @@ function ZoneForm({ title, initialName, initialColour, busy, hint, off, onToggle
         <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
       </div>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+type PricingValues = { _zone_type: ZoneType; _travel_fee: number; _services: string[]; _expert_share_pct: number; _is_active: boolean };
+function PricingForm({ cell, busy, onSave }: { cell: Cell; busy: boolean; onSave: (v: PricingValues) => void }) {
+  const [type, setType] = useState<ZoneType>(cell.zone_type ?? "core");
+  const [fee, setFee] = useState(String(cell.travel_fee ?? 20));
+  const [svcs, setSvcs] = useState<string[]>(cell.travel_fee_services ?? ["clean", "auto_care"]);
+  const [share, setShare] = useState(String(cell.expert_share_pct ?? 100));
+  const [active, setActive] = useState(cell.is_active ?? true);
+  const toggle = (k: string) => setSvcs((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
+  if (!cell.live) return <p className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">Type and Travel Fee can be set once these zones are live.</p>;
+  function save() {
+    const f = Number(fee), sh = Number(share);
+    if (!Number.isFinite(f) || f < 0 || f > 1000) return toast.error("Travel Fee: enter 0–1000");
+    if (!Number.isFinite(sh) || sh < 0 || sh > 100) return toast.error("Expert share: enter 0–100");
+    onSave({ _zone_type: type, _travel_fee: f, _services: svcs, _expert_share_pct: sh, _is_active: active });
+  }
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3 text-sm">
+      <div className="font-semibold">{cell.name} · Type & fee</div>
+      <div className="flex gap-1">
+        {(Object.keys(TYPE_LABEL) as ZoneType[]).map((t) => (
+          <Button key={t} size="sm" type="button" variant={type === t ? "default" : "outline"} onClick={() => setType(t)}>{TYPE_LABEL[t]}</Button>
+        ))}
+      </div>
+      {type === "outer" && (
+        <>
+          <label className="flex items-center justify-between gap-2">Travel Fee ₹<Input className="h-8 w-24" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} /></label>
+          <div className="flex gap-3">
+            {[["clean", "Clean"], ["auto_care", "Auto Care"]].map(([k, l]) => (
+              <label key={k} className="flex items-center gap-1"><input type="checkbox" checked={svcs.includes(k)} onChange={() => toggle(k)} />{l}</label>
+            ))}
+          </div>
+          <label className="flex items-center justify-between gap-2">Expert share %<Input className="h-8 w-24" inputMode="decimal" value={share} onChange={(e) => setShare(e.target.value)} /></label>
+        </>
+      )}
+      <label className="flex items-center justify-between">Active<Switch checked={active} onCheckedChange={setActive} /></label>
+      <p className="text-xs text-muted-foreground">Franchise partner: {cell.partner ?? "None"}</p>
+      <Button size="sm" disabled={busy} onClick={save}>Save</Button>
     </div>
   );
 }
