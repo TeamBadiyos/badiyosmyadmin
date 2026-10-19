@@ -15,6 +15,7 @@ const err = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: 
 type CityRow = {
   id: string; name: string; state: string; state_code: string | null; status: string; is_default: boolean;
   zones: number; live_services: number; merchants: number; experts: number; bookings: number; orders: number;
+  merchants_total?: number; experts_total?: number;
 };
 type Tpl = {
   prices: { price_option_id: string; service: string; label: string; customer_price: number | null; expert_payout: number; partner_commission: number }[];
@@ -64,7 +65,10 @@ export function CitiesPage() {
                     {Object.entries(STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                   </select>
                 </td>
-                <td className="px-3 py-2">{c.zones}</td><td className="px-3 py-2">{c.live_services}</td><td className="px-3 py-2">{c.merchants}</td><td className="px-3 py-2">{c.experts}</td><td className="px-3 py-2">{c.bookings + c.orders}</td>
+                <td className="px-3 py-2">{c.zones}</td><td className="px-3 py-2">{c.live_services}</td>
+                <td className="px-3 py-2">{c.merchants}<span className="text-muted-foreground text-xs"> approved / {c.merchants_total ?? c.merchants}</span></td>
+                <td className="px-3 py-2">{c.experts}<span className="text-muted-foreground text-xs"> active / {c.experts_total ?? c.experts}</span></td>
+                <td className="px-3 py-2">{c.bookings + c.orders}</td>
                 <td className="px-3 py-2 text-right">
                   {!c.is_default && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm(`Delete ${c.name}? Only possible when it has no orders, stores, experts or partners.`)) del.mutate(c.id); }}>Delete</Button>}
                 </td>

@@ -653,14 +653,7 @@ function Shell() {
             }}
           />
 
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-              {initials}
-            </div>
-            <span className="hidden sm:inline text-sm font-semibold text-foreground truncate max-w-[160px]">
-              {name || "…"}
-            </span>
-          </div>
+          <ProfileMenu name={name} initials={initials} onLogout={handleLogout} />
           <button
             onClick={handleLogout}
             aria-label="Log out"
