@@ -15,9 +15,9 @@ export type LifeStatus = "active" | "warning" | "inactive" | "suspended" | "term
 export const STATUS_LABEL: Record<LifeStatus, string> = { active: "Active", warning: "Warning", inactive: "Inactive", suspended: "Suspended", terminated: "Terminated", exited: "Exited" };
 const STATUS_CLS: Record<LifeStatus, string> = {
   active: "bg-success/15 text-success",
-  warning: "bg-warning/20 text-warning-foreground",
+  warning: "bg-warning/25 text-foreground",
   inactive: "bg-muted text-muted-foreground",
-  suspended: "bg-accent text-accent-foreground ring-1 ring-warning",
+  suspended: "bg-warning/15 text-warning ring-1 ring-warning",
   terminated: "bg-destructive/15 text-destructive",
   exited: "border border-border text-muted-foreground",
 };
