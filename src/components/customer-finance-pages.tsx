@@ -160,19 +160,21 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
       {tab === "wallets" ? (
         <>
           <FilterBar><FilterField label="Search"><input className={filterInputCls} placeholder="Name or phone" value={q} onChange={(e) => setQ(e.target.value)} /></FilterField></FilterBar>
-          <table className={`w-full text-[13px] ${tableCls.table}`}>
-            <thead><tr><th>Customer</th><th>Phone</th><th className="text-right">Cash</th><th className="text-right">Bonus</th><th>Last change</th></tr></thead>
+          <div className={tableCls.wrap}><div className={tableCls.scroll}>
+          <table className={tableCls.table}>
+            <thead className={tableCls.thead}><tr><th className={tableCls.th}>Customer</th><th className={tableCls.th}>Phone</th><th className={`${tableCls.th} text-right`}>Cash</th><th className={`${tableCls.th} text-right`}>Bonus</th><th className={tableCls.th}>Last change</th></tr></thead>
             <tbody>
               {(data.data?.wallets ?? []).map((w) => (
-                <tr key={w.user_id} className="cursor-pointer" onClick={() => setOpen(w)}>
-                  <td className="font-semibold">{w.name ?? "—"}</td><td>{w.phone}</td>
-                  <td className="text-right">{inr(w.cash)}</td><td className="text-right">{inr(w.bonus)}</td>
-                  <td>{new Date(w.updated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                <tr key={w.user_id} className={tableCls.tr} onClick={() => setOpen(w)}>
+                  <td className={`${tableCls.td} font-semibold`}>{w.name ?? "—"}</td><td className={`${tableCls.td} tabular-nums`}>{w.phone}</td>
+                  <td className={`${tableCls.td} text-right tabular-nums`}>{inr(w.cash)}</td><td className={`${tableCls.td} text-right tabular-nums font-medium`}>{inr(w.bonus)}</td>
+                  <td className={`${tableCls.td} whitespace-nowrap text-muted-foreground`}>{new Date(w.updated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 </tr>
               ))}
               {!data.data?.wallets?.length && !data.isLoading && <tr><td colSpan={5} className="text-center text-muted-foreground py-6">No customer wallets yet.</td></tr>}
             </tbody>
           </table>
+          </div></div>
         </>
       ) : (
         <table className={`w-full text-[13px] ${tableCls.table}`}>
