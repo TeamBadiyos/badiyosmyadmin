@@ -22,14 +22,15 @@ const ICONS = { coupons: Ticket, lucky: Gift, events: CalendarDays, programs: Aw
 export function RewardsHub({ role, initialTab = "coupons" }: { role: string | null; initialTab?: RewardsTab }) {
   const access = useOffersAccess();
   const isSuper = role === "super_admin";
-  const tabs: RewardsTab[] = isSuper ? ["coupons", "lucky", "events", "programs"] : ["events"];
+  const tabs: RewardsTab[] = isSuper ? ["coupons", "lucky", "events", "programs"] : role === "ops_manager" ? ["coupons", "lucky", "events"] : ["events"];
   const [tab, setTab] = useState<RewardsTab>(tabs.includes(initialTab) ? initialTab : tabs[0]);
   useReportPageTab(LABELS[tab]);
 
   return (
     <div className="space-y-6">
+      {!isSuper && <p className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">View only — only a super admin can create, edit or delete rewards.</p>}
       <SectionTabs items={tabs.map((t) => ({ key: t, label: LABELS[t], icon: ICONS[t] }))} active={tab} onChange={setTab} />
-      {tab === "coupons" && <CouponsTab canWrite={access?.canWrite ?? false} />}
+      {tab === "coupons" && <CouponsTab canWrite={isSuper && (access?.canWrite ?? false)} />}
       {tab === "lucky" && <LuckyDrawPage />}
       {tab === "events" && <EventsSection isSuper={isSuper} />}
       {tab === "programs" && <RewardsPage />}
@@ -38,8 +39,7 @@ export function RewardsHub({ role, initialTab = "coupons" }: { role: string | nu
 }
 
 function EventsSection({ isSuper }: { isSuper: boolean }) {
-  const [kind, setKind] = useState<"offers" | "spin">(isSuper ? "offers" : "spin");
-  if (!isSuper) return <SpinWinPage canEdit={false} />;
+  const [kind, setKind] = useState<"offers" | "spin">("offers");
   return (
     <div className="space-y-4">
       <div className="inline-flex rounded-md border p-1">
@@ -50,7 +50,7 @@ function EventsSection({ isSuper }: { isSuper: boolean }) {
           </button>
         ))}
       </div>
-      {kind === "offers" ? <EventOffersPage /> : <SpinWinPage canEdit />}
+      {kind === "offers" ? <EventOffersPage canEdit={isSuper} /> : <SpinWinPage canEdit={isSuper} />}
     </div>
   );
 }
