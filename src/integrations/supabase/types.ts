@@ -7876,6 +7876,47 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_activities: {
+        Row: {
+          activity_date: string
+          added_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          partner_id: string
+          photo_paths: string[]
+          type: string
+        }
+        Insert: {
+          activity_date: string
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id: string
+          photo_paths?: string[]
+          type: string
+        }
+        Update: {
+          activity_date?: string
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string
+          photo_paths?: string[]
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_activities_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_business_lines: {
         Row: {
           created_at: string
@@ -8392,70 +8433,177 @@ export type Database = {
           },
         ]
       }
+      partner_status_history: {
+        Row: {
+          action: string
+          action_by: string | null
+          created_at: string
+          details: Json
+          from_status: string | null
+          id: string
+          notice_status: string | null
+          partner_id: string
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          action_by?: string | null
+          created_at?: string
+          details?: Json
+          from_status?: string | null
+          id?: string
+          notice_status?: string | null
+          partner_id: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          action_by?: string | null
+          created_at?: string
+          details?: Json
+          from_status?: string | null
+          id?: string
+          notice_status?: string | null
+          partner_id?: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_status_history_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
+          active_months_count: number
           agreement_end: string
           agreement_start: string
           auth_user_id: string | null
+          bank_verified: boolean
           city: string
           city_id: string | null
+          commission_hold: string | null
+          commission_payable_until: string | null
+          consecutive_inactive_months: number
+          consecutive_kpi_misses: number
           created_at: string
+          deposit_amount: number | null
+          exit_effective_date: string | null
+          exit_requested_at: string | null
           fee_collected_at: string | null
           fee_paid: number
+          freed_zone_id: string | null
           growth_plan_id: string | null
           id: string
+          last_activity_at: string | null
           level: string | null
           login_email: string | null
           name: string
           notes: string | null
+          pan_number: string | null
+          pending_plan_from: string | null
+          pending_plan_id: string | null
           phone: string
           plan_id: string | null
           program: string
           status: string
+          status_changed_at: string | null
+          status_changed_by: string | null
+          status_reason: string | null
+          suspension_end: string | null
+          suspensions_this_year: number
+          termination_recommended: boolean
           updated_at: string
           zone_id: string | null
         }
         Insert: {
+          active_months_count?: number
           agreement_end: string
           agreement_start: string
           auth_user_id?: string | null
+          bank_verified?: boolean
           city: string
           city_id?: string | null
+          commission_hold?: string | null
+          commission_payable_until?: string | null
+          consecutive_inactive_months?: number
+          consecutive_kpi_misses?: number
           created_at?: string
+          deposit_amount?: number | null
+          exit_effective_date?: string | null
+          exit_requested_at?: string | null
           fee_collected_at?: string | null
           fee_paid?: number
+          freed_zone_id?: string | null
           growth_plan_id?: string | null
           id?: string
+          last_activity_at?: string | null
           level?: string | null
           login_email?: string | null
           name: string
           notes?: string | null
+          pan_number?: string | null
+          pending_plan_from?: string | null
+          pending_plan_id?: string | null
           phone: string
           plan_id?: string | null
           program: string
           status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          status_reason?: string | null
+          suspension_end?: string | null
+          suspensions_this_year?: number
+          termination_recommended?: boolean
           updated_at?: string
           zone_id?: string | null
         }
         Update: {
+          active_months_count?: number
           agreement_end?: string
           agreement_start?: string
           auth_user_id?: string | null
+          bank_verified?: boolean
           city?: string
           city_id?: string | null
+          commission_hold?: string | null
+          commission_payable_until?: string | null
+          consecutive_inactive_months?: number
+          consecutive_kpi_misses?: number
           created_at?: string
+          deposit_amount?: number | null
+          exit_effective_date?: string | null
+          exit_requested_at?: string | null
           fee_collected_at?: string | null
           fee_paid?: number
+          freed_zone_id?: string | null
           growth_plan_id?: string | null
           id?: string
+          last_activity_at?: string | null
           level?: string | null
           login_email?: string | null
           name?: string
           notes?: string | null
+          pan_number?: string | null
+          pending_plan_from?: string | null
+          pending_plan_id?: string | null
           phone?: string
           plan_id?: string | null
           program?: string
           status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          status_reason?: string | null
+          suspension_end?: string | null
+          suspensions_this_year?: number
+          termination_recommended?: boolean
           updated_at?: string
           zone_id?: string | null
         }
@@ -8470,6 +8618,13 @@ export type Database = {
           {
             foreignKeyName: "partners_growth_plan_id_fkey"
             columns: ["growth_plan_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commission_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partners_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
             isOneToOne: false
             referencedRelation: "partner_commission_plans"
             referencedColumns: ["id"]
@@ -14192,6 +14347,7 @@ export type Database = {
       }
       pan_key: { Args: never; Returns: string }
       partner_assert_draft: { Args: { _batch_id: string }; Returns: undefined }
+      partner_daily_lifecycle: { Args: never; Returns: undefined }
       partner_decide_extension: {
         Args: { _decision: string; _extension_id: string }
         Returns: Json
@@ -14202,6 +14358,18 @@ export type Database = {
           win_end: string
           win_start: string
         }[]
+      }
+      partner_log_action: {
+        Args: {
+          _action: string
+          _details: Json
+          _from: string
+          _pid: string
+          _reason: string
+          _to: string
+          _uid: string
+        }
+        Returns: undefined
       }
       partner_program_on_at: {
         Args: { _at: string; _program: string }
@@ -15188,6 +15356,16 @@ export type Database = {
           razorpay_payment_id: string
         }[]
       }
+      staff_partner_add_activity: {
+        Args: {
+          _date: string
+          _notes: string
+          _partner_id: string
+          _paths: string[]
+          _type: string
+        }
+        Returns: string
+      }
       staff_partner_batch_approve: {
         Args: { _batch_id: string }
         Returns: undefined
@@ -15208,6 +15386,15 @@ export type Database = {
         Args: { _item_id: string; _reason: string }
         Returns: undefined
       }
+      staff_partner_lifecycle: {
+        Args: {
+          _action: string
+          _opts?: Json
+          _partner_id: string
+          _reason: string
+        }
+        Returns: Json
+      }
       staff_partner_line_delete: {
         Args: { _line_id: string; _reason: string }
         Returns: undefined
@@ -15217,6 +15404,15 @@ export type Database = {
         Returns: undefined
       }
       staff_partner_plan_upsert: { Args: { _p: Json }; Returns: string }
+      staff_partner_set_kyc: {
+        Args: {
+          _bank_verified: boolean
+          _deposit: number
+          _pan: string
+          _partner_id: string
+        }
+        Returns: undefined
+      }
       staff_partner_toggle: {
         Args: { _enabled: boolean; _program: string }
         Returns: undefined
