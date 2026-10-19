@@ -571,6 +571,9 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
               <p className="text-xs text-muted-foreground">{(r.data?.storeTypes ?? []).find((x: any) => x.id === s.store_category_id)?.name ?? (service === "food" ? "Restaurant" : "Store type not set")} · {s.status === "suspended" ? "Suspended" : s.status}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <Badge variant={s.store_enabled === false ? "outline" : "default"} className="cursor-pointer" onClick={() => setEditing(true)} title="Change in Edit details → Modules">
+                {s.store_enabled === false ? "Hidden from Customer App" : "Live on Customer App"}
+              </Badge>
               <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit details</Button>
               <span className="text-sm">{s.is_open ? "Open" : "Closed"}</span>
               <Switch checked={!!s.is_open} onCheckedChange={(v) => act.mutate({ kind: "open", value: v })} />
