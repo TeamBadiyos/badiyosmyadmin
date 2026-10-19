@@ -135,7 +135,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
                 <td className="p-2">{inr(p.fee_paid)}{p.fee_collected_at && <div className="text-xs text-muted-foreground">{fmtDate(p.fee_collected_at)}</div>}</td>
                 <td className="p-2">{p.program === "growth" ? q.data?.expertCounts[p.id] ?? 0 : "—"}</td>
                 <td className="p-2">
-                  <div className="flex flex-wrap gap-1"><StatusChip s={p.status} />{renewalDue(p.agreement_end, p.status) && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">Renewal due</span>}</div>
+                  <div className="flex flex-wrap gap-1"><StatusChip s={p.status} />{renewalDue(p.agreement_end, p.status) && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary whitespace-nowrap">Renewal due</span>}{(!p.agreement_start || !p.agreement_end) && <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive whitespace-nowrap">Agreement dates missing</span>}</div>
                 </td>
                 <td className="p-2">{isAdmin && <button className="text-primary" onClick={() => setEditing(p)}><Pencil className="h-4 w-4" /></button>}</td>
               </tr>
