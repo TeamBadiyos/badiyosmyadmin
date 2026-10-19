@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requireRewardsViewer(supabase: any, userId: string) {
+  const { data } = await supabase.from("staff_users").select("role, status").eq("auth_user_id", userId).maybeSingle();
+  if (!data || data.status !== "active" || !["super_admin", "ops_manager"].includes(data.role)) throw new Error("Forbidden");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function requireSuperAdmin(supabase: any, userId: string) {
   const { data } = await supabase
     .from("staff_users")
@@ -55,7 +61,7 @@ export type LuckyPrize = {
 export const listLuckyCampaigns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireSuperAdmin(context.supabase, context.userId);
+    await requireRewardsViewer(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("lucky_draw_campaigns")
       .select("*")
@@ -68,7 +74,7 @@ export const getLuckyCampaignDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
-    await requireSuperAdmin(context.supabase, context.userId);
+    await requireRewardsViewer(context.supabase, context.userId);
     const { data: prizes, error } = await context.supabase
       .from("lucky_draw_prizes")
       .select("*")

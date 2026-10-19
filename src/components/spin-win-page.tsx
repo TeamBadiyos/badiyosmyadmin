@@ -91,7 +91,14 @@ export function SpinWinPage({ canEdit = true }: { canEdit?: boolean } = {}) {
       {events.data?.length === 0 && <p className="text-sm text-muted-foreground">No Spin & Win events yet.</p>}
       <div className="grid gap-4 md:grid-cols-2">
         {events.data?.map((e) => (
-          <EventCard key={e.id} ev={e} cityName={cities.data?.find((c) => c.id === e.city_id)?.name ?? "All cities"} onEdit={canEdit ? () => openEdit(e) : undefined} />
+          <EventCard key={e.id} ev={e} cityName={cities.data?.find((c) => c.id === e.city_id)?.name ?? "All cities"} onEdit={canEdit ? () => openEdit(e) : undefined}
+            onDelete={canEdit ? async () => {
+              if (!window.confirm(`Delete "${e.name}"? All its prizes and spin history will be removed. This cannot be undone.`)) return;
+              const { error } = await db.rpc("staff_delete_spin_event", { _event_id: e.id });
+              if (error) return toast.error(error.message);
+              toast.success("Event deleted");
+              qc.invalidateQueries({ queryKey: ["spin-events"] });
+            } : undefined} />
         ))}
       </div>
       {editing && (
@@ -102,7 +109,7 @@ export function SpinWinPage({ canEdit = true }: { canEdit?: boolean } = {}) {
   );
 }
 
-function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName: string; onEdit?: () => void }) {
+function EventCard({ ev, cityName, onEdit, onDelete }: { ev: Ev & { id: string }; cityName: string; onEdit?: () => void; onDelete?: () => void }) {
   const [code, setCode] = useState("");
   const stats = useQuery({
     queryKey: ["spin-stats", ev.id],
@@ -165,6 +172,7 @@ function EventCard({ ev, cityName, onEdit }: { ev: Ev & { id: string }; cityName
           <Button size="sm" variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
           <Button size="sm" variant="outline" onClick={() => setShowRed(true)}>Redemptions</Button>
           <Button size="sm" variant="secondary" asChild><Link to="/scan-redeem">Scan & Redeem</Link></Button>
+          {onDelete && <Button size="sm" variant="outline" className="text-destructive" onClick={onDelete}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>}
         </div>
         {showRed && <SpinRedemptions eventId={ev.id} name={ev.name} onClose={() => setShowRed(false)} />}
       </CardContent>

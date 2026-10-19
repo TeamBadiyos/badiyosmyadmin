@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Download, Pencil, Plus, RotateCcw, Ticket, Upload, Users } from "lucide-react";
+import { Trash2, ArrowLeft, Copy, Download, Pencil, Plus, RotateCcw, Ticket, Upload, Users } from "lucide-react";
 import {
   listEventOffers, listOfferRedemptions, upsertEventOffer, setEventOfferPin,
-  refundOfferRedemption, processOfferRefunds, type EventOfferRow, type RedemptionRow,
+  refundOfferRedemption, processOfferRefunds, deleteEventOffer, type EventOfferRow, type RedemptionRow,
 } from "@/lib/event-offers.functions";
 import { listZones } from "@/lib/zones.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,13 +48,13 @@ const STATUS_CLS: Record<Status, string> = {
   Ended: "bg-secondary text-secondary-foreground",
 };
 
-export function EventOffersPage() {
+export function EventOffersPage({ canEdit = true }: { canEdit?: boolean } = {}) {
   const [view, setView] = useState<{ kind: "list" } | { kind: "redemptions"; offer: EventOfferRow }>({ kind: "list" });
   const [editing, setEditing] = useState<Partial<EventOfferRow> | null>(null);
   if (view.kind === "redemptions") return <RedemptionsView offer={view.offer} onBack={() => setView({ kind: "list" })} />;
   return (
     <>
-      <OfferList onEdit={setEditing} onRedemptions={(o) => setView({ kind: "redemptions", offer: o })} />
+      <OfferList canEdit={canEdit} onEdit={setEditing} onRedemptions={(o) => setView({ kind: "redemptions", offer: o })} />
       {editing && <OfferForm initial={editing} onClose={() => setEditing(null)} />}
     </>
   );
@@ -62,7 +62,7 @@ export function EventOffersPage() {
 
 /* ------------------------------------------------------------------ list */
 
-function OfferList({ onEdit, onRedemptions }: { onEdit: (o: Partial<EventOfferRow>) => void; onRedemptions: (o: EventOfferRow) => void }) {
+function OfferList({ canEdit, onEdit, onRedemptions }: { canEdit: boolean; onEdit: (o: Partial<EventOfferRow>) => void; onRedemptions: (o: EventOfferRow) => void }) {
   const list = useServerFn(listEventOffers);
   const upsert = useServerFn(upsertEventOffer);
   const qc = useQueryClient();
@@ -70,6 +70,12 @@ function OfferList({ onEdit, onRedemptions }: { onEdit: (o: Partial<EventOfferRo
   const toggle = useMutation({
     mutationFn: (o: EventOfferRow) => upsert({ data: { offer: { id: o.id, is_active: !o.is_active } } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["event-offers"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const del = useServerFn(deleteEventOffer);
+  const remove = useMutation({
+    mutationFn: (o: EventOfferRow) => del({ data: { offerId: o.id } }),
+    onSuccess: () => { toast.success("Offer deleted"); qc.invalidateQueries({ queryKey: ["event-offers"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const duplicate = (o: EventOfferRow) => {
@@ -80,7 +86,7 @@ function OfferList({ onEdit, onRedemptions }: { onEdit: (o: Partial<EventOfferRo
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <Button onClick={() => onEdit({})}><Plus className="mr-1 h-4 w-4" />New offer</Button>
+        {canEdit && <Button onClick={() => onEdit({})}><Plus className="mr-1 h-4 w-4" />New offer</Button>}
       </div>
       {q.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : q.error ? (
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
@@ -112,12 +118,20 @@ function OfferList({ onEdit, onRedemptions }: { onEdit: (o: Partial<EventOfferRo
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {canEdit && <>
                     <div className="flex items-center gap-2 text-sm">
                       <Switch checked={o.is_active} onCheckedChange={() => toggle.mutate(o)} disabled={toggle.isPending} />Active
                     </div>
                     <Button size="sm" variant="outline" onClick={() => onEdit(o)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
                     <Button size="sm" variant="outline" onClick={() => duplicate(o)}><Copy className="mr-1 h-3.5 w-3.5" />Duplicate</Button>
+                    </>}
                     <Button size="sm" variant="outline" onClick={() => onRedemptions(o)}><Users className="mr-1 h-3.5 w-3.5" />Redemptions</Button>
+                    {canEdit && (
+                      <Button size="sm" variant="outline" className="text-destructive" disabled={remove.isPending}
+                        onClick={() => { if (window.confirm(`Delete "${o.title}"? Its redemption history will also be removed. This cannot be undone.`)) remove.mutate(o); }}>
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />Delete
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -7,6 +7,12 @@ async function requireFinance(supabase: { rpc: (n: never) => PromiseLike<{ data:
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requireRewardsViewer(supabase: any, userId: string) {
+  const { data } = await supabase.from("staff_users").select("role, status").eq("auth_user_id", userId).maybeSingle();
+  if (!data || data.status !== "active" || !["super_admin", "ops_manager"].includes(data.role)) throw new Error("Forbidden");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function requireSuperAdmin(supabase: any, userId: string) {
   const { data } = await supabase.from("staff_users").select("role, status").eq("auth_user_id", userId).maybeSingle();
   if (!data || data.status !== "active" || data.role !== "super_admin") throw new Error("Forbidden");
@@ -61,7 +67,7 @@ function effective(status: string, deadline: string | null) {
 export const listEventOffers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<EventOfferRow[]> => {
-    await requireSuperAdmin(context.supabase, context.userId);
+    await requireRewardsViewer(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: offers, error } = await supabaseAdmin.from("event_offers" as never)
       .select(OFFER_COLS + ",staff_pin_hash").order("sort_order").order("created_at", { ascending: false });
@@ -100,7 +106,7 @@ export const listOfferRedemptions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { offerId: string }) => d)
   .handler(async ({ data, context }): Promise<{ rows: RedemptionRow[]; refundable: string[] }> => {
-    await requireSuperAdmin(context.supabase, context.userId);
+    await requireRewardsViewer(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: reds, error } = await supabaseAdmin.from("event_redemptions" as never)
       .select("id,user_id,status,undo_deadline,amount,razorpay_payment_id,created_at,device_key")
@@ -148,6 +154,15 @@ export const setEventOfferPin = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("set_offer_staff_pin" as never, { p_offer_id: data.offerId, p_pin: data.pin } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteEventOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { offerId: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_delete_event_offer" as never, { _id: data.offerId } as never);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
