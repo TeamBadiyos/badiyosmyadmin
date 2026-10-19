@@ -721,3 +721,28 @@ function SwitchoverDialog({ cityId, cells, onClose, onDone }: { cityId: string; 
     </Dialog>
   );
 }
+
+function TrimDialog({ hits, isSuper, busy, onCancel, onConfirm }: { hits: TrimHit[]; isSuper: boolean; busy: boolean; onCancel: () => void; onConfirm: (reason: string | null) => void }) {
+  const [reason, setReason] = useState("");
+  const needsReason = hits.some((h) => h.partner);
+  const blocked = needsReason && !isSuper;
+  return (
+    <DialogContent>
+      <DialogHeader><DialogTitle>These zones will be trimmed</DialogTitle></DialogHeader>
+      <ul className="space-y-1 text-sm">
+        {hits.map((h) => (
+          <li key={h.id} className="flex justify-between gap-2">
+            <span><b>{h.name}</b>{h.partner ? <> · Partner: <b>{h.partner}</b></> : <span className="text-muted-foreground"> · no partner</span>}</span>
+            <span className="text-muted-foreground">−{(h.lose_m2 / 1e6).toFixed(2)} km²</span>
+          </li>
+        ))}
+      </ul>
+      {blocked && <p className="text-sm text-destructive">A franchise partner zone is affected. Only super admin can confirm.</p>}
+      {needsReason && isSuper && <Input placeholder="Reason (needed)" value={reason} onChange={(e) => setReason(e.target.value)} />}
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button disabled={busy || blocked || (needsReason && !reason.trim())} onClick={() => onConfirm(needsReason ? reason.trim() : null)}>Trim and save</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
