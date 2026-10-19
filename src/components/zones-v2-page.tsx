@@ -221,13 +221,28 @@ function ZoneEditor({ role }: { role: string | null }) {
         }
       });
     }
+    // custom outer areas inside zones: orange overlay with dashed edge
+    for (const row of pocketsQ.data ?? []) {
+      const cell = st.cells.find((c) => c.id === row.cell);
+      if (!cell) continue;
+      for (const r of row.pockets ?? []) {
+        if (!Array.isArray(r) || r.length < 3) continue;
+        const p = add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: TYPE_COLOUR.outer, strokeWeight: 2, fillColor: TYPE_COLOUR.outer, fillOpacity: 0.45, zIndex: 4 }));
+        dashed(r, "#9A3412", 2, 5);
+        label(centre(r), `Outer ₹${row.fee}`, "#7C2D12", 6);
+        p.addListener("click", (e: { latLng: { lat: () => number; lng: () => number } }) => {
+          if (drawingRef.current) { setDots((d) => [...d, { lat: e.latLng.lat(), lng: e.latLng.lng() }]); return; }
+          select(cell);
+        });
+      }
+    }
     if (showGaps && st.gap) for (const r of rings(st.gap))
       add(new g.maps.Polygon({ map: map.current, paths: r, strokeColor: "#DC2626", fillColor: "#DC2626", fillOpacity: 0.5, strokeWeight: 1, clickable: false, zIndex: 6 }));
     if (showPins) for (const pin of outsideQ.data?.pins ?? [])
       add(new g.maps.Marker({ map: map.current, position: { lat: Number(pin.lat), lng: Number(pin.lng) }, zIndex: 9, title: `${pin.number ?? ""} · ${new Date(pin.at).toLocaleDateString("en-IN")}`,
         icon: { path: g.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#DC2626", fillOpacity: 1, strokeColor: "#FFFFFF", strokeWeight: 2 } }));
     if (mode.kind !== "idle" && dots.length) {
-      const colour = mode.kind === "city" ? "#0F172A" : "#2563EB";
+      const colour = mode.kind === "city" ? "#0F172A" : mode.kind === "pocket" ? TYPE_COLOUR.outer : "#2563EB";
       add(new g.maps.Polyline({ map: map.current, path: dots.length >= 3 ? [...dots, dots[0]] : dots, strokeColor: colour, strokeWeight: 3, zIndex: 7, clickable: false }));
       dots.forEach((pt, i) => {
         const m = add(new g.maps.Marker({ map: map.current, position: pt, draggable: true, label: dots.length <= 60 ? String(i + 1) : undefined, zIndex: 8 }));
@@ -237,7 +252,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data]);
+  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data, pocketsQ.data]);
 
   function select(c: Cell) { setSel(c.id); editRef.current = rings(c.geom)[0] ?? null; }
   function startZone() {
@@ -252,6 +267,7 @@ function ZoneEditor({ role }: { role: string | null }) {
   function finishDrawing() {
     if (mode.kind === "zone") setNamingOpen(true);
     else if (mode.kind === "city") saveCity();
+    else if (mode.kind === "pocket") finishPocket();
   }
   async function saveCity() {
     if (mode.kind !== "city" || dots.length < 3) return toast.error("Place at least 3 points");
