@@ -24,7 +24,10 @@ export type PartnerRow = {
   notes: string | null;
   login_email?: string | null;
   auth_user_id?: string | null;
-  [k: string]: unknown;
+  deposit_amount?: number | null; pan_number?: string | null; bank_verified?: boolean;
+  suspensions_this_year?: number; active_months_count?: number; suspension_end?: string | null;
+  exit_effective_date?: string | null; exit_requested_at?: string | null; commission_hold?: string | null;
+  termination_recommended?: boolean; pending_plan_id?: string | null; pending_plan_from?: string | null; status_reason?: string | null;
 };
 
 export type PlanLine = { plan_id?: string; line_key: string; enabled: boolean; pct: number };
