@@ -19,7 +19,7 @@ import {
 } from "@/lib/partner-program.functions";
 import { PartyAgreementCard } from "@/components/agreements";
 import { PartnerPaymentsPanel } from "@/components/partner-payments";
-import { LifecyclePanel, ActivitiesPanel, StatusChip, STATUS_LABEL, renewalDue } from "@/components/partner-lifecycle";
+import { LifecyclePanel, ActivitiesPanel, KpiPanel, StatusChip, STATUS_LABEL, renewalDue } from "@/components/partner-lifecycle";
 
 const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   growth: "Growth Partner",
@@ -150,15 +150,16 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
 }
 
 function PartnerDetail({ p, plans, isAdmin, onClose }: { p: PartnerRow; plans: CommissionPlan[]; isAdmin: boolean; onClose: () => void }) {
-  const [t, setT] = useState<"status" | "activities" | "payments" | "agreement">("status");
+  const [t, setT] = useState<"status" | "kpi" | "activities" | "payments" | "agreement">("status");
   return (
     <Modal title={p.name} onClose={onClose}>
       <div className="mb-3 flex gap-1 overflow-x-auto border-b border-border">
-        {([["status", "Status"], ["activities", "Activities"], ["payments", "Payments"], ["agreement", "Agreement"]] as const).map(([k, l]) => (
+        {([["status", "Status"], ["kpi", "KPI"], ["activities", "Activities"], ["payments", "Payments"], ["agreement", "Agreement"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setT(k)} className={`px-3 py-2 text-sm border-b-2 ${t === k ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
       {t === "status" ? <LifecyclePanel p={p} plans={plans as never} isAdmin={isAdmin} />
+        : t === "kpi" ? <KpiPanel partnerId={p.id} program={p.program} isAdmin={isAdmin} />
         : t === "activities" ? <ActivitiesPanel partnerId={p.id} isAdmin={isAdmin} />
         : t === "payments" ? <PartnerPaymentsPanel partnerId={p.id} canEdit={isAdmin} /> : <PartyAgreementCard partyType="partner" partyId={p.id} canManage={isAdmin} />}
     </Modal>
@@ -390,13 +391,18 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
   if (q.isLoading) return <p className="p-3 text-sm text-muted-foreground">Loading…</p>;
   if (q.error || !q.data?.batch) return <p className="p-3 text-sm text-destructive">Could not load this batch.</p>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { batch, items, lines } = q.data as { batch: any; items: any[]; lines: any[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { batch, items, lines, skips } = q.data as { batch: any; items: any[]; lines: any[]; skips: any[] };
+  const skipSum = Object.values((skips ?? []).reduce((m: Record<string, { name: string; reason: string; amt: number; n: number }>, s) => {
+    const k = `${s.partner_id}|${s.reason}`; m[k] ??= { name: s.partners?.name ?? "", reason: s.reason, amt: 0, n: 0 }; m[k].amt += Number(s.amount); m[k].n++; return m;
+  }, {}));
   const draft = batch.status === "draft" && isAdmin;
   const visibleItems = items.filter((i) => showDeleted || !i.is_deleted);
   return (
     <div className="space-y-3 border-t border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} /> Show removed</label>
+        {skipSum.map((s) => <span key={s.name + s.reason} className="rounded-full bg-muted px-2 py-0.5 text-xs">{s.name}: Skipped {inr(s.amt)} ({s.reason}) · {s.n}</span>)}
         {batch.paid_on && <span className="text-xs text-muted-foreground">Paid on {fmtDate(batch.paid_on)}{batch.paid_reference ? ` · Ref ${batch.paid_reference}` : ""}</span>}
         {batch.delete_reason && <span className="text-xs text-muted-foreground">Deleted: {batch.delete_reason}</span>}
         <div className="ml-auto flex flex-wrap gap-2">

@@ -234,13 +234,14 @@ export const getPartnerBatch = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const db = context.supabase as Db;
     await requireStaff(db, context.userId, false);
-    const [b, i, l] = await Promise.all([
+    const [b, i, l, sk] = await Promise.all([
       db.from("partner_payout_batches").select("*").eq("id", data.batchId).maybeSingle(),
       db.from("partner_payout_items").select("*, partners(name, phone, program, partner_commission_plans!plan_id(name))").eq("batch_id", data.batchId),
       db.from("partner_payout_lines").select("*").eq("batch_id", data.batchId).order("order_completed_at"),
+      db.from("partner_payout_skips").select("partner_id, reason, amount, partners(name)").eq("batch_id", data.batchId),
     ]);
-    for (const r of [b, i, l]) if (r.error) throw new Error(r.error.message);
-    return { batch: b.data, items: i.data ?? [], lines: l.data ?? [] };
+    for (const r of [b, i, l, sk]) if (r.error) throw new Error(r.error.message);
+    return { batch: b.data, items: i.data ?? [], lines: l.data ?? [], skips: sk.data ?? [] };
   });
 
 type Act =
