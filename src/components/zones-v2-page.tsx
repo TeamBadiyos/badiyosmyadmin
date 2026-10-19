@@ -77,6 +77,7 @@ function ZoneEditor({ role }: { role: string | null }) {
   const [namingOpen, setNamingOpen] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
   const [showGaps, setShowGaps] = useState(false);
+  const [showOuter, setShowOuter] = useState(false);
   const [busy, setBusy] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [fillOpen, setFillOpen] = useState(false);
@@ -222,7 +223,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       });
     }
     // custom outer areas inside zones: orange overlay with dashed edge
-    for (const row of pocketsQ.data ?? []) {
+    if (showOuter || mode.kind === "pocket") for (const row of pocketsQ.data ?? []) {
       const cell = st.cells.find((c) => c.id === row.cell);
       if (!cell) continue;
       for (const r of row.pockets ?? []) {
@@ -252,7 +253,7 @@ function ZoneEditor({ role }: { role: string | null }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, st, sel, dots, mode, showGaps, showPins, outsideQ.data, pocketsQ.data]);
+  }, [ready, st, sel, dots, mode, showGaps, showPins, showOuter, outsideQ.data, pocketsQ.data]);
 
   function select(c: Cell) { setSel(c.id); editRef.current = rings(c.geom)[0] ?? null; }
   function startZone() {
@@ -345,6 +346,7 @@ function ZoneEditor({ role }: { role: string | null }) {
             {canEdit && <Button size="sm" disabled={busy || mode.kind !== "idle"} onClick={startZone}>+ New zone</Button>}
             {canEdit && <Button size="sm" variant="outline" disabled={busy || mode.kind !== "idle" || !st?.gap} onClick={() => setFillOpen(true)}>Fill gaps</Button>}
             <Button size="sm" variant={showGaps ? "default" : "outline"} onClick={() => setShowGaps((v) => !v)}>Show gaps</Button>
+            <Button size="sm" variant={showOuter ? "default" : "outline"} onClick={() => setShowOuter((v) => !v)}>{showOuter ? "Hide outer areas" : "Show outer areas"}</Button>
           </div>
           {mode.kind === "zone" && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted p-2 text-sm">
