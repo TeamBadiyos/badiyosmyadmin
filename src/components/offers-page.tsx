@@ -27,6 +27,7 @@ import {
   searchCampaignCustomers,
   saveCampaign,
   sendCampaign,
+  listFreeServiceOptions,
   sendCampaignTest,
   type CouponRow,
   type MilestoneRow,
@@ -167,11 +168,13 @@ const DISCOUNT_TYPES = [
   { value: "flat", label: "Flat ₹" },
   { value: "percent", label: "Percent %" },
   { value: "free_minutes", label: "Free minutes" },
+  { value: "free_service", label: "Free service" },
 ] as const;
 
 function discountLabel(type: string, value: number, max: number | null) {
   if (type === "percent") return `${value}%${max ? ` (max ₹${max})` : ""}`;
   if (type === "free_minutes") return `${value} min free`;
+  if (type === "free_service") return "Free service";
   return `₹${value}`;
 }
 
@@ -507,6 +510,12 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
       ? coupon.audience
       : "all") as Audience,
     show_in_list: coupon?.show_in_list ?? true,
+    free_price_option_id: coupon?.free_price_option_id ?? "",
+  });
+  const fetchFree = useServerFn(listFreeServiceOptions);
+  const { data: freeOptions = [] } = useQuery({
+    queryKey: ["offers", "free-service-options"],
+    queryFn: () => fetchFree(),
   });
   const [savedId, setSavedId] = useState<string | null>(coupon?.id ?? null);
   const [categoryIds, setCategoryIds] = useState<string[]>(
@@ -528,7 +537,8 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
           title: form.title,
           description: form.description || null,
           discount_type: form.discount_type,
-          discount_value: Number(form.discount_value),
+          discount_value: form.discount_type === "free_service" ? 100 : Number(form.discount_value),
+          free_price_option_id: form.free_price_option_id || null,
           max_discount: form.max_discount ? Number(form.max_discount) : null,
           min_order_amount: Number(form.min_order_amount || 0),
           valid_from: form.valid_from ? new Date(form.valid_from).toISOString() : null,
@@ -590,6 +600,22 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
             ))}
           </select>
         </Field>
+        {form.discount_type === "free_service" ? (
+          <Field label="Free service">
+            <select
+              className={inputCls}
+              value={form.free_price_option_id}
+              onChange={(e) => setForm({ ...form, free_price_option_id: e.target.value })}
+            >
+              <option value="">Choose service…</option>
+              {freeOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label} · {o.service} (₹{o.price})
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
         <Field label="Discount value">
           <input
             className={inputCls}
@@ -598,6 +624,7 @@ function CouponModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: (
             onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
           />
         </Field>
+        )}
         <Field label="Max discount (₹)">
           <input
             className={inputCls}
