@@ -394,6 +394,9 @@ export type BookingDetails = {
   deleteReason: string | null;
   /** Customer's bookings up to and including this one, and avg rating they gave. */
   gstAmount: number;
+  travelFee: number;
+  travelFeeGst: number;
+  travelExpertSharePct: number | null;
   gstPercent: number | null;
   totalAmount: number | null;
   couponCode: string | null;
@@ -530,6 +533,9 @@ async function loadBookingDetails(
   const bx = b as Record<string, unknown>;
   return {
     gstAmount: Number(bx.gst_amount ?? 0),
+    travelFee: Number(bx.travel_fee ?? 0),
+    travelFeeGst: Number(bx.travel_fee_gst ?? 0),
+    travelExpertSharePct: bx.travel_expert_share_pct != null ? Number(bx.travel_expert_share_pct) : null,
     gstPercent: bx.gst_percent != null ? Number(bx.gst_percent) : null,
     totalAmount: bx.total_amount != null ? Number(bx.total_amount) : null,
     couponCode: (bx.coupon_code as string | null) ?? null,
