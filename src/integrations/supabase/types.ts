@@ -7900,9 +7900,12 @@ export type Database = {
       partner_commission_plans: {
         Row: {
           created_at: string
+          description: string | null
           id: string
+          kpi: Json
           name: string
           partner_type: string
+          rules: Json
           sort_order: number
           status: string
           suggested_fee: number
@@ -7910,9 +7913,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
+          kpi?: Json
           name: string
           partner_type: string
+          rules?: Json
           sort_order?: number
           status?: string
           suggested_fee?: number
@@ -7920,9 +7926,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
+          kpi?: Json
           name?: string
           partner_type?: string
+          rules?: Json
           sort_order?: number
           status?: string
           suggested_fee?: number
