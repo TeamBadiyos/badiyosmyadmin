@@ -369,6 +369,16 @@ function ZoneEditor({ role }: { role: string | null }) {
               <Button size="sm" variant="ghost" onClick={cancelDraw}>Cancel</Button>
             </div>
           )}
+          {mode.kind === "pocket" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border-2 border-primary bg-muted p-2 text-sm">
+              <span className="font-semibold">Drawing outer area in {st?.cells.find((c) => c.id === mode.cell)?.name}</span>
+              <span className="text-muted-foreground">{dots.length} points · {areaKm2(dots).toFixed(2)} km²</span>
+              <Button size="sm" disabled={busy || dots.length < 3} onClick={finishPocket}>Save outer area</Button>
+              <Button size="sm" variant="ghost" disabled={!dots.length} onClick={() => setDots((d) => d.slice(0, -1))}>Remove last point</Button>
+              <Button size="sm" variant="ghost" onClick={cancelDraw}>Cancel</Button>
+              <span className="w-full text-xs text-muted-foreground">Click inside the zone to add points. Customers inside this area pay the zone's outer Travel Fee; the rest of the zone stays Core.</span>
+            </div>
+          )}
           {mode.kind === "city" && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border-2 border-foreground bg-muted p-2 text-sm">
               <span className="font-semibold">Drawing city area: {mode.name}</span>
@@ -412,6 +422,11 @@ function ZoneEditor({ role }: { role: string | null }) {
           {selCell && canToggle && mode.kind === "idle" && (
             <PricingForm key={`p-${selCell.id}`} cell={selCell} busy={busy}
               onSave={(v) => run("staff_set_zone_pricing", { _cell: selCell.id, ...v }, "Zone saved")} />
+          )}
+          {selCell && canToggle && mode.kind === "idle" && (selCell.zone_type ?? "core") === "core" && (
+            <OuterAreasForm key={`o-${selCell.id}-${pocketsOf(selCell.id)?.fee ?? 20}`} cell={selCell} row={pocketsOf(selCell.id)} canEdit={canEdit} busy={busy}
+              onDraw={() => { setDots([]); setMode({ kind: "pocket", cell: selCell.id }); }}
+              onSave={(pockets, fee) => savePockets(selCell.id, pockets, fee)} />
           )}
           <div className="rounded-lg border border-border bg-card">
             <div className="border-b border-border px-3 py-2 text-sm font-semibold">Zones ({st?.cells.length ?? 0}){st?.switched ? " · live" : ""}</div>
