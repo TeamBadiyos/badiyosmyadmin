@@ -20,10 +20,11 @@ export type PartnerRow = {
   agreement_start: string;
   agreement_end: string;
   fee_paid: number;
-  status: "active" | "inactive";
+  status: "active" | "warning" | "inactive" | "suspended" | "terminated" | "exited";
   notes: string | null;
   login_email?: string | null;
   auth_user_id?: string | null;
+  [k: string]: unknown;
 };
 
 export type PlanLine = { plan_id?: string; line_key: string; enabled: boolean; pct: number };

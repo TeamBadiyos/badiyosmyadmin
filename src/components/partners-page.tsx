@@ -19,6 +19,7 @@ import {
 } from "@/lib/partner-program.functions";
 import { PartyAgreementCard } from "@/components/agreements";
 import { PartnerPaymentsPanel } from "@/components/partner-payments";
+import { LifecyclePanel, ActivitiesPanel, StatusChip, STATUS_LABEL, renewalDue } from "@/components/partner-lifecycle";
 
 const PROGRAM_LABEL: Record<PartnerProgram, string> = {
   growth: "Growth Partner",
@@ -259,11 +260,6 @@ function PartnerForm({ initial, zones, plans, onClose }: { initial: Partial<Part
         <label className="text-sm">Agreement end<DateInput  className={input} value={f.agreement_end ?? ""} onChange={(e) => set("agreement_end", e.target.value)} /></label>
         <label className="text-sm">Fee collected date<DateInput  className={input} value={f.fee_collected_at ?? ""} onChange={(e) => set("fee_collected_at", e.target.value || null)} /></label>
         <label className="text-sm">Deposit / Fee collected (₹)<input type="number" min={0} className={input} value={f.fee_paid ?? 0} onChange={(e) => set("fee_paid", Number(e.target.value))} /></label>
-        <label className="text-sm">Status
-          <select className={input} value={f.status} onChange={(e) => set("status", e.target.value as PartnerRow["status"])}>
-            <option value="active">Active</option><option value="inactive">Inactive</option>
-          </select>
-        </label>
         <label className="text-sm sm:col-span-2">Notes<textarea className={input} value={f.notes ?? ""} onChange={(e) => set("notes", e.target.value)} /></label>
       </div>
       <div className="mt-4 flex justify-end gap-2">
