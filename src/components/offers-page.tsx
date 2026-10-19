@@ -1902,3 +1902,42 @@ export function CampaignsPage() {
   const access = useOffersAccess();
   return <CampaignsTab canWrite={access?.canWrite ?? false} role={access?.role ?? null} city={access?.city ?? null} />;
 }
+
+function CampaignImageInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function upload(file: File) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return toast.error("Use a JPG, PNG or WebP image");
+    if (file.size > 1024 * 1024) return toast.error("Image must be under 1 MB for notifications");
+    setBusy(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { CATALOG_BUCKET, catalogImageUrl } = await import("@/lib/catalog-images");
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `campaigns/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from(CATALOG_BUCKET).upload(path, file, { upsert: false, contentType: file.type });
+      if (error) throw error;
+      onChange(catalogImageUrl(path) ?? "");
+      toast.success("Image uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <label className="inline-flex items-center gap-1 h-10 px-3 rounded-md border border-border text-[13px] cursor-pointer hover:bg-muted shrink-0">
+          {busy ? "Uploading…" : "Upload image"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(f); }} />
+        </label>
+        {value && (
+          <button type="button" className="text-[12px] text-destructive" onClick={() => onChange("")}>Remove</button>
+        )}
+      </div>
+      <input className={inputCls} placeholder="…or paste image URL" value={value} onChange={(e) => onChange(e.target.value)} />
+      {value && <img src={value} alt="" className="h-20 rounded-md border border-border object-cover" />}
+    </div>
+  );
+}
