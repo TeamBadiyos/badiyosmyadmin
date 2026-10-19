@@ -96,7 +96,7 @@ export const listCoupons = createServerFn({ method: "GET" })
     const { data, error } = await db
       .from("coupons")
       .select(
-        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids, show_in_list, city_id",
+        "id, code, title, description, discount_type, discount_value, max_discount, min_order_amount, valid_from, valid_until, total_usage_limit, per_user_limit, used_count, audience, is_active, created_at, applicable_category_ids, show_in_list, city_id, free_price_option_id",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -808,5 +808,27 @@ export const searchCampaignCustomers = createServerFn({ method: "GET" })
       phone: u.phone,
       city: cityMap.get(u.id) ?? null,
       has_app: withApp.has(u.id),
+    }));
+  });
+
+export type FreeServiceOption = { id: string; label: string; service: string; price: number };
+
+/** Services a "Free service" coupon can give (e.g. Bike Wash). */
+export const listFreeServiceOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<FreeServiceOption[]> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("service_price_options")
+      .select("id, label, customer_price, is_active, services(name)")
+      .eq("is_active", true)
+      .order("display_order");
+    if (error) throw new Error(error.message);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data ?? []).map((o: any) => ({
+      id: o.id,
+      label: o.label,
+      service: o.services?.name ?? "",
+      price: Number(o.customer_price ?? 0),
     }));
   });
