@@ -15092,6 +15092,10 @@ export type Database = {
         }
         Returns: Json
       }
+      staff_cancel_training_booking: {
+        Args: { _actor: string; _booking_id: string }
+        Returns: Json
+      }
       staff_category_copy_default: {
         Args: { _city_id: string; _kind: string }
         Returns: number
