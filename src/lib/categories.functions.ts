@@ -29,12 +29,14 @@ export const listCategories = createServerFn({ method: "POST" })
     if (!hasCity) { const r = await base().is("city_id", null).order("sort_order"); fail(r); rows = r.data ?? []; }
     rows.sort((a, b) => Number(a.is_other) - Number(b.is_other) || a.sort_order - b.sort_order);
     const live = await liveUsage(db, data.kind, data.cityId);
+    const total = await totalUsage(db, data.kind);
     const key = (n: string) => String(n ?? "").trim().toLowerCase();
     return {
       hasCityList: hasCity,
       rows: rows.map((r) => {
         const u = live.get(key(r.name));
-        return { ...r, used: u?.stores.size ?? 0, items: u?.items ?? 0 };
+        // totalUsed matches the server-side delete check (all stores/items, not just live ones)
+        return { ...r, used: u?.stores.size ?? 0, items: u?.items ?? 0, totalUsed: total.get(key(r.name)) ?? 0 };
       }),
     };
   });
