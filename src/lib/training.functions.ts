@@ -96,7 +96,7 @@ export const getTrainingSetup = createServerFn({ method: "GET" })
         .select("id, label, is_active, services(name)")
         .eq("is_active", true)
         .order("display_order", { ascending: true }),
-      db.from("experts").select("id, name, phone").eq("mode", "TRAINING").order("name"),
+      db.from("experts").select("id, name, phone").eq("mode", "TRAINING").eq("status", "active").order("name"),
     ]);
     let address: TrainingAddress = {
       full_address: "",
@@ -182,27 +182,30 @@ export const createTrainingOrder = createServerFn({ method: "POST" })
       scheduledDate: string | null;
       scheduledTimeSlot: string | null;
       address: TrainingAddress;
-      expertId: string | null;
+      expertIds: string[];
     }) => {
       if (!input?.priceOptionId) throw new Error("Please choose a service.");
       if (!input.address?.full_address?.trim()) throw new Error("Please enter the address.");
+      if (!Array.isArray(input.expertIds) || !input.expertIds.length) throw new Error("Select at least one training expert.");
       return input;
     },
   )
-  .handler(async ({ data }) => {
-    const res = (await callTraining("create-booking", {
-      price_option_id: data.priceOptionId,
-      scheduled_date: data.scheduledDate || undefined,
-      scheduled_time_slot: data.scheduledTimeSlot || undefined,
-      address: data.address,
-      expert_id: data.expertId || undefined,
-    })) as { booking?: unknown } | null;
-    const b = (res?.booking ?? res) as Record<string, unknown> | null;
-    const id =
-      (b && typeof b === "object" && (b["id"] ?? b["booking_id"])) ||
-      (typeof b === "string" ? b : null);
-    return { bookingId: id ? String(id) : null };
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context.supabase, context.userId);
+    if (role !== "super_admin" && role !== "ops_manager") throw new Error("You don't have access to this.");
+    const { data: cities, error: scopeError } = await context.supabase.rpc("cc_visible_cities");
+    if (scopeError || !cities?.length) throw new Error("Couldn't verify your city access.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: booking, error } = await (supabaseAdmin as Db).rpc("staff_create_training_broadcast", {
+      _price_option_id: data.priceOptionId, _scheduled_date: data.scheduledDate,
+      _scheduled_time_slot: data.scheduledTimeSlot, _address: JSON.parse(JSON.stringify(data.address)),
+      _expert_ids: [...new Set(data.expertIds)], _actor: context.userId, _visible_cities: cities,
+    });
+    if (error) throw new Error(friendly(error.message));
+    const row = booking as { id?: string } | null;
+    return { bookingId: row?.id ?? null };
   });
+
 
 export const deleteTrainingOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -60,17 +60,24 @@ export const getStoreTrainingData = createServerFn({ method: "GET" })
       customerName: o.customer_name, totalAmount: Number(o.total_amount) || 0, createdAt: o.created_at,
       items: (its ?? []).filter((i: any) => i.order_id === o.id).map((i: any) => ({ name: i.product_name_snapshot, qty: i.quantity, price: Number(i.price_snapshot) })),
     }));
-    return { stores, orders, canManage: role === "super_admin" || role === "ops_manager" };
+    const { data: experts, error: expertsError } = await context.supabase.from("experts").select("id, name").eq("mode", "TRAINING").eq("status", "active").order("name");
+    if (expertsError) throw new Error(expertsError.message);
+    return { stores, orders, experts: (experts ?? []) as { id: string; name: string }[], canManage: role === "super_admin" || role === "ops_manager" };
   });
 
 export const createStoreTrainingOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { merchantId: string; items: { productId: string; qty: number }[]; customerName: string; customerPhone: string; address: string; paymentMode: "online" | "cod" }) => {
+  .inputValidator((d: { merchantId: string; items: { productId: string; qty: number }[]; customerName: string; customerPhone: string; address: string; paymentMode: "online" | "cod"; expertIds: string[] }) => {
     if (!d.merchantId || !Array.isArray(d.items) || d.items.length === 0) throw new Error("Pick a store and at least one item");
+    if (!Array.isArray(d.expertIds) || !d.expertIds.length) throw new Error("Select at least one training rider");
     return d;
   })
   .handler(async ({ data, context }) => {
     await assertManager(context);
+    const { data: merchant, error: merchantError } = await context.supabase.from("merchants").select("city_id").eq("id", data.merchantId).single();
+    if (merchantError || !merchant?.city_id) throw new Error("Store not available in your city");
+    const { error: validationError } = await context.supabase.rpc("staff_validate_training_experts", { _ids: [...new Set(data.expertIds)], _city: merchant.city_id });
+    if (validationError) throw new Error(validationError.message);
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const { data: ps, error: pe } = await db.from("products").select("id, name, price, merchant_id")
       .in("id", data.items.map((i) => i.productId)).eq("merchant_id", data.merchantId);
@@ -88,6 +95,8 @@ export const createStoreTrainingOrder = createServerFn({ method: "POST" })
     const online = data.paymentMode === "online";
     const { data: order, error } = await db.from("merchant_orders").insert({
       merchant_id: data.merchantId,
+      city_id: merchant.city_id,
+      training_expert_ids: [...new Set(data.expertIds)],
       order_number: `TRN-${Date.now().toString().slice(-8)}`,
       status: "pending",
       source: "training",

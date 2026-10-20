@@ -15281,11 +15281,13 @@ export type Database = {
       }
       staff_create_training_broadcast: {
         Args: {
+          _actor: string
           _address: Json
           _expert_ids: string[]
           _price_option_id: string
           _scheduled_date: string
           _scheduled_time_slot: string
+          _visible_cities: string[]
         }
         Returns: Json
       }
