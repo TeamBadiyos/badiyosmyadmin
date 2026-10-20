@@ -575,14 +575,20 @@ function ExpertRowItem({ expert, noDevice, onOpen, onLeave, onToggleLeave }: { e
       <span className="text-right font-semibold text-foreground">{fmtHrs(expert.lastWeekMinutes)}</span>
       <span className="text-right font-semibold text-foreground">{fmtHrs(expert.monthMinutes)}</span>
       <span className="text-right font-semibold text-foreground">{inr.format(expert.walletBalance)}</span>
-      <span>
-        <span
-          title={expert.isOnline ? (expert.isBusy ? "Online — on a job" : "Online") : "Offline"}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${expert.status === "active" ? "bg-primary-tint text-primary" : "bg-muted text-muted-foreground"}`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${expert.isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
-          {expert.status === "active" ? "Active" : "Inactive"}
-        </span>
+      <span className="flex flex-col items-start gap-0.5">
+        {expert.status !== "active" ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-muted-foreground">Inactive</span>
+        ) : (
+          <span
+            title={expert.isOnline ? (expert.isBusy ? "Online — on a job" : "Online") : "Offline"}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+              expert.isOnline ? (expert.isBusy ? "bg-accent text-accent-foreground" : "bg-primary-tint text-primary") : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${expert.isOnline ? (expert.isBusy ? "bg-amber-500" : "bg-emerald-500") : "bg-muted-foreground/40"}`} />
+            {expert.isOnline ? (expert.isBusy ? "Busy" : "Online") : "Offline"}
+          </span>
+        )}
       </span>
     </button>
   );
