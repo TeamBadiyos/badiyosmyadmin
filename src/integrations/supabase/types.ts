@@ -13979,6 +13979,7 @@ export type Database = {
           phone: string
         }[]
       }
+      expert_has_active_job: { Args: { _e: string }; Returns: boolean }
       expert_has_push_device: { Args: { _expert_id: string }; Returns: boolean }
       expert_job_details: { Args: { _booking_id: string }; Returns: Json }
       expert_mark_arrived: { Args: { p_booking_id: string }; Returns: string }
