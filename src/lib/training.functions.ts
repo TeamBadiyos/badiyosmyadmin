@@ -218,15 +218,8 @@ export const cancelTrainingOrder = createServerFn({ method: "POST" })
     if (role !== "super_admin" && role !== "ops_manager") throw new Error("You don't have access to this.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const db = supabaseAdmin as Db;
-    const { data: b } = await db.from("bookings").select("id, is_training, status").eq("id", data.id).maybeSingle();
-    if (!b?.is_training) throw new Error("Only training orders can be cancelled here.");
-    if (["completed", "cancelled", "rejected"].includes(b.status)) throw new Error("This order is already closed.");
-    const { error } = await db.rpc("booking_cancel_core", {
-      _booking_id: data.id, _actor: "staff", _actor_uid: context.userId,
-      _reason: "Training order cancelled", _destination: "wallet", _mode: "full",
-    });
+    const { error } = await db.rpc("staff_cancel_training_booking", { _booking_id: data.id, _actor: context.userId });
     if (error) throw new Error(friendly(error.message));
-    await db.from("audit_logs").insert({ actor_id: context.userId, action: "training_booking_cancelled", target_table: "bookings", target_id: data.id, before_state: { status: b.status }, after_state: { status: "cancelled" } });
     return { ok: true };
   });
 
