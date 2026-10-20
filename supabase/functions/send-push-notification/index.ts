@@ -256,13 +256,14 @@ async function sendToToken(
   );
 
 
-  if (res.ok) return { ok: true, invalid: false, status: res.status };
+  const sent_payload = { ...payload, message: { ...payload.message, token: "…" + fcmToken.slice(-8) } };
+  if (res.ok) return { ok: true, invalid: false, status: res.status, sent_payload };
   const errText = await res.text();
   // FCM v1 returns UNREGISTERED / INVALID_ARGUMENT for stale tokens.
   const invalid =
     res.status === 404 ||
     /UNREGISTERED|NOT_FOUND|INVALID_ARGUMENT/i.test(errText);
-  return { ok: false, invalid, status: res.status, error: errText };
+  return { ok: false, invalid, status: res.status, error: errText, sent_payload };
 }
 
 Deno.serve(async (req) => {
@@ -326,8 +327,11 @@ Deno.serve(async (req) => {
   const effectiveAlertType =
     alert_type ?? (typeof data.alert_type === "string" ? (data.alert_type as string) : undefined);
   if (effectiveAlertType) data.alert_type = effectiveAlertType;
+  // Expert job offers are always data-only so the native ring service runs.
+  const jobDataOnly =
+    user_type === "expert" && !!effectiveAlertType && JOB_ALERT_TYPES.has(effectiveAlertType);
 
-  if (!dataOnly && effectiveAlertType && (user_type === "expert" || user_type === "customer")) {
+  if (!dataOnly && !jobDataOnly && effectiveAlertType && (user_type === "expert" || user_type === "customer")) {
     const app = user_type === "expert" ? "partner" : "customer";
     try {
       const { data: sound } = await admin
@@ -419,19 +423,21 @@ Deno.serve(async (req) => {
     status: number;
     invalid: boolean;
     error?: string;
+    sent_payload?: unknown;
   }> = [];
 
   await Promise.all(
     tokens.map(async (t) => {
       const tail = String(t.fcm_token ?? "").slice(-8);
       try {
-        const r = await sendToToken(accessToken, t.fcm_token, title, body, data, dataOnly);
+        const r = await sendToToken(accessToken, t.fcm_token, title, body, data, dataOnly, jobDataOnly);
         results.push({
           token_tail: tail,
           ok: r.ok,
           status: r.status,
           invalid: r.invalid,
           error: r.error ? r.error.slice(0, 400) : undefined,
+          ...(payload.debug ? { sent_payload: r.sent_payload } : {}),
         });
         if (r.ok) {
           sent++;
