@@ -205,7 +205,7 @@ function DeleteSheet({ c, others, usedLabel, onClose, onDone }: { kind: CatKind;
         <SheetHeader><SheetTitle>Delete "{c.name}"</SheetTitle></SheetHeader>
         <div className="space-y-3 py-4 text-sm">
           {c.used > 0 ? <>
-            <p>{c.used} {usedLabel}{c.used === 1 ? "" : "s"} use this category. Move them first:</p>
+            <p>{c.used} {usedLabel}{c.used === 1 ? "" : "s"} use this category{c.used > (c.items ?? c.used) ? " (including hidden, pending or inactive ones)" : ""}. Move them first:</p>
             <select className="w-full rounded-md border bg-background px-3 py-2" value={to} onChange={(e) => setTo(e.target.value)}>
               <option value="">Move to…</option>
               {others.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
