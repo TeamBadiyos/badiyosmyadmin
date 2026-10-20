@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Change training orders from direct assignment to broadcasts restricted to selected training experts; validate acceptance isolation.
+
 - [x] Remove Clean Auto banner controls and public output while preserving unused saved data; public Clean/Wash contracts and validation tests passed (signed-in screen check unavailable).
 
 - [x] Add Seal Sticker batch PDF generation and download dialog.
