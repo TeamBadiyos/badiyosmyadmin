@@ -36,6 +36,7 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const CLOSED = ["completed", "cancelled", "rejected", "expired"];
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-primary/10 text-primary",
   cancelled: "bg-destructive/10 text-destructive",
@@ -77,6 +78,7 @@ export function TrainingOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [created, setCreated] = useState<TrainingOrder | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [createdOtps, setCreatedOtps] = useState<{ start: string | null; end: string | null } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [delReq, setDelReq] = useState<
     { kind: "ids"; ids: string[] } | { kind: "clear"; from: string; to: string; expertId: string } | null
@@ -255,34 +257,31 @@ export function TrainingOrdersPage() {
         <CreateDialog
           setup={setupQ.data}
           onClose={() => setCreateOpen(false)}
-          onCreated={(id) => {
+          onCreated={(r) => {
             setCreateOpen(false);
             setCreated(null);
-            setCreatedId(id ?? "__pending");
+            setCreatedOtps({ start: r.startOtp, end: r.endOtp });
+            setCreatedId(r.bookingId ?? "__pending");
             qc.invalidateQueries({ queryKey: ["training", "orders"] });
           }}
         />
       )}
 
       {createdId && (
-        <Modal title="Training order created" onClose={() => { setCreatedId(null); setCreated(null); }}>
-          {created ? (
-            <div className="space-y-3">
+        <Modal title="Training order created" onClose={() => { setCreatedId(null); setCreated(null); setCreatedOtps(null); }}>
+          <div className="space-y-3">
+            {created && (
               <p className="text-[13px]">
                 Order <b className="font-mono">#{created.id.slice(0, 6)}</b> · {created.serviceLabel} ·{" "}
                 {created.expertName ?? "Broadcasting"}
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <OtpBox label="Start OTP" value={created.startOtp} />
-                <OtpBox label="End OTP" value={created.endOtp} />
-              </div>
-              <p className="text-[12px] text-muted-foreground">Give these OTPs to the expert during training.</p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <OtpBox label="Start OTP" value={created?.startOtp ?? createdOtps?.start ?? null} />
+              <OtpBox label="End OTP" value={created?.endOtp ?? createdOtps?.end ?? null} />
             </div>
-          ) : (
-            <p className="text-[13px] text-muted-foreground">
-              Order created. Its OTPs will appear in the table as soon as they are ready.
-            </p>
-          )}
+            <p className="text-[12px] text-muted-foreground">Give these OTPs to the expert during training.</p>
+          </div>
         </Modal>
       )}
 
