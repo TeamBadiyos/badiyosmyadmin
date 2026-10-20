@@ -59,8 +59,8 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
   const liveFn = useServerFn(getLiveExpertCounts);
   const live = useQuery({ queryKey: ["live-expert-counts", group, cityId], queryFn: () => liveFn({ data: { group, cityId } }), refetchInterval: 30_000 });
 
-  const [ovDate, setOvDate] = useState(istDate());
-  const ov = useCap(group, ovDate);
+  const ovDate = date;
+  const ov = cq;
   const [ovIn, setOvIn] = useState<Record<string, string>>({});
   const ovMut = useMutation({
     mutationFn: (clear: boolean) => {
@@ -97,12 +97,12 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="mr-auto text-[15px] font-bold text-foreground">Slots</h3>
           {[0, 1].map((o) => (
-            <button key={o} onClick={() => setDate(istDate(o))}
+            <button key={o} onClick={() => { setDate(istDate(o)); setOvIn({}); }}
               className={`h-9 rounded-[10px] px-3 text-[13px] font-semibold whitespace-nowrap ${date === istDate(o) ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}>
               {o === 0 ? "Today" : "Tomorrow"}
             </button>
           ))}
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+          <input type="date" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setOvIn({}); } }}
             className="h-9 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
         </div>
         {cq.isError && <p className="mt-3 text-[13px] text-destructive">{(cq.error as Error).message}</p>}
@@ -121,10 +121,9 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
       </section>
 
       <section className={card}>
-        <h3 className="text-[15px] font-bold text-foreground">Change a specific date</h3>
+        <h3 className="text-[15px] font-bold text-foreground">Change this date</h3>
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <input type="date" value={ovDate} onChange={(e) => { if (e.target.value) { setOvDate(e.target.value); setOvIn({}); } }}
-            className="h-10 rounded-[10px] border border-border bg-card px-2 text-[13px] text-foreground" />
+          <span className="h-10 inline-flex items-center rounded-[10px] bg-muted px-3 text-[13px] font-semibold text-foreground whitespace-nowrap">{ovDate.split("-").reverse().join("-")}</span>
           {(["morning", "day", "evening"] as const).map((k) => {
             const b = ov.data?.bands.find((x) => x.band === k);
             return (
@@ -142,7 +141,7 @@ export function SlotAvailabilityTab({ group = "clean" }: { group?: CapGroup } = 
             <button disabled={ovMut.isPending} onClick={() => ovMut.mutate(true)} className="h-10 text-[13px] font-semibold text-muted-foreground underline whitespace-nowrap">Reset</button>
           )}
         </div>
-        <p className="mt-2 text-[12px] text-muted-foreground">Empty = use the daily number.</p>
+        <p className="mt-2 text-[12px] text-muted-foreground">Uses the date picked above. Empty = use the daily number. 0 = closed (shows full in the app too).</p>
       </section>
 
       <SlotGrid group={group} date={date} bands={cap?.bands ?? []} autoOn={!!cap?.enabled} />
