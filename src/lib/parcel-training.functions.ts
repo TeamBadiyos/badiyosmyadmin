@@ -18,6 +18,7 @@ async function assertManager(context: Ctx) {
 export type ParcelTrainingOrder = {
   id: string; orderNumber: string | null; status: string; pickup: string; drop: string;
   totalAmount: number; createdAt: string; riderName: string | null;
+  otps: { type: string; otp: string | null }[];
 };
 
 // Training SEARCHING uses only selected recipients, never live riders.
@@ -41,25 +42,44 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
       db.from("courier_types").select("id, name").order("name"),
       db.from("experts").select("id, name").eq("mode", "TRAINING").eq("status", "active").order("name"),
       db.from("courier_orders")
-        .select("id, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
+        .select("id, order_code, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
         .eq("is_training", true).order("created_at", { ascending: false }).limit(100),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const experts = ((ex.data ?? []) as any[]).map((e) => ({ id: e.id as string, name: e.name as string }));
     const nameOf = new Map(experts.map((e) => [e.id, e.name]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const orders: ParcelTrainingOrder[] = ((os.data ?? []) as any[]).map((o) => ({
-      id: o.id, orderNumber: null, status: o.status, pickup: o.pickup_address, drop: o.drop_address,
+    const raw = (os.data ?? []) as any[];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { trainingStopOtps } = await import("@/lib/training-otps.server");
+    const otpMap = await trainingStopOtps(supabaseAdmin, raw.map((o) => o.id));
+    const orders: ParcelTrainingOrder[] = raw.map((o) => ({
+      id: o.id, orderNumber: o.order_code ?? null, status: o.status, pickup: o.pickup_address, drop: o.drop_address,
       totalAmount: Number(o.total_amount) || 0, createdAt: o.created_at,
       riderName: o.assigned_expert_id ? nameOf.get(o.assigned_expert_id) ?? "Rider" : null,
+      otps: otpMap.get(o.id) ?? [],
     }));
     return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vehicles: ((vt.data ?? []) as any[]).map((v) => ({ id: v.id as string, name: String(v.name ?? "Vehicle") })),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       types: ((ct.data ?? []) as any[]).map((v) => ({ id: v.id as string, name: String(v.name ?? "Parcel") })),
-      experts, orders, canManage: role === "super_admin" || role === "ops_manager",
+      experts, orders, canManage: role === "super_admin" || role === "ops_manager", isSuper: role === "super_admin",
     };
+  });
+
+/** Permanently delete training parcels (Super Admin only). */
+export const deleteParcelTrainingOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => { if (!d?.id) throw new Error("Missing order"); return d; })
+  .handler(async ({ data, context }) => {
+    if ((await staffRole(context)) !== "super_admin") throw new Error("Only Super Admin can delete training orders");
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await db.from("courier_orders").delete().eq("id", data.id).eq("is_training", true).select("id");
+    if (error) throw new Error(error.message);
+    if (!rows?.length) throw new Error("Training order not found");
+    await db.from("audit_logs").insert({ actor_id: context.userId, action: "parcel_training_order_deleted", target_table: "courier_orders", target_id: data.id });
+    return { ok: true };
   });
 
 export const createParcelTrainingOrder = createServerFn({ method: "POST" })

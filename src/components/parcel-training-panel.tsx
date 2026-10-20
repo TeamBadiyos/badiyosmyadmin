@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
+import { TrainingOtpChips } from "@/components/training-otp-chips";
 import {
   advanceParcelTrainingOrder,
   clearParcelTrainingOrders,
   createParcelTrainingOrder,
+  deleteParcelTrainingOrder,
   getParcelTrainingData,
 } from "@/lib/parcel-training.functions";
 
@@ -43,6 +45,12 @@ export function ParcelTrainingPanel() {
   const clearM = useMutation({
     mutationFn: () => clear(),
     onSuccess: (r) => { toast.success(`${r.count} training parcels closed`); inv(); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+  const del = useServerFn(deleteParcelTrainingOrder);
+  const delM = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => { toast.success("Training parcel deleted"); inv(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   const canManage = q.data?.canManage;
@@ -86,13 +94,21 @@ export function ParcelTrainingPanel() {
                 <p className="text-[12px] text-muted-foreground truncate">
                   {o.riderName ? `Rider: ${o.riderName} · ` : ""}₹{o.totalAmount} · {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </p>
+                {!["CANCELLED", "DELIVERED", "COMPLETED"].includes(o.status) && <TrainingOtpChips otps={o.otps} />}
               </div>
-              {canManage && (next || o.status === "SEARCHING") && (
-                <div className="flex gap-2 flex-wrap shrink-0">
-                  {next && <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">{LABEL[next]}</button>}
-                  <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: "CANCELLED" })} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">Cancel</button>
-                </div>
-              )}
+              <div className="flex gap-2 flex-wrap shrink-0">
+                {canManage && (next || o.status === "SEARCHING") && (
+                  <>
+                    {next && <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">{LABEL[next]}</button>}
+                    <button disabled={advM.isPending} onClick={() => { if (window.confirm("Cancel this training parcel?")) advM.mutate({ id: o.id, to: "CANCELLED" }); }} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">Cancel</button>
+                  </>
+                )}
+                {q.data?.isSuper && (
+                  <button disabled={delM.isPending} onClick={() => { if (window.confirm("Delete this training parcel permanently?")) delM.mutate(o.id); }} className="p-2 rounded-[10px] text-destructive hover:bg-destructive/10" aria-label="Delete training parcel">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

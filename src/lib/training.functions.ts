@@ -202,10 +202,33 @@ export const createTrainingOrder = createServerFn({ method: "POST" })
       _expert_ids: [...new Set(data.expertIds)], _actor: context.userId, _visible_cities: cities,
     });
     if (error) throw new Error(friendly(error.message));
-    const row = booking as { id?: string } | null;
-    return { bookingId: row?.id ?? null };
+    const row = booking as { id?: string; start_otp?: string | null; end_otp?: string | null } | null;
+    return { bookingId: row?.id ?? null, startOtp: row?.start_otp ?? null, endOtp: row?.end_otp ?? null };
   });
 
+/** Cancel one open training booking (Super Admin / Ops Manager). Uses the standard cancel path. */
+export const cancelTrainingOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("Missing order.");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context.supabase, context.userId);
+    if (role !== "super_admin" && role !== "ops_manager") throw new Error("You don't have access to this.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as Db;
+    const { data: b } = await db.from("bookings").select("id, is_training, status").eq("id", data.id).maybeSingle();
+    if (!b?.is_training) throw new Error("Only training orders can be cancelled here.");
+    if (["completed", "cancelled", "rejected"].includes(b.status)) throw new Error("This order is already closed.");
+    const { error } = await db.rpc("booking_cancel_core", {
+      _booking_id: data.id, _actor: "staff", _actor_uid: context.userId,
+      _reason: "Training order cancelled", _destination: "wallet", _mode: "full",
+    });
+    if (error) throw new Error(friendly(error.message));
+    await db.from("audit_logs").insert({ actor_id: context.userId, action: "training_booking_cancelled", target_table: "bookings", target_id: data.id, before_state: { status: b.status }, after_state: { status: "cancelled" } });
+    return { ok: true };
+  });
 
 export const deleteTrainingOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -213,21 +236,20 @@ export const deleteTrainingOrders = createServerFn({ method: "POST" })
     (input: { ids?: string[]; from?: string | null; to?: string | null; expertId?: string | null }) =>
       input ?? {},
   )
-  .handler(async ({ data }) => {
-    const body: Record<string, unknown> = {};
-    if (data.ids?.length) body["booking_ids"] = data.ids;
-    else {
-      if (data.from) body["from"] = data.from;
-      if (data.to) body["to"] = data.to;
-      if (data.expertId) body["expert_id"] = data.expertId;
-    }
-    const res = await callTraining("delete-bookings", body);
+  .handler(async ({ data, context }) => {
+    const role = await staffRole(context.supabase, context.userId);
+    if (role !== "super_admin") throw new Error("Only Super Admin can delete training orders.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ids = data.ids?.length ? data.ids : null;
+    const { data: r, error } = await (supabaseAdmin as Db).rpc("training_delete_bookings", {
+      _actor: context.userId, _ids: ids,
+      _from: ids ? null : data.from || null, _to: ids ? null : data.to || null,
+      _expert_id: ids ? null : data.expertId || null,
+    });
+    if (error) throw new Error(friendly(error.message.replace(/^NOT_TRAINING:\s*/, "")));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const r = res as any;
-    const n =
-      typeof r === "number"
-        ? r
-        : Number(r?.deleted ?? r?.count ?? r?.deleted_count ?? (Array.isArray(r) ? r.length : NaN));
+    const x = r as any;
+    const n = typeof x === "number" ? x : Number(x?.deleted ?? x?.count ?? x?.deleted_count ?? NaN);
     return { deleted: Number.isFinite(n) ? n : null };
   });
 

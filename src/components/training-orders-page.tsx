@@ -8,6 +8,7 @@ import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  cancelTrainingOrder,
   createTrainingOrder,
   deleteTrainingOrders,
   getTrainingSetup,
@@ -35,6 +36,7 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const CLOSED = ["completed", "cancelled", "rejected", "expired"];
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-primary/10 text-primary",
   cancelled: "bg-destructive/10 text-destructive",
@@ -76,11 +78,18 @@ export function TrainingOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [created, setCreated] = useState<TrainingOrder | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [createdOtps, setCreatedOtps] = useState<{ start: string | null; end: string | null } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [delReq, setDelReq] = useState<
     { kind: "ids"; ids: string[] } | { kind: "clear"; from: string; to: string; expertId: string } | null
   >(null);
   const [clearOpen, setClearOpen] = useState(false);
+  const cancelFn = useServerFn(cancelTrainingOrder);
+  const cancelM = useMutation({
+    mutationFn: (id: string) => cancelFn({ data: { id } }),
+    onSuccess: () => { toast.success("Training order cancelled"); qc.invalidateQueries({ queryKey: ["training", "orders"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't cancel. Please try again."),
+  });
 
   useEffect(() => {
     if (createdId) {
@@ -155,7 +164,7 @@ export function TrainingOrdersPage() {
               <th className="px-3 py-3">Start OTP</th>
               <th className="px-3 py-3">End OTP</th>
               <th className="px-3 py-3">Created</th>
-              {isSuper && <th className="px-3 py-3" />}
+              {canCreate && <th className="px-3 py-3" />}
             </tr>
           </thead>
           <tbody>
@@ -212,15 +221,28 @@ export function TrainingOrdersPage() {
                 <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
                   {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </td>
-                {isSuper && (
+                {canCreate && (
                   <td className="px-3 py-3">
-                    <button
-                      onClick={() => setDelReq({ kind: "ids", ids: [o.id] })}
-                      className="p-2 rounded-[8px] text-destructive hover:bg-destructive/10"
-                      aria-label="Delete training order"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1 justify-end">
+                      {!CLOSED.includes(o.status) && (
+                        <button
+                          disabled={cancelM.isPending}
+                          onClick={() => { if (window.confirm("Cancel this training order?")) cancelM.mutate(o.id); }}
+                          className="h-8 px-3 rounded-[8px] border border-destructive/50 text-destructive text-[12px] font-bold disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {isSuper && (
+                        <button
+                          onClick={() => setDelReq({ kind: "ids", ids: [o.id] })}
+                          className="p-2 rounded-[8px] text-destructive hover:bg-destructive/10"
+                          aria-label="Delete training order"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
@@ -235,34 +257,31 @@ export function TrainingOrdersPage() {
         <CreateDialog
           setup={setupQ.data}
           onClose={() => setCreateOpen(false)}
-          onCreated={(id) => {
+          onCreated={(r) => {
             setCreateOpen(false);
             setCreated(null);
-            setCreatedId(id ?? "__pending");
+            setCreatedOtps({ start: r.startOtp, end: r.endOtp });
+            setCreatedId(r.bookingId ?? "__pending");
             qc.invalidateQueries({ queryKey: ["training", "orders"] });
           }}
         />
       )}
 
       {createdId && (
-        <Modal title="Training order created" onClose={() => { setCreatedId(null); setCreated(null); }}>
-          {created ? (
-            <div className="space-y-3">
+        <Modal title="Training order created" onClose={() => { setCreatedId(null); setCreated(null); setCreatedOtps(null); }}>
+          <div className="space-y-3">
+            {created && (
               <p className="text-[13px]">
                 Order <b className="font-mono">#{created.id.slice(0, 6)}</b> · {created.serviceLabel} ·{" "}
                 {created.expertName ?? "Broadcasting"}
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <OtpBox label="Start OTP" value={created.startOtp} />
-                <OtpBox label="End OTP" value={created.endOtp} />
-              </div>
-              <p className="text-[12px] text-muted-foreground">Give these OTPs to the expert during training.</p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <OtpBox label="Start OTP" value={created?.startOtp ?? createdOtps?.start ?? null} />
+              <OtpBox label="End OTP" value={created?.endOtp ?? createdOtps?.end ?? null} />
             </div>
-          ) : (
-            <p className="text-[13px] text-muted-foreground">
-              Order created. Its OTPs will appear in the table as soon as they are ready.
-            </p>
-          )}
+            <p className="text-[12px] text-muted-foreground">Give these OTPs to the expert during training.</p>
+          </div>
         </Modal>
       )}
 
@@ -328,7 +347,7 @@ function CreateDialog({
 }: {
   setup: { address: TrainingAddress; options: { id: string; label: string }[]; experts: { id: string; name: string }[] };
   onClose: () => void;
-  onCreated: (id: string | null) => void;
+  onCreated: (r: { bookingId: string | null; startOtp: string | null; endOtp: string | null }) => void;
 }) {
   const create = useServerFn(createTrainingOrder);
   const [optionId, setOptionId] = useState("");
@@ -347,7 +366,7 @@ function CreateDialog({
           expertIds,
         },
       }),
-    onSuccess: (r) => onCreated(r.bookingId),
+    onSuccess: (r) => onCreated(r),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't create the order. Please try again."),
   });
   return (

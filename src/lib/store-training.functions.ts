@@ -21,7 +21,28 @@ export type StoreTrainingStore = { id: string; name: string; products: { id: str
 export type StoreTrainingOrder = {
   id: string; orderNumber: string; status: string; storeName: string; customerName: string | null;
   totalAmount: number; createdAt: string; items: { name: string; qty: number; price: number }[];
+  otps: { type: string; otp: string | null }[]; hasRider: boolean;
 };
+
+/** Permanently delete a training Store/Food order and its training delivery (Super Admin only). */
+export const deleteStoreTrainingOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => { if (!d?.id) throw new Error("Missing order"); return d; })
+  .handler(async ({ data, context }) => {
+    if ((await staffRole(context)) !== "super_admin") throw new Error("Only Super Admin can delete training orders");
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data: o } = await db.from("merchant_orders").select("id, is_training, courier_order_id").eq("id", data.id).maybeSingle();
+    if (!o || !(o as any).is_training) throw new Error("Training order not found");
+    await db.from("merchant_orders").update({ courier_order_id: null } as any).eq("id", data.id);
+    const { error: ce } = await db.from("courier_orders").delete().eq("is_training", true).eq("merchant_order_id", data.id);
+    if (ce) throw new Error(ce.message);
+    const { error: ie } = await db.from("merchant_order_items").delete().eq("order_id", data.id);
+    if (ie) throw new Error(ie.message);
+    const { error } = await db.from("merchant_orders").delete().eq("id", data.id).eq("is_training", true);
+    if (error) throw new Error(error.message);
+    await db.from("audit_logs").insert({ actor_id: context.userId, action: "store_training_order_deleted", target_table: "merchant_orders", target_id: data.id });
+    return { ok: true };
+  });
 
 export const getStoreTrainingData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -46,7 +67,7 @@ export const getStoreTrainingData = createServerFn({ method: "GET" })
     })).filter((s) => s.products.length > 0);
 
     const { data: os } = await db.from("merchant_orders")
-      .select("id, order_number, status, merchant_id, customer_name, total_amount, created_at")
+      .select("id, order_number, status, merchant_id, customer_name, total_amount, created_at, courier_order_id")
       .eq("is_training", true).in("merchant_id", svcIds.length ? svcIds : ["00000000-0000-0000-0000-000000000000"]).order("created_at", { ascending: false }).limit(100);
     const oIds = (os ?? []).map((o: any) => o.id);
     const { data: its } = oIds.length
@@ -55,14 +76,18 @@ export const getStoreTrainingData = createServerFn({ method: "GET" })
     const mIds = [...new Set((os ?? []).map((o: any) => o.merchant_id))];
     const { data: mn } = mIds.length ? await db.from("merchants").select("id, store_name").in("id", mIds) : { data: [] as any[] };
     const nameOf = new Map((mn ?? []).map((m: any) => [m.id, m.store_name]));
+    const cIds = (os ?? []).map((o: any) => o.courier_order_id).filter(Boolean) as string[];
+    const { trainingStopOtps } = await import("@/lib/training-otps.server");
+    const otpMap = await trainingStopOtps(db, cIds);
     const orders: StoreTrainingOrder[] = (os ?? []).map((o: any) => ({
       id: o.id, orderNumber: o.order_number, status: o.status, storeName: nameOf.get(o.merchant_id) ?? "Store",
       customerName: o.customer_name, totalAmount: Number(o.total_amount) || 0, createdAt: o.created_at,
       items: (its ?? []).filter((i: any) => i.order_id === o.id).map((i: any) => ({ name: i.product_name_snapshot, qty: i.quantity, price: Number(i.price_snapshot) })),
+      otps: o.courier_order_id ? otpMap.get(o.courier_order_id) ?? [] : [], hasRider: !!o.courier_order_id,
     }));
     const { data: experts, error: expertsError } = await context.supabase.from("experts").select("id, name").eq("mode", "TRAINING").eq("status", "active").order("name");
     if (expertsError) throw new Error(expertsError.message);
-    return { stores, orders, experts: (experts ?? []) as { id: string; name: string }[], canManage: role === "super_admin" || role === "ops_manager" };
+    return { stores, orders, experts: (experts ?? []) as { id: string; name: string }[], canManage: role === "super_admin" || role === "ops_manager", isSuper: role === "super_admin" };
   });
 
 export const createStoreTrainingOrder = createServerFn({ method: "POST" })

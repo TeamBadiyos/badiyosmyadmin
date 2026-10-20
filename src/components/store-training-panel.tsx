@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
+import { TrainingOtpChips } from "@/components/training-otp-chips";
 import {
   advanceStoreTrainingOrder,
   clearStoreTrainingOrders,
   createStoreTrainingOrder,
+  deleteStoreTrainingOrder,
   getStoreTrainingData,
 } from "@/lib/store-training.functions";
 
@@ -44,6 +46,12 @@ export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }
   const clearM = useMutation({
     mutationFn: () => clear({ data: { svc } }),
     onSuccess: (r) => { toast.success(`${r.count} training ${w} orders closed`); inv(); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+  const del = useServerFn(deleteStoreTrainingOrder);
+  const delM = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => { toast.success("Training order deleted"); inv(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
   const canManage = q.data?.canManage;
@@ -92,17 +100,27 @@ export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }
                   {o.storeName} · {o.customerName} · ₹{o.totalAmount} · {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </p>
                 <p className="text-[12px] text-muted-foreground truncate">{o.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</p>
+                {!["cancelled", "completed", "rejected"].includes(o.status) && (
+                  <TrainingOtpChips otps={o.otps} emptyText={o.hasRider ? undefined : "Pickup & drop OTPs appear after Mark ready (rider broadcast)."} />
+                )}
               </div>
-              {canManage && (next || o.status === "ready") && (
-                <div className="flex gap-2 flex-wrap shrink-0">
-                  {next && <Button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">
-                    {STEP_LABEL[next]}
-                  </Button>}
-                  <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: "cancelled" })} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">
-                    Cancel
+              <div className="flex gap-2 flex-wrap shrink-0">
+                {canManage && (next || o.status === "ready") && (
+                  <>
+                    {next && <Button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">
+                      {STEP_LABEL[next]}
+                    </Button>}
+                    <button disabled={advM.isPending} onClick={() => { if (window.confirm(`Cancel this training ${w} order?`)) advM.mutate({ id: o.id, to: "cancelled" }); }} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {q.data?.isSuper && (
+                  <button disabled={delM.isPending} onClick={() => { if (window.confirm(`Delete this training ${w} order permanently?`)) delM.mutate(o.id); }} className="p-2 rounded-[10px] text-destructive hover:bg-destructive/10" aria-label="Delete training order">
+                    <Trash2 size={16} />
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })}
