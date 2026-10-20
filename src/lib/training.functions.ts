@@ -196,7 +196,7 @@ export const createTrainingOrder = createServerFn({ method: "POST" })
     const { data: cities, error: scopeError } = await context.supabase.rpc("cc_visible_cities");
     if (scopeError || !cities?.length) throw new Error("Couldn't verify your city access.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: booking, error } = await supabaseAdmin.rpc("staff_create_training_broadcast", {
+    const { data: booking, error } = await (supabaseAdmin as Db).rpc("staff_create_training_broadcast", {
       _price_option_id: data.priceOptionId, _scheduled_date: data.scheduledDate,
       _scheduled_time_slot: data.scheduledTimeSlot, _address: JSON.parse(JSON.stringify(data.address)),
       _expert_ids: [...new Set(data.expertIds)], _actor: context.userId, _visible_cities: cities,
