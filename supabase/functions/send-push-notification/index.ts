@@ -163,6 +163,7 @@ async function sendToToken(
   title: string,
   body: string,
   data?: Record<string, unknown>,
+  dataOnly = false,
 ): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string }> {
   // High-attention "new job" pushes get an urgent Android config so the OS
   // shows a heads-up notification with sound + vibration even when the app
@@ -196,17 +197,22 @@ async function sendToToken(
   const payload = {
     message: {
       token: fcmToken,
-      notification: { title, body },
-      android: androidConfig,
-      apns: {
-        headers: { "apns-priority": "10" },
-        payload: {
-          aps: {
-            sound: isUrgentBroadcast ? "default" : "default",
-            "interruption-level": isUrgentBroadcast ? "time-sensitive" : "active",
+      ...(dataOnly ? {} : { notification: { title, body } }),
+      android: dataOnly ? { priority: "HIGH" } : androidConfig,
+      apns: dataOnly
+        ? {
+            headers: { "apns-priority": "5", "apns-push-type": "background" },
+            payload: { aps: { "content-available": 1 } },
+          }
+        : {
+            headers: { "apns-priority": "10" },
+            payload: {
+              aps: {
+                sound: "default",
+                "interruption-level": isUrgentBroadcast ? "time-sensitive" : "active",
+              },
+            },
           },
-        },
-      },
       data: data
         ? Object.fromEntries(
             Object.entries(data).map(([k, v]) => [
@@ -277,13 +283,16 @@ Deno.serve(async (req) => {
     return json(400, { error: "Invalid JSON body" });
   }
 
-  const { user_type, user_id, title, body, alert_type } = payload;
+  const { user_type, user_id, alert_type } = payload;
+  // Data-only silent push (no visible notification), e.g. already_taken / order_closed.
+  const dataOnly = (payload as { data_only?: boolean }).data_only === true;
+  const title = payload.title ?? "";
+  const body = payload.body ?? "";
   if (
     !user_type ||
-    !["customer", "expert", "staff"].includes(user_type) ||
+    !["customer", "expert", "staff", "merchant"].includes(user_type) ||
     !user_id ||
-    !title ||
-    !body
+    (!dataOnly && (!title || !body))
   ) {
     return json(400, { error: "Missing/invalid fields" });
   }
@@ -299,7 +308,7 @@ Deno.serve(async (req) => {
     alert_type ?? (typeof data.alert_type === "string" ? (data.alert_type as string) : undefined);
   if (effectiveAlertType) data.alert_type = effectiveAlertType;
 
-  if (effectiveAlertType && (user_type === "expert" || user_type === "customer")) {
+  if (!dataOnly && effectiveAlertType && (user_type === "expert" || user_type === "customer")) {
     const app = user_type === "expert" ? "partner" : "customer";
     try {
       const { data: sound } = await admin
@@ -397,7 +406,7 @@ Deno.serve(async (req) => {
     tokens.map(async (t) => {
       const tail = String(t.fcm_token ?? "").slice(-8);
       try {
-        const r = await sendToToken(accessToken, t.fcm_token, title, body, data);
+        const r = await sendToToken(accessToken, t.fcm_token, title, body, data, dataOnly);
         results.push({
           token_tail: tail,
           ok: r.ok,
