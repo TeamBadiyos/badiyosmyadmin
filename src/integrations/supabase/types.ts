@@ -396,6 +396,7 @@ export type Database = {
         Row: {
           current_version: string
           expert_latest_version: string | null
+          expert_latest_version_code: number | null
           expert_min_version_code: number
           expert_play_store_url: string
           id: number
@@ -408,6 +409,7 @@ export type Database = {
         Insert: {
           current_version?: string
           expert_latest_version?: string | null
+          expert_latest_version_code?: number | null
           expert_min_version_code?: number
           expert_play_store_url?: string
           id?: number
@@ -420,6 +422,7 @@ export type Database = {
         Update: {
           current_version?: string
           expert_latest_version?: string | null
+          expert_latest_version_code?: number | null
           expert_min_version_code?: number
           expert_play_store_url?: string
           id?: number
@@ -15884,6 +15887,7 @@ export type Database = {
         }
         Returns: Json
       }
+      staff_save_app_versions: { Args: { _patch: Json }; Returns: undefined }
       staff_save_banner: { Args: { _p: Json }; Returns: string }
       staff_save_capacity_message: {
         Args: { _payload: Json }
