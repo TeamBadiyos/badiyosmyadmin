@@ -268,7 +268,7 @@ export const getBookingsDrilldown = createServerFn({ method: "POST" })
     const userIds = [...new Set(list.map((r) => r.user_id).filter(Boolean))];
     const expertIds = [...new Set(list.map((r) => r.assigned_expert_id).filter(Boolean))];
     const [u, e] = await Promise.all([
-      userIds.length ? context.supabase.from("users").select("id, name, phone").in("id", userIds) : Promise.resolve({ data: [] }),
+      userIds.length ? context.supabase.from("users").select("id, full_name, phone").in("id", userIds) : Promise.resolve({ data: [] }),
       expertIds.length ? context.supabase.from("experts").select("id, name").in("id", expertIds) : Promise.resolve({ data: [] }),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
