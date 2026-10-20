@@ -13,6 +13,7 @@ import { ExpertModeBadge } from "@/components/expert-mode-badge";
 import { ExpertFormModal } from "@/components/expert-form-modal";
 import { ExpertDetailsModal } from "@/components/expert-details-modal";
 import { ExpertApplicationsPanel, useApplicationsCount } from "@/components/expert-applications";
+import { OldAppBadge, useAppConfig } from "@/components/app-versions";
 
 function ViewChips({ view, setView, count }: { view: string; setView: (v: string) => void; count: number }) {
   return (
@@ -200,11 +201,15 @@ export function ExpertsPage({
   });
   const [riderStatus, setRiderStatus] = useState("");
   const [riderSearch, setRiderSearch] = useState("");
+  const [oldOnly, setOldOnly] = useState(false);
+  const appCfg = useAppConfig();
+  const oldMin = Math.max(appCfg.data?.expert_min_version_code ?? 6, 6);
   const expertsFiltered = (
     availability === "online_free" ? expertsRaw.filter((e) => !e.isBusy) : availability === "offline" ? expertsRaw.filter((e) => !e.isOnline) : expertsRaw
   ).filter((e) => !mode || e.mode === mode)
    .filter((e) => !effSkill || (skillIds ? skillIds.has(e.id) : false))
    .filter((e) => !statusF || (statusF === "active" ? e.status === "active" : e.status !== "active"))
+   .filter((e) => !oldOnly || (e.status === "active" && (e.appVersionCode == null || e.appVersionCode < oldMin)))
    .filter((e) => !isRider || !riderStatus || riderState(e) === riderStatus)
    .filter((e) => {
      const q = riderSearch.trim().toLowerCase();
@@ -250,7 +255,12 @@ export function ExpertsPage({
 
   return (
     <>
-    {showAppsChip && <div className="mb-4"><ViewChips view={view} setView={setView} count={appsCount.data ?? 0} /></div>}
+    {!isRider && (
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {showAppsChip && <ViewChips view={view} setView={setView} count={appsCount.data ?? 0} />}
+        <OldAppBadge active={oldOnly} onClick={() => setOldOnly(!oldOnly)} />
+      </div>
+    )}
     <div className="space-y-6">
       {isRider ? (
       <div className="bg-card border border-border rounded-[18px] p-4 flex flex-wrap items-end gap-3">
@@ -499,6 +509,9 @@ function ExpertRowItem({ expert, noDevice, onOpen, onLeave, onToggleLeave }: { e
         <span className="font-semibold text-foreground break-words">{expert.name}</span>
         <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
           <ExpertModeBadge mode={expert.mode} />
+          <span className="shrink-0 text-[11px] text-muted-foreground" title="Expert App version (build)">
+            {expert.appVersion || expert.appVersionCode != null ? `App v${expert.appVersion ?? "?"} (${expert.appVersionCode ?? "?"})` : "App version —"}
+          </span>
           {noDevice && expert.status === "active" && (
             <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold whitespace-nowrap"
               title="No phone registered for job alerts — not counted as available">

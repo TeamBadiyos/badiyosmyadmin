@@ -35,6 +35,8 @@ export type ExpertRow = {
   mode: "TRAINING" | "LIVE";
   trainingOrdersCompleted: number;
   trainingCompletedAt: string | null;
+  appVersion?: string | null;
+  appVersionCode?: number | null;
 };
 
 export type TrainingDayEntry = { done: boolean; date: string | null; notes: string | null };
@@ -290,7 +292,7 @@ export const listExperts = createServerFn({ method: "POST" })
     let q: any = context.supabase
       .from("experts")
       .select(
-        "id, name, phone, photo_url, zone_id, city_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at",
+        "id, name, phone, photo_url, zone_id, city_id, level, kyc_status, wallet_balance, status, is_online, is_busy, location_updated_at, created_at, jacket_issued, jacket_issued_at, joining_date, training_progress, mode, training_orders_completed, training_completed_at, app_version, app_version_code",
       );
     if (data.onlineOnly) {
       q = q.eq("is_online", true).order("is_busy", { ascending: true });
@@ -370,6 +372,8 @@ export const listExperts = createServerFn({ method: "POST" })
         ratingCount: ratings.get(r.id)?.count ?? 0,
         lastWeekMinutes: hours.lastWeek.get(r.id) ?? 0,
         monthMinutes: hours.month.get(r.id) ?? 0,
+        appVersion: (r.app_version as string | null) ?? null,
+        appVersionCode: r.app_version_code != null ? Number(r.app_version_code) : null,
         ...mapOnboarding(r),
       };
     });
