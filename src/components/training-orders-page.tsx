@@ -347,7 +347,7 @@ function CreateDialog({
 }: {
   setup: { address: TrainingAddress; options: { id: string; label: string }[]; experts: { id: string; name: string }[] };
   onClose: () => void;
-  onCreated: (id: string | null) => void;
+  onCreated: (r: { bookingId: string | null; startOtp: string | null; endOtp: string | null }) => void;
 }) {
   const create = useServerFn(createTrainingOrder);
   const [optionId, setOptionId] = useState("");
@@ -366,7 +366,7 @@ function CreateDialog({
           expertIds,
         },
       }),
-    onSuccess: (r) => onCreated(r.bookingId),
+    onSuccess: (r) => onCreated(r),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't create the order. Please try again."),
   });
   return (
