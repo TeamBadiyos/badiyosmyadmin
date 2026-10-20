@@ -43,7 +43,7 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
       db.from("experts").select("id, name").eq("mode", "TRAINING").eq("status", "active").order("name"),
       db.from("courier_orders")
         .select("id, order_code, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
-        .eq("is_training", true).eq("source", "parcel").order("created_at", { ascending: false }).limit(100),
+        .eq("is_training", true).order("created_at", { ascending: false }).limit(100),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const experts = ((ex.data ?? []) as any[]).map((e) => ({ id: e.id as string, name: e.name as string }));
