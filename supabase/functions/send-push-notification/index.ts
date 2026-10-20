@@ -157,6 +157,21 @@ async function getFcmAccessToken(): Promise<string> {
   return cachedAccessToken.token;
 }
 
+const JOB_ALERT_TYPES = new Set([
+  "new_order",
+  "assigned",
+  "broadcast",
+  "extension_request",
+  "courier_offer",
+]);
+
+function ttlFromData(d: Record<string, unknown>): number {
+  const exp = typeof d.expires_at === "string" ? Date.parse(d.expires_at) : NaN;
+  if (!Number.isNaN(exp)) return Math.max(10, Math.round((exp - Date.now()) / 1000));
+  const t = Number(d.accept_timeout_seconds ?? d.timeout_seconds);
+  return Number.isFinite(t) && t > 0 ? Math.round(t) : 60;
+}
+
 async function sendToToken(
   accessToken: string,
   fcmToken: string,
@@ -164,17 +179,13 @@ async function sendToToken(
   body: string,
   data?: Record<string, unknown>,
   dataOnly = false,
-): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string }> {
-  // High-attention "new job" pushes get an urgent Android config so the OS
-  // shows a heads-up notification with sound + vibration even when the app
-  // is backgrounded or killed. Detected via data.type === 'new_booking_broadcast'
-  // or an urgent alert_type in the data payload.
+  jobDataOnly = false,
+): Promise<{ ok: boolean; invalid: boolean; status: number; error?: string; sent_payload?: unknown }> {
   const d = (data ?? {}) as Record<string, unknown>;
   const isUrgentBroadcast =
     d.type === "new_booking_broadcast" ||
     d.alert_type === "new_order" ||
     d.alert_type === "extension_request";
-
 
   const androidConfig = isUrgentBroadcast
     ? {
@@ -194,35 +205,43 @@ async function sendToToken(
         notification: { sound: "default", channel_id: "default" },
       };
 
-  const payload = {
-    message: {
-      token: fcmToken,
-      ...(dataOnly ? {} : { notification: { title, body } }),
-      android: dataOnly ? { priority: "HIGH" } : androidConfig,
-      apns: dataOnly
-        ? {
-            headers: { "apns-priority": "5", "apns-push-type": "background" },
-            payload: { aps: { "content-available": 1 } },
-          }
-        : {
-            headers: { "apns-priority": "10" },
-            payload: {
-              aps: {
-                sound: "default",
-                "interruption-level": isUrgentBroadcast ? "time-sensitive" : "active",
+  const strData = Object.fromEntries(
+    Object.entries(jobDataOnly ? { ...d, title, body } : d)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]),
+  ) as Record<string, string>;
+
+  const silent = dataOnly || jobDataOnly;
+  const payload = jobDataOnly
+    ? {
+        message: {
+          token: fcmToken,
+          data: strData,
+          android: { priority: "HIGH", ttl: `${ttlFromData(d)}s` },
+        },
+      }
+    : {
+        message: {
+          token: fcmToken,
+          ...(silent ? {} : { notification: { title, body } }),
+          android: silent ? { priority: "HIGH" } : androidConfig,
+          apns: silent
+            ? {
+                headers: { "apns-priority": "5", "apns-push-type": "background" },
+                payload: { aps: { "content-available": 1 } },
+              }
+            : {
+                headers: { "apns-priority": "10" },
+                payload: {
+                  aps: {
+                    sound: "default",
+                    "interruption-level": isUrgentBroadcast ? "time-sensitive" : "active",
+                  },
+                },
               },
-            },
-          },
-      data: data
-        ? Object.fromEntries(
-            Object.entries(data).map(([k, v]) => [
-              k,
-              typeof v === "string" ? v : JSON.stringify(v),
-            ]),
-          )
-        : undefined,
-    },
-  };
+          data: data ? strData : undefined,
+        },
+      };
 
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
