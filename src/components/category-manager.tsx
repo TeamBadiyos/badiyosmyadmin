@@ -106,7 +106,7 @@ export function CategoryManager({ kind, title, help, usedLabel, role }: { kind: 
                 <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move up" onClick={() => move(i, -1)}><ArrowUp size={14} /></Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Move down" onClick={() => move(i, 1)}><ArrowDown size={14} /></Button>
               </span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Delete" onClick={() => setDel(kind === "store_type" ? c : { ...c, used: c.items })}><Trash2 size={14} /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Delete" onClick={() => setDel({ ...c, used: c.totalUsed ?? (kind === "store_type" ? c.used : c.items) })}><Trash2 size={14} /></Button>
             </>)}
             {canEdit && <Button size="sm" variant="ghost" onClick={() => setEdit(c)}>Edit</Button>}
           </div>
