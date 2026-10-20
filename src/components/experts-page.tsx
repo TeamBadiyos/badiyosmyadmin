@@ -499,6 +499,9 @@ function ExpertRowItem({ expert, noDevice, onOpen, onLeave, onToggleLeave }: { e
         <span className="font-semibold text-foreground break-words">{expert.name}</span>
         <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
           <ExpertModeBadge mode={expert.mode} />
+          <span className="shrink-0 text-[11px] text-muted-foreground" title="Expert App version (build)">
+            {expert.appVersion || expert.appVersionCode != null ? `App v${expert.appVersion ?? "?"} (${expert.appVersionCode ?? "?"})` : "App version —"}
+          </span>
           {noDevice && expert.status === "active" && (
             <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold whitespace-nowrap"
               title="No phone registered for job alerts — not counted as available">
