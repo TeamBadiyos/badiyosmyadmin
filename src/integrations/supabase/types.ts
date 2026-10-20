@@ -5181,6 +5181,7 @@ export type Database = {
           offline_after_job: boolean
           onboarded_by: string | null
           onboarded_by_partner_id: string | null
+          online_at: string | null
           pan_encrypted: string | null
           pan_last4: string | null
           pan_updated_at: string | null
@@ -5231,6 +5232,7 @@ export type Database = {
           offline_after_job?: boolean
           onboarded_by?: string | null
           onboarded_by_partner_id?: string | null
+          online_at?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
           pan_updated_at?: string | null
@@ -5281,6 +5283,7 @@ export type Database = {
           offline_after_job?: boolean
           onboarded_by?: string | null
           onboarded_by_partner_id?: string | null
+          online_at?: string | null
           pan_encrypted?: string | null
           pan_last4?: string | null
           pan_updated_at?: string | null
