@@ -1,3 +1,5 @@
+import { TrainingExpertPicker } from "@/components/training-expert-picker";
+import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/date-input";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -333,7 +335,7 @@ function CreateDialog({
   const [date, setDate] = useState(todayIso());
   const [slot, setSlot] = useState("");
   const [address, setAddress] = useState<TrainingAddress>(setup.address);
-  const [expertId, setExpertId] = useState("");
+  const [expertIds, setExpertIds] = useState<string[]>([]);
   const mut = useMutation({
     mutationFn: () =>
       create({
@@ -342,7 +344,7 @@ function CreateDialog({
           scheduledDate: slot ? date : null,
           scheduledTimeSlot: slot || null,
           address,
-          expertId: expertId || null,
+          expertIds,
         },
       }),
     onSuccess: (r) => onCreated(r.bookingId),
@@ -371,25 +373,16 @@ function CreateDialog({
         </label>
       </div>
       <TrainingAddressFields value={address} onChange={setAddress} />
-      <label className="block space-y-1">
-        <span className={labelCls}>Assign to</span>
-        <select className={inputCls} value={expertId} onChange={(e) => setExpertId(e.target.value)}>
-          <option value="">Broadcast to all training experts</option>
-          {setup.experts.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
-        {setup.experts.length === 0 && (
-          <span className="text-[11px] text-muted-foreground">No experts are in Training mode right now.</span>
-        )}
-      </label>
+      <TrainingExpertPicker experts={setup.experts} value={expertIds} onChange={setExpertIds} />
       <div className="flex justify-end gap-2">
-        <button onClick={onClose} disabled={mut.isPending} className="h-10 px-4 rounded-[10px] border border-border text-[13px] font-bold">Cancel</button>
-        <button
+        <Button variant="outline" onClick={onClose} disabled={mut.isPending}>Cancel</Button>
+        <Button
           onClick={() => mut.mutate()}
-          disabled={mut.isPending || !optionId || !address.full_address.trim()}
+          disabled={mut.isPending || !optionId || !address.full_address.trim() || !expertIds.length}
           className="h-10 px-4 rounded-[10px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50"
         >
-          {mut.isPending ? "Creating…" : "Create order"}
-        </button>
+          {mut.isPending ? "Broadcasting…" : "Broadcast order"}
+        </Button>
       </div>
     </Modal>
   );

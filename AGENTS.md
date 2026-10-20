@@ -9,9 +9,11 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Generate seal-sticker PDFs entirely in the browser from the existing staff export RPC so no duplicate export backend exists.
+- Training recipient IDs remain separate from assignment; SQL restricts Clean broadcasts/Courier offers to selected trainees; Store/Food broadcast delivery at Ready. Live payouts are unchanged.
+
+- Seal-sticker PDFs use the staff export RPC in the browser; no duplicate backend.
 - Service-content banner visibility and validation are service-scoped; Auto saves preserve raw unused banner keys and public output excludes them — why: removing controls must not erase historical content or block unrelated saves.
-- Render operational order money through the shared payment-summary component so every board uses the same snapshot labels and zero-value rules.
+- Order money uses shared payment-summary snapshot labels and zero rules.
 - Agreements: templates are versioned rows (never edited in place); each issued agreement freezes its filled-in text, and PDFs are drawn in the browser from that text (src/lib/agreement-pdf.ts) — why: the signed wording must never change after issue.
 - Merchant/Expert app endpoints for agreements, expert self-registration and party notifications are SECURITY DEFINER RPCs (app_*), not server routes — why: those apps talk to the database directly with the user's own login.
 - Multi-city: every operational table has city_id (FK cities) filled by the aa_fill_city_id trigger (zone → store → partner → city name → default city); city-wise prices/delivery live in city_price_options / city_service_settings, and staff city scope comes only from staff_allowed_city_ids() — why: one source of truth for city access that RLS and RPCs can share.

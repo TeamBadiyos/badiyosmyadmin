@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Ctx = { supabase: any; userId: string };
+const uniqueIds = (ids: string[]) => [...new Set(ids)];
 
 async function staffRole(context: Ctx) {
   const { data } = await context.supabase.from("staff_users").select("role, status").eq("auth_user_id", context.userId).maybeSingle();
@@ -19,9 +20,10 @@ export type ParcelTrainingOrder = {
   totalAmount: number; createdAt: string; riderName: string | null;
 };
 
-// Never SEARCHING: that state broadcasts to real riders.
+// Training SEARCHING uses only selected recipients, never live riders.
 const NEXT: Record<string, string[]> = {
-  REQUESTED: ["DRIVER_ASSIGNED", "CANCELLED"],
+  REQUESTED: ["SEARCHING", "CANCELLED"],
+  SEARCHING: ["CANCELLED"],
   DRIVER_ASSIGNED: ["ARRIVED_PICKUP", "CANCELLED"],
   ARRIVED_PICKUP: ["PICKED_UP", "CANCELLED"],
   PICKED_UP: ["IN_TRANSIT", "CANCELLED"],
@@ -33,11 +35,11 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const role = await staffRole(context);
-    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const [vt, ct, ex, os] = await Promise.all([
       db.from("courier_vehicle_types").select("id, name").order("name"),
       db.from("courier_types").select("id, name").order("name"),
-      db.from("experts").select("id, name").eq("mode", "TRAINING").order("name"),
+      db.from("experts").select("id, name").eq("mode", "TRAINING").eq("status", "active").order("name"),
       db.from("courier_orders")
         .select("id, status, pickup_address, drop_address, total_amount, created_at, assigned_expert_id")
         .eq("is_training", true).order("created_at", { ascending: false }).limit(100),
@@ -62,13 +64,18 @@ export const getParcelTrainingData = createServerFn({ method: "GET" })
 
 export const createParcelTrainingOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { vehicleTypeId: string; courierTypeId: string; pickup: string; drop: string; amount: number; expertId: string | null }) => {
+  .inputValidator((d: { vehicleTypeId: string; courierTypeId: string; pickup: string; drop: string; amount: number; expertIds: string[] }) => {
     if (!d.vehicleTypeId || !d.courierTypeId) throw new Error("Pick a vehicle and parcel type");
     if (!d.pickup?.trim() || !d.drop?.trim()) throw new Error("Enter pickup and drop addresses");
+    if (!Array.isArray(d.expertIds) || !d.expertIds.length) throw new Error("Select at least one training rider");
     return d;
   })
   .handler(async ({ data, context }) => {
     await assertManager(context);
+    const { data: expert, error: expertError } = await context.supabase.from("experts").select("city_id").eq("id", data.expertIds[0]).single();
+    if (expertError || !expert?.city_id) throw new Error("Couldn't verify the selected rider's city");
+    const { error: validationError } = await context.supabase.rpc("staff_validate_training_experts", { _ids: uniqueIds(data.expertIds), _city: expert.city_id });
+    if (validationError) throw new Error(validationError.message);
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const { data: s } = await db.from("ops_settings").select("value").eq("key", "training_address").maybeSingle();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,27 +84,28 @@ export const createParcelTrainingOrder = createServerFn({ method: "POST" })
     const lat = Number(v?.latitude) || 18.4088;
     const lng = Number(v?.longitude) || 76.5604;
     const city = String(v?.city || "Latur");
-    const now = new Date().toISOString();
     const amount = Math.max(0, Number(data.amount) || 0);
     const { data: row, error } = await db.from("courier_orders").insert({
       customer_id: context.userId,
       city,
+      city_id: expert.city_id,
       courier_type_id: data.courierTypeId,
       vehicle_type_id: data.vehicleTypeId,
       pickup_address: data.pickup, pickup_lat: lat, pickup_lng: lng,
       pickup_contact_name: "Training Sender", pickup_contact_phone: "9999999999",
       drop_address: data.drop, drop_lat: lat + 0.01, drop_lng: lng + 0.01,
       drop_contact_name: "Training Receiver", drop_contact_phone: "9999999998",
-      status: data.expertId ? "DRIVER_ASSIGNED" : "REQUESTED",
-      assigned_expert_id: data.expertId || null,
-      assigned_at: data.expertId ? now : null,
+      status: "SEARCHING",
+      training_expert_ids: uniqueIds(data.expertIds),
       payment_status: "pending",
       total_amount: amount,
       is_training: true,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any).select("id").single();
     if (error) throw new Error(error.message);
-    await db.from("audit_logs").insert({ actor_id: context.userId, action: "parcel_training_order_created", target_table: "courier_orders", target_id: row.id, after_state: { amount } });
+    await db.from("audit_logs").insert({ actor_id: context.userId, action: "parcel_training_order_created", target_table: "courier_orders", target_id: row.id, after_state: { amount, expert_ids: data.expertIds } });
+    const { error: dispatchError } = await db.rpc("courier_dispatch_next", { _order_id: row.id });
+    if (dispatchError) throw new Error(dispatchError.message);
     return { id: row.id as string };
   });
 

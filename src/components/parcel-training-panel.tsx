@@ -1,3 +1,5 @@
+import { TrainingExpertPicker } from "@/components/training-expert-picker";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,7 +15,7 @@ import {
 const inputCls = "w-full h-10 px-3 rounded-[10px] border border-border bg-card text-[13px] text-foreground";
 const labelCls = "text-[11px] font-bold uppercase tracking-wide text-muted-foreground";
 const NEXT: Record<string, string> = {
-  REQUESTED: "DRIVER_ASSIGNED", DRIVER_ASSIGNED: "ARRIVED_PICKUP", ARRIVED_PICKUP: "PICKED_UP",
+  DRIVER_ASSIGNED: "ARRIVED_PICKUP", ARRIVED_PICKUP: "PICKED_UP",
   PICKED_UP: "IN_TRANSIT", IN_TRANSIT: "DELIVERED",
 };
 const LABEL: Record<string, string> = {
@@ -21,7 +23,7 @@ const LABEL: Record<string, string> = {
   IN_TRANSIT: "On the way", DELIVERED: "Delivered",
 };
 const STATUS: Record<string, string> = {
-  REQUESTED: "New", DRIVER_ASSIGNED: "Rider assigned", ARRIVED_PICKUP: "At pickup", PICKED_UP: "Picked up",
+  REQUESTED: "New", SEARCHING: "Broadcasting", DRIVER_ASSIGNED: "Rider assigned", ARRIVED_PICKUP: "At pickup", PICKED_UP: "Picked up",
   IN_TRANSIT: "On the way", DELIVERED: "Delivered", CANCELLED: "Cancelled",
 };
 
@@ -51,7 +53,7 @@ export function ParcelTrainingPanel() {
         <div className="min-w-0">
           <h3 className="text-[16px] font-bold text-foreground">Parcel Training Orders</h3>
           <p className="text-[12px] text-muted-foreground mt-1">
-            Dummy parcel deliveries to practise the pickup → drop steps. They are never sent to live riders and never touch billing, invoices, payouts or reports.
+            Training parcels · selected training riders only
           </p>
         </div>
         {canManage && (
@@ -85,9 +87,9 @@ export function ParcelTrainingPanel() {
                   {o.riderName ? `Rider: ${o.riderName} · ` : ""}₹{o.totalAmount} · {new Date(o.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
-              {canManage && next && (
+              {canManage && (next || o.status === "SEARCHING") && (
                 <div className="flex gap-2 flex-wrap shrink-0">
-                  <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">{LABEL[next]}</button>
+                  {next && <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">{LABEL[next]}</button>}
                   <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: "CANCELLED" })} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">Cancel</button>
                 </div>
               )}
@@ -111,9 +113,9 @@ function CreateDialog({ data, onClose, onDone }: {
   const [pickup, setPickup] = useState("Training pickup, Badiyos office");
   const [drop, setDrop] = useState("Training drop point");
   const [amount, setAmount] = useState(50);
-  const [expertId, setExpert] = useState("");
+  const [expertIds, setExpertIds] = useState<string[]>([]);
   const m = useMutation({
-    mutationFn: () => create({ data: { vehicleTypeId, courierTypeId, pickup, drop, amount, expertId: expertId || null } }),
+    mutationFn: () => create({ data: { vehicleTypeId, courierTypeId, pickup, drop, amount, expertIds } }),
     onSuccess: () => { toast.success("Training parcel created"); onDone(); onClose(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -135,17 +137,14 @@ function CreateDialog({ data, onClose, onDone }: {
           <div><label className={labelCls}>Drop address</label><input className={inputCls} value={drop} onChange={(e) => setDrop(e.target.value)} /></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={labelCls}>Amount (₹, simulated)</label><input type="number" min={0} className={inputCls} value={amount} onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))} /></div>
-            <div><label className={labelCls}>Trainee rider (optional)</label>
-              <select className={inputCls} value={expertId} onChange={(e) => setExpert(e.target.value)}>
-                <option value="">Assign later</option>
-                {data.experts.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-              </select></div>
+
           </div>
+          <TrainingExpertPicker experts={data.experts} value={expertIds} onChange={setExpertIds} />
         </div>
         <div className="p-4 border-t border-border flex justify-end" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-          <button disabled={m.isPending || !vehicleTypeId || !courierTypeId} onClick={() => m.mutate()} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
-            {m.isPending ? "Creating…" : "Create parcel"}
-          </button>
+          <Button disabled={m.isPending || !vehicleTypeId || !courierTypeId || !expertIds.length} onClick={() => m.mutate()} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
+            {m.isPending ? "Broadcasting…" : "Broadcast parcel"}
+          </Button>
         </div>
       </div>
     </div>

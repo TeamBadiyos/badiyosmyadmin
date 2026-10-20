@@ -1,3 +1,5 @@
+import { TrainingExpertPicker } from "@/components/training-expert-picker";
+import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -19,7 +21,7 @@ const STEP_LABEL: Record<string, string> = {
   completed: "Rider pickup & deliver",
   cancelled: "Cancel",
 };
-const NEXT: Record<string, string> = { pending: "accepted", accepted: "preparing", preparing: "ready", ready: "completed" };
+const NEXT: Record<string, string> = { pending: "accepted", accepted: "preparing", preparing: "ready" };
 
 export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }) {
   const W = svc === "food" ? "Food" : "Store";
@@ -106,12 +108,12 @@ export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }
         })}
       </div>
 
-      {open && q.data && <CreateDialog w={w} stores={q.data.stores} onClose={() => setOpen(false)} onDone={inv} />}
+      {open && q.data && <CreateDialog w={w} stores={q.data.stores} experts={q.data.experts} onClose={() => setOpen(false)} onDone={inv} />}
     </section>
   );
 }
 
-function CreateDialog({ w, stores, onClose, onDone }: { w: string; stores: { id: string; name: string; products: { id: string; name: string; price: number; unit: string | null }[] }[]; onClose: () => void; onDone: () => void }) {
+function CreateDialog({ w, stores, experts, onClose, onDone }: { w: string; experts: { id: string; name: string }[]; stores: { id: string; name: string; products: { id: string; name: string; price: number; unit: string | null }[] }[]; onClose: () => void; onDone: () => void }) {
   const create = useServerFn(createStoreTrainingOrder);
   const [storeId, setStoreId] = useState(stores[0]?.id ?? "");
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -119,13 +121,14 @@ function CreateDialog({ w, stores, onClose, onDone }: { w: string; stores: { id:
   const [phone, setPhone] = useState("9999999999");
   const [address, setAddress] = useState("Training address, Badiyos office");
   const [mode, setMode] = useState<"online" | "cod">("online");
+  const [expertIds, setExpertIds] = useState<string[]>([]);
   const store = stores.find((s) => s.id === storeId);
   const total = useMemo(() => (store?.products ?? []).reduce((s, p) => s + (qty[p.id] ?? 0) * p.price, 0), [store, qty]);
   const m = useMutation({
     mutationFn: () => create({ data: {
       merchantId: storeId,
       items: Object.entries(qty).filter(([, n]) => n > 0).map(([productId, n]) => ({ productId, qty: n })),
-      customerName: name, customerPhone: phone, address, paymentMode: mode,
+      customerName: name, customerPhone: phone, address, paymentMode: mode, expertIds,
     } }),
     onSuccess: () => { toast.success(`Training ${w} order created`); onDone(); onClose(); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -170,12 +173,13 @@ function CreateDialog({ w, stores, onClose, onDone }: { w: string; stores: { id:
               <option value="cod">Cash on delivery</option>
             </select>
           </div>
+          <TrainingExpertPicker experts={experts} value={expertIds} onChange={setExpertIds} />
         </div>
         <div className="p-4 border-t border-border flex items-center justify-between gap-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
           <span className="text-[14px] font-bold">Total ₹{total}</span>
-          <button disabled={m.isPending || total <= 0} onClick={() => m.mutate()} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
+          <Button disabled={m.isPending || total <= 0 || !expertIds.length} onClick={() => m.mutate()} className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground text-[13px] font-bold disabled:opacity-50">
             {m.isPending ? "Creating…" : "Create order"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
