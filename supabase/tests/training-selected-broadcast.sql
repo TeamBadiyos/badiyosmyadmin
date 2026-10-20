@@ -33,6 +33,7 @@ BEGIN
  SELECT auth_user_id INTO _actor FROM public.staff_users WHERE role='super_admin' AND status='active' LIMIT 1;
  FOR _m IN SELECT id FROM public.merchants WHERE city_id=_city AND status='approved' LIMIT 2 LOOP
   BEGIN
+   PERFORM set_config('request.jwt.claim.sub',_actor::text,true);
    INSERT INTO public.merchant_orders(merchant_id,city_id,order_number,status,source,is_training,training_expert_ids,customer_name,delivery_address,payment_status)
    VALUES(_m,_city,'TRN-ISOLATION-'||gen_random_uuid()::text,'preparing','training',true,ARRAY[_e],'Test','Training drop','pending') RETURNING id INTO _id;
    UPDATE public.merchant_orders SET status='ready' WHERE id=_id;

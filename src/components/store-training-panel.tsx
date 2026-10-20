@@ -93,11 +93,11 @@ export function StoreTrainingPanel({ svc = "store" }: { svc?: "store" | "food" }
                 </p>
                 <p className="text-[12px] text-muted-foreground truncate">{o.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</p>
               </div>
-              {canManage && next && (
+              {canManage && (next || o.status === "ready") && (
                 <div className="flex gap-2 flex-wrap shrink-0">
-                  <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">
+                  {next && <Button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: next })} className="h-9 px-3 rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold">
                     {STEP_LABEL[next]}
-                  </button>
+                  </Button>}
                   <button disabled={advM.isPending} onClick={() => advM.mutate({ id: o.id, to: "cancelled" })} className="h-9 px-3 rounded-[10px] border border-destructive/50 text-destructive text-[12px] font-bold">
                     Cancel
                   </button>

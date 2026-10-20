@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Change training orders from direct assignment to broadcasts restricted to selected training experts; validate acceptance isolation.
+- [x] Training orders broadcast only to selected active trainees; Clean/Auto, Parcel and Store/Food SQL creation/acceptance isolation tests passed with rolled-back fixtures.
+- [ ] Verify selected-recipient training offers on real phones and through signed-in CC; blocked by unavailable external-app login/session and physical devices.
 
 - [x] Remove Clean Auto banner controls and public output while preserving unused saved data; public Clean/Wash contracts and validation tests passed (signed-in screen check unavailable).
 
