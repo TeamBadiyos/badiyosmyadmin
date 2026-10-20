@@ -848,6 +848,7 @@ export type Database = {
           started_at: string | null
           status: string
           total_amount: number
+          training_expert_ids: string[]
           travel_expert_share_pct: number | null
           travel_fee: number
           travel_fee_gst: number
@@ -927,6 +928,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           total_amount?: number
+          training_expert_ids?: string[]
           travel_expert_share_pct?: number | null
           travel_fee?: number
           travel_fee_gst?: number
@@ -1006,6 +1008,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           total_amount?: number
+          training_expert_ids?: string[]
           travel_expert_share_pct?: number | null
           travel_fee?: number
           travel_fee_gst?: number
@@ -3535,6 +3538,7 @@ export type Database = {
           stops_fee: number
           store_order_id: string | null
           total_amount: number
+          training_expert_ids: string[]
           updated_at: string
           vehicle_type_id: string
           wallet_amount: number
@@ -3620,6 +3624,7 @@ export type Database = {
           stops_fee?: number
           store_order_id?: string | null
           total_amount?: number
+          training_expert_ids?: string[]
           updated_at?: string
           vehicle_type_id: string
           wallet_amount?: number
@@ -3705,6 +3710,7 @@ export type Database = {
           stops_fee?: number
           store_order_id?: string | null
           total_amount?: number
+          training_expert_ids?: string[]
           updated_at?: string
           vehicle_type_id?: string
           wallet_amount?: number
@@ -6418,6 +6424,7 @@ export type Database = {
           tds_amount: number
           total_amount: number
           total_payable: number | null
+          training_expert_ids: string[]
           updated_at: string
           user_id: string | null
           wallet_used: number
@@ -6488,6 +6495,7 @@ export type Database = {
           tds_amount?: number
           total_amount?: number
           total_payable?: number | null
+          training_expert_ids?: string[]
           updated_at?: string
           user_id?: string | null
           wallet_used?: number
@@ -6558,6 +6566,7 @@ export type Database = {
           tds_amount?: number
           total_amount?: number
           total_payable?: number | null
+          training_expert_ids?: string[]
           updated_at?: string
           user_id?: string | null
           wallet_used?: number
@@ -12631,6 +12640,7 @@ export type Database = {
           started_at: string | null
           status: string
           total_amount: number
+          training_expert_ids: string[]
           travel_expert_share_pct: number | null
           travel_fee: number
           travel_fee_gst: number
@@ -13284,6 +13294,7 @@ export type Database = {
           started_at: string | null
           status: string
           total_amount: number
+          training_expert_ids: string[]
           travel_expert_share_pct: number | null
           travel_fee: number
           travel_fee_gst: number
@@ -13599,6 +13610,7 @@ export type Database = {
           stops_fee: number
           store_order_id: string | null
           total_amount: number
+          training_expert_ids: string[]
           updated_at: string
           vehicle_type_id: string
           wallet_amount: number
@@ -15267,6 +15279,16 @@ export type Database = {
         Args: { _payload: Json }
         Returns: string
       }
+      staff_create_training_broadcast: {
+        Args: {
+          _address: Json
+          _expert_ids: string[]
+          _price_option_id: string
+          _scheduled_date: string
+          _scheduled_time_slot: string
+        }
+        Returns: Json
+      }
       staff_customer_brief: {
         Args: { _ids: string[] }
         Returns: {
@@ -16581,6 +16603,10 @@ export type Database = {
           _vehicle_type: string
         }
         Returns: Json
+      }
+      staff_validate_training_experts: {
+        Args: { _city?: string; _ids: string[] }
+        Returns: undefined
       }
       staff_verify_end_otp: {
         Args: { _booking_id: string; _otp: string }
