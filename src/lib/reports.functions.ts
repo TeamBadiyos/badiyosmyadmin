@@ -272,7 +272,7 @@ export const getBookingsDrilldown = createServerFn({ method: "POST" })
       expertIds.length ? context.supabase.from("experts").select("id, name").in("id", expertIds) : Promise.resolve({ data: [] }),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const um = new Map(((u.data ?? []) as any[]).map((x) => [x.id, x.name || x.phone || "—"]));
+    const um = new Map(((u.data ?? []) as any[]).map((x) => [x.id, x.full_name || x.phone || "—"]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const em = new Map(((e.data ?? []) as any[]).map((x) => [x.id, x.name || "—"]));
     return list.map((r) => ({
