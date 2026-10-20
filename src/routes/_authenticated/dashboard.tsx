@@ -61,6 +61,7 @@ import { StoreFoodLiveBoard, ServiceHoursPanel } from "@/components/ops-panels";
 import { SlotAvailabilityTab, CleanCapacitySettings } from "@/components/slot-availability-tab";
 import { CleanSettingsPage } from "@/components/clean-settings-page";
 import { TaxSettingsPage, ChargesFeesPage } from "@/components/platform-settings-pages";
+import { AppVersionsCard } from "@/components/app-versions";
 import { getStaffAlerts } from "@/lib/alerts.functions";
 
 
@@ -207,6 +208,7 @@ const NAV_ITEMS = [
   { key: "services", label: "Services", icon: SlidersHorizontal },
   { key: "tax-settings", label: "Tax", icon: Percent },
   { key: "fees", label: "Fees", icon: IndianRupee },
+  { key: "app-versions", label: "App versions", icon: SlidersHorizontal },
   { key: "fin-settlements", label: "Merchants", icon: Landmark },
   { key: "fin-instant", label: "Instant — Pay today", icon: Landmark },
   { key: "fin-refunds", label: "Refunds", icon: Receipt },
@@ -284,7 +286,7 @@ const NAV_GROUPS = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    keys: ["company-profile", "cities", "services", "zones", "tax-settings", "fees", "roles", "dispatch-alerts", "notification-sounds", "legal", "agreements", "audit"],
+    keys: ["company-profile", "cities", "services", "zones", "tax-settings", "fees", "app-versions", "roles", "dispatch-alerts", "notification-sounds", "legal", "agreements", "audit"],
   },
 ] as const;
 
@@ -306,7 +308,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner";
 
 // Super-admin-only pages (also blocked on the server).
 const SUPER_ONLY_KEYS: ReadonlyArray<string> = [
-  "roles", "cities", "company-profile", "legal", "agreements", "tax-settings", "fees",
+  "roles", "cities", "company-profile", "legal", "agreements", "tax-settings", "fees", "app-versions",
   "fin-overview", "fin-expenses", "fin-cust-invoices", "fin-wallet", "fin-refunds", "fin-tax", "fin-settlements", "fin-instant", "fin-invoices",
   "settlements", "wallets", "merchant-billing", "reports",
   "rewards", "referrals", "lucky-draw", "campaigns",
@@ -826,6 +828,8 @@ function Shell() {
             <TaxSettingsPage isSuperAdmin={role === "super_admin"} />
             <SacCodesCard isSuperAdmin={role === "super_admin"} />
           </div>
+        ) : active === "app-versions" ? (
+          <AppVersionsCard isSuperAdmin={role === "super_admin"} />
         ) : active === "fees" ? (
           <RequireCity><ChargesFeesPage isSuperAdmin={role === "super_admin"} /></RequireCity>
         ) : active === "agreements" ? (
