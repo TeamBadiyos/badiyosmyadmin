@@ -29,15 +29,36 @@ export const listCategories = createServerFn({ method: "POST" })
     if (!hasCity) { const r = await base().is("city_id", null).order("sort_order"); fail(r); rows = r.data ?? []; }
     rows.sort((a, b) => Number(a.is_other) - Number(b.is_other) || a.sort_order - b.sort_order);
     const live = await liveUsage(db, data.kind, data.cityId);
+    const total = await totalUsage(db, data.kind);
     const key = (n: string) => String(n ?? "").trim().toLowerCase();
     return {
       hasCityList: hasCity,
       rows: rows.map((r) => {
         const u = live.get(key(r.name));
-        return { ...r, used: u?.stores.size ?? 0, items: u?.items ?? 0 };
+        // totalUsed matches the server-side delete check (all stores/items, not just live ones)
+        return { ...r, used: u?.stores.size ?? 0, items: u?.items ?? 0, totalUsed: total.get(key(r.name)) ?? 0 };
       }),
     };
   });
+
+/** Total usage per category name — mirrors staff_category_usage: all non-deleted stores (store_type) or all items. */
+async function totalUsage(db: any, kind: CatKind) {
+  const out = new Map<string, number>();
+  const bump = (n: string) => { const k = String(n ?? "").trim().toLowerCase(); out.set(k, (out.get(k) ?? 0) + 1); };
+  if (kind === "store_type") {
+    const c = await db.from("store_categories").select("id, name"); fail(c);
+    const nm = new Map<string, string>(((c.data ?? []) as any[]).map((x) => [x.id, x.name]));
+    const m = await db.from("merchants").select("store_category_id").is("deleted_at", null).not("store_category_id", "is", null).limit(10000); fail(m);
+    for (const x of (m.data ?? []) as any[]) { const n = nm.get(x.store_category_id); if (n) bump(n); }
+    return out;
+  }
+  const svc = kind === "food" ? "food" : "store";
+  const c = await db.from("catalog_categories").select("id, name").eq("service_type", svc); fail(c);
+  const nm = new Map<string, string>(((c.data ?? []) as any[]).map((x) => [x.id, x.name]));
+  const p = await db.from("products").select("category_id").not("category_id", "is", null).limit(20000); fail(p);
+  for (const x of (p.data ?? []) as any[]) { const n = nm.get(x.category_id); if (n) bump(n); }
+  return out;
+}
 
 /** Live stores / live items grouped by category name (so city and Default copies of a category count together). */
 async function liveUsage(db: any, kind: CatKind, cityId: string | null) {
