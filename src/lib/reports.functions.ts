@@ -970,7 +970,8 @@ export const getServiceReport = createServerFn({ method: "POST" })
       const refund = coin ? 0 : refundOf(r, charged);
       const gst = coin || charged <= 0 ? 0 : Number(r.gst_amount ?? 0) * (Math.max(0, charged - refund) / charged);
       const parent = rows[groups.get(k) === "wash" ? "wash" : "clean"];
-      const label = String(r.service_label ?? "").trim() || "Other";
+      const raw = String(r.service_label ?? "").trim() || "Other";
+      const label = /half\s*day/i.test(raw) ? "4 Hours" : /full\s*day/i.test(raw) ? "8 Hours" : raw;
       parent.sub = parent.sub ?? [];
       let child = parent.sub.find((x) => x.service === label);
       if (!child) { child = mk(label, label); parent.sub.push(child); }
