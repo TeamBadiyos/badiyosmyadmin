@@ -923,3 +923,84 @@ export const getEntityDrilldown = createServerFn({ method: "POST" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return ((rows ?? []) as any[]).map((r) => ({ id: r.id, number: r.order_number ?? r.id.slice(0, 8), date: fmt(r.created_at), status: r.status, amount: Number(r.total_amount ?? 0) }));
   });
+
+// ============ Service-wise (successful orders, gross, net) ============
+export type ServiceReportRow = { key: string; service: string; orders: number; gross: number; discount: number; refunds: number; gst: number; net: number };
+
+export const getServiceReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: ReportRange | undefined) => validateRange(i))
+  .handler(async ({ data, context }): Promise<ServiceReportRow[]> => {
+    const scope = await getScope(context.supabase, context.userId);
+    const zone = scopeZone(scope, data.zoneId);
+    const db = context.supabase;
+    const f = rangeFrom(data.from), t = rangeTo(data.to);
+    const mk = (key: string, service: string): ServiceReportRow => ({ key, service, orders: 0, gross: 0, discount: 0, refunds: 0, gst: 0, net: 0 });
+    const rows: Record<string, ServiceReportRow> = {
+      clean: mk("clean", "Clean Home"), wash: mk("wash", "Clean Auto"),
+      store: mk("store", "Store"), food: mk("food", "Food"), parcel: mk("parcel", "Parcel"),
+    };
+    const add = (r: ServiceReportRow, gross: number, discount: number, refund: number, gst: number) => {
+      r.orders += 1; r.gross += gross; r.discount += discount; r.refunds += refund; r.gst += gst;
+      r.net += Math.max(0, gross - discount - refund) - gst;
+    };
+    if (zone === "empty") return Object.values(rows);
+
+    let bq = db.from("bookings")
+      .select("price,total_amount,discount_amount,gst_amount,refund_amount,refund_status,razorpay_payment_id,service_category_id,service_label")
+      .eq("is_training", false).is("deleted_at", null).eq("status", "completed")
+      .gte("created_at", f).lte("created_at", t);
+    bq = applyZone(bq, zone);
+    const { data: bk, error } = await bq.limit(20000);
+    if (error) throw new Error(error.message);
+    const groups = new Map<string, string>();
+    for (const r of (bk ?? []) as Array<Record<string, unknown>>) {
+      const k = `${r.service_category_id ?? ""}|${r.service_label ?? ""}`;
+      if (!groups.has(k)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = await (db as any).rpc("booking_capacity_group", { _category_id: r.service_category_id ?? null, _label: r.service_label ?? null });
+        groups.set(k, String(g.data ?? "clean"));
+      }
+      const pid = String(r.razorpay_payment_id ?? "");
+      if (pid.toUpperCase().startsWith("TESTPRICE")) continue;
+      const discount = Number(r.discount_amount ?? 0);
+      const total = Number(r.total_amount ?? 0);
+      const charged = total > 0 ? total : Math.max(0, Number(r.price ?? 0) - discount);
+      const coin = pid.toLowerCase().startsWith("free_");
+      const refund = coin ? 0 : refundOf(r, charged);
+      const gst = coin || charged <= 0 ? 0 : Number(r.gst_amount ?? 0) * (Math.max(0, charged - refund) / charged);
+      add(rows[groups.get(k) === "wash" ? "wash" : "clean"], charged + discount, discount + (coin ? charged : 0), refund, gst);
+    }
+
+    if (scope.role !== "area_partner") {
+      const [mo, co] = await Promise.all([
+        db.from("merchant_orders")
+          .select("total_amount,total_payable,coupon_discount,refund_amount,refund_status,gst_items,gst_delivery,gst_platform,merchants!inner(service_type)")
+          .eq("is_training", false).in("status", ["delivered", "completed"]).gte("created_at", f).lte("created_at", t).limit(20000),
+        db.from("courier_orders")
+          .select("total_amount,discount_amount,gst_amount,refund_amount,refund_status,razorpay_payment_id")
+          .is("merchant_order_id", null).is("business_merchant_id", null).in("status", ["DELIVERED", "COMPLETED"])
+          .gte("created_at", f).lte("created_at", t).limit(20000),
+      ]);
+      if (mo.error) throw new Error(mo.error.message);
+      if (co.error) throw new Error(co.error.message);
+      for (const r of (mo.data ?? []) as Array<Record<string, unknown>>) {
+        const paid = Number(r.total_payable ?? r.total_amount ?? 0);
+        const discount = Number(r.coupon_discount ?? 0);
+        const refund = refundOf(r, paid);
+        const gstAll = Number(r.gst_items ?? 0) + Number(r.gst_delivery ?? 0) + Number(r.gst_platform ?? 0);
+        const gst = paid > 0 ? gstAll * (Math.max(0, paid - refund) / paid) : 0;
+        const st = (r.merchants as { service_type?: string } | null)?.service_type === "food" ? "food" : "store";
+        add(rows[st], paid + discount, discount, refund, gst);
+      }
+      for (const r of (co.data ?? []) as Array<Record<string, unknown>>) {
+        const charged = Number(r.total_amount ?? 0);
+        const discount = Number(r.discount_amount ?? 0);
+        const coin = String(r.razorpay_payment_id ?? "").toLowerCase().startsWith("free_");
+        const refund = coin ? 0 : refundOf(r, charged);
+        const gst = coin || charged <= 0 ? 0 : Number(r.gst_amount ?? 0) * (Math.max(0, charged - refund) / charged);
+        add(rows.parcel, charged + discount, discount + (coin ? charged : 0), refund, gst);
+      }
+    }
+    return Object.values(rows);
+  });
