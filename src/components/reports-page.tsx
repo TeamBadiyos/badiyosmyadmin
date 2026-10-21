@@ -31,6 +31,7 @@ import {
   getRiderReport,
   getStoreReport,
   getPayoutOverview,
+  getServiceReport,
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
@@ -44,6 +45,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 
 const TABS = [
   { key: "pnl", label: "Profit & Loss" },
+  { key: "services", label: "Service-wise" },
   { key: "revenue", label: "Revenue" },
   { key: "bookings", label: "Bookings" },
   { key: "experts", label: "Experts (Services)" },
@@ -172,6 +174,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
 
 
       {tab === "pnl" && <PnlTab range={range} />}
+      {tab === "services" && <ServiceWiseTab range={range} />}
       {tab === "revenue" && <RevenueTab range={range} />}
       {tab === "bookings" && <BookingsTab range={range} />}
       {tab === "experts" && <ExpertsTab range={range} />}
@@ -1080,6 +1083,52 @@ function PnlTab({ range }: { range: ReportRange }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </Card>
+    </div>
+  );
+}
+
+// ============ Service-wise ============
+function ServiceWiseTab({ range }: { range: ReportRange }) {
+  const fetchFn = useServerFn(getServiceReport);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "service-wise", range],
+    queryFn: () => fetchFn({ data: range }),
+  });
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMsg msg={(error as Error).message} />;
+  if (!data) return null;
+  const tot = data.reduce((a, r) => ({ orders: a.orders + r.orders, gross: a.gross + r.gross, discount: a.discount + r.discount, refunds: a.refunds + r.refunds, gst: a.gst + r.gst, net: a.net + r.net }), { orders: 0, gross: 0, discount: 0, refunds: 0, gst: 0, net: 0 });
+  const all = [...data.map((r) => [r.service, r]), ["Total", tot]] as Array<[string, typeof tot]>;
+  const exportCsv = () => {
+    const csv = ["Service,Successful orders,Gross revenue,Discount,Refunds,GST,Net revenue (excl GST)",
+      ...all.map(([n, r]) => `"${n}",${r.orders},${r.gross.toFixed(2)},${r.discount.toFixed(2)},${r.refunds.toFixed(2)},${r.gst.toFixed(2)},${r.net.toFixed(2)}`)].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `service-wise-${range.from}-to-${range.to}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Stat label="Successful orders" value={tot.orders} />
+        <Stat label="Gross revenue" value={inr.format(tot.gross)} />
+        <Stat label="Net revenue (excl GST)" value={inr.format(tot.net)} />
+      </div>
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[15px] font-bold text-foreground">Service-wise</h3>
+          <button onClick={exportCsv} className="h-9 px-4 rounded-[12px] border border-border font-semibold text-[13px] hover:bg-muted">Download CSV</button>
+        </div>
+        <SimpleTable
+          columns={["Service", "Successful orders", "Gross revenue", "Discount", "Refunds", "GST", "Net revenue"]}
+          rightAlign={[1, 2, 3, 4, 5, 6]}
+          emptyText="No orders."
+          rows={all.map(([n, r]) => [n, String(r.orders), inr.format(r.gross), inr.format(r.discount), inr.format(r.refunds), inr.format(r.gst), inr.format(r.net)])}
+        />
+        <p className="text-[12px] text-muted-foreground mt-3">
+          Successful = completed bookings / delivered orders. Gross = order value before discount, incl. GST. Net = gross − discount − refunds − GST. Training, test and bulk delivery orders are excluded.
+        </p>
       </Card>
     </div>
   );
