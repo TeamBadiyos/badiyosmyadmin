@@ -1012,3 +1012,91 @@ export const getServiceReport = createServerFn({ method: "POST" })
     for (const r of Object.values(rows)) r.sub?.sort((a, b) => b.orders - a.orders);
     return Object.values(rows);
   });
+
+// ============ Maid (Clean Home) work & pay ============
+export type MaidWorkReport = {
+  orders: number; hours: number; basicPay: number; bonus: number; totalPay: number;
+  maids: number; avgBasicPerHour: number; avgTotalPerHour: number;
+  rows: Array<{ expertId: string; name: string; orders: number; hours: number; basicPay: number; bonus: number; totalPay: number; perHour: number }>;
+};
+
+export const getMaidWorkReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: ReportRange | undefined) => validateRange(i))
+  .handler(async ({ data, context }): Promise<MaidWorkReport> => {
+    const scope = await getScope(context.supabase, context.userId);
+    const zone = scopeZone(scope, data.zoneId);
+    const empty: MaidWorkReport = { orders: 0, hours: 0, basicPay: 0, bonus: 0, totalPay: 0, maids: 0, avgBasicPerHour: 0, avgTotalPerHour: 0, rows: [] };
+    if (zone === "empty") return empty;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: any = context.supabase;
+    let q = db.from("bookings")
+      .select("id, assigned_expert_id, service_duration_minutes, service_category_id, service_label, razorpay_payment_id, snapshot_expert_payout")
+      .eq("status", "completed").eq("is_training", false).is("deleted_at", null)
+      .not("assigned_expert_id", "is", null)
+      .gte("created_at", rangeFrom(data.from)).lte("created_at", rangeTo(data.to));
+    q = applyZone(q, zone);
+    const { data: bk, error } = await q.limit(20000);
+    if (error) throw new Error(error.message);
+    const groups = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (bk ?? []) as any[]) {
+      if (String(r.razorpay_payment_id ?? "").toUpperCase().startsWith("TESTPRICE")) continue;
+      const k = `${r.service_category_id ?? ""}|${r.service_label ?? ""}`;
+      if (!groups.has(k)) {
+        const g = await db.rpc("booking_capacity_group", { _category_id: r.service_category_id ?? null, _label: r.service_label ?? null });
+        groups.set(k, String(g.data ?? "clean"));
+      }
+      if (groups.get(k) !== "wash") list.push(r);
+    }
+    if (!list.length) return empty;
+    const ids = list.map((b) => b.id as string);
+    const expertIds = [...new Set(list.map((b) => b.assigned_expert_id as string))];
+
+    const extMin = new Map<string, number>();
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data: ex } = await db.from("booking_extensions").select("booking_id, extra_minutes, approval_status")
+        .in("booking_id", ids.slice(i, i + 300)).in("approval_status", ["accepted", "approved"]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const e of (ex ?? []) as any[]) extMin.set(e.booking_id, (extMin.get(e.booking_id) ?? 0) + Number(e.extra_minutes || 0));
+    }
+
+    const payByBooking = new Map<string, number>();
+    const bonusBy = new Map<string, number>();
+    const startTs = rangeFrom(data.from), endTs = rangeTo(data.to);
+    for (let i = 0; i < expertIds.length; i += 100) {
+      const { data: led, error: lErr } = await db.from("wallet_ledger")
+        .select("owner_id, type, amount, reason, created_at")
+        .eq("owner_type", "expert").in("owner_id", expertIds.slice(i, i + 100))
+        .gte("created_at", new Date(new Date(startTs).getTime() - 14 * 86400000).toISOString())
+        .limit(20000);
+      if (lErr) throw new Error(lErr.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const l of (led ?? []) as any[]) {
+        const amt = Number(l.amount || 0) * (l.type === "debit" ? -1 : 1);
+        const m = /^(?:Booking payout|Extension payout[^:]*):\s*([0-9a-f-]{36})/i.exec(l.reason ?? "");
+        if (m) payByBooking.set(m[1], (payByBooking.get(m[1]) ?? 0) + amt);
+        else if (l.type === "credit" && l.created_at >= startTs && l.created_at <= endTs && /reward:|bonus|incentive/i.test(l.reason ?? ""))
+          bonusBy.set(l.owner_id, (bonusBy.get(l.owner_id) ?? 0) + amt);
+      }
+    }
+    const { data: ex } = await db.from("experts").select("id, name").in("id", expertIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const names = new Map<string, string>(((ex ?? []) as any[]).map((e) => [e.id, e.name || "—"]));
+    const acc = new Map<string, MaidWorkReport["rows"][number]>();
+    for (const b of list) {
+      const id = b.assigned_expert_id as string;
+      const r = acc.get(id) ?? { expertId: id, name: names.get(id) ?? "—", orders: 0, hours: 0, basicPay: 0, bonus: bonusBy.get(id) ?? 0, totalPay: 0, perHour: 0 };
+      r.orders += 1;
+      r.hours += (Number(b.service_duration_minutes || 0) + (extMin.get(b.id) ?? 0)) / 60;
+      r.basicPay += payByBooking.has(b.id) ? payByBooking.get(b.id)! : Number(b.snapshot_expert_payout || 0);
+      acc.set(id, r);
+    }
+    const rows = [...acc.values()].map((r) => ({ ...r, totalPay: r.basicPay + r.bonus, perHour: r.hours ? (r.basicPay + r.bonus) / r.hours : 0 }))
+      .sort((a, b) => b.hours - a.hours);
+    const s = rows.reduce((a, r) => ({ orders: a.orders + r.orders, hours: a.hours + r.hours, basicPay: a.basicPay + r.basicPay, bonus: a.bonus + r.bonus }), { orders: 0, hours: 0, basicPay: 0, bonus: 0 });
+    return { ...s, totalPay: s.basicPay + s.bonus, maids: rows.length,
+      avgBasicPerHour: s.hours ? s.basicPay / s.hours : 0, avgTotalPerHour: s.hours ? (s.basicPay + s.bonus) / s.hours : 0, rows };
+  });

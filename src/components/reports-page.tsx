@@ -32,6 +32,7 @@ import {
   getStoreReport,
   getPayoutOverview,
   getServiceReport,
+  getMaidWorkReport,
   type ReportRange,
 } from "@/lib/reports.functions";
 import { listZoneOptions } from "@/lib/bookings.functions";
@@ -46,6 +47,7 @@ type StaffRole = "super_admin" | "ops_manager" | "area_partner" | "finance";
 const TABS = [
   { key: "pnl", label: "Profit & Loss" },
   { key: "services", label: "Service-wise" },
+  { key: "maids", label: "Maid hours & pay" },
   { key: "revenue", label: "Revenue" },
   { key: "bookings", label: "Bookings" },
   { key: "experts", label: "Experts (Services)" },
@@ -175,6 +177,7 @@ export function ReportsPage({ role }: { role: StaffRole | null }) {
 
       {tab === "pnl" && <PnlTab range={range} />}
       {tab === "services" && <ServiceWiseTab range={range} />}
+      {tab === "maids" && <MaidWorkTab range={range} />}
       {tab === "revenue" && <RevenueTab range={range} />}
       {tab === "bookings" && <BookingsTab range={range} />}
       {tab === "experts" && <ExpertsTab range={range} />}
@@ -1146,6 +1149,40 @@ function ServiceWiseTab({ range }: { range: ReportRange }) {
         <p className="text-[12px] text-muted-foreground mt-3">
           Successful = completed bookings / delivered orders. Gross = order value before discount, incl. GST. Net = gross − discount − refunds − GST. Training, test and bulk delivery orders are excluded.
         </p>
+      </Card>
+    </div>
+  );
+}
+
+// ============ Maid hours & pay (Clean Home) ============
+function MaidWorkTab({ range }: { range: ReportRange }) {
+  const fetchFn = useServerFn(getMaidWorkReport);
+  const { data, isLoading, error } = useQuery({ queryKey: ["reports", "maids", range], queryFn: () => fetchFn({ data: range }) });
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMsg msg={(error as Error).message} />;
+  if (!data) return null;
+  const h = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 1 });
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat label="Hours worked" value={h(data.hours)} />
+        <Stat label="Orders" value={data.orders} />
+        <Stat label="Maids" value={data.maids} />
+        <Stat label="Basic pay" value={inr.format(data.basicPay)} />
+        <Stat label="Bonus" value={inr.format(data.bonus)} />
+        <Stat label="Total paid" value={inr.format(data.totalPay)} />
+        <Stat label="Avg basic / hour" value={inr.format(data.avgBasicPerHour)} />
+        <Stat label="Avg total (basic + bonus) / hour" value={inr.format(data.avgTotalPerHour)} />
+      </div>
+      <Card>
+        <h3 className="text-[15px] font-bold text-foreground mb-4">Per maid</h3>
+        <SimpleTable
+          columns={["Maid", "Orders", "Hours", "Basic pay", "Bonus", "Total", "Per hour"]}
+          rows={data.rows.map((r) => [r.name, String(r.orders), h(r.hours), inr.format(r.basicPay), inr.format(r.bonus), inr.format(r.totalPay), inr.format(r.perHour)])}
+          rightAlign={[1, 2, 3, 4, 5, 6]}
+          emptyText="No completed Clean Home orders in this period."
+        />
+        <p className="mt-3 text-[11px] text-muted-foreground">Completed Clean Home orders only (training/test excluded). Hours include approved extensions. Basic = credited order payouts; Bonus = rewards/incentives credited in this period.</p>
       </Card>
     </div>
   );
