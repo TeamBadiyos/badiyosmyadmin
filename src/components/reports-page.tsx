@@ -1091,6 +1091,7 @@ function PnlTab({ range }: { range: ReportRange }) {
 // ============ Service-wise ============
 function ServiceWiseTab({ range }: { range: ReportRange }) {
   const fetchFn = useServerFn(getServiceReport);
+  const [open, setOpen] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", "service-wise", range],
     queryFn: () => fetchFn({ data: range }),
@@ -1124,8 +1125,24 @@ function ServiceWiseTab({ range }: { range: ReportRange }) {
           columns={["Service", "Successful orders", "Gross revenue", "Discount", "Refunds", "GST", "Net revenue"]}
           rightAlign={[1, 2, 3, 4, 5, 6]}
           emptyText="No orders."
-          rows={all.map(([n, r]) => [n, String(r.orders), inr.format(r.gross), inr.format(r.discount), inr.format(r.refunds), inr.format(r.gst), inr.format(r.net)])}
+          rows={all.map(([n, r], i) => [`${data[i]?.sub?.length ? (open === data[i].key ? "▾ " : "▸ ") : ""}${n}`, String(r.orders), inr.format(r.gross), inr.format(r.discount), inr.format(r.refunds), inr.format(r.gst), inr.format(r.net)])}
+          onRowClick={(i) => { const k = data[i]?.key; if (k && data[i].sub?.length) setOpen(open === k ? null : k); }}
         />
+        {open && (() => {
+          const p = data.find((d) => d.key === open);
+          if (!p?.sub?.length) return null;
+          return (
+            <div className="mt-4">
+              <h4 className="text-[13px] font-bold text-foreground mb-2">{p.service} — breakup by service</h4>
+              <SimpleTable
+                columns={["Service", "Successful orders", "Gross revenue", "Discount", "Refunds", "GST", "Net revenue"]}
+                rightAlign={[1, 2, 3, 4, 5, 6]}
+                emptyText="No orders."
+                rows={p.sub.map((r) => [r.service, String(r.orders), inr.format(r.gross), inr.format(r.discount), inr.format(r.refunds), inr.format(r.gst), inr.format(r.net)])}
+              />
+            </div>
+          );
+        })()}
         <p className="text-[12px] text-muted-foreground mt-3">
           Successful = completed bookings / delivered orders. Gross = order value before discount, incl. GST. Net = gross − discount − refunds − GST. Training, test and bulk delivery orders are excluded.
         </p>

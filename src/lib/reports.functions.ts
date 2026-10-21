@@ -925,7 +925,7 @@ export const getEntityDrilldown = createServerFn({ method: "POST" })
   });
 
 // ============ Service-wise (successful orders, gross, net) ============
-export type ServiceReportRow = { key: string; service: string; orders: number; gross: number; discount: number; refunds: number; gst: number; net: number };
+export type ServiceReportRow = { key: string; service: string; orders: number; gross: number; discount: number; refunds: number; gst: number; net: number; sub?: ServiceReportRow[] };
 
 export const getServiceReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -969,7 +969,13 @@ export const getServiceReport = createServerFn({ method: "POST" })
       const coin = pid.toLowerCase().startsWith("free_");
       const refund = coin ? 0 : refundOf(r, charged);
       const gst = coin || charged <= 0 ? 0 : Number(r.gst_amount ?? 0) * (Math.max(0, charged - refund) / charged);
-      add(rows[groups.get(k) === "wash" ? "wash" : "clean"], charged + discount, discount + (coin ? charged : 0), refund, gst);
+      const parent = rows[groups.get(k) === "wash" ? "wash" : "clean"];
+      const label = String(r.service_label ?? "").trim() || "Other";
+      parent.sub = parent.sub ?? [];
+      let child = parent.sub.find((x) => x.service === label);
+      if (!child) { child = mk(label, label); parent.sub.push(child); }
+      add(parent, charged + discount, discount + (coin ? charged : 0), refund, gst);
+      add(child, charged + discount, discount + (coin ? charged : 0), refund, gst);
     }
 
     if (scope.role !== "area_partner") {
@@ -1002,5 +1008,6 @@ export const getServiceReport = createServerFn({ method: "POST" })
         add(rows.parcel, charged + discount, discount + (coin ? charged : 0), refund, gst);
       }
     }
+    for (const r of Object.values(rows)) r.sub?.sort((a, b) => b.orders - a.orders);
     return Object.values(rows);
   });
