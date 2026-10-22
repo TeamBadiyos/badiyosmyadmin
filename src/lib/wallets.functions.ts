@@ -1,3 +1,4 @@
+import type { PnlTag } from "./adjustment-pnl";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { validateAdjustmentDate } from "@/lib/adjustment-date";
@@ -37,6 +38,8 @@ export type LedgerEntry = {
   created_at: string;
   adjustment_date: string | null;
   is_manual_adjustment: boolean;
+  pnl_tag: PnlTag | null;
+  pnl_expense_category: string | null;
 };
 
 export type PayoutBatch = {
@@ -126,7 +129,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
     const role = await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
     const { data: rows, error } = await context.supabase
       .from("wallet_ledger")
-      .select("id, amount, type, reason, created_at, adjustment_date")
+      .select("id, amount, type, reason, created_at, adjustment_date, pnl_tag, pnl_expense_category")
       .eq("owner_type", data.owner_type)
       .eq("owner_id", data.owner_id)
       .order("effective_at", { ascending: false }).order("created_at", { ascending: false })
@@ -145,6 +148,8 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
       created_at: r.created_at,
       adjustment_date: r.adjustment_date,
       is_manual_adjustment: manualIds.has(r.id),
+      pnl_tag: (r.pnl_tag ?? null) as PnlTag | null,
+      pnl_expense_category: r.pnl_expense_category ?? null,
     }));
   });
 
@@ -158,7 +163,10 @@ export const walletAdjust = createServerFn({ method: "POST" })
       type: "credit" | "debit";
       reason: string;
       adjustment_date: string;
+      pnl_tag?: PnlTag | null;
+      pnl_expense_category?: string | null;
     }) => {
+      checkPnlTag(input?.pnl_tag, input?.pnl_expense_category);
       if (!input?.owner_id) throw new Error("owner_id required");
       if (!(input.amount > 0)) throw new Error("Amount must be positive");
       if (!input.reason?.trim()) throw new Error("Reason required");
@@ -176,17 +184,35 @@ export const walletAdjust = createServerFn({ method: "POST" })
       _adjustment_date: data.adjustment_date,
     });
     if (error) throw new Error(error.message);
+    if (data.pnl_tag) {
+      const { data: id, error: e2 } = await context.supabase.rpc("staff_latest_my_adjustment", { _owner_id: data.owner_id });
+      if (e2) throw new Error(e2.message);
+      if (!id) throw new Error("Adjustment posted, but report category could not be saved. Edit it to set the category.");
+      await tagAdjustment(context.supabase, id, data.pnl_tag, data.pnl_expense_category ?? null);
+    }
     return { ok: true };
   });
 
 // ---------- Payouts ----------
 
+const PNL_TAGS = ["bonus", "expense_recovery", "payout_adjustment", "advance"];
+function checkPnlTag(tag: string | null | undefined, cat: string | null | undefined) {
+  if (tag && !PNL_TAGS.includes(tag)) throw new Error("Invalid report category");
+  if (tag === "expense_recovery" && !cat?.trim()) throw new Error("Expense category required");
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function tagAdjustment(db: any, id: string, tag: string | null, cat: string | null) {
+  const { error } = await db.rpc("staff_tag_wallet_adjustment", { _ledger_id: id, _tag: tag, _expense_category: tag === "expense_recovery" ? cat : null });
+  if (error) throw new Error(error.message);
+}
+
 type AdjustmentSnapshot = Pick<LedgerEntry, "amount" | "type" | "reason" | "adjustment_date">;
 
 export const editWalletAdjustment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { ledger_id: string; amount: number; type: "credit" | "debit"; reason: string; adjustment_date: string; expected: AdjustmentSnapshot }) => {
+  .inputValidator((input: { ledger_id: string; amount: number; type: "credit" | "debit"; reason: string; adjustment_date: string; expected: AdjustmentSnapshot; pnl_tag?: PnlTag | null; pnl_expense_category?: string | null }) => {
     if (!input?.ledger_id) throw new Error("Adjustment required");
+    checkPnlTag(input.pnl_tag, input.pnl_expense_category);
     if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Amount must be positive");
     if (input.type !== "credit" && input.type !== "debit") throw new Error("Invalid type");
     if (!input.reason?.trim()) throw new Error("Reason required");
@@ -199,6 +225,7 @@ export const editWalletAdjustment = createServerFn({ method: "POST" })
       _reason: data.reason.trim(), _adjustment_date: data.adjustment_date, _expected: data.expected,
     });
     if (error) throw new Error(error.message);
+    await tagAdjustment(context.supabase, data.ledger_id, data.pnl_tag ?? null, data.pnl_expense_category ?? null);
     return { ok: true };
   });
 

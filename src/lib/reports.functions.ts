@@ -1,3 +1,4 @@
+import { summariseLedgerPnl, type AdjustmentPnl, type PnlLedgerRow } from "./adjustment-pnl";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -557,6 +558,7 @@ export type PnlReport = {
   courier: PnlLine & { riderPayout: number };
   store: { orders: number; gross: number; refunds: number; commission: number; commissionGst: number; merchantPayout: number };
   bonuses: number;
+  adjustments: AdjustmentPnl;
   programCommission: number;
   gatewayCharges: { fees: number; gst: number; total: number };
   paidOut: { paid: number; pending: number; tds: number };
@@ -597,6 +599,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
     const courier = { ...emptyLine(), riderPayout: 0 };
     const store = { orders: 0, gross: 0, refunds: 0, commission: 0, commissionGst: 0, merchantPayout: 0 };
     let bonuses = 0;
+    let adjustments: AdjustmentPnl = { bonuses: 0, payoutAdjust: 0, recoveries: [], recoveryTotal: 0 };
     let programCommission = 0;
     const paidOut = { paid: 0, pending: 0, tds: 0 };
 
@@ -642,8 +645,8 @@ export const getPnlReport = createServerFn({ method: "POST" })
         db.from("merchant_orders")
           .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at").eq("is_training", false)
           .eq("status", "completed").gte("created_at", f).lte("created_at", t).limit(20000),
-        db.from("wallet_ledger").select("amount,reason,type")
-          .eq("wallet_type", "earnings").eq("type", "credit").gte("effective_at", f).lte("effective_at", t).limit(20000),
+        db.from("wallet_ledger").select("amount,reason,type,pnl_tag,pnl_expense_category")
+          .eq("wallet_type", "earnings").or("type.eq.credit,pnl_tag.not.is.null").gte("effective_at", f).lte("effective_at", t).limit(20000),
         db.from("payout_batch_items").select("net_amount,amount,tds_amount,paid,batch_id,payout_batches!inner(week_start,week_end,status)")
           .neq("payout_batches.status", "discarded").gte("payout_batches.week_end", data.from).lte("payout_batches.week_start", data.to).limit(20000),
       ]);
@@ -677,9 +680,10 @@ export const getPnlReport = createServerFn({ method: "POST" })
         const b = day(String(r.created_at));
         if (b) { b.collected += total - refund; b.payouts += Math.max(0, total - refund - comm - cgst); b.profit += comm; }
       }
-      for (const r of (wl.data ?? []) as Array<{ amount: number; reason: string | null }>) {
-        if (/bonus|incentive|reward|milestone/i.test(r.reason ?? "")) bonuses += Number(r.amount ?? 0);
-      }
+      const adj = summariseLedgerPnl((wl.data ?? []) as PnlLedgerRow[]);
+      bonuses = adj.bonuses;
+      adjustments = adj;
+      services.expertPayout += adj.payoutAdjust;
       if (!pb.error) for (const r of (pb.data ?? []) as Array<Record<string, unknown>>) {
         const net = Number(r.net_amount ?? r.amount ?? 0);
         paidOut.tds += Number(r.tds_amount ?? 0);
@@ -717,7 +721,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
     const platformProfit = netRevenue - partnerPayouts - bonuses - gatewayCharges.total;
     const grossProfit = netRevenue - services.expertPayout - services.partnerPayout - courier.riderPayout;
     return {
-      services, courier, store, bonuses, paidOut, programCommission, gatewayCharges,
+      services, courier, store, bonuses, adjustments, paidOut, programCommission, gatewayCharges,
       totals: {
         gross: services.gross + courier.gross + store.gross,
         discount: services.discount + services.coinDiscount + courier.discount + courier.coinDiscount,
