@@ -1,124 +1,103 @@
-// PIN-based login for customers and experts.
-//
-// Flow:
-//   1) Client posts { phone, pin, user_type: 'customer' | 'expert' }.
-//   2) verify_login_pin RPC (service-role) checks lockout + bcrypt-hashed
-//      pin_hash and, on success, returns the caller's auth.users id.
-//      Failed attempts increment a per-phone counter; 5 fails => 15-minute
-//      lockout. Success clears the counter.
-//   3) On match we mint a session the same way the existing OTP-verify flow
-//      does: `admin.generateLink({ type: 'sms', phone })` produces a fresh
-//      one-time OTP hash the client verifies with `supabase.auth.verifyOtp`.
-//      This reuses the exact GoTrue path the WhatsApp OTP login already
-//      relies on, so no new session-minting surface is introduced.
-//   4) On mismatch we always return the same 401 "Incorrect PIN" body —
-//      never disclosing whether the phone number itself exists.
+// Supabase Edge Function: verify-pin-login
+// Verifies a customer's 4-digit login PIN via the SECURITY DEFINER
+// verify_login_pin RPC. On success, mints a Supabase auth session for the
+// customer using the same synthetic-email + reset-password pattern used by
+// verify-otp. Returns 429 with retry_after_seconds when locked out.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const CORS_HEADERS = {
+const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function json(status: number, body: unknown) {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { phone, pin, user_type } = await req.json().catch(() => ({}));
+    // user_type is optional for backward compatibility with installed apps
+    // that never sent it; default to "customer".
+    const userType = user_type == null || user_type === "" ? "customer" : String(user_type);
+    if (userType !== "customer") {
+      return json({ error: "Invalid request" }, 400);
+    }
+    const digits = String(phone ?? "").replace(/\D/g, "").slice(-10);
+    const pinStr = String(pin ?? "").trim();
+    if (digits.length !== 10 || !/^\d{4}$/.test(pinStr)) {
+      return json({ error: "Invalid phone or PIN" }, 400);
+    }
+    const fullPhone = `+91${digits}`;
+    const syntheticEmail = `phone_91${digits}@badiyos.phone.local`;
+
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const admin = createClient(url, serviceKey);
+
+    const { data: rows, error: rpcErr } = await admin.rpc("verify_login_pin", {
+      p_phone: fullPhone,
+      p_pin: pinStr,
+      p_user_type: userType,
+    });
+    if (rpcErr) {
+      console.error("verify_login_pin failed", rpcErr);
+      return json({ error: "PIN verification failed" }, 500);
+    }
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row) return json({ error: "Invalid PIN" }, 401);
+
+    if (row.status === "locked") {
+      return json(
+        { error: "Too many attempts. Try again later.", retry_after_seconds: row.retry_after_seconds ?? 0 },
+        429,
+      );
+    }
+    if (row.status !== "ok" || !row.auth_user_id) {
+      return json({ error: "Incorrect PIN" }, 401);
+    }
+
+    const userId: string = row.auth_user_id;
+    const password = crypto.randomUUID() + crypto.randomUUID();
+
+    // Rotate password + ensure synthetic email so signInWithPassword works.
+    const { error: updErr } = await admin.auth.admin.updateUserById(userId, {
+      password,
+      email: syntheticEmail,
+      email_confirm: true,
+      user_metadata: { phone: fullPhone },
+    });
+    if (updErr) {
+      console.error("updateUserById failed", updErr);
+      return json({ error: updErr.message || "Could not sign in" }, 500);
+    }
+
+    const anon = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: signIn, error: signErr } = await anon.auth.signInWithPassword({
+      email: syntheticEmail,
+      password,
+    });
+    if (signErr || !signIn.session) {
+      console.error("signInWithPassword failed", signErr);
+      return json({ error: signErr?.message || "Could not sign in" }, 500);
+    }
+
+    return json({
+      access_token: signIn.session.access_token,
+      refresh_token: signIn.session.refresh_token,
+    });
+  } catch (err) {
+    console.error("verify-pin-login error", err);
+    return json({ error: (err as Error).message || "Unknown error" }, 500);
+  }
+});
+
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
-
-function normalizePhone(v: string): string {
-  return (v || "").replace(/\D/g, "");
-}
-
-function toE164(digits: string): string {
-  // GoTrue expects E.164. Default to India (+91) if a 10-digit local number
-  // is given; otherwise prepend '+' to the raw digits.
-  if (digits.length === 10) return `+91${digits}`;
-  return `+${digits}`;
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
-
-  let payload: { phone?: string; pin?: string; user_type?: string };
-  try {
-    payload = await req.json();
-  } catch {
-    return json(400, { error: "Invalid JSON body" });
-  }
-
-  const phoneDigits = normalizePhone(payload.phone || "");
-  const pin = (payload.pin || "").trim();
-  const userType = payload.user_type;
-
-  if (!phoneDigits || !/^\d{4}$/.test(pin) || (userType !== "customer" && userType !== "expert")) {
-    return json(400, { error: "Invalid request" });
-  }
-
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { data, error } = await admin.rpc("verify_login_pin", {
-    p_phone: phoneDigits,
-    p_pin: pin,
-    p_user_type: userType,
-  });
-
-  if (error) {
-    console.error("verify_login_pin error:", error);
-    return json(500, { error: "Verification failed" });
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-  const status = row?.status ?? "invalid";
-
-  if (status === "locked") {
-    return json(429, {
-      error: "Too many failed attempts. Try again later.",
-      retry_after_seconds: row?.retry_after_seconds ?? 900,
-    });
-  }
-  if (status !== "ok" || !row?.auth_user_id) {
-    return json(401, { error: "Incorrect PIN" });
-  }
-
-  // Mint session via GoTrue's SMS OTP path — same mechanism the existing
-  // OTP-verify flow uses. Client then calls
-  //   supabase.auth.verifyOtp({ phone, token, type: 'sms' })
-  // to complete the session.
-  const e164 = toE164(phoneDigits);
-  const link = await admin.auth.admin.generateLink({
-    type: "sms",
-    phone: e164,
-  });
-
-  if (link.error || !link.data) {
-    console.error("generateLink error:", link.error);
-    return json(500, { error: "Could not mint session" });
-  }
-
-  return json(200, {
-    ok: true,
-    user_id: row.auth_user_id,
-    phone: e164,
-    // GoTrue returns the plaintext one-time token in properties.email_otp for
-    // email and .hashed_token/.action_link for SMS; the client uses `token`
-    // with verifyOtp. Return whichever is present.
-    token:
-      // deno-lint-ignore no-explicit-any
-      (link.data as any).properties?.email_otp ??
-      // deno-lint-ignore no-explicit-any
-      (link.data as any).properties?.hashed_token ??
-      null,
-    verify_type: "sms",
-  });
-});
