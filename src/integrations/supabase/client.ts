@@ -9,10 +9,89 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// --- Silent token refresh (single-flight) ---------------------------------
+let refreshInFlight: Promise<string | null> | null = null;
+let signingOut = false;
+
+function refreshOnce(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error || !data.session) return null;
+        return data.session.access_token;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function forceRelogin() {
+  if (signingOut) return;
+  signingOut = true;
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem("auth_notice", "Please log in again");
+    } catch {
+      /* ignore */
+    }
+    if (!window.location.pathname.startsWith("/auth")) {
+      window.location.assign("/auth?reason=expired");
+    }
+  }
+  signingOut = false;
+}
+
+/** Refresh the session; on failure sign out and send to login. Returns new token or null. */
+export async function refreshOrSignOut(): Promise<string | null> {
+  const token = await refreshOnce();
+  if (!token) await forceRelogin();
+  return token;
+}
+
+const sessionSafeFetch: typeof fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const isAuthCall = url.includes("/auth/v1/");
+  // Clone a Request input so it can be replayed once.
+  const replay = !isAuthCall && input instanceof Request ? input.clone() : null;
+  const res = await fetch(input, init);
+  if (res.status !== 401 || isAuthCall || typeof window === "undefined") return res;
+
+  const token = await refreshOrSignOut();
+  if (!token) return res;
+
+  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+  headers.set("Authorization", `Bearer ${token}`);
+  // Single retry only — the retried response is returned as-is.
+  return fetch(replay ?? input, { ...init, headers });
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: { fetch: sessionSafeFetch },
 });
+
+/** On app start: validate an existing session; refresh or sign out on JWT/401 errors. */
+export async function verifySessionOnStart() {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return;
+  const { error } = await supabase.auth.getUser();
+  if (!error) return;
+  const status = (error as { status?: number }).status;
+  if (status === 401 || status === 403 || /jwt|token/i.test(error.message)) {
+    await refreshOrSignOut();
+  }
+}
