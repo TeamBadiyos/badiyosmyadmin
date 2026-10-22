@@ -103,16 +103,24 @@ function BalancesTab({ role }: { role: Role }) {
   });
 
   const [query, setQuery] = useState("");
+  const [folder, setFolder] = useState<"active" | "inactive">("active");
   const [selected, setSelected] = useState<WalletOwner | null>(null);
   const [adjustFor, setAdjustFor] = useState<WalletOwner | null>(null);
 
+  // Inactive folder = not active AND zero balance; anyone holding money stays in Active.
+  const isArchived = (o: WalletOwner) => o.status !== undefined && o.status !== "active" && Math.abs(o.balance) < 0.005;
+  const inactiveCount = data.filter(isArchived).length;
+  const activeCount = data.length - inactiveCount;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter(
+    const inFolder = data.filter((o) => (folder === "inactive" ? isArchived(o) : !isArchived(o)));
+    if (!q) return inFolder;
+    return inFolder.filter(
       (o) => o.name.toLowerCase().includes(q) || o.phone.toLowerCase().includes(q),
     );
-  }, [data, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, query, folder]);
 
   const sf = useSortFilter(filtered, [
     { key: "owner", label: "Owner", value: (o: WalletOwner) => o.name },
@@ -135,6 +143,10 @@ function BalancesTab({ role }: { role: Role }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
       <div className="space-y-4 min-w-0">
+        <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
+          <TabBtn active={folder === "active"} onClick={() => setFolder("active")}>Active ({activeCount})</TabBtn>
+          <TabBtn active={folder === "inactive"} onClick={() => setFolder("inactive")}>Inactive ({inactiveCount})</TabBtn>
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[220px]">
             <Search

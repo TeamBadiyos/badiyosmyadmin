@@ -28,6 +28,7 @@ export type WalletOwner = {
   name: string;
   phone: string;
   balance: number;
+  status?: string;
 };
 
 export type LedgerEntry = {
@@ -102,7 +103,7 @@ export const listWalletOwners = createServerFn({ method: "GET" })
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
     const db = context.supabase;
 
-    const { data: experts, error: e1 } = await db.from("experts").select("id, name, phone, wallet_balance");
+    const { data: experts, error: e1 } = await db.from("experts").select("id, name, phone, wallet_balance, status");
     if (e1) throw new Error(e1.message);
 
     const rows: WalletOwner[] = [];
@@ -113,6 +114,7 @@ export const listWalletOwners = createServerFn({ method: "GET" })
         name: e.name,
         phone: e.phone,
         balance: Number(e.wallet_balance ?? 0),
+        status: e.status,
       });
     }
     rows.sort((a, b) => a.name.localeCompare(b.name));
