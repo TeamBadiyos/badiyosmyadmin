@@ -643,7 +643,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
           .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at").eq("is_training", false)
           .eq("status", "completed").gte("created_at", f).lte("created_at", t).limit(20000),
         db.from("wallet_ledger").select("amount,reason,type")
-          .eq("wallet_type", "earnings").eq("type", "credit").gte("created_at", f).lte("created_at", t).limit(20000),
+          .eq("wallet_type", "earnings").eq("type", "credit").gte("effective_at", f).lte("effective_at", t).limit(20000),
         db.from("payout_batch_items").select("net_amount,amount,tds_amount,paid,batch_id,payout_batches!inner(week_start,week_end,status)")
           .neq("payout_batches.status", "discarded").gte("payout_batches.week_end", data.from).lte("payout_batches.week_start", data.to).limit(20000),
       ]);
@@ -1068,9 +1068,9 @@ export const getMaidWorkReport = createServerFn({ method: "POST" })
     const startTs = rangeFrom(data.from), endTs = rangeTo(data.to);
     for (let i = 0; i < expertIds.length; i += 100) {
       const { data: led, error: lErr } = await db.from("wallet_ledger")
-        .select("owner_id, type, amount, reason, created_at")
+        .select("owner_id, type, amount, reason, created_at, effective_at")
         .eq("owner_type", "expert").in("owner_id", expertIds.slice(i, i + 100))
-        .gte("created_at", new Date(new Date(startTs).getTime() - 14 * 86400000).toISOString())
+        .gte("effective_at", new Date(new Date(startTs).getTime() - 14 * 86400000).toISOString())
         .limit(20000);
       if (lErr) throw new Error(lErr.message);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1078,7 +1078,7 @@ export const getMaidWorkReport = createServerFn({ method: "POST" })
         const amt = Number(l.amount || 0) * (l.type === "debit" ? -1 : 1);
         const m = /^(?:Booking payout|Extension payout[^:]*):\s*([0-9a-f-]{36})/i.exec(l.reason ?? "");
         if (m) payByBooking.set(m[1], (payByBooking.get(m[1]) ?? 0) + amt);
-        else if (l.type === "credit" && l.created_at >= startTs && l.created_at <= endTs && /reward:|bonus|incentive/i.test(l.reason ?? ""))
+        else if (l.type === "credit" && l.effective_at >= startTs && l.effective_at <= endTs && /reward:|bonus|incentive/i.test(l.reason ?? ""))
           bonusBy.set(l.owner_id, (bonusBy.get(l.owner_id) ?? 0) + amt);
       }
     }
