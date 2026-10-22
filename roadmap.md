@@ -1,5 +1,6 @@
 # Roadmap
-- [ ] Add audited Super Admin Edit/Delete options for manual adjustments with atomic balance corrections and tests.
+- [x] Add audited Super Admin Edit/Delete options for manual adjustments; rolled-back balance, date, provenance, stale-edit, payout protection and permission tests passed.
+- [ ] Verify adjustment Edit/Delete through signed-in CC; blocked by external Supabase without an available authenticated session.
 - [x] Add manual payout debit/credit adjustment dates with separate audit time; date tests and SQL accounting checks passed.
 - [ ] Verify posting a dated adjustment through signed-in CC; blocked by unavailable authenticated verification for external Supabase.
 
