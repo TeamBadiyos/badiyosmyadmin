@@ -48,7 +48,17 @@ function areaKm2(path: LL[]) {
   for (let i = 0; i < xy.length; i++) { const [x1, y1] = xy[i]; const [x2, y2] = xy[(i + 1) % xy.length]; a += x1 * y2 - x2 * y1; }
   return Math.abs(a) / 2;
 }
-const centre = (r: LL[]) => ({ lat: r.reduce((s, p) => s + p.lat, 0) / r.length, lng: r.reduce((s, p) => s + p.lng, 0) / r.length });
+/** Area centroid of the polygon (falls back to vertex average for degenerate shapes). */
+const centre = (r: LL[]) => {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < r.length; i++) {
+    const p1 = r[i], p2 = r[(i + 1) % r.length];
+    const cr = p1.lng * p2.lat - p2.lng * p1.lat;
+    a += cr; cx += (p1.lng + p2.lng) * cr; cy += (p1.lat + p2.lat) * cr;
+  }
+  if (Math.abs(a) < 1e-12) return { lat: r.reduce((s, p) => s + p.lat, 0) / r.length, lng: r.reduce((s, p) => s + p.lng, 0) / r.length };
+  return { lat: cy / (3 * a), lng: cx / (3 * a) };
+};
 const errMsg = (e: unknown) => (e as { message?: string })?.message ?? "Something went wrong";
 
 export function ZonesV2Page({ role }: { role: string | null }) {
@@ -183,10 +193,16 @@ function ZoneEditor({ role }: { role: string | null }) {
       map: map.current, path: [...path, path[0]], strokeOpacity: 0, clickable: false, zIndex: z,
       icons: [{ icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: colour, strokeWeight: weight, scale: weight }, offset: "0", repeat: `${weight * 5}px` }],
     }));
-    const label = (pos: LL, text: string, colour: string, z: number) => add(new g.maps.Marker({
-      map: map.current, position: pos, clickable: false, zIndex: z,
-      icon: { path: g.maps.SymbolPath.CIRCLE, scale: 0 }, label: { text, color: colour, fontSize: "11px", fontWeight: "700" },
-    }));
+    const label = (pos: LL, text: string, colour: string, z: number) => {
+      // white rounded pill behind the text so it stays readable over map labels
+      const w = Math.max(48, text.length * 7.5 + 16), h = 22;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="#FFFFFF" fill-opacity="0.95" stroke="${colour}" stroke-width="1.5"/></svg>`;
+      return add(new g.maps.Marker({
+        map: map.current, position: pos, clickable: false, zIndex: 1000 + z,
+        icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new g.maps.Size(w, h), anchor: new g.maps.Point(w / 2, h / 2), labelOrigin: new g.maps.Point(w / 2, h / 2) },
+        label: { text, color: colour, fontSize: "12px", fontWeight: "800" },
+      }));
+    };
     // city area: thick dashed line
     if (st.boundary && !(mode.kind === "city" && mode.cityId === cityId)) for (const r of rings(st.boundary)) dashed(r, "#0F172A", 4, 4);
     for (const c of st.cells) {
