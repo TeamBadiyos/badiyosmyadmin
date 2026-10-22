@@ -977,7 +977,7 @@ function PnlTab({ range }: { range: ReportRange }) {
       ["Other Income – Instant Settlement Fee", P.instant], ["Other Income – Franchise Fee", P.franchise],
       ...((ex?.expenses_by_category ?? []).map((e) => [`Expense – ${e.category}`, Number(e.amount)] as [string, number])),
       ...((data.adjustments?.recoveries ?? []).map((r) => [`Recovered from experts – ${r.category}`, r.amount] as [string, number])),
-      ["Net profit", P.net],
+      [P.net < 0 ? "Net loss (Debit)" : "Net profit", P.net],
       ["GST collected on customer orders", T.gst], ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST on franchise fees", Number(pf?.fee_gst ?? 0)], ["Partner deposits held (liability)", Number(pf?.deposits_held ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
     ];
@@ -1009,7 +1009,14 @@ function PnlTab({ range }: { range: ReportRange }) {
         <Stat label="GST Collected" value={inr.format(T.gst)} />
         <Stat label="Refunds" value={inr.format(T.refunds)} />
         <Stat label="Gross Profit" value={inr.format(P.gross)} />
-        <Stat label="Net Profit" value={inr.format(P.net)} />
+        {P.net < 0 ? (
+          <div className="bg-destructive/10 border border-destructive/40 rounded-[18px] p-5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-destructive">Net Loss (Debit)</p>
+            <p className="mt-2 text-[24px] font-bold text-destructive">− {inr.format(Math.abs(P.net))} Dr</p>
+          </div>
+        ) : (
+          <Stat label="Net Profit" value={inr.format(P.net)} />
+        )}
         <Stat label="Store Commission" value={inr.format(m.commission)} />
         <Stat label="Area Partner Commission" value={inr.format(data.programCommission)} />
       </div>
@@ -1038,7 +1045,17 @@ function PnlTab({ range }: { range: ReportRange }) {
           {(data.adjustments?.recoveries ?? []).map((r) => (
             <Row key={`rec-${r.category}`} label={`Recovered from experts – ${r.category}`} sub="Manual wallet debits marked as expense recovery" value={r.amount} />
           ))}
-          <Row label={`Net profit · ${P.revenue > 0 ? ((P.net / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.net} bold />
+          {P.net < 0 ? (
+            <div className="mt-2 flex items-center justify-between rounded-[12px] border border-destructive/40 bg-destructive/10 px-3 py-3 text-[15px] font-bold text-destructive">
+              <span className="flex items-center gap-2">
+                Net loss (Debit) · {P.revenue > 0 ? ((P.net / P.revenue) * 100).toFixed(1) : "0.0"}%
+                <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] uppercase tracking-wide text-destructive-foreground">Loss</span>
+              </span>
+              <span>− {inr.format(Math.abs(P.net))} Dr</span>
+            </div>
+          ) : (
+            <Row label={`Net profit · ${P.revenue > 0 ? ((P.net / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.net} bold />
+          )}
         </Card>
         {ex && (
           <Card>
