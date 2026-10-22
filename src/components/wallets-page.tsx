@@ -7,11 +7,14 @@ import { indiaToday, validateAdjustmentDate } from "@/lib/adjustment-date";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Check, ArrowLeft, Search, CalendarIcon } from "lucide-react";
+import { Plus, X, Check, ArrowLeft, Search, CalendarIcon, Pencil, Trash2 } from "lucide-react";
 import {
   listWalletOwners,
   listOwnerLedger,
   walletAdjust,
+  editWalletAdjustment,
+  deleteWalletAdjustment,
+  type LedgerEntry,
   listPayoutBatches,
   listPayoutItems,
   generatePayoutBatch,
@@ -197,7 +200,7 @@ function BalancesTab({ role }: { role: Role }) {
 
       <aside className="lg:sticky lg:top-6 h-max">
         {selected ? (
-          <LedgerCard owner={selected} onAdjust={() => setAdjustFor(selected)} role={role} />
+          <LedgerCard key={selected.id} owner={data.find((o) => o.id === selected.id) ?? selected} onAdjust={() => setAdjustFor(selected)} role={role} />
         ) : (
           <div className="bg-card border border-border rounded-[18px] p-6 text-[13px] text-muted-foreground">
             Select an owner to see their ledger.
@@ -226,6 +229,8 @@ function LedgerCard({
   role: Role;
 }) {
   const fetchLedger = useServerFn(listOwnerLedger);
+  const [editing, setEditing] = useState<LedgerEntry | null>(null);
+  const [deleting, setDeleting] = useState<LedgerEntry | null>(null);
   const { data = [], isLoading } = useQuery({
     queryKey: ["wallets", "ledger", owner.owner_type, owner.id],
     queryFn: () => fetchLedger({ data: { owner_type: owner.owner_type, owner_id: owner.id } }),
@@ -285,9 +290,17 @@ function LedgerCard({
               {e.adjustment_date ? `Adjustment date: ${format(parseISO(e.adjustment_date), "dd/MM/yyyy")}` : new Date(e.created_at).toLocaleString()}
             </p>
             {e.adjustment_date && <p className="text-[11px] text-muted-foreground">Entered: {new Date(e.created_at).toLocaleString()}</p>}
+            {role === "super_admin" && e.is_manual_adjustment && (
+              <div className="mt-2 flex justify-end gap-1">
+                <Button variant="ghost" size="icon" aria-label="Edit adjustment" title="Edit adjustment" onClick={() => setEditing(e)}><Pencil size={15} /></Button>
+                <Button variant="ghost" size="icon" className="text-destructive" aria-label="Delete adjustment" title="Delete adjustment" onClick={() => setDeleting(e)}><Trash2 size={15} /></Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
+      {editing && <AdjustModal owners={[owner]} initialOwner={owner} entry={editing} onClose={() => setEditing(null)} />}
+      {deleting && <DeleteAdjustmentDialog entry={deleting} owner={owner} onClose={() => setDeleting(null)} />}
     </div>
   );
 }
@@ -296,18 +309,21 @@ function AdjustModal({
   owners,
   initialOwner,
   onClose,
+  entry,
 }: {
   owners: WalletOwner[];
   initialOwner: WalletOwner;
   onClose: () => void;
+  entry?: LedgerEntry;
 }) {
   const queryClient = useQueryClient();
   const save = useServerFn(walletAdjust);
+  const edit = useServerFn(editWalletAdjustment);
   const [ownerKey, setOwnerKey] = useState(`${initialOwner.owner_type}:${initialOwner.id}`);
-  const [type, setType] = useState<"credit" | "debit">("credit");
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
-  const [adjustmentDate, setAdjustmentDate] = useState(() => indiaToday());
+  const [type, setType] = useState<"credit" | "debit">(entry?.type ?? "credit");
+  const [amount, setAmount] = useState(entry ? String(entry.amount) : "");
+  const [reason, setReason] = useState(entry?.reason ?? "");
+  const [adjustmentDate, setAdjustmentDate] = useState(() => entry?.adjustment_date ?? indiaToday(entry ? new Date(entry.created_at) : new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -315,9 +331,10 @@ function AdjustModal({
     mutationFn: () => {
       const [owner_type, owner_id] = ownerKey.split(":") as ["expert" | "area_partner", string];
       const amt = Number(amount);
-      if (!(amt > 0)) throw new Error("Amount must be positive");
+      if (!Number.isFinite(amt) || !(amt > 0)) throw new Error("Amount must be positive");
       if (!reason.trim()) throw new Error("Reason required");
       validateAdjustmentDate(adjustmentDate);
+      if (entry) return edit({ data: { ledger_id: entry.id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate, expected: adjustmentSnapshot(entry) } });
       return save({ data: { owner_type, owner_id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate } });
     },
     onSuccess: () => {
@@ -330,17 +347,18 @@ function AdjustModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-6 bg-foreground/50"
-      onClick={onClose}
+      onClick={() => { if (!mutation.isPending) onClose(); }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-card w-full sm:max-w-[520px] sm:rounded-[24px] overflow-hidden shadow-xl flex flex-col"
       >
         <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-[18px] font-bold text-foreground">Manual wallet adjustment</h2>
+          <h2 className="text-[18px] font-bold text-foreground">{entry ? "Edit manual adjustment" : "Manual wallet adjustment"}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
+            disabled={mutation.isPending}
             className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted"
           >
             <X size={20} />
@@ -350,6 +368,7 @@ function AdjustModal({
           <Field label="Owner">
             <select
               value={ownerKey}
+              disabled={Boolean(entry)}
               onChange={(e) => setOwnerKey(e.target.value)}
               className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
             >
@@ -415,23 +434,54 @@ function AdjustModal({
           {error && <p className="text-[13px] text-destructive">{error}</p>}
         </div>
         <footer className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
-          <button
+          <Button
             onClick={onClose}
-            className="h-11 px-4 rounded-[14px] border border-border font-semibold text-[14px]"
+            disabled={mutation.isPending}
+            variant="outline"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             disabled={mutation.isPending}
             onClick={() => {
               setError(null);
               mutation.mutate();
             }}
-            className="h-11 px-5 rounded-[14px] bg-primary text-white font-bold text-[14px] disabled:opacity-50 inline-flex items-center gap-2"
           >
-            <Check size={16} /> {mutation.isPending ? "Saving…" : "Post adjustment"}
-          </button>
+            <Check size={16} /> {mutation.isPending ? "Saving…" : entry ? "Save changes" : "Post adjustment"}
+          </Button>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+function adjustmentSnapshot(entry: LedgerEntry) {
+  return { amount: entry.amount, type: entry.type, reason: entry.reason, adjustment_date: entry.adjustment_date };
+}
+
+function DeleteAdjustmentDialog({ entry, owner, onClose }: { entry: LedgerEntry; owner: WalletOwner; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const remove = useServerFn(deleteWalletAdjustment);
+  const [reason, setReason] = useState("");
+  const mutation = useMutation({
+    mutationFn: () => remove({ data: { ledger_id: entry.id, reason, expected: adjustmentSnapshot(entry) } }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["wallets"] }); onClose(); },
+  });
+  return (
+    <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4" onClick={() => { if (!mutation.isPending) onClose(); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="delete-adjustment-title" className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h2 id="delete-adjustment-title" className="text-lg font-bold">Delete manual adjustment?</h2>
+        <p className="text-sm">{owner.name} · {entry.type} · {inr.format(entry.amount)}</p>
+        <p className="text-sm text-muted-foreground">{entry.reason}</p>
+        <p className="text-sm">Deleting reverses this adjustment’s balance change. Its audit record is kept.</p>
+        <label className="block text-sm font-semibold" htmlFor="adjustment-delete-reason">Deletion reason</label>
+        <textarea id="adjustment-delete-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-background p-3 text-sm" />
+        {mutation.error && <p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" disabled={mutation.isPending || !reason.trim()} onClick={() => mutation.mutate()}><Trash2 size={16} />{mutation.isPending ? "Deleting…" : "Delete adjustment"}</Button>
+        </div>
       </div>
     </div>
   );
