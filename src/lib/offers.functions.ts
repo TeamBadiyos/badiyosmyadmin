@@ -653,6 +653,20 @@ export const listCampaignCities = createServerFn({ method: "GET" })
     ).sort();
   });
 
+export const listCampaignStores = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ id: string; store_name: string; service_type: string | null }[]> => {
+    await requireOffersStaff(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("merchants")
+      .select("id, store_name, service_type")
+      .is("deleted_at", null)
+      .eq("status", "approved")
+      .order("store_name");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; store_name: string; service_type: string | null }[];
+  });
+
 export type CampaignInput = {
   id?: string | null;
   title: string;
