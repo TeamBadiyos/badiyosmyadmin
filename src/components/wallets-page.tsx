@@ -4,6 +4,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { indiaToday, validateAdjustmentDate } from "@/lib/adjustment-date";
+import { PNL_TAG_LABEL, PNL_TAG_OPTIONS, type PnlTag } from "@/lib/adjustment-pnl";
+import { listExpenses } from "@/lib/expenses.functions";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -290,6 +292,7 @@ function LedgerCard({
               {e.adjustment_date ? `Adjustment date: ${format(parseISO(e.adjustment_date), "dd/MM/yyyy")}` : new Date(e.created_at).toLocaleString()}
             </p>
             {e.adjustment_date && <p className="text-[11px] text-muted-foreground">Entered: {new Date(e.created_at).toLocaleString()}</p>}
+            {e.pnl_tag && <p className="text-[11px] font-semibold text-primary">Report: {PNL_TAG_LABEL[e.pnl_tag]}{e.pnl_expense_category ? ` · ${e.pnl_expense_category}` : ""}</p>}
             {role === "super_admin" && e.is_manual_adjustment && (
               <div className="mt-2 flex justify-end gap-1">
                 <Button variant="ghost" size="icon" aria-label="Edit adjustment" title="Edit adjustment" onClick={() => setEditing(e)}><Pencil size={15} /></Button>
@@ -325,7 +328,16 @@ function AdjustModal({
   const [reason, setReason] = useState(entry?.reason ?? "");
   const [adjustmentDate, setAdjustmentDate] = useState(() => entry?.adjustment_date ?? indiaToday(entry ? new Date(entry.created_at) : new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [pnlTag, setPnlTag] = useState<PnlTag | "">(entry?.pnl_tag ?? "");
+  const [expenseCat, setExpenseCat] = useState(entry?.pnl_expense_category ?? "");
   const [error, setError] = useState<string | null>(null);
+  const fetchExpenses = useServerFn(listExpenses);
+  const { data: expenseData } = useQuery({
+    queryKey: ["wallets", "expense-categories"],
+    queryFn: () => fetchExpenses({ data: { month: indiaToday(new Date()).slice(0, 7) } }),
+    enabled: pnlTag === "expense_recovery",
+  });
+  const expenseCats = (expenseData?.categories ?? []).filter((c) => c.is_active).map((c) => c.name);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -334,8 +346,10 @@ function AdjustModal({
       if (!Number.isFinite(amt) || !(amt > 0)) throw new Error("Amount must be positive");
       if (!reason.trim()) throw new Error("Reason required");
       validateAdjustmentDate(adjustmentDate);
-      if (entry) return edit({ data: { ledger_id: entry.id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate, expected: adjustmentSnapshot(entry) } });
-      return save({ data: { owner_type, owner_id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate } });
+      if (pnlTag === "expense_recovery" && !expenseCat.trim()) throw new Error("Choose the expense category");
+      const tag = { pnl_tag: pnlTag || null, pnl_expense_category: pnlTag === "expense_recovery" ? expenseCat.trim() : null };
+      if (entry) return edit({ data: { ledger_id: entry.id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate, expected: adjustmentSnapshot(entry), ...tag } });
+      return save({ data: { owner_type, owner_id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate, ...tag } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
@@ -420,6 +434,30 @@ function AdjustModal({
               </PopoverContent>
             </Popover>
           </Field>
+
+          <Field label="Show in Finance report as">
+            <select
+              value={pnlTag}
+              onChange={(e) => setPnlTag(e.target.value as PnlTag | "")}
+              className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+            >
+              {PNL_TAG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <p className="text-[12px] text-muted-foreground mt-1">{PNL_TAG_OPTIONS.find((o) => o.value === pnlTag)?.hint}</p>
+          </Field>
+
+          {pnlTag === "expense_recovery" && (
+            <Field label="Expense category">
+              <select
+                value={expenseCat}
+                onChange={(e) => setExpenseCat(e.target.value)}
+                className="w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]"
+              >
+                <option value="">Choose…</option>
+                {[...new Set([...expenseCats, ...(expenseCat ? [expenseCat] : [])])].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+          )}
 
           <Field label="Reason">
             <textarea

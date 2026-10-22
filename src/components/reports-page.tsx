@@ -963,7 +963,8 @@ function PnlTab({ range }: { range: ReportRange }) {
     const instant = Number(ex?.instant_fee ?? 0);
     const franchise = Number(pf?.fee_income ?? 0);
     const expenses = Number(ex?.expenses_total ?? 0);
-    return { revenue, direct, gross, instant, franchise, expenses, net: gross + instant + franchise - expenses };
+    const recovered = data.adjustments?.recoveryTotal ?? 0;
+    return { revenue, direct, gross, instant, franchise, expenses, recovered, net: gross + instant + franchise - expenses + recovered };
   })();
 
   const exportCsv = () => {
@@ -975,6 +976,7 @@ function PnlTab({ range }: { range: ReportRange }) {
       ["Gross profit", P.gross],
       ["Other Income – Instant Settlement Fee", P.instant], ["Other Income – Franchise Fee", P.franchise],
       ...((ex?.expenses_by_category ?? []).map((e) => [`Expense – ${e.category}`, Number(e.amount)] as [string, number])),
+      ...((data.adjustments?.recoveries ?? []).map((r) => [`Recovered from experts – ${r.category}`, r.amount] as [string, number])),
       ["Net profit", P.net],
       ["GST collected on customer orders", T.gst], ["GST on instant fee", Number(ex?.instant_fee_gst ?? 0)], ["GST on franchise fees", Number(pf?.fee_gst ?? 0)], ["Partner deposits held (liability)", Number(pf?.deposits_held ?? 0)], ["GST paid on expenses", Number(ex?.expense_gst ?? 0)],
       ["Payouts paid (net)", data.paidOut.paid], ["Payouts pending (net)", data.paidOut.pending], ["TDS deducted", data.paidOut.tds],
@@ -1032,6 +1034,9 @@ function PnlTab({ range }: { range: ReportRange }) {
           {(ex?.expenses_by_category ?? []).length === 0 && <p className="text-[12px] text-muted-foreground py-2">No expenses in range.</p>}
           {(ex?.expenses_by_category ?? []).map((e) => (
             <Row key={e.category} label={e.category} value={Number(e.amount)} neg />
+          ))}
+          {(data.adjustments?.recoveries ?? []).map((r) => (
+            <Row key={`rec-${r.category}`} label={`Recovered from experts – ${r.category}`} sub="Manual wallet debits marked as expense recovery" value={r.amount} />
           ))}
           <Row label={`Net profit · ${P.revenue > 0 ? ((P.net / P.revenue) * 100).toFixed(1) : "0.0"}%`} value={P.net} bold />
         </Card>
