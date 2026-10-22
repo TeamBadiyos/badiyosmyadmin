@@ -103,16 +103,24 @@ function BalancesTab({ role }: { role: Role }) {
   });
 
   const [query, setQuery] = useState("");
+  const [folder, setFolder] = useState<"active" | "inactive">("active");
   const [selected, setSelected] = useState<WalletOwner | null>(null);
   const [adjustFor, setAdjustFor] = useState<WalletOwner | null>(null);
 
+  // Inactive folder = not active AND zero balance; anyone holding money stays in Active.
+  const isArchived = (o: WalletOwner) => o.status !== undefined && o.status !== "active" && Math.abs(o.balance) < 0.005;
+  const inactiveCount = data.filter(isArchived).length;
+  const activeCount = data.length - inactiveCount;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter(
+    const inFolder = data.filter((o) => (folder === "inactive" ? isArchived(o) : !isArchived(o)));
+    if (!q) return inFolder;
+    return inFolder.filter(
       (o) => o.name.toLowerCase().includes(q) || o.phone.toLowerCase().includes(q),
     );
-  }, [data, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, query, folder]);
 
   const sf = useSortFilter(filtered, [
     { key: "owner", label: "Owner", value: (o: WalletOwner) => o.name },
