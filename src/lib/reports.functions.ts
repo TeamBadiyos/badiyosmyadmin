@@ -646,7 +646,7 @@ export const getPnlReport = createServerFn({ method: "POST" })
           .select("total_amount,refund_amount,refund_status,commission_amount,commission_gst_amount,status,created_at").eq("is_training", false)
           .eq("status", "completed").gte("created_at", f).lte("created_at", t).limit(20000),
         db.from("wallet_ledger").select("amount,reason,type,pnl_tag,pnl_expense_category")
-          .eq("wallet_type", "earnings").gte("effective_at", f).lte("effective_at", t).limit(20000),
+          .eq("wallet_type", "earnings").or("type.eq.credit,pnl_tag.not.is.null").gte("effective_at", f).lte("effective_at", t).limit(20000),
         db.from("payout_batch_items").select("net_amount,amount,tds_amount,paid,batch_id,payout_batches!inner(week_start,week_end,status)")
           .neq("payout_batches.status", "discarded").gte("payout_batches.week_end", data.from).lte("payout_batches.week_start", data.to).limit(20000),
       ]);
