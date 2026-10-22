@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { catalogImageUrl } from "@/lib/catalog-images";
 
 const SUPABASE_URL = "https://api.badiyos.com";
-const ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrbmVjbHdtbWpscXN3b3Z0cW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4OTExMjMsImV4cCI6MjEwMDQ2NzEyM30.5wHGl9oFmY2AJysu9KlTpUwb-HQGtZZ6q-SHi1ced1Q";
+const anonKey = () =>
+  process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
 const TABS = new Set(["all", "clean", "store", "food", "parcel", "rewards"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Allow-Headers": "content-type" };
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/public/banners")({
         }
         const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_list_banners`, {
           method: "POST",
-          headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, "Content-Type": "application/json" },
+          headers: { apikey: anonKey(), "Content-Type": "application/json" },
           body: JSON.stringify({ _tab: tab, _city_id: city || null }),
         });
         if (!r.ok) return Response.json({ error: "Unavailable" }, { status: 502, headers: CORS });

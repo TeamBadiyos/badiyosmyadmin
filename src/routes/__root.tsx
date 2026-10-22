@@ -135,9 +135,8 @@ function RootComponent() {
     let cancel: (() => void) | undefined;
 
     (async () => {
-      const { supabase, verifySessionOnStart } = await import("@/integrations/supabase/client");
+      const { supabase } = await import("@/integrations/supabase/client");
       if (!mounted) return;
-      void verifySessionOnStart();
       const { data } = supabase.auth.onAuthStateChange((event) => {
         if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
           return;
