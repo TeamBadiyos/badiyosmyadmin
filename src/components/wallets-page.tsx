@@ -1,8 +1,13 @@
 import { DateInput } from "@/components/date-input";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, parseISO } from "date-fns";
+import { indiaToday, validateAdjustmentDate } from "@/lib/adjustment-date";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Check, ArrowLeft, Search } from "lucide-react";
+import { Plus, X, Check, ArrowLeft, Search, CalendarIcon } from "lucide-react";
 import {
   listWalletOwners,
   listOwnerLedger,
@@ -277,8 +282,9 @@ function LedgerCard({
             </div>
             <p className="mt-1 text-[13px] text-foreground">{e.reason}</p>
             <p className="text-[11px] text-muted-foreground">
-              {new Date(e.created_at).toLocaleString()}
+              {e.adjustment_date ? `Adjustment date: ${format(parseISO(e.adjustment_date), "dd/MM/yyyy")}` : new Date(e.created_at).toLocaleString()}
             </p>
+            {e.adjustment_date && <p className="text-[11px] text-muted-foreground">Entered: {new Date(e.created_at).toLocaleString()}</p>}
           </div>
         ))}
       </div>
@@ -301,6 +307,8 @@ function AdjustModal({
   const [type, setType] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [adjustmentDate, setAdjustmentDate] = useState(() => indiaToday());
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -309,7 +317,8 @@ function AdjustModal({
       const amt = Number(amount);
       if (!(amt > 0)) throw new Error("Amount must be positive");
       if (!reason.trim()) throw new Error("Reason required");
-      return save({ data: { owner_type, owner_id, amount: amt, type, reason: reason.trim() } });
+      validateAdjustmentDate(adjustmentDate);
+      return save({ data: { owner_type, owner_id, amount: amt, type, reason: reason.trim(), adjustment_date: adjustmentDate } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
@@ -377,6 +386,21 @@ function AdjustModal({
               />
             </Field>
           </div>
+
+          <Field label="Adjustment date">
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" aria-label="Adjustment date" className="h-11 w-full justify-start font-normal">
+                  <CalendarIcon size={16} /> {format(parseISO(adjustmentDate), "dd/MM/yyyy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0" onClick={(e) => e.stopPropagation()}>
+                <Calendar mode="single" selected={parseISO(adjustmentDate)} defaultMonth={parseISO(adjustmentDate)} captionLayout="dropdown" className="pointer-events-auto" onSelect={(date) => {
+                  if (date) { setAdjustmentDate(format(date, "yyyy-MM-dd")); setCalendarOpen(false); }
+                }} />
+              </PopoverContent>
+            </Popover>
+          </Field>
 
           <Field label="Reason">
             <textarea

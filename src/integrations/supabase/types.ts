@@ -12051,9 +12051,11 @@ export type Database = {
       }
       wallet_ledger: {
         Row: {
+          adjustment_date: string | null
           amount: number
           created_at: string
           created_by: string | null
+          effective_at: string | null
           id: string
           owner_id: string
           owner_type: string
@@ -12062,9 +12064,11 @@ export type Database = {
           wallet_type: string
         }
         Insert: {
+          adjustment_date?: string | null
           amount: number
           created_at?: string
           created_by?: string | null
+          effective_at?: string | null
           id?: string
           owner_id: string
           owner_type: string
@@ -12073,9 +12077,11 @@ export type Database = {
           wallet_type?: string
         }
         Update: {
+          adjustment_date?: string | null
           amount?: number
           created_at?: string
           created_by?: string | null
+          effective_at?: string | null
           id?: string
           owner_id?: string
           owner_type?: string
@@ -16668,6 +16674,17 @@ export type Database = {
       staff_wallet_adjust:
         | {
             Args: {
+              _amount: number
+              _owner_id: string
+              _owner_type: string
+              _reason: string
+              _type: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _adjustment_date: string
               _amount: number
               _owner_id: string
               _owner_type: string

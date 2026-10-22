@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Training recipient IDs remain separate from assignment; SQL restricts Clean broadcasts/Courier offers to selected trainees; Store/Food broadcast delivery at Ready. Live payouts are unchanged.
+- Manual Expert wallet adjustments store adjustment_date separately from created_at; ledger accounting uses effective_at, while balances post immediately through the existing audited Super Admin RPC — why: selected payment dates must not falsify audit time or duplicate money changes.
 
 - Seal-sticker PDFs use the staff export RPC in the browser; no duplicate backend.
 - Service-content banner visibility and validation are service-scoped; Auto saves preserve raw unused banner keys and public output excludes them — why: removing controls must not erase historical content or block unrelated saves.

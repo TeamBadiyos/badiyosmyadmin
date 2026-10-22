@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { validateAdjustmentDate } from "@/lib/adjustment-date";
 
 async function requireStaff(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +35,7 @@ export type LedgerEntry = {
   type: "credit" | "debit";
   reason: string;
   created_at: string;
+  adjustment_date: string | null;
 };
 
 export type PayoutBatch = {
@@ -123,10 +125,10 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
     await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
     const { data: rows, error } = await context.supabase
       .from("wallet_ledger")
-      .select("id, amount, type, reason, created_at")
+      .select("id, amount, type, reason, created_at, adjustment_date")
       .eq("owner_type", data.owner_type)
       .eq("owner_id", data.owner_id)
-      .order("created_at", { ascending: false })
+      .order("effective_at", { ascending: false }).order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r) => ({
@@ -135,6 +137,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
       type: r.type as "credit" | "debit",
       reason: r.reason,
       created_at: r.created_at,
+      adjustment_date: r.adjustment_date,
     }));
   });
 
@@ -147,10 +150,12 @@ export const walletAdjust = createServerFn({ method: "POST" })
       amount: number;
       type: "credit" | "debit";
       reason: string;
+      adjustment_date: string;
     }) => {
       if (!input?.owner_id) throw new Error("owner_id required");
       if (!(input.amount > 0)) throw new Error("Amount must be positive");
       if (!input.reason?.trim()) throw new Error("Reason required");
+      validateAdjustmentDate(input.adjustment_date);
       return input;
     },
   )
@@ -161,6 +166,7 @@ export const walletAdjust = createServerFn({ method: "POST" })
       _amount: data.amount,
       _type: data.type,
       _reason: data.reason.trim(),
+      _adjustment_date: data.adjustment_date,
     });
     if (error) throw new Error(error.message);
     return { ok: true };

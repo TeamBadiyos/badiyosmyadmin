@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add manual payout debit/credit adjustment dates and verify date accounting; signed-in CC verification unavailable for external Supabase.
 
 - [x] Training orders broadcast only to selected active trainees; Clean/Auto, Parcel and Store/Food SQL creation/acceptance isolation tests passed with rolled-back fixtures.
 - [ ] Verify selected-recipient training offers on real phones and through signed-in CC; blocked by unavailable external-app login/session and physical devices.
