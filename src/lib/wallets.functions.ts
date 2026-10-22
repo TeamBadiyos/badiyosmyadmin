@@ -36,6 +36,7 @@ export type LedgerEntry = {
   reason: string;
   created_at: string;
   adjustment_date: string | null;
+  is_manual_adjustment: boolean;
 };
 
 export type PayoutBatch = {
@@ -122,7 +123,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
     return input;
   })
   .handler(async ({ data, context }): Promise<LedgerEntry[]> => {
-    await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
+    const role = await requireStaff(context.supabase, context.userId, ["super_admin", "ops_manager"]);
     const { data: rows, error } = await context.supabase
       .from("wallet_ledger")
       .select("id, amount, type, reason, created_at, adjustment_date")
@@ -131,6 +132,11 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
       .order("effective_at", { ascending: false }).order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
+    const manual = role === "super_admin"
+      ? await context.supabase.rpc("staff_manual_adjustment_ids", { _owner_id: data.owner_id })
+      : { data: [], error: null };
+    if (manual.error) throw new Error(manual.error.message);
+    const manualIds = new Set(manual.data ?? []);
     return (rows ?? []).map((r) => ({
       id: r.id,
       amount: Number(r.amount),
@@ -138,6 +144,7 @@ export const listOwnerLedger = createServerFn({ method: "GET" })
       reason: r.reason,
       created_at: r.created_at,
       adjustment_date: r.adjustment_date,
+      is_manual_adjustment: manualIds.has(r.id),
     }));
   });
 
@@ -173,6 +180,42 @@ export const walletAdjust = createServerFn({ method: "POST" })
   });
 
 // ---------- Payouts ----------
+
+type AdjustmentSnapshot = Pick<LedgerEntry, "amount" | "type" | "reason" | "adjustment_date">;
+
+export const editWalletAdjustment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ledger_id: string; amount: number; type: "credit" | "debit"; reason: string; adjustment_date: string; expected: AdjustmentSnapshot }) => {
+    if (!input?.ledger_id) throw new Error("Adjustment required");
+    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Amount must be positive");
+    if (input.type !== "credit" && input.type !== "debit") throw new Error("Invalid type");
+    if (!input.reason?.trim()) throw new Error("Reason required");
+    validateAdjustmentDate(input.adjustment_date);
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_edit_wallet_adjustment", {
+      _ledger_id: data.ledger_id, _amount: data.amount, _type: data.type,
+      _reason: data.reason.trim(), _adjustment_date: data.adjustment_date, _expected: data.expected,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteWalletAdjustment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ledger_id: string; reason: string; expected: AdjustmentSnapshot }) => {
+    if (!input?.ledger_id) throw new Error("Adjustment required");
+    if (!input.reason?.trim()) throw new Error("Deletion reason required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("staff_delete_wallet_adjustment", {
+      _ledger_id: data.ledger_id, _reason: data.reason.trim(), _expected: data.expected,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 export const listPayoutBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
