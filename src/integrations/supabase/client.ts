@@ -4,7 +4,8 @@ import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
 const SUPABASE_URL = "https://emclphebsmdkiisqsxhc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ou4g708pkDUuwRuWyc8RuQ_zv1mIS2k";
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Ou4g708pkDUuwRuWyc8RuQ_zv1mIS2k";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
