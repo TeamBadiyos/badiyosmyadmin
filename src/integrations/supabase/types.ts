@@ -12059,6 +12059,8 @@ export type Database = {
           id: string
           owner_id: string
           owner_type: string
+          pnl_expense_category: string | null
+          pnl_tag: string | null
           reason: string
           type: string
           wallet_type: string
@@ -12072,6 +12074,8 @@ export type Database = {
           id?: string
           owner_id: string
           owner_type: string
+          pnl_expense_category?: string | null
+          pnl_tag?: string | null
           reason: string
           type: string
           wallet_type?: string
@@ -12085,6 +12089,8 @@ export type Database = {
           id?: string
           owner_id?: string
           owner_type?: string
+          pnl_expense_category?: string | null
+          pnl_tag?: string | null
           reason?: string
           type?: string
           wallet_type?: string
@@ -15513,6 +15519,10 @@ export type Database = {
         Returns: Json
       }
       staff_insurance_stats: { Args: never; Returns: Json }
+      staff_latest_my_adjustment: {
+        Args: { _owner_id: string }
+        Returns: string
+      }
       staff_list_bulk_plans: { Args: never; Returns: Json }
       staff_list_category_suggestions: {
         Args: { _service: string }
@@ -16376,6 +16386,10 @@ export type Database = {
       }
       staff_store_reassign: { Args: { _order_id: string }; Returns: Json }
       staff_sync_notifications: { Args: never; Returns: undefined }
+      staff_tag_wallet_adjustment: {
+        Args: { _expense_category: string; _ledger_id: string; _tag: string }
+        Returns: undefined
+      }
       staff_tax_report: { Args: { _month: string }; Returns: Json }
       staff_tax_report_ext: { Args: { _month: string }; Returns: Json }
       staff_tds_report: {
