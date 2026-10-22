@@ -573,14 +573,21 @@ export const listCampaigns = createServerFn({ method: "GET" })
     const delivered = new Map<string, number>();
     const failed = new Map<string, number>();
     if (ids.length) {
-      const { data: deliveries } = await context.supabase
-        .from("campaign_deliveries")
-        .select("campaign_id, status")
-        .in("campaign_id", ids)
-        .limit(10000);
-      for (const d of deliveries ?? []) {
-        const map = d.status === "failed" ? failed : delivered;
-        map.set(d.campaign_id, (map.get(d.campaign_id) ?? 0) + 1);
+      // Page through all rows: the API returns at most 1,000 rows per request.
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: deliveries, error: dErr } = await context.supabase
+          .from("campaign_deliveries")
+          .select("id, campaign_id, status")
+          .in("campaign_id", ids)
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (dErr) throw new Error(dErr.message);
+        for (const d of deliveries ?? []) {
+          const map = d.status === "failed" ? failed : delivered;
+          map.set(d.campaign_id, (map.get(d.campaign_id) ?? 0) + 1);
+        }
+        if (!deliveries || deliveries.length < PAGE) break;
       }
     }
 
