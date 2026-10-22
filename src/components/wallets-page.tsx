@@ -143,6 +143,10 @@ function BalancesTab({ role }: { role: Role }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
       <div className="space-y-4 min-w-0">
+        <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
+          <TabBtn active={folder === "active"} onClick={() => setFolder("active")}>Active ({activeCount})</TabBtn>
+          <TabBtn active={folder === "inactive"} onClick={() => setFolder("inactive")}>Inactive ({inactiveCount})</TabBtn>
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[220px]">
             <Search
