@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const SUPABASE_URL = "https://api.badiyos.com";
-const ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrbmVjbHdtbWpscXN3b3Z0cW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4OTExMjMsImV4cCI6MjEwMDQ2NzEyM30.5wHGl9oFmY2AJysu9KlTpUwb-HQGtZZ6q-SHi1ced1Q";
+const anonKey = () =>
+  process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
 
 /**
  * Public proxy for service-images. The bucket is private (public buckets are
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/public/service-image")({
             .split("/")
             .map(encodeURIComponent)
             .join("/")}`,
-          { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+          { headers: { apikey: anonKey() } },
         );
         if (!upstream.ok) {
           return new Response("Not found", { status: upstream.status === 400 ? 404 : upstream.status });
