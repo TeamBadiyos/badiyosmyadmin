@@ -15396,6 +15396,10 @@ export type Database = {
         Args: { _event_id: string }
         Returns: undefined
       }
+      staff_delete_wallet_adjustment: {
+        Args: { _expected: Json; _ledger_id: string; _reason: string }
+        Returns: undefined
+      }
       staff_delivery_gst_check: {
         Args: { _from: string; _to: string }
         Returns: Json
@@ -15430,6 +15434,17 @@ export type Database = {
           _gross: number
           _item_id: string
           _reason: string
+        }
+        Returns: undefined
+      }
+      staff_edit_wallet_adjustment: {
+        Args: {
+          _adjustment_date: string
+          _amount: number
+          _expected: Json
+          _ledger_id: string
+          _reason: string
+          _type: string
         }
         Returns: undefined
       }
@@ -15567,6 +15582,10 @@ export type Database = {
       staff_lucky_draw_save_prize: {
         Args: { _campaign_id: string; _id: string; _payload: Json }
         Returns: string
+      }
+      staff_manual_adjustment_ids: {
+        Args: { _owner_id: string }
+        Returns: string[]
       }
       staff_mark_agreement_paper: {
         Args: { _agreement_id: string; _path: string }
