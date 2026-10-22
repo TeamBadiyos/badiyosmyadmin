@@ -19,7 +19,15 @@ function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    try {
+      const n = sessionStorage.getItem("auth_notice");
+      if (n) sessionStorage.removeItem("auth_notice");
+      return n;
+    } catch {
+      return null;
+    }
+  });
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
