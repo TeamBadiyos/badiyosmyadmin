@@ -24,6 +24,7 @@ import {
   listCampaignDeliveries,
   previewCampaignAudience,
   listCampaignCities,
+  listCampaignStores,
   searchCampaignCustomers,
   saveCampaign,
   sendCampaign,
@@ -1830,6 +1831,9 @@ function Modal({
 const DEEP_LINK_TABS: { value: string; label: string }[] = [
   { value: "offers", label: "Offers tab" },
   { value: "home", label: "Home" },
+  { value: "store", label: "Store home" },
+  { value: "food", label: "Food home" },
+  { value: "parcel", label: "Parcel / Courier" },
   { value: "bookings", label: "My bookings" },
   { value: "refer-earn", label: "Refer & Earn" },
   { value: "wallet", label: "Wallet / Coins" },
@@ -1837,13 +1841,19 @@ const DEEP_LINK_TABS: { value: string; label: string }[] = [
 
 function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const fetchList = useServerFn(listCoupons);
+  const fetchStores = useServerFn(listCampaignStores);
   const { data: coupons = [] } = useQuery({
     queryKey: ["offers", "coupons"],
     queryFn: () => fetchList(),
   });
+  const { data: stores = [] } = useQuery({
+    queryKey: ["offers", "campaign-stores"],
+    queryFn: () => fetchStores(),
+  });
   const isOffer = value.startsWith("offer:");
-  const isTab = !value || DEEP_LINK_TABS.some((t) => t.value === value);
-  const mode = isOffer ? "__offer" : isTab ? value || "offers" : "__custom";
+  const isStore = value.startsWith("store:");
+  const isTab = !value || (!isStore && DEEP_LINK_TABS.some((t) => t.value === value));
+  const mode = isOffer ? "__offer" : isStore ? "__store" : isTab ? value || "offers" : "__custom";
   return (
     <div className="space-y-2">
       <select
@@ -1852,6 +1862,7 @@ function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: stri
         onChange={(e) => {
           const v = e.target.value;
           if (v === "__offer") onChange("offer:");
+          else if (v === "__store") onChange("store:");
           else if (v === "__custom") onChange("custom");
           else onChange(v);
         }}
@@ -1862,8 +1873,24 @@ function DeepLinkPicker({ value, onChange }: { value: string; onChange: (v: stri
           </option>
         ))}
         <option value="__offer">Specific offer / coupon</option>
+        <option value="__store">Specific store</option>
         <option value="__custom">Custom link</option>
       </select>
+      {mode === "__store" && (
+        <select
+          className={inputCls}
+          value={value.slice(6)}
+          onChange={(e) => onChange(`store:${e.target.value}`)}
+        >
+          <option value="">Select store…</option>
+          {stores.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.store_name}
+              {s.service_type ? ` (${s.service_type})` : ""}
+            </option>
+          ))}
+        </select>
+      )}
       {mode === "__offer" && (
         <select
           className={inputCls}
