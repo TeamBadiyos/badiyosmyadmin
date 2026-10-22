@@ -46,6 +46,17 @@ const inr = new Intl.NumberFormat("en-IN", {
   currency: "INR",
   maximumFractionDigits: 0,
 });
+// Shows paise when present (₹0.50, not ₹1) and never "-₹0".
+const fmtBalance = (n: number) => {
+  const v = Math.abs(n) < 0.005 ? 0 : Math.round(n * 100) / 100;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(v);
+};
+
 
 type Role = "super_admin" | "ops_manager" | "area_partner" | "finance" | null;
 
@@ -202,10 +213,10 @@ function BalancesTab({ role }: { role: Role }) {
               </span>
               <span
                 className={`text-right font-semibold ${
-                  o.balance < 0 ? "text-destructive" : "text-foreground"
+                  o.balance <= -0.005 ? "text-destructive" : "text-foreground"
                 }`}
               >
-                {inr.format(o.balance)}
+                {fmtBalance(o.balance)}
               </span>
             </button>
           ))}
