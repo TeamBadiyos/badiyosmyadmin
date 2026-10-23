@@ -445,6 +445,14 @@ export function BookingDetailsModal({
     currency: "INR",
     maximumFractionDigits: 0,
   });
+  /** Payment rows: whole rupees stay ₹289; paise show as ₹14.50 so the lines add up to the total. */
+  const money = (n: number) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: Math.abs(n % 1) > 0.004 ? 2 : 0,
+      maximumFractionDigits: 2,
+    }).format(n);
 
   const isWash = /wash/i.test(data?.serviceLabel ?? "");
   const canAdjust = canEdit && !!data && !isDeleted && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
@@ -591,14 +599,14 @@ export function BookingDetailsModal({
                       </button>
                     ) : null}
                   >
-                    <PayRow label="Price" value={data.price != null ? inr.format(data.price) : "—"} />
-                    {data.gstAmount > 0 && <PayRow label={`GST${data.gstPercent ? ` (${data.gstPercent}%)` : ""}`} value={inr.format(data.gstAmount)} />}
-                    {data.travelFee > 0 && <PayRow label="Travel" value={inr.format(data.travelFee)} />}
-                    {data.travelFeeGst > 0 && <PayRow label="Travel GST" value={inr.format(data.travelFeeGst)} />}
-                    {data.travelFee > 0 && data.status === "completed" && <PayRow label="Expert travel pay" value={inr.format(Math.round(data.travelFee * (data.travelExpertSharePct ?? 100)) / 100)} />}
-                    {data.discountAmount > 0 && <PayRow label={`Coupon${data.couponCode ? ` ${data.couponCode}` : ""}`} value={`− ${inr.format(data.discountAmount)}`} />}
-                    {data.extensionAmount > 0 && <PayRow label={`Extra time (${data.extensionMinutes} min)`} value={inr.format(data.extensionAmount)} />}
-                    <PayRow bold label="Total" value={inr.format((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)} />
+                    <PayRow label="Price" value={data.price != null ? money(data.price) : "—"} />
+                    {data.gstAmount > 0 && <PayRow label={`GST${data.gstPercent ? ` (${data.gstPercent}%)` : ""}`} value={money(data.gstAmount)} />}
+                    {data.travelFee > 0 && <PayRow label="Travel fee" value={money(data.travelFee)} />}
+                    {data.travelFeeGst > 0 && <PayRow label={`Travel fee GST${data.gstPercent ? ` (${data.gstPercent}%)` : ""}`} value={money(data.travelFeeGst)} />}
+                    {data.travelFee > 0 && data.status === "completed" && <PayRow label="Expert travel pay" value={money(Math.round(data.travelFee * (data.travelExpertSharePct ?? 100)) / 100)} />}
+                    {data.discountAmount > 0 && <PayRow label={`Coupon${data.couponCode ? ` ${data.couponCode}` : ""}`} value={`− ${money(data.discountAmount)}`} />}
+                    {data.extensionAmount > 0 && <PayRow label={`Extra time (${data.extensionMinutes} min)`} value={money(data.extensionAmount)} />}
+                    <PayRow bold label="Total" value={money((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)} />
                     <p className="pt-1 text-[12px] text-muted-foreground">
                       <span className={`mr-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
                         data.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700"

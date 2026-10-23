@@ -434,7 +434,7 @@ async function loadBookingDetails(
   const { data: b, error } = await supabase
     .from("bookings")
     .select(
-      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, customer_note, refund_destination, refund_wallet_amount, cancellation_fee, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at, gst_amount, gst_percent, total_amount, coupon_code, discount_amount",
+      "id, booking_number, user_id, address_id, service_label, service_duration_minutes, slot_type, scheduled_date, scheduled_time_slot, status, price, razorpay_order_id, razorpay_payment_id, refund_status, refund_amount, refund_id, created_at, updated_at, rating, review_text, staff_note, customer_note, refund_destination, refund_wallet_amount, cancellation_fee, assigned_expert_id, zone_id, cancellation_reason, deleted_at, deleted_by, delete_reason, started_at, service_end_at, gst_amount, gst_percent, total_amount, coupon_code, discount_amount, travel_fee, travel_fee_gst, travel_expert_share_pct",
     )
     .eq("id", bookingId)
     .maybeSingle();
