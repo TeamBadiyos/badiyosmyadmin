@@ -1,4 +1,5 @@
 import { Switch } from "@/components/ui/switch";
+import { formatPhone } from "@/lib/phone";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -111,7 +112,7 @@ export function RolesPage() {
                   ? u.zoneNames.join(", ")
                   : u.zoneName ?? "—"
                 : u.cityIds.length ? `${u.cityIds.length} cit${u.cityIds.length === 1 ? "y" : "ies"}` : "All cities"}
-              {u.phone ? <span className="block text-[12px]">{u.phone}</span> : null}
+              {u.phone ? <span className="block text-[12px]">{formatPhone(u.phone)}</span> : null}
             </span>
             <span><StatusToggle user={u} /></span>
             <span className="text-muted-foreground text-[13px]">

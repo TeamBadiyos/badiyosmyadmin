@@ -1,4 +1,5 @@
 import { CityName, useShowCity } from "@/lib/city-scope";
+import { formatPhone } from "@/lib/phone";
 import { useUrlState } from "@/components/ui/data-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
@@ -388,7 +389,7 @@ export function ExpertsPage({
               <button key={e.id} onClick={() => setDetailsId(e.id)} className="w-full grid grid-cols-[56px_minmax(180px,2fr)_120px_100px_90px_90px_110px] min-w-[800px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px] text-left hover:bg-muted/40">
                 <ExpertAvatar url={e.photoUrl} />
                 <span className="font-semibold text-foreground break-words">{e.name}</span>
-                <span className="font-mono text-[12px] text-muted-foreground">{e.phone}</span>
+                <span className="font-mono text-[12px] text-muted-foreground">{formatPhone(e.phone)}</span>
                 <span className="text-[12px] text-muted-foreground truncate">{riderStats?.vehicle.get(e.id) || "—"}</span>
                 <span><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold capitalize ${cls}`}>{st}</span></span>
                 <span className="text-right text-foreground">{riderStats?.deliveries.get(e.id) ?? 0}</span>
@@ -548,7 +549,7 @@ function ExpertRowItem({ expert, noDevice, onOpen, onLeave, onToggleLeave }: { e
           )}
         </span>
       </span>
-      <span className="font-mono text-[12px] text-muted-foreground">{expert.phone}</span>
+      <span className="font-mono text-[12px] text-muted-foreground">{formatPhone(expert.phone)}</span>
       <span className="text-muted-foreground truncate">
         {showCity && <span className="mr-1 font-semibold text-foreground"><CityName id={expert.cityId} /> ·</span>}
         {expert.zoneNames?.length ? (

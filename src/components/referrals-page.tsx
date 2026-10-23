@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, X, Save, Undo2, Settings2 } from "lucide-react";
@@ -147,7 +148,7 @@ function UserCell({ name, phone }: { name: string | null; phone: string | null }
   return (
     <div className="min-w-0">
       <p className="font-semibold text-foreground truncate">{name ?? "—"}</p>
-      <p className="text-[12px] text-muted-foreground truncate">{phone ?? ""}</p>
+      <p className="text-[12px] text-muted-foreground truncate">{(formatPhone(phone) || "")}</p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -185,7 +186,7 @@ export function UsersPage({ onSelectBooking }: { onSelectBooking?: (id: string) 
                       {r.deleted_at && <StatusPill status="rejected" label="Deleted" />}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{r.phone ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{(formatPhone(r.phone) || "—")}</td>
                   <td className="px-4 py-3 text-muted-foreground">{maskEmail(r.email)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {[r.area, r.city].filter(Boolean).join(", ") || "—"}
@@ -332,7 +333,7 @@ function TestPushModal({ row, onClose }: { row: CustomerRow; onClose: () => void
         </div>
 
         <p className="text-[13px] text-muted-foreground">
-          Sends one real notification to {row.full_name ?? "this customer"} ({row.phone ?? "—"}) and
+          Sends one real notification to {row.full_name ?? "this customer"} ({(formatPhone(row.phone) || "—")}) and
           shows exactly what Google replied for each registered device.
         </p>
 
@@ -827,7 +828,7 @@ function EditUserModal({
             </select>
           </div>
           <p className="text-[12px] text-muted-foreground">
-            Phone number ({row.phone ?? "—"}) cannot be changed — it is the user's login identity.
+            Phone number ({(formatPhone(row.phone) || "—")}) cannot be changed — it is the user's login identity.
           </p>
 
           <div className="pt-2 border-t border-border space-y-2">
@@ -979,7 +980,7 @@ function DeleteUserModal({
           </p>
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Type the user's phone number to confirm ({row.phone ?? "no phone"})
+              Type the user's phone number to confirm ({(formatPhone(row.phone) || "no phone")})
             </label>
             <input
               value={confirmPhone}
@@ -1073,7 +1074,7 @@ function ReferralsSection({ referrals }: { referrals: RefItem[] }) {
                   <div>
                     <div className="text-foreground font-medium">{r.counterpart_name ?? "Unknown"}</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {r.counterpart_phone ?? "—"} · Joined {fmtDate(r.created_at)}
+                      {(formatPhone(r.counterpart_phone) || "—")} · Joined {fmtDate(r.created_at)}
                     </div>
                   </div>
                   <div className="text-right">

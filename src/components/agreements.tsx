@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,7 +168,7 @@ function Unsigned() {
             {!q.isLoading && rows.length === 0 && <tr><td colSpan={5} className="p-4 text-muted-foreground">Everyone has signed.</td></tr>}
             {rows.map((r) => (
               <tr key={r.party_id + r.template_type} className="border-b border-border last:border-0">
-                <td className="p-3 font-semibold">{r.name}<div className="text-[11px] text-muted-foreground font-normal">{r.phone}</div></td>
+                <td className="p-3 font-semibold">{r.name}<div className="text-[11px] text-muted-foreground font-normal">{formatPhone(r.phone)}</div></td>
                 <td className="p-3">{PARTY_LABEL[r.party_type]}</td>
                 <td className="p-3">{TYPE_LABEL[r.template_type]}</td>
                 <td className="p-3"><StatusTag s={r.last_status} />{r.last_sent && <div className="text-[11px] text-muted-foreground">Sent {dt(r.last_sent)}</div>}</td>
@@ -235,7 +236,7 @@ export function PartyAgreementCard({ partyType, partyId, canManage = true }: { p
         <div key={a.id} className="flex flex-wrap items-center gap-2 text-[13px]">
           <span className="font-semibold">{TYPE_LABEL[a.template_type]} · v{a.template_version}</span>
           <StatusTag s={st(a)} paper={a.signed_method === "paper"} />
-          {a.accepted_at && <span className="text-[11px] text-muted-foreground">{dt(a.accepted_at)}{a.accepted_phone ? ` · ${a.accepted_phone}` : ""}</span>}
+          {a.accepted_at && <span className="text-[11px] text-muted-foreground">{dt(a.accepted_at)}{a.accepted_phone ? ` · ${formatPhone(a.accepted_phone)}` : ""}</span>}
           <span className="ml-auto flex gap-1">
             <Button size="sm" variant="ghost" onClick={() => setView(a)}>View</Button>
             <Button size="sm" variant="ghost" onClick={() => downloadAgreementPdf(a).catch((e) => toast.error(err(e)))}>PDF</Button>
@@ -263,7 +264,7 @@ export function PartyAgreementCard({ partyType, partyId, canManage = true }: { p
             <div className="mt-3 rounded-lg bg-muted p-3 text-[12px] space-y-0.5">
               <div><StatusTag s={st(view)} paper={view.signed_method === "paper"} /></div>
               <div>Issued {dt(view.created_at)} · Accepted {dt(view.accepted_at)}</div>
-              <div>Phone {view.accepted_phone ?? "—"} · IP {view.accepted_ip ?? "—"}</div>
+              <div>Phone {(formatPhone(view.accepted_phone) || "—")} · IP {view.accepted_ip ?? "—"}</div>
               <div className="break-all">Device {view.accepted_device ?? "—"}</div>
             </div>
           </>}

@@ -5,6 +5,7 @@
  * (assigned person + payment | staff note) → action bar → History ▸.
  */
 import { useEffect, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { Copy, MapPin, MessageCircle, Bike, Pencil, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useLiveTracking } from "@/lib/use-live-tracking";
@@ -27,7 +28,7 @@ export function fmtPhone(p: string | null | undefined): string {
   const d = p.replace(/\D/g, "");
   const ten = d.length >= 10 ? d.slice(-10) : d;
   if (ten.length !== 10) return p;
-  return `+91 ${ten.slice(0, 5)} ${ten.slice(5)}`;
+  return `+91${ten}`;
 }
 
 export function ordinal(n: number): string {
@@ -123,7 +124,7 @@ export function MapActionBar({
     : null;
   const shareMsg = parcel && pickMsg && jobMsg ? `${pickMsg}\n\n${jobMsg}` : jobMsg;
   const agentMsg = agentOk
-    ? `Badiyos ${code} — ${agent?.name ?? "Partner"} live location${agent?.phone ? ` (${agent.phone})` : ""}: ${mapsLink(agent!.lat!, agent!.lng!)}`
+    ? `Badiyos ${code} — ${agent?.name ?? "Partner"} live location${agent?.phone ? ` (${formatPhone(agent.phone)})` : ""}: ${mapsLink(agent!.lat!, agent!.lng!)}`
     : null;
 
   return (

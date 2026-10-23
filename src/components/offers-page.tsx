@@ -1,4 +1,5 @@
 import { CityName, useShowCity } from "@/lib/city-scope";
+import { formatPhone } from "@/lib/phone";
 import { DateInput } from "@/components/date-input";
 import { FilterBar, FilterField, filterInputCls, countLabel, tableCls, StatusPill } from "@/components/section-chrome";
 import { useEffect, useMemo, useState } from "react";
@@ -140,7 +141,7 @@ function EligibleCustomers({ couponId, code }: { couponId: string; code: string 
               <span className="flex-1 min-w-0 truncate font-semibold">
                 {r.name ?? (r.kind === "phone" ? "—" : "Customer")}
               </span>
-              <span className="font-mono text-[12px] text-muted-foreground">{r.phone ?? "—"}</span>
+              <span className="font-mono text-[12px] text-muted-foreground">{(formatPhone(r.phone) || "—")}</span>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusCls[r.status] ?? ""}`}
               >
@@ -817,7 +818,7 @@ function RedemptionsModal({ coupon, onClose }: { coupon: CouponRow; onClose: () 
             <div className="min-w-0">
               <p className="font-semibold truncate">{r.user_name ?? "—"}</p>
               <p className="text-[12px] text-muted-foreground truncate">
-                {r.user_phone ?? ""} · {r.booking_id ? `Booking ${r.booking_id.slice(0, 8)}` : "No booking"}
+                {(formatPhone(r.user_phone) || "")} · {r.booking_id ? `Booking ${r.booking_id.slice(0, 8)}` : "No booking"}
               </p>
             </div>
             <div className="text-right shrink-0">
@@ -1097,7 +1098,7 @@ function MilestoneAwardsModal({
           <div key={a.id} className="py-3 flex items-center justify-between gap-4 text-[13px]">
             <div className="min-w-0">
               <p className="font-semibold truncate">{a.user_name ?? "—"}</p>
-              <p className="text-[12px] text-muted-foreground truncate">{a.user_phone ?? ""}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{(formatPhone(a.user_phone) || "")}</p>
             </div>
             <div className="text-right shrink-0">
               <p className="font-bold">{a.coupon_code ?? "—"}</p>
@@ -1586,7 +1587,7 @@ function CustomerPicker({
             >
               <span className="min-w-0">
                 <span className="font-semibold">{r.full_name ?? "—"}</span>
-                <span className="text-[12px] text-muted-foreground"> · {r.phone ?? "—"}</span>
+                <span className="text-[12px] text-muted-foreground"> · {(formatPhone(r.phone) || "—")}</span>
                 {r.city && <span className="text-[12px] text-muted-foreground"> · {r.city}</span>}
               </span>
               <span
@@ -1768,7 +1769,7 @@ function DeliveriesModal({
           <div key={d.id} className="py-3 flex items-center justify-between gap-4 text-[13px]">
             <div className="min-w-0">
               <p className="font-semibold truncate">{d.user_name ?? "—"}</p>
-              <p className="text-[12px] text-muted-foreground truncate">{d.user_phone ?? ""}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{(formatPhone(d.user_phone) || "")}</p>
             </div>
             <div className="text-right shrink-0 max-w-[55%]">
               <span

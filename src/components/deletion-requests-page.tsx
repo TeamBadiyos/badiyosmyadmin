@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -137,7 +138,7 @@ function RequestCard({ request }: { request: DeletionRequest }) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[15px] font-bold text-foreground font-mono">{request.phone}</p>
+            <p className="text-[15px] font-bold text-foreground font-mono">{formatPhone(request.phone)}</p>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${TYPE_STYLES[request.accountType]}`}
             >

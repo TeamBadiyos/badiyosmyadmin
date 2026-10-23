@@ -1,4 +1,5 @@
 import { CityName, useShowCity } from "@/lib/city-scope";
+import { formatPhone } from "@/lib/phone";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -55,7 +56,7 @@ export function ExpertApplicationsPanel() {
               const [l, c] = STATUS[viewStatus(a)] ?? [a.status, "bg-muted"];
               return (
                 <tr key={a.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/50" onClick={() => setOpen(a)}>
-                  <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{a.phone} · {a.zone_name ?? "No zone"}</div>{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={(a as { city_id?: string }).city_id} /></p>}</td>
+                  <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{formatPhone(a.phone)} · {a.zone_name ?? "No zone"}</div>{showCity && <p className="text-[11px] font-normal text-muted-foreground"><CityName id={(a as { city_id?: string }).city_id} /></p>}</td>
                   <td className="p-3">{a.work_types.map((w) => WORK[w]).join(", ")}</td>
                   <td className="p-3">{dt(a.submitted_at)}</td>
                   <td className="p-3"><Checklist a={a} /></td>
@@ -117,7 +118,7 @@ function AppDetail({ a, onClose }: { a: App; onClose: () => void }) {
         <DialogHeader><DialogTitle>{a.name || "Applicant"} · {a.work_types.map((w) => WORK[w]).join(", ")}</DialogTitle></DialogHeader>
         <div className="grid sm:grid-cols-2 gap-3 text-[13px]">
           <div className="space-y-1">
-            <div><b>Phone:</b> {a.phone}</div><div><b>Zone:</b> {a.zone_name ?? "—"}</div><div><b>Address:</b> {a.address ?? "—"}</div>
+            <div><b>Phone:</b> {formatPhone(a.phone)}</div><div><b>Zone:</b> {a.zone_name ?? "—"}</div><div><b>Address:</b> {a.address ?? "—"}</div>
             <div><b>Submitted:</b> {dt(a.submitted_at)}</div>
             {a.query_reason && <div className="text-destructive"><b>Query:</b> {a.query_reason}{a.query_note ? ` — ${a.query_note}` : ""}</div>}
             {a.reject_reason && <div className="text-destructive"><b>Rejected:</b> {a.reject_reason}</div>}

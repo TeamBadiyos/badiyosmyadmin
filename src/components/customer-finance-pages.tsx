@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -81,7 +82,7 @@ export function CustomerInvoicesPage({ isSuperAdmin }: { isSuperAdmin: boolean }
                 {inv.map((i) => (
                   <tr key={i.id}>
                     <td className="font-semibold">{i.invoice_no}{(i as { status?: string }).status === "draft" && <span className="ml-2"><StatusPill status="pending" label="Draft" /></span>}</td><td>{i.invoice_date}</td>
-                    <td>{i.customer_name ?? "—"}<div className="text-[11px] text-muted-foreground">{i.customer_phone}</div></td>
+                    <td>{i.customer_name ?? "—"}<div className="text-[11px] text-muted-foreground">{formatPhone(i.customer_phone)}</div></td>
                     <td>{svcLabel(i.service)}</td><td>{i.ref_code}</td>
                     <td className="text-right">{inr(i.taxable_value)}</td><td className="text-right">{inr(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}</td>
                     <td className="text-right font-semibold">{inr(i.total)}</td>
@@ -166,7 +167,7 @@ export function CustomerWalletPage({ isSuperAdmin }: { isSuperAdmin: boolean }) 
             <tbody>
               {(data.data?.wallets ?? []).map((w) => (
                 <tr key={w.user_id} className={tableCls.tr} onClick={() => setOpen(w)}>
-                  <td className={`${tableCls.td} font-semibold`}>{w.name ?? "—"}</td><td className={`${tableCls.td} tabular-nums`}>{w.phone}</td>
+                  <td className={`${tableCls.td} font-semibold`}>{w.name ?? "—"}</td><td className={`${tableCls.td} tabular-nums`}>{formatPhone(w.phone)}</td>
                   <td className={`${tableCls.td} text-right tabular-nums`}>{inr(w.cash)}</td><td className={`${tableCls.td} text-right tabular-nums font-medium`}>{inr(w.bonus)}</td>
                   <td className={`${tableCls.td} whitespace-nowrap text-muted-foreground`}>{new Date(w.updated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 </tr>
@@ -248,12 +249,12 @@ function AdjustSheet({ onClose }: { onClose: () => void }) {
           {!user ? (
             <div><Label>Customer phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98…" />
               <ul className="mt-2 divide-y divide-border">
-                {(results.data ?? []).map((u) => <li key={u.user_id}><button className="py-2 text-[13px] w-full text-left hover:text-primary" onClick={() => setUser(u)}>{u.name ?? "—"} · {u.phone}</button></li>)}
+                {(results.data ?? []).map((u) => <li key={u.user_id}><button className="py-2 text-[13px] w-full text-left hover:text-primary" onClick={() => setUser(u)}>{u.name ?? "—"} · {formatPhone(u.phone)}</button></li>)}
               </ul>
             </div>
           ) : (
             <>
-              <p className="text-[13px]"><b>{user.name ?? "—"}</b> · {user.phone} <button className="text-primary ml-2" onClick={() => setUser(null)}>Change</button></p>
+              <p className="text-[13px]"><b>{user.name ?? "—"}</b> · {formatPhone(user.phone)} <button className="text-primary ml-2" onClick={() => setUser(null)}>Change</button></p>
               <div><Label>Balance</Label>
                 <select className={filterSelectCls + " w-full"} value={bucket} onChange={(e) => setBucket(e.target.value as "cash" | "bonus")}><option value="cash">Cash</option><option value="bonus">Bonus</option></select></div>
               <div><Label>Amount (₹, negative to deduct)</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>

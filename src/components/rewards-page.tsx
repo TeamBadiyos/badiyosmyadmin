@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/date-input";
+import { formatPhone } from "@/lib/phone";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -508,7 +509,7 @@ function ReportsSection({ programs, actor }: { programs: RewardProgram[]; actor:
           >
             <div className="min-w-0">
               <p className="font-semibold truncate">{r.actor_name ?? "—"}</p>
-              <p className="text-[12px] text-muted-foreground truncate">{r.actor_phone ?? ""}</p>
+              <p className="text-[12px] text-muted-foreground truncate">{(formatPhone(r.actor_phone) || "")}</p>
             </div>
             <span className="truncate">{r.program_name}</span>
             <span className="truncate text-[12px] text-muted-foreground" title={r.notes ?? ""}>

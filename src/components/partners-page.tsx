@@ -1,4 +1,5 @@
 import { FilterBar, FilterField, filterSelectCls, countLabel } from "@/components/section-chrome";
+import { formatPhone } from "@/lib/phone";
 import { DateInput } from "@/components/date-input";
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -127,7 +128,7 @@ function PartnersTab({ isAdmin }: { isAdmin: boolean }) {
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-border">
                 <td className="p-2 font-semibold"><button className="text-primary hover:underline" onClick={() => setDetailId(p.id)}>{p.name}</button></td>
-                <td className="p-2">{p.phone}</td>
+                <td className="p-2">{formatPhone(p.phone)}</td>
                 <td className="p-2">{q.data?.plans.find((x) => x.id === p.plan_id)?.name ?? "—"}</td>
                 <td className="p-2">{p.city}</td>
                 <td className="p-2">{p.program === "zone_franchise" ? zoneName(p.zone_id) : "—"}</td>
@@ -438,7 +439,7 @@ function BatchDetail({ batchId, isAdmin }: { batchId: string; isAdmin: boolean }
                 <Fragment key={it.id}>
                   <tr className={`border-t border-border ${it.is_deleted ? "opacity-50" : ""}`}>
                     <td className="p-2"><button onClick={() => setOpenItem(openItem === it.id ? null : it.id)}>{openItem === it.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</button></td>
-                    <td className="p-2 font-semibold">{it.partners?.name}<div className="text-xs font-normal text-muted-foreground">{it.partners?.phone}</div></td>
+                    <td className="p-2 font-semibold">{it.partners?.name}<div className="text-xs font-normal text-muted-foreground">{formatPhone(it.partners?.phone)}</div></td>
                     <td className="p-2">{PROGRAM_LABEL[it.partners?.program as PartnerProgram]}{it.partners?.partner_commission_plans?.name ? ` · ${it.partners.partner_commission_plans.name}` : ""}</td>
                     <td className="p-2">{live}</td>
                     <td className="p-2">{inr(it.gross_amount)}</td>

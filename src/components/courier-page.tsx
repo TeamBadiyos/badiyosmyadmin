@@ -1,4 +1,5 @@
 import { DeliveryRateFields } from "@/components/delivery-rate-card";
+import { formatPhone } from "@/lib/phone";
 import { commissionToRiderShare, riderShareToCommission } from "@/lib/delivery-rate";
 import { ContactButtons } from "@/components/booking-details-modal";
 import { TripLeftBehind } from "@/components/left-behind";
@@ -1445,7 +1446,7 @@ function MultiStopSections({
               </div>
               <p className="mt-1 text-muted-foreground">{st.address ?? "—"}</p>
               <p className="text-muted-foreground">
-                {st.contact_name ?? "—"} {st.contact_phone ? `· ${st.contact_phone}` : ""}
+                {st.contact_name ?? "—"} {st.contact_phone ? `· ${formatPhone(st.contact_phone)}` : ""}
               </p>
               <p className="text-muted-foreground">
                 {[

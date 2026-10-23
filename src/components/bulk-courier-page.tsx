@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -291,7 +292,7 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
         {(data ?? []).map((b) => (
           <tr key={b.merchant_id} className="cursor-pointer hover:bg-muted/40" onClick={() => setOpenId(b.merchant_id)}>
             <td className={`${td} font-semibold`}>{b.business_name}{!b.pricing_plan_id || !b.dispatch_plan_id ? <span className="ml-2"><Pill tone="warn">No plans</Pill></span> : null}{b.seal_low ? <span className="ml-2"><span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">Low stickers</span></span> : null}</td>
-            <td className={td}>{b.phone ?? "—"}</td><td className={td}>{b.city ?? "—"}</td>
+            <td className={td}>{(formatPhone(b.phone) || "—")}</td><td className={td}>{b.city ?? "—"}</td>
             <td className={td}><Pill tone={b.delivery_status === "active" ? "ok" : "off"}>{b.delivery_status ?? "—"}</Pill></td>
             <td className={td}>{b.pricing_plan ?? "—"}</td><td className={td}>{b.dispatch_plan ?? "—"}</td>
             <td className={`${td} font-semibold ${lowBal(b) ? "text-destructive" : ""}`}>{inr(b.wallet_balance)}</td>
@@ -318,7 +319,7 @@ function BusinessesTab({ canWrite, canOperate, canWriteOrders }: { canWrite: boo
                       setFound({ merchant_id: s.merchant_id, store_name: s.store_name, city: s.city, status: s.status, is_business: s.is_business });
                       setAdding((a) => a ? { ...a, phone: (s.phone ?? "").replace(/\D/g, "").slice(-10), business_name: s.store_name ?? a.business_name, city: s.city ?? a.city } : a);
                     }}>
-                    <span className="text-[13px] font-semibold text-foreground">{s.store_name ?? "—"}<span className="ml-2 font-normal text-muted-foreground">{s.phone ?? "—"} · {s.city ?? "—"}</span></span>
+                    <span className="text-[13px] font-semibold text-foreground">{s.store_name ?? "—"}<span className="ml-2 font-normal text-muted-foreground">{(formatPhone(s.phone) || "—")} · {s.city ?? "—"}</span></span>
                     <Pill tone={s.is_business ? "ok" : "off"}>{s.is_business ? "Business" : (s.status ?? "store")}</Pill>
                   </button>
                 ))}
@@ -450,7 +451,7 @@ function SetupTab({ biz, canWrite, canOperate, pickups, vehicleTypes, courierTyp
         {pickups.map((p) => (
           <div key={p.id} className="flex items-center justify-between gap-2 rounded-[10px] border border-border p-2 text-[13px]">
             <div><span className="font-semibold">{p.name}</span> {p.is_default ? <Pill tone="ok">Default</Pill> : null} {!p.is_active ? <Pill tone="off">Inactive</Pill> : null}
-              <p className="text-[12px] text-muted-foreground">{p.address}{p.contact_phone ? ` · ${p.contact_name ?? ""} ${p.contact_phone}` : ""}</p></div>
+              <p className="text-[12px] text-muted-foreground">{p.address}{p.contact_phone ? ` · ${p.contact_name ?? ""} ${formatPhone(p.contact_phone)}` : ""}</p></div>
             {canOperate ? <button className={btnGhost} onClick={() => setEditPp({ ...p })}><Pencil size={12} /></button> : null}
           </div>
         ))}
@@ -500,7 +501,7 @@ function ReceiversTab({ rows, canReset, onChanged }: { rows: Array<Record<string
       <input className={`${inputCls} max-w-[280px]`} placeholder="Search receivers" value={q} onChange={(e) => setQ(e.target.value)} />
       {openRow ? <ReceiverLocationPanel receiver={openRow} canReset={canReset} onClose={() => setOpenId(null)} onChanged={onChanged} /> : null}
       <Table head={["Name", "Contact", "Phone", "Address", "Location", "Status"]}>
-        {list.map((r) => <tr key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(r.id)}><td className={`${td} font-semibold`}>{r.name}</td><td className={td}>{r.contact_name ?? "—"}</td><td className={td}>{r.contact_phone ?? "—"}</td><td className={td}>{r.address ?? "—"}</td><td className={td}>{r.verified_at ? <Pill tone="ok">Verified</Pill> : <Pill tone="off">Not verified</Pill>}</td><td className={td}>{r.is_active ? <Pill tone="ok">Active</Pill> : <Pill tone="off">Inactive</Pill>}</td></tr>)}
+        {list.map((r) => <tr key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(r.id)}><td className={`${td} font-semibold`}>{r.name}</td><td className={td}>{r.contact_name ?? "—"}</td><td className={td}>{(formatPhone(r.contact_phone) || "—")}</td><td className={td}>{r.address ?? "—"}</td><td className={td}>{r.verified_at ? <Pill tone="ok">Verified</Pill> : <Pill tone="off">Not verified</Pill>}</td><td className={td}>{r.is_active ? <Pill tone="ok">Active</Pill> : <Pill tone="off">Inactive</Pill>}</td></tr>)}
       </Table>
       {list.length === 0 ? <p className="text-[13px] text-muted-foreground">No receivers.</p> : null}
     </div>

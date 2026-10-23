@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -118,7 +119,7 @@ export function MerchantReferralProgram({ isSuper }: { isSuper: boolean }) {
             const left = r.window_expires_at ? Math.ceil((new Date(r.window_expires_at).getTime() - Date.now()) / 86400000) : null;
             return (
               <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_130px_90px_130px_150px] gap-4 items-center px-6 py-3 border-b border-border last:border-b-0 text-[14px]">
-                <div className="min-w-0"><p className="font-semibold truncate">{r.referrer_name ?? "—"}</p><p className="text-[12px] text-muted-foreground">{r.referrer_phone}</p></div>
+                <div className="min-w-0"><p className="font-semibold truncate">{r.referrer_name ?? "—"}</p><p className="text-[12px] text-muted-foreground">{formatPhone(r.referrer_phone)}</p></div>
                 <div className="min-w-0"><p className="font-semibold truncate">{r.referred_name ?? "—"}</p><p className="text-[12px] text-muted-foreground">{r.live_at ? `Live ${day(r.live_at)}` : "Not live yet"}</p></div>
                 <div>
                   <p className="text-[12px] font-semibold">{r.delivered_count} / {r.target_orders} orders</p>

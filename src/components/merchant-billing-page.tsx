@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { RefreshCw, Download, Pencil, Check, X } from "lucide-react";
@@ -165,7 +166,7 @@ export function MerchantBillingPage({ role }: { role: StaffRole | null }) {
                 <tr key={m.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-2.5">
                     <p className="font-semibold min-w-[180px]">{m.storeName || "Unnamed store"}</p>
-                    <p className="text-[11px] text-muted-foreground">{m.ownerName || "—"} · {m.phone}</p>
+                    <p className="text-[11px] text-muted-foreground">{m.ownerName || "—"} · {formatPhone(m.phone)}</p>
                   </td>
                   <td className="px-4 py-2.5">{m.city || "—"}</td>
                   <td className="px-4 py-2.5">

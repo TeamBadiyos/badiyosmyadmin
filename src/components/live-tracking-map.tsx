@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Crosshair, Maximize2, MapPin, Navigation, Phone } from "lucide-react";
@@ -397,7 +398,7 @@ export function LiveTrackingMap({
             <span>
               <span className="font-semibold text-foreground">Pick-up: </span>
               {data.pickup.address ?? "—"}
-              {data.pickup.contactPhone ? ` · ${data.pickup.contactPhone}` : ""}
+              {data.pickup.contactPhone ? ` · ${formatPhone(data.pickup.contactPhone)}` : ""}
             </span>
           </p>
         )}
@@ -407,7 +408,7 @@ export function LiveTrackingMap({
             <span>
               <span className="font-semibold text-foreground">{data.drop.label}: </span>
               {data.drop.address ?? "—"}
-              {data.drop.contactPhone ? ` · ${data.drop.contactPhone}` : ""}
+              {data.drop.contactPhone ? ` · ${formatPhone(data.drop.contactPhone)}` : ""}
             </span>
           </p>
         )}
@@ -419,7 +420,7 @@ export function LiveTrackingMap({
                 <span className="font-semibold text-foreground">
                   {agent.name ?? "Assigned"}
                 </span>
-                {agent.phone ? ` · ${agent.phone}` : ""}
+                {agent.phone ? ` · ${formatPhone(agent.phone)}` : ""}
                 {" · "}
                 {agent.lat != null && agent.lng != null
                   ? agoLabel(agent.updatedAt)

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getExpertWorkReport } from "@/lib/experts.functions";
@@ -163,7 +164,7 @@ export function ExpertWorkReport({ expertId }: { expertId: string }) {
                     <td className="py-1.5 pr-2">{i + 1}</td>
                     <td className="pr-2 whitespace-nowrap">{dmy(o.workDate)}</td>
                     <td className="pr-2 whitespace-nowrap">{o.slot ?? "Instant"}</td>
-                    <td className="pr-2">{o.customerName ?? (o.isTraining ? "Training" : "—")}{o.customerPhone ? <span className="block text-[11px] text-muted-foreground">{o.customerPhone}</span> : null}</td>
+                    <td className="pr-2">{o.customerName ?? (o.isTraining ? "Training" : "—")}{o.customerPhone ? <span className="block text-[11px] text-muted-foreground">{formatPhone(o.customerPhone)}</span> : null}</td>
                     <td className="pr-2">{o.service ?? "—"}</td>
                     <td className="pr-2 whitespace-nowrap font-bold">{hrs(o.minutes + o.extensionMinutes)}{o.extensionMinutes ? <span className="text-[11px] font-normal"> (+{o.extensionMinutes}m ext)</span> : null}</td>
                     <td className="pr-2">{o.isTraining ? "Training" : o.isAdvance ? "Advance" : "Same day"}</td>

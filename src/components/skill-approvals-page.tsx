@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, Ban } from "lucide-react";
@@ -96,7 +97,7 @@ export function SkillApprovalsPage({ role }: { role: StaffRole | null }) {
           >
             <span className="font-semibold text-foreground truncate">{r.expertName}</span>
             <span className="font-mono text-[13px] text-muted-foreground truncate">
-              {r.expertPhone}
+              {formatPhone(r.expertPhone)}
             </span>
             <span className="text-foreground truncate">{r.categoryName}</span>
             <span className="text-[13px] text-muted-foreground">

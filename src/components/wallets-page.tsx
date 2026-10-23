@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/date-input";
+import { formatPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -206,7 +207,7 @@ function BalancesTab({ role }: { role: Role }) {
             >
               <div className="min-w-0">
                 <p className="font-semibold text-foreground truncate">{o.name}</p>
-                <p className="text-[12px] text-muted-foreground truncate">{o.phone}</p>
+                <p className="text-[12px] text-muted-foreground truncate">{formatPhone(o.phone)}</p>
               </div>
               <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 {o.owner_type === "expert" ? "Expert" : "Partner"}
@@ -414,7 +415,7 @@ function AdjustModal({
                   key={`${o.owner_type}:${o.id}`}
                   value={`${o.owner_type}:${o.id}`}
                 >
-                  {o.name} · {o.owner_type === "expert" ? "Expert" : "Partner"} · {o.phone}
+                  {o.name} · {o.owner_type === "expert" ? "Expert" : "Partner"} · {formatPhone(o.phone)}
                 </option>
               ))}
             </select>
@@ -991,7 +992,7 @@ export function BatchDetail({ batch, onBack }: { batch: PayoutBatch; onBack: () 
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{i.owner_name}</p>
               <p className="text-[11px] text-muted-foreground">
-                {i.owner_phone ?? ""}{i.pan_last4 ? ` · PAN ••••${i.pan_last4}` : ""}
+                {(formatPhone(i.owner_phone) || "")}{i.pan_last4 ? ` · PAN ••••${i.pan_last4}` : ""}
               </p>
             </div>
             <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">

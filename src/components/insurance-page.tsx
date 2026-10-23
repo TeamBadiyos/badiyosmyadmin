@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/date-input";
+import { formatPhone } from "@/lib/phone";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -56,7 +57,7 @@ function fmtDate(d: string | null) {
 }
 function waLink(v: VehicleRow) {
   const msg = `Namaste ${v.customerName}, aapki gaadi ${v.regNumber} ka insurance ${fmtDate(v.insuranceExpiry)} ko expire ho raha hai. Renewal ke liye Badiyos se baat karein.`;
-  return `https://wa.me/91${v.customerPhone}?text=${encodeURIComponent(msg)}`;
+  return `https://wa.me/91${formatPhone(v.customerPhone)}?text=${encodeURIComponent(msg)}`;
 }
 
 export function InsurancePage({ role }: { role: Role }) {
@@ -365,7 +366,7 @@ function VehicleList({ rows, onOpen }: { rows: VehicleRow[]; onOpen: (id: string
                 <td className="p-3 font-bold">{v.regNumber}</td>
                 <td className="p-3">
                   {v.customerName}
-                  <div className="text-[11px] text-muted-foreground">{v.customerPhone}</div>
+                  <div className="text-[11px] text-muted-foreground">{formatPhone(v.customerPhone)}</div>
                 </td>
                 <td className="p-3">
                   <span className="inline-flex items-center gap-1">
@@ -582,7 +583,7 @@ function LeadDetail({
     <Modal title={v.regNumber} onClose={onClose}>
       <div className="text-[13px] space-y-1">
         <p className="font-semibold flex items-center gap-2">
-          {v.customerName} · {v.customerPhone} {!v.consent && <ConsentBadge />}
+          {v.customerName} · {formatPhone(v.customerPhone)} {!v.consent && <ConsentBadge />}
           {v.userId && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary">App customer</span>}
           {v.archived && <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Archived</span>}
         </p>

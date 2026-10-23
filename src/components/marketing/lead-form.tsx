@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2 } from "lucide-react";
 import { submitExpertLead } from "@/lib/public-leads.functions";
@@ -61,7 +62,7 @@ export function LeadForm({ kind }: { kind: Kind }) {
         label="Phone number"
         type="tel"
         value={phone}
-        onChange={setPhone}
+        onChange={formatPhone(setPhone)}
         required
         maxLength={20}
         autoComplete="tel"

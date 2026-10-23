@@ -20,7 +20,7 @@ export const knownRole = () => lastRole;
 /** Customer phones in downloads: raw only for super admin, otherwise 98xxxxx800. */
 export function exportPhone(p: string | null | undefined, role: string | null): string {
   if (!p) return "";
-  if (role === "super_admin") return p;
+  if (role === "super_admin") { const d = p.replace(/\D/g, ""); return d.length === 10 ? `+91${d}` : d.length === 12 && d.startsWith("91") ? `+${d}` : p; }
   const d = p.replace(/\D/g, "").slice(-10);
   return d.length < 5 ? "xxxxx" : `${d.slice(0, 2)}xxxxx${d.slice(-3)}`;
 }

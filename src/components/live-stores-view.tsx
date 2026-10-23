@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { MapPin, Phone, Search, Store, Package, ArrowLeft, Navigation, MessageCircle, Clock } from "lucide-react";
@@ -170,7 +171,7 @@ function StoreDetail({ store: s, onBack }: { store: LiveStore; onBack: () => voi
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-[13px]">
             <Info label="Owner">{s.ownerName || "—"}</Info>
-            <Info label="Phone"><span className="font-mono">{s.phone}</span></Info>
+            <Info label="Phone"><span className="font-mono">{formatPhone(s.phone)}</span></Info>
             <Info label="Delivery">{s.deliveryEnabled ? "Delivery available" : "Pickup only"}</Info>
             <Info label="Items">
               {s.items.length} live{outOfStock ? ` · ${outOfStock} out of stock` : ""}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { SortFilterHeader, SortFilterReset, useSortFilter, type SortFilterColumn } from "@/components/table-sort-filter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -430,7 +431,7 @@ function CampaignDetail({
                         <td className="py-1">{w.prize_type === "lucky_draw" ? "Lucky draw" : "Leaderboard"}</td>
                         <td>{w.prize_name ?? "—"}{w.prize_value ? ` (₹${w.prize_value})` : ""}</td>
                         <td>{w.full_name ?? "—"}</td>
-                        <td>{w.phone ?? "—"}</td>
+                        <td>{(formatPhone(w.phone) || "—")}</td>
                         <td>{w.entry_no ?? "—"}</td>
                         <td>{w.rank ?? "—"}</td>
                         <td>{w.entries ?? "—"}</td>
@@ -706,7 +707,7 @@ function EnrolmentsTable({
                   <td className="py-1">{serial}</td>
                   <td className="py-1 font-mono">{ticket}</td>
                   <td>{r.full_name ?? "—"}</td>
-                  <td>{r.phone ?? "—"}</td>
+                  <td>{(formatPhone(r.phone) || "—")}</td>
                   <td>
                     <Badge variant={first ? "secondary" : "outline"}>{first ? "Signup" : "Ref bonus"}</Badge>
                   </td>

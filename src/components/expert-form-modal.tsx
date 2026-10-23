@@ -1,4 +1,5 @@
 import { DateInput } from "@/components/date-input";
+import { formatPhone } from "@/lib/phone";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -332,7 +333,7 @@ export function ExpertFormModal({
                 <option value="">No referral</option>
                 {referrerOptions.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.name} · {e.phone}
+                    {e.name} · {formatPhone(e.phone)}
                   </option>
                 ))}
               </SelectField>
