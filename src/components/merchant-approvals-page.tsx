@@ -1,4 +1,5 @@
 import { fssaiState, isFssaiDoc } from "@/lib/fssai";
+import { formatPhone } from "@/lib/phone";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -152,7 +153,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                 <span className="font-semibold text-foreground">{m.storeName || "Unnamed store"}</span>
                 <span className="text-muted-foreground"> · {m.ownerName || "—"}</span>
               </span>
-              <span className="font-mono text-[13px] text-muted-foreground">{m.phone}</span>
+              <span className="font-mono text-[13px] text-muted-foreground">{formatPhone(m.phone)}</span>
               <span className="text-[13px] text-muted-foreground">Step {m.onboardingStep}</span>
               <span className="text-[13px] text-muted-foreground">{fmt(m.updatedAt)}</span>
               <span className="text-right flex justify-end gap-2">
@@ -200,7 +201,7 @@ export function MerchantApprovalsPage({ role }: { role: StaffRole | null }) {
                     )}
                   </div>
                   <p className="text-[13px] text-muted-foreground mt-1">
-                    {m.ownerName || "—"} · <span className="font-mono">{m.phone}</span> · applied{" "}
+                    {m.ownerName || "—"} · <span className="font-mono">{formatPhone(m.phone)}</span> · applied{" "}
                     {fmt(m.createdAt)}
                   </p>
                   <p className="text-[12px] text-muted-foreground mt-1">

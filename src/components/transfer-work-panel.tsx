@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { UserCheck } from "lucide-react";
@@ -59,7 +60,7 @@ export function TransferWorkPanel({
               {list.map((e) => (
                 <button key={e.id} onClick={() => setExpertId(e.id)}
                   className={`w-full text-left rounded-lg border px-3 py-2 text-[12px] ${expertId === e.id ? "border-primary bg-primary/10" : "border-border"}`}>
-                  <b>{e.name}</b> <span className="text-muted-foreground">{e.phone}</span>
+                  <b>{e.name}</b> <span className="text-muted-foreground">{formatPhone(e.phone)}</span>
                 </button>
               ))}
             </div>

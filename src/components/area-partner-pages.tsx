@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,7 +47,7 @@ export function ApApplicationsPage() {
             {!q.isLoading && !(q.data ?? []).length && <tr><td colSpan={6} className="p-4 text-muted-foreground">No applications in your zones.</td></tr>}
             {(q.data ?? []).map((a) => (
               <tr key={a.id} className="border-b border-border last:border-0 align-top">
-                <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{a.phone ?? "—"} · {a.zone_name ?? "—"}</div></td>
+                <td className="p-3 font-semibold">{a.name || "—"}<div className="text-[11px] font-normal text-muted-foreground">{(formatPhone(a.phone) || "—")} · {a.zone_name ?? "—"}</div></td>
                 <td className="p-3">{a.work_types.map((w) => WORK[w] ?? w).join(", ")}</td>
                 <td className="p-3">{dt(a.submitted_at)}</td>
                 <td className="p-3 text-[12px]">{a.missing.length ? a.missing.join(", ") : "Nothing"}</td>

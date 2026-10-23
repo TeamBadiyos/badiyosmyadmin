@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Download, Search } from "lucide-react";
@@ -162,7 +163,7 @@ export function DiscountBreakdownModal({
                   >
                     <td className="p-2">
                       <div className="font-medium text-foreground">{r.customerName ?? "—"}</div>
-                      <div className="text-muted-foreground">{r.customerPhone ?? ""}</div>
+                      <div className="text-muted-foreground">{(formatPhone(r.customerPhone) || "")}</div>
                     </td>
                     <td className="p-2">
                       <div>{r.serviceLabel}</div>

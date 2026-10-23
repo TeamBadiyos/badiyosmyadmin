@@ -1,4 +1,5 @@
 import { exportPhone, knownRole } from "@/lib/export-guard";
+import { formatPhone } from "@/lib/phone";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -176,7 +177,7 @@ export function WaitlistPage({ role }: { role: StaffRole | null }) {
                             <td className="px-5 py-2 whitespace-nowrap">{fmt(r.createdAt)}</td>
                             <td className="px-5 py-2 max-w-[240px] truncate">{r.area ?? "—"}</td>
                             <td className="px-5 py-2">{r.services.map((s) => DEMAND_LABEL[s] ?? s).join(", ") || "—"}</td>
-                            <td className="px-5 py-2 whitespace-nowrap">{r.phone ?? "—"}</td>
+                            <td className="px-5 py-2 whitespace-nowrap">{(formatPhone(r.phone) || "—")}</td>
                             <td className="px-5 py-2 whitespace-nowrap">{SOURCE_LABEL[r.source] ?? r.source}</td>
                             <td className="px-5 py-2 whitespace-nowrap">
                               {r.latitude != null && r.longitude != null ? (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Check, MapPin, Phone, Volume2, VolumeX } from "lucide-react";
@@ -199,7 +200,7 @@ export function EmergencyAlertsPage({ role }: { role: StaffRole | null }) {
                         href={`tel:${a.expertPhone}`}
                         className="ml-3 inline-flex items-center gap-1 text-primary hover:underline"
                       >
-                        <Phone size={13} /> {a.expertPhone}
+                        <Phone size={13} /> {formatPhone(a.expertPhone)}
                       </a>
                     ) : null}
                   </p>

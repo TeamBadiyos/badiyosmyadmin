@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Store, MapPin, Handshake, UserPlus, Phone, MessageCircle, Mail } from "lucide-react";
@@ -153,7 +154,7 @@ function ContactLeadList({
 
             <div className="space-y-1 text-[13px] text-muted-foreground">
               <p className="flex items-center gap-1.5">
-                <Phone size={13} /> {l.phone}
+                <Phone size={13} /> {formatPhone(l.phone)}
               </p>
               {l.email && (
                 <p className="flex items-center gap-1.5 truncate">

@@ -1,4 +1,5 @@
 import { useCity, CityName, useShowCity } from "@/lib/city-scope";
+import { formatPhone } from "@/lib/phone";
 import { DeliveryRateFields, toRate, type DeliveryRateDraft } from "@/components/delivery-rate-card";
 import { CategoryManager, ProductCategoryReview } from "@/components/category-manager";
 import { PartyAgreementCard } from "@/components/agreements";
@@ -272,9 +273,9 @@ function OrderDetail({ id, service, storeLabel, onClose }: { id: string; service
         {o && (
           <div className="space-y-4">
             <div className="grid sm:grid-cols-3 gap-3 text-sm">
-              <div><p className="text-xs text-muted-foreground">Customer</p><p>{o.customer_name || "—"}</p><p className="text-xs">{o.customer_phone}</p><p className="text-xs text-muted-foreground">{o.delivery_address}</p></div>
-              <div><p className="text-xs text-muted-foreground">{storeLabel}</p><p>{r.data?.store?.store_name}</p><p className="text-xs">{r.data?.store?.phone}</p></div>
-              <div><p className="text-xs text-muted-foreground">Rider</p><p>{r.data?.rider?.name ?? "No rider yet"}</p><p className="text-xs">{r.data?.rider?.phone}</p><p className="text-xs text-muted-foreground">{r.data?.courier?.status}</p></div>
+              <div><p className="text-xs text-muted-foreground">Customer</p><p>{o.customer_name || "—"}</p><p className="text-xs">{formatPhone(o.customer_phone)}</p><p className="text-xs text-muted-foreground">{o.delivery_address}</p></div>
+              <div><p className="text-xs text-muted-foreground">{storeLabel}</p><p>{r.data?.store?.store_name}</p><p className="text-xs">{formatPhone(r.data?.store?.phone)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Rider</p><p>{r.data?.rider?.name ?? "No rider yet"}</p><p className="text-xs">{formatPhone(r.data?.rider?.phone)}</p><p className="text-xs text-muted-foreground">{r.data?.courier?.status}</p></div>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Items</p>
@@ -604,7 +605,7 @@ function StoreDetail({ service, storeId, role, onBack }: { service: Svc; storeId
           {t === "staff" && (
             <div className="rounded-lg border bg-card divide-y">
               {r.data!.staff.map((m: any) => (
-                <div key={m.id} className="p-3 flex justify-between text-sm"><span>{m.name || "—"} · {m.phone}</span><span><Badge variant={m.role === "Owner" ? "default" : "outline"}>{m.role}</Badge> <span className="text-xs text-muted-foreground">{m.status}</span></span></div>
+                <div key={m.id} className="p-3 flex justify-between text-sm"><span>{m.name || "—"} · {formatPhone(m.phone)}</span><span><Badge variant={m.role === "Owner" ? "default" : "outline"}>{m.role}</Badge> <span className="text-xs text-muted-foreground">{m.status}</span></span></div>
               ))}
             </div>
           )}
@@ -1068,7 +1069,7 @@ function BankChanges({ service, q }: { service: Svc; q: any }) {
           <div key={r.id} className="rounded-lg border bg-card p-3 space-y-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-semibold">{r.storeName}{r.ownerName && <span className="ml-2 text-xs font-normal text-muted-foreground">{r.ownerName}</span>}</p>
-              <p className="text-xs text-muted-foreground">Submitted {dt(r.submittedAt)}{r.verifiedPhone ? ` · OTP verified ${r.verifiedPhone}` : ""}</p>
+              <p className="text-xs text-muted-foreground">Submitted {dt(r.submittedAt)}{r.verifiedPhone ? ` · OTP verified ${formatPhone(r.verifiedPhone)}` : ""}</p>
             </div>
             <div className="flex flex-wrap gap-4">
               <table className="flex-1 min-w-[280px] text-sm">

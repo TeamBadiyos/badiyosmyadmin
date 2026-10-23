@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { formatPhone } from "@/lib/phone";
 import { Copy, MapPin, MessageCircle, Bike, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -102,7 +103,7 @@ export function ShareLocationIcons({ kind, id }: { kind: "booking" | "courier"; 
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5">
       {agent && (
         <IconShare label={kind === "courier" ? "Rider" : "Expert"} lat={agent.lat} lng={agent.lng}
-          message={(u) => `Badiyos ${code} — ${agent.name ?? "Partner"} live location${agent.phone ? ` (${agent.phone})` : ""}: ${u}`} />
+          message={(u) => `Badiyos ${code} — ${agent.name ?? "Partner"} live location${agent.phone ? ` (${formatPhone(agent.phone)})` : ""}: ${u}`} />
       )}
       {data?.pickup && (
         <IconShare label="Pick-up" lat={data.pickup.lat} lng={data.pickup.lng}
@@ -161,7 +162,7 @@ export function ShareLocation({ kind, id }: { kind: "booking" | "courier"; id: s
           </span>
         }
         message={(u) =>
-          `Badiyos ${code} — ${agent?.name ?? "Partner"} live location${agent?.phone ? ` (${agent.phone})` : ""}: ${u}`
+          `Badiyos ${code} — ${agent?.name ?? "Partner"} live location${agent?.phone ? ` (${formatPhone(agent.phone)})` : ""}: ${u}`
         }
       />
       {stale && (

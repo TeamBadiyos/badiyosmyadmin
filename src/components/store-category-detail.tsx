@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Package, Phone, Search, Store, X, AlertTriangle, MapPin } from "lucide-react";
@@ -195,7 +196,7 @@ export function StoreCategoryDetail({
                       {s.ownerName && <span>{s.ownerName}</span>}
                       {s.phone && (
                         <a href={`tel:${s.phone}`} className="inline-flex items-center gap-1 hover:text-foreground">
-                          <Phone size={11} /> {s.phone}
+                          <Phone size={11} /> {formatPhone(s.phone)}
                         </a>
                       )}
                       {(s.city || s.address) && (

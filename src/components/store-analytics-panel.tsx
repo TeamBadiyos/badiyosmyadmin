@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/lib/phone";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { BarChart3 } from "lucide-react";
@@ -63,7 +64,7 @@ export function StoreAnalyticsPanel({ merchantId }: { merchantId: string }) {
                     <div key={i} className="flex justify-between gap-2 text-[13px] border-t border-border py-1">
                       <span>
                         <span className="font-semibold">{r.guest ? "Guest" : r.name || "Customer"}</span>
-                        {r.phone && <span className="block text-[11px] text-muted-foreground font-mono">{r.phone}</span>}
+                        {r.phone && <span className="block text-[11px] text-muted-foreground font-mono">{formatPhone(r.phone)}</span>}
                       </span>
                       <span className="text-muted-foreground text-[12px]">{fmt(r.at)}</span>
                     </div>
