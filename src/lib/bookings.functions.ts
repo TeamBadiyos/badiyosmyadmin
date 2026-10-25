@@ -395,6 +395,8 @@ export type BookingDetails = {
   /** Customer's bookings up to and including this one, and avg rating they gave. */
   gstAmount: number;
   travelFee: number;
+  tips: Array<{ amount: number; paymentId: string | null; at: string }>;
+  tipAmount: number;
   travelFeeGst: number;
   travelExpertSharePct: number | null;
   gstPercent: number | null;
@@ -530,8 +532,21 @@ async function loadBookingDetails(
     ...(b.refund_status ? [{ at: (b.updated_at ?? b.created_at) as string, what: `Refund ${b.refund_status}${b.refund_amount != null ? ` · ₹${b.refund_amount}` : ""}`, who: null }] : []),
   ];
 
+  const { data: tipRows } = await db
+    .from("booking_tips")
+    .select("amount, razorpay_payment_id, created_at, status")
+    .eq("booking_id", b.id)
+    .eq("status", "paid");
+  const tips = ((tipRows ?? []) as Array<{ amount: number | null; razorpay_payment_id: string | null; created_at: string }>).map((t) => ({
+    amount: Number(t.amount ?? 0), paymentId: t.razorpay_payment_id ?? null, at: t.created_at,
+  }));
+  for (const t of tips) history.push({ at: t.at, what: `Customer tip ₹${t.amount} · 100% credited to expert wallet`, who: null });
+  history.sort((x, y) => String(x.at).localeCompare(String(y.at)));
+
   const bx = b as Record<string, unknown>;
   return {
+    tips,
+    tipAmount: tips.reduce((x, t) => x + t.amount, 0),
     gstAmount: Number(bx.gst_amount ?? 0),
     travelFee: Number(bx.travel_fee ?? 0),
     travelFeeGst: Number(bx.travel_fee_gst ?? 0),
