@@ -532,7 +532,7 @@ async function loadBookingDetails(
     ...(b.refund_status ? [{ at: (b.updated_at ?? b.created_at) as string, what: `Refund ${b.refund_status}${b.refund_amount != null ? ` · ₹${b.refund_amount}` : ""}`, who: null }] : []),
   ];
 
-  const { data: tipRows } = await db
+  const { data: tipRows } = await supabase
     .from("booking_tips")
     .select("amount, razorpay_payment_id, created_at, status")
     .eq("booking_id", b.id)
