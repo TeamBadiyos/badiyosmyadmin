@@ -607,6 +607,14 @@ export function BookingDetailsModal({
                     {data.discountAmount > 0 && <PayRow label={`Coupon${data.couponCode ? ` ${data.couponCode}` : ""}`} value={`− ${money(data.discountAmount)}`} />}
                     {data.extensionAmount > 0 && <PayRow label={`Extra time (${data.extensionMinutes} min)`} value={money(data.extensionAmount)} />}
                     <PayRow bold label="Total" value={money((data.totalAmount ?? data.price ?? 0) + data.extensionAmount)} />
+                    {data.tipAmount > 0 && (
+                      <div className="rounded-md border border-success/40 bg-success/10 px-2 py-1">
+                        <PayRow label="🎁 Customer tip (100% to expert)" value={money(data.tipAmount)} />
+                        {showIds && data.tips.map((t) => t.paymentId && (
+                          <p key={t.paymentId} className="text-[11px] font-mono text-muted-foreground break-all">Tip payment: {t.paymentId}</p>
+                        ))}
+                      </div>
+                    )}
                     <p className="pt-1 text-[12px] text-muted-foreground">
                       <span className={`mr-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
                         data.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700"
