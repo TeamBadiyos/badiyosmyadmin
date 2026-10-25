@@ -387,6 +387,8 @@ export type PipelineBooking = {
   serviceEndAt?: string | null;
   /** Total accepted extension minutes (e.g. 60 for a +1 hr extension). */
   extMinutes: number;
+  /** Paid customer tips on this booking (100% goes to the expert). */
+  tipAmount?: number;
   /** Which Clean board the booking belongs to (car-bike-wash category = wash). */
   serviceGroup?: "maid" | "wash";
 };
@@ -563,6 +565,17 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
     if ("error" in extRes && extRes.error) {
       throw new Error(extRes.error.message);
     }
+    const tipMap = new Map<string, number>();
+    {
+      const { data: tips } = await db
+        .from("booking_tips")
+        .select("booking_id, amount, status")
+        .in("booking_id", bookingIds)
+        .eq("status", "paid");
+      for (const t of (tips ?? []) as Array<{ booking_id: string; amount: number | null }>) {
+        tipMap.set(t.booking_id, (tipMap.get(t.booking_id) ?? 0) + Number(t.amount ?? 0));
+      }
+    }
     const extMap = new Map<string, number>();
     for (const e of (extRes.data ?? []) as Array<{
       booking_id: string;
@@ -654,6 +667,7 @@ export const listPipelineBookings = createServerFn({ method: "GET" })
       startedAt: ((r as Record<string, unknown>)["started_at"] as string | null) ?? null,
       serviceEndAt: ((r as Record<string, unknown>)["service_end_at"] as string | null) ?? null,
       extMinutes: extMap.get(r.id as string) ?? 0,
+      tipAmount: tipMap.get(r.id as string) ?? 0,
       serviceGroup: washCats.has(((r as Record<string, unknown>)["service_category_id"] as string) ?? "") ? "wash" : "maid",
     }));
   });

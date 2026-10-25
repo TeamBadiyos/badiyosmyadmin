@@ -1012,6 +1012,12 @@ function BoardCard({
         </p>
       )}
 
+      {(booking.tipAmount ?? 0) > 0 && (
+        <p className="ml-1 mt-2 inline-flex rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">
+          🎁 Tip received ₹{booking.tipAmount} · 100% to expert
+        </p>
+      )}
+
       {booking.staffNote && (
         <p
           title={booking.staffNote}
