@@ -969,7 +969,7 @@ function PnlTab({ range }: { range: ReportRange }) {
 
   const exportCsv = () => {
     const lines: Array<[string, number]> = [
-      ["Revenue (excl GST)", P.revenue],
+      ["Revenue before refunds (excl GST)", P.revenue],
       ["Direct cost – Merchant payouts", m.merchantPayout], ["Direct cost – Expert payouts", s.expertPayout + s.partnerPayout],
       ["Direct cost – Rider payouts", c.riderPayout], ["Direct cost – Partner Program commission", data.programCommission],
       ["Direct cost – Bonuses", T.bonuses], ["Direct cost – Refunds", T.refunds], ["Direct cost – Razorpay fees", data.gatewayCharges.total],
@@ -1003,7 +1003,7 @@ function PnlTab({ range }: { range: ReportRange }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Gross Order Value" value={inr.format(T.gross)} />
         <Stat label="Discount Given" value={inr.format(T.discount)} />
-        <Stat label="Net Revenue (excl GST)" value={inr.format(T.netRevenue)} />
+        <Stat label="Net Revenue (after refunds, excl GST)" value={inr.format(T.netRevenue)} />
         <Stat label="Paid to Experts / Riders / Partners" value={inr.format(T.partnerPayouts)} />
         <Stat label="Bonuses" value={inr.format(T.bonuses)} />
         <Stat label="GST Collected" value={inr.format(T.gst)} />
@@ -1024,7 +1024,7 @@ function PnlTab({ range }: { range: ReportRange }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <h3 className="text-[15px] font-bold text-foreground mb-2">Overall P&amp;L</h3>
-          <Row label="Revenue (excl GST)" sub={`Collected ${inr.format(T.collected)} − GST ${inr.format(T.gst)} · after discounts ${inr.format(T.discount)}`} value={P.revenue} bold />
+          <Row label="Revenue before refunds (excl GST)" sub={`Collected ${inr.format(T.collected)} − GST ${inr.format(T.gst)} · after discounts ${inr.format(T.discount)} · refunds deducted below`} value={P.revenue} bold />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-3">Direct costs</p>
           <Row label="Merchant payouts (Store & Food)" value={m.merchantPayout} neg />
           <Row label="Expert payouts (services)" value={s.expertPayout + s.partnerPayout} neg />
