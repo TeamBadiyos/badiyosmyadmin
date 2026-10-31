@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 import { SUPABASE_API_URL } from '@/lib/api-url';
+import { createSessionRecovery, isInvalidSession } from '@/lib/session-recovery';
 
 const SUPABASE_URL = SUPABASE_API_URL;
 const SUPABASE_PUBLISHABLE_KEY =
@@ -11,10 +12,30 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+const recovery = createSessionRecovery(() => supabase.auth, (...args) => fetch(...args), () => {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.setItem('auth_notice', 'Please log in again'); } catch { /* storage may be unavailable */ }
+  window.location.replace('/auth?reason=expired');
+});
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: { fetch: (...args) => typeof window === 'undefined' ? fetch(...args) : recovery.sessionSafeFetch(...args) },
 });
+
+// The managed route gate also validates with getUser. Recover there before it
+// can redirect on an expired JWT; /auth/v1/ fetches themselves remain untouched.
+const originalGetUser = supabase.auth.getUser.bind(supabase.auth);
+supabase.auth.getUser = async (jwt?: string) => {
+  const result = await originalGetUser(jwt);
+  if (typeof window === 'undefined' || jwt || !isInvalidSession(result.error)) return result;
+  const token = await recovery.refreshOrSignOut();
+  if (!token) return result;
+  return originalGetUser(token);
+};
+
+export const verifySessionOnStart = recovery.verifySessionOnStart;

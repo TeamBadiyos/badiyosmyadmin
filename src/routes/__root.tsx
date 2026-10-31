@@ -135,7 +135,7 @@ function RootComponent() {
     let cancel: (() => void) | undefined;
 
     (async () => {
-      const { supabase } = await import("@/integrations/supabase/client");
+      const { supabase, verifySessionOnStart } = await import("@/integrations/supabase/client");
       if (!mounted) return;
       const { data } = supabase.auth.onAuthStateChange((event) => {
         if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
@@ -149,6 +149,7 @@ function RootComponent() {
         }
       });
       cancel = () => data.subscription.unsubscribe();
+      void verifySessionOnStart().catch(() => { /* Offline checks must not crash the app. */ });
     })();
 
     return () => {
