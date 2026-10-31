@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Restore and test single-flight expired-login recovery without changing connection settings.
+- [x] Restore single-flight expired-login recovery without changing connection settings; six tests and simulated browser recovery/login redirect passed. Real-account expiry check unavailable for external Supabase.
 - [x] Add audited Super Admin Edit/Delete options for manual adjustments; rolled-back balance, date, provenance, stale-edit, payout protection and permission tests passed.
 - [ ] Verify adjustment Edit/Delete through signed-in CC; blocked by external Supabase without an available authenticated session.
 - [x] Add manual payout debit/credit adjustment dates with separate audit time; date tests and SQL accounting checks passed.

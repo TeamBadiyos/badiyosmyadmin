@@ -35,7 +35,9 @@ supabase.auth.getUser = async (jwt?: string) => {
   if (typeof window === 'undefined' || jwt || !isInvalidSession(result.error)) return result;
   const token = await recovery.refreshOrSignOut();
   if (!token) return result;
-  return originalGetUser(token);
+  const retried = await originalGetUser(token);
+  if (isInvalidSession(retried.error)) await recovery.forceRelogin();
+  return retried;
 };
 
-export const verifySessionOnStart = recovery.verifySessionOnStart;
+export const verifySessionOnStart = () => recovery.verifySessionOnStart(() => originalGetUser());

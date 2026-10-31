@@ -55,12 +55,12 @@ export function createSessionRecovery(getAuth: () => Auth, fetcher: typeof fetch
     return retry;
   };
 
-  async function verifySessionOnStart() {
+  async function verifySessionOnStart(validateUser = () => getAuth().getUser()) {
     const { data } = await getAuth().getSession();
     if (!data.session) return;
-    const { error } = await getAuth().getUser();
+    const { error } = await validateUser();
     if (isInvalidSession(error)) await refreshOrSignOut();
   }
 
-  return { sessionSafeFetch, refreshOrSignOut, verifySessionOnStart };
+  return { sessionSafeFetch, refreshOrSignOut, forceRelogin, verifySessionOnStart };
 }
