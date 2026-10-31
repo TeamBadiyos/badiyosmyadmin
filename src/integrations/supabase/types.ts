@@ -14796,6 +14796,44 @@ export type Database = {
         }
         Returns: boolean
       }
+      reward_rating_factor: {
+        Args: {
+          _condition: Json
+          _end: string
+          _expert_id: string
+          _start: string
+        }
+        Returns: number
+      }
+      reward_scale: {
+        Args: {
+          _factor: number
+          _p: Database["public"]["Tables"]["reward_programs"]["Row"]
+        }
+        Returns: {
+          actor_type: string
+          archived_at: string | null
+          condition: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          recurrence: string
+          reward_type: string
+          reward_value: number
+          trigger_type: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "reward_programs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reward_slot_start: {
         Args: { _date: string; _slot: string }
         Returns: string
