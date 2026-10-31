@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.reward_rating_factor(jsonb, uuid, timestamptz, timestamptz) FROM authenticated;
