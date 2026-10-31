@@ -9,6 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+- Browser session recovery is shared in session-recovery.ts and installed only on the browser client (including getUser validation); keep auth HTTP requests and server clients untouched — why: refresh must be single-flight without recursion, and the managed route gate must wait for recovery.
+
 - Training recipient IDs remain separate from assignment; SQL restricts Clean broadcasts/Courier offers to selected trainees; Store/Food broadcast delivery at Ready. Live payouts are unchanged.
 - Manual Expert wallet adjustments store adjustment_date separately from created_at; ledger accounting uses effective_at, while balances post immediately through the existing audited Super Admin RPC — why: selected payment dates must not falsify audit time or duplicate money changes.
 - Manual adjustment edits/deletes use locked, Super Admin-only RPCs with audit-based provenance, stale-value checks and atomic balance correction; active payout-linked entries are protected — why: automatic earnings and settled amounts must not be changed through adjustment controls.
