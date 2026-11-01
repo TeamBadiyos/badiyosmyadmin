@@ -120,8 +120,9 @@ export function BookingsPage({
       includeDeleted: includeDeleted && role === "super_admin",
       search: search || null,
       cleanKind,
+      rating: rating || null,
     };
-  }, [status, zoneId, from, to, page, includeDeleted, role, search, cleanKind]);
+  }, [status, zoneId, from, to, page, includeDeleted, role, search, cleanKind, rating]);
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
