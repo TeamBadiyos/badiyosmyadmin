@@ -76,6 +76,7 @@ export type ListBookingsInput = {
   includeDeleted?: boolean;
   search?: string | null; // customer / expert name or phone
   cleanKind?: "maid" | "wash" | null;
+  rating?: string | null; // "low" (1–3★) or "1".."5"
 };
 
 export type ListBookingsResult = {
@@ -146,6 +147,8 @@ export const listBookings = createServerFn({ method: "POST" })
     }
     if (data.from) q = q.gte("created_at", `${data.from}T00:00:00Z`);
     if (data.to) q = q.lte("created_at", `${data.to}T23:59:59Z`);
+    if (data.rating === "low") q = q.lt("rating", 4).not("rating", "is", null);
+    else if (data.rating && /^[1-5]$/.test(data.rating)) q = q.eq("rating", Number(data.rating));
 
     // Clean sub-section filter: Car & Bike Wash = the "Auto Care" category.
     if (data.cleanKind) {
