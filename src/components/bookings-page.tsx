@@ -75,6 +75,7 @@ export function BookingsPage({
   initialFilters?: BookingsInitialFilters;
 }) {
   const [status, setStatus] = useState<string>(initialFilters?.status ?? "");
+  const [rating, setRating] = useState<string>("");
   const [zoneId, setZoneId] = useState<string>("");
   const [from, setFrom] = useState<string>(initialFilters?.from ?? "");
   const [to, setTo] = useState<string>(initialFilters?.to ?? "");
@@ -294,6 +295,25 @@ export function BookingsPage({
                 {s.replace("_", " ")}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Rating
+          </label>
+          <select
+            value={rating}
+            onChange={(e) => updateFilter(() => setRating(e.target.value))}
+            className="h-10 px-3 rounded-[12px] border border-border bg-card text-[13px] min-w-[140px]"
+          >
+            <option value="">All ratings</option>
+            <option value="low">Low ratings (1–3★)</option>
+            <option value="1">1★</option>
+            <option value="2">2★</option>
+            <option value="3">3★</option>
+            <option value="4">4★</option>
+            <option value="5">5★</option>
           </select>
         </div>
 
