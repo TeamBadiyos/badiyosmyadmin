@@ -366,6 +366,7 @@ export function BookingsPage({
             onClick={() =>
               updateFilter(() => {
                 setStatus("");
+                setRating("");
                 setZoneId("");
                 setFrom("");
                 setTo("");
