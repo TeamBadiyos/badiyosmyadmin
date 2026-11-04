@@ -1088,6 +1088,24 @@ export const rescheduleBooking = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Move an assigned/started booking back to scheduled (no expert, no payout, no customer charge). */
+export const reopenStartedBooking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { bookingId: string; reason: string }) => {
+    if (!input?.bookingId) throw new Error("bookingId required");
+    if (!input.reason?.trim()) throw new Error("Please enter a reason");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (context.supabase.rpc as any)("staff_reopen_started_booking", {
+      _booking_id: data.bookingId,
+      _reason: data.reason.trim(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const softDeleteBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { bookingId: string; reason: string }) => {
