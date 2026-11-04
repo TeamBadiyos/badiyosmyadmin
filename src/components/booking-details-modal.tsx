@@ -710,6 +710,7 @@ export function BookingDetailsModal({
                       items={[
                         ...(canReassign ? [{ label: "Reassign", icon: <RefreshCw size={14} />, onClick: () => setReassignOpen(true) }] : []),
                         ...(canReschedule ? [{ label: "Reschedule", icon: <CalendarClock size={14} />, onClick: () => openPanel("reschedule") }] : []),
+                        ...(canReopen ? [{ label: "Move back to Scheduled", icon: <RefreshCw size={14} />, onClick: askReopen }] : []),
                         ...(canHandover ? [{ label: "Handover", icon: <Repeat size={14} />, onClick: () => openPanel("handover") }] : []),
                         ...(canEditFields ? [{ label: "Edit booking", icon: <Pencil size={14} />, onClick: () => { setPanel(null); setEditOpen((v) => !v); } }] : []),
                         ...(canRefund && isTerminal ? [{ label: "Refund", icon: <IndianRupee size={14} />, onClick: () => setRefundConfirm(true), danger: true }] : []),
