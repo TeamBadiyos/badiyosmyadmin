@@ -48,6 +48,7 @@ import {
   listBookingCustomerAddresses,
   rescheduleBooking,
   adjustBookingTime,
+  reopenStartedBooking,
   ADJUST_REASONS,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
@@ -438,6 +439,20 @@ export function BookingDetailsModal({
       invalidateBooking();
     },
   });
+
+  const reopenFn = useServerFn(reopenStartedBooking);
+  const canReopen = canEdit && !!data && !isDeleted && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
+  const reopenMutation = useMutation({
+    mutationFn: (reason: string) => reopenFn({ data: { bookingId, reason } }),
+    onSuccess: () => { toast.success("Booking moved back to scheduled"); invalidateBooking(); },
+    onError: (err) => { toast.error(err instanceof Error ? err.message : "Failed"); invalidateBooking(); },
+  });
+  const askReopen = () => {
+    const reason = window.prompt(
+      "Move this booking back to Scheduled?\n\nThe expert will be removed, no payment to the expert and no charge to the customer. Assign an expert again afterwards.\n\nReason:",
+    );
+    if (reason && reason.trim()) reopenMutation.mutate(reason.trim());
+  };
 
 
   const inr = new Intl.NumberFormat("en-IN", {
