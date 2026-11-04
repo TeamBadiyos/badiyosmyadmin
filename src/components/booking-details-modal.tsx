@@ -48,6 +48,7 @@ import {
   listBookingCustomerAddresses,
   rescheduleBooking,
   adjustBookingTime,
+  reopenStartedBooking,
   ADJUST_REASONS,
   CANCELLATION_REASONS,
   STAFF_STATUS_TRANSITIONS,
@@ -439,6 +440,20 @@ export function BookingDetailsModal({
     },
   });
 
+  const reopenFn = useServerFn(reopenStartedBooking);
+  const canReopen = canEdit && !!data && !isDeleted && ["expert_assigned", "on_the_way", "arrived", "in_progress"].includes(data.status);
+  const reopenMutation = useMutation({
+    mutationFn: (reason: string) => reopenFn({ data: { bookingId, reason } }),
+    onSuccess: () => { toast.success("Booking moved back to scheduled"); invalidateBooking(); },
+    onError: (err) => { toast.error(err instanceof Error ? err.message : "Failed"); invalidateBooking(); },
+  });
+  const askReopen = () => {
+    const reason = window.prompt(
+      "Move this booking back to Scheduled?\n\nThe expert will be removed, no payment to the expert and no charge to the customer. Assign an expert again afterwards.\n\nReason:",
+    );
+    if (reason && reason.trim()) reopenMutation.mutate(reason.trim());
+  };
+
 
   const inr = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -695,6 +710,7 @@ export function BookingDetailsModal({
                       items={[
                         ...(canReassign ? [{ label: "Reassign", icon: <RefreshCw size={14} />, onClick: () => setReassignOpen(true) }] : []),
                         ...(canReschedule ? [{ label: "Reschedule", icon: <CalendarClock size={14} />, onClick: () => openPanel("reschedule") }] : []),
+                        ...(canReopen ? [{ label: "Move back to Scheduled", icon: <RefreshCw size={14} />, onClick: askReopen }] : []),
                         ...(canHandover ? [{ label: "Handover", icon: <Repeat size={14} />, onClick: () => openPanel("handover") }] : []),
                         ...(canEditFields ? [{ label: "Edit booking", icon: <Pencil size={14} />, onClick: () => { setPanel(null); setEditOpen((v) => !v); } }] : []),
                         ...(canRefund && isTerminal ? [{ label: "Refund", icon: <IndianRupee size={14} />, onClick: () => setRefundConfirm(true), danger: true }] : []),

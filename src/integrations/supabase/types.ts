@@ -15836,6 +15836,10 @@ export type Database = {
         Args: { _service_key: string }
         Returns: Json
       }
+      staff_reopen_started_booking: {
+        Args: { _booking_id: string; _reason: string }
+        Returns: undefined
+      }
       staff_reorder_homepage_sections: {
         Args: { _orders: Json }
         Returns: undefined
