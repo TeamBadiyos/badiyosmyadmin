@@ -93,7 +93,14 @@ export function LiveTrackingMap({
   const lineRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [follow, setFollow] = useState(!compact);
+  const [follow, setFollowState] = useState(!compact);
+  const fittedRef = useRef(false);
+  const followPanRef = useRef(true);
+  const setFollow = (v: boolean) => {
+    fittedRef.current = false;
+    followPanRef.current = true;
+    setFollowState(v);
+  };
 
   const agentPos = useMemo(
     () =>
@@ -154,6 +161,7 @@ export function LiveTrackingMap({
           fullscreenControl: false,
           clickableIcons: false,
         });
+        mapRef.current.addListener("dragstart", () => { followPanRef.current = false; });
         setMapReady(true);
       })
       .catch((e: unknown) => {
@@ -271,9 +279,15 @@ export function LiveTrackingMap({
       lineRef.current = null;
     }
 
+    // Only auto-position once (or after "Full route"/"Follow" is clicked) so staff zoom/pan is kept.
     if (follow && agentPos) {
-      map.panTo(agentPos);
-    } else if (!agentPos && stops.length < 2 && !bounds.isEmpty()) {
+      if (!fittedRef.current) { map.panTo(agentPos); fittedRef.current = true; }
+      else if (followPanRef.current) map.panTo(agentPos);
+      return;
+    }
+    if (fittedRef.current) return;
+    fittedRef.current = true;
+    if (!agentPos && stops.length < 2 && !bounds.isEmpty()) {
       // Nobody assigned: centre on the job location.
       map.setCenter(bounds.getCenter());
       map.setZoom(15);
