@@ -11819,6 +11819,173 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_broadcast_recipients: {
+        Row: {
+          booked_at: string | null
+          booking_id: string | null
+          broadcast_id: string
+          button_text: string | null
+          claimed_at: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          error: string | null
+          id: string
+          name: string | null
+          phone: string
+          read_at: string | null
+          replied_at: string | null
+          reply_text: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          booked_at?: string | null
+          booking_id?: string | null
+          broadcast_id: string
+          button_text?: string | null
+          claimed_at?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          name?: string | null
+          phone: string
+          read_at?: string | null
+          replied_at?: string | null
+          reply_text?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          booked_at?: string | null
+          booking_id?: string | null
+          broadcast_id?: string
+          button_text?: string | null
+          claimed_at?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          name?: string | null
+          phone?: string
+          read_at?: string | null
+          replied_at?: string | null
+          reply_text?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_broadcast_recipients_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "wa_broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_broadcasts: {
+        Row: {
+          campaign_name: string
+          created_at: string
+          created_by: string | null
+          failed: number
+          id: string
+          include_all_customers: boolean
+          is_test: boolean
+          link_code: string | null
+          media_filename: string | null
+          media_url: string | null
+          params: Json
+          sent: number
+          status: string
+          total: number
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string
+          created_by?: string | null
+          failed?: number
+          id?: string
+          include_all_customers?: boolean
+          is_test?: boolean
+          link_code?: string | null
+          media_filename?: string | null
+          media_url?: string | null
+          params?: Json
+          sent?: number
+          status?: string
+          total?: number
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string
+          created_by?: string | null
+          failed?: number
+          id?: string
+          include_all_customers?: boolean
+          is_test?: boolean
+          link_code?: string | null
+          media_filename?: string | null
+          media_url?: string | null
+          params?: Json
+          sent?: number
+          status?: string
+          total?: number
+        }
+        Relationships: []
+      }
+      wa_link_clicks: {
+        Row: {
+          clicked_at: string
+          id: string
+          link_code: string
+          user_agent: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          link_code: string
+          user_agent?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          link_code?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      wa_webhook_events: {
+        Row: {
+          event_type: string | null
+          id: string
+          matched_recipient_id: string | null
+          phone: string | null
+          raw: Json | null
+          received_at: string
+          signature_valid: boolean
+        }
+        Insert: {
+          event_type?: string | null
+          id?: string
+          matched_recipient_id?: string | null
+          phone?: string | null
+          raw?: Json | null
+          received_at?: string
+          signature_valid?: boolean
+        }
+        Update: {
+          event_type?: string | null
+          id?: string
+          matched_recipient_id?: string | null
+          phone?: string | null
+          raw?: Json | null
+          received_at?: string
+          signature_valid?: boolean
+        }
+        Relationships: []
+      }
       waitlist_notify_events: {
         Row: {
           channel: string
@@ -17134,6 +17301,35 @@ export type Database = {
         Args: { p_phone: string; p_pin: string }
         Returns: Json
       }
+      wa_attribute_bookings: { Args: never; Returns: number }
+      wa_claim_pending: {
+        Args: { _broadcast_id: string; _limit: number }
+        Returns: {
+          booked_at: string | null
+          booking_id: string | null
+          broadcast_id: string
+          button_text: string | null
+          claimed_at: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          error: string | null
+          id: string
+          name: string | null
+          phone: string
+          read_at: string | null
+          replied_at: string | null
+          reply_text: string | null
+          sent_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "wa_broadcast_recipients"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      wa_refresh_counts: { Args: { _broadcast_id: string }; Returns: undefined }
       wallet_bonus_days: { Args: never; Returns: number }
       wallet_bonus_lots: {
         Args: { _uid: string }
