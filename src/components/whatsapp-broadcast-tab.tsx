@@ -35,40 +35,17 @@ function validCount(raw: string) {
 const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "—");
 const fmt = (t: string | null) => (t ? new Date(t).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "");
 
-export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
+/** WhatsApp broadcasts list; while open, keeps sending batches for in-progress broadcasts. */
+export function useWaBroadcasts(enabled: boolean, canWrite: boolean) {
   const qc = useQueryClient();
-  const accessFn = useServerFn(getWaAccess);
   const listFn = useServerFn(listWaBroadcasts);
-  const createFn = useServerFn(createWaBroadcast);
-  const testFn = useServerFn(sendWaTest);
   const processFn = useServerFn(processWaBroadcast);
-  const retryFn = useServerFn(retryWaFailed);
-
-  const { data: access } = useQuery({ queryKey: ["wa", "access"], queryFn: () => accessFn(), staleTime: 60_000 });
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], isLoading } = useQuery({
     queryKey: ["wa", "list"],
     queryFn: () => listFn(),
+    enabled,
     refetchInterval: (q) => ((q.state.data as WaBroadcastRow[] | undefined)?.some((r) => r.status === "sending") ? 5000 : false),
   });
-
-  const [campaign, setCampaign] = useState("");
-  const [media, setMedia] = useState<{ url: string; filename: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [params, setParams] = useState<string[]>([]);
-  const [linkCode, setLinkCode] = useState("");
-  const [allCustomers, setAllCustomers] = useState(false);
-  const [extra, setExtra] = useState("");
-  const [testPhone, setTestPhone] = useState("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [detail, setDetail] = useState<WaBroadcastRow | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const extraValid = useMemo(() => validCount(extra), [extra]);
-  const totalEstimate = (allCustomers ? access?.customerCount ?? 0 : 0) + extraValid;
-  const code = linkCode.trim().toLowerCase();
-  const linkUrl = code ? `badiyos.com/go/${code}` : "";
-
-  // Keep sending batches while a broadcast is in progress and this page is open.
   const busy = useRef(false);
   useEffect(() => {
     const s = rows.find((r) => r.status === "sending" && !r.is_test);
@@ -81,6 +58,32 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
         void qc.invalidateQueries({ queryKey: ["wa", "list"] });
       });
   }, [rows, canWrite, processFn, qc]);
+  return { rows, isLoading };
+}
+
+/** New WhatsApp campaign form (opened from Growth → Campaigns → New campaign → WhatsApp). */
+export function WhatsAppComposeModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const accessFn = useServerFn(getWaAccess);
+  const createFn = useServerFn(createWaBroadcast);
+  const testFn = useServerFn(sendWaTest);
+
+  const { data: access } = useQuery({ queryKey: ["wa", "access"], queryFn: () => accessFn(), staleTime: 60_000 });
+  const [campaign, setCampaign] = useState("");
+  const [media, setMedia] = useState<{ url: string; filename: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [params, setParams] = useState<string[]>([]);
+  const [linkCode, setLinkCode] = useState("");
+  const [allCustomers, setAllCustomers] = useState(false);
+  const [extra, setExtra] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const extraValid = useMemo(() => validCount(extra), [extra]);
+  const totalEstimate = (allCustomers ? access?.customerCount ?? 0 : 0) + extraValid;
+  const code = linkCode.trim().toLowerCase();
+  const linkUrl = code ? `badiyos.com/go/${code}` : "";
 
   const payload = () => ({
     campaign_name: campaign.trim(),
@@ -96,6 +99,7 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
       toast.success(r.pending ? `Sending to ${r.total} numbers…` : `Sent to ${r.total} numbers`);
       setConfirmOpen(false);
       setExtra("");
+      onClose();
       void qc.invalidateQueries({ queryKey: ["wa", "list"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -108,12 +112,6 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const retry = useMutation({
-    mutationFn: (id: string) => retryFn({ data: { id } }),
-    onSuccess: () => { toast.success("Retrying failed numbers"); void qc.invalidateQueries({ queryKey: ["wa"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   async function upload(f: File) {
     if (!/^image\/(jpeg|png)$/.test(f.type)) return toast.error("Use a JPG or PNG image");
     if (f.size > 5 * 1024 * 1024) return toast.error("Image must be under 5 MB");
@@ -127,12 +125,17 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
     setMedia({ url: data.publicUrl, filename: f.name.slice(0, 100) || `image.${ext}` });
   }
 
-  const canSend = canWrite && campaign.trim().length > 0 && totalEstimate > 0;
+  const canSend = campaign.trim().length > 0 && totalEstimate > 0;
 
   return (
-    <div className="space-y-6">
-      {canWrite && (
-        <div className="rounded-[16px] border border-border bg-card p-5 space-y-4 max-w-[760px]">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={onClose}>
+        <div className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-[16px] bg-card p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between">
+            <p className="text-[16px] font-bold">New WhatsApp campaign</p>
+            <button className={ghostBtn} onClick={onClose}><X className="h-4 w-4" /></button>
+          </div>
+        <div className="space-y-4">
           <div className="space-y-1">
             <div className={labelCls}>Campaign Name</div>
             <input className={inputCls} value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder="e.g. dhanteras_offer" />
@@ -203,60 +206,8 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
             </button>
           </div>
         </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <h3 className="text-[14px] font-bold">History</h3>
-      </div>
-      <div className={tableCls.wrap}>
-        <div className={tableCls.scroll}>
-          <table className={`${tableCls.table} min-w-[900px]`}>
-            <thead className={tableCls.thead}>
-              <tr>
-                <th className={tableCls.th}>Date</th>
-                <th className={tableCls.th}>Campaign</th>
-                <th className={`${tableCls.th} text-right`}>Sent</th>
-                <th className={`${tableCls.th} text-right`}>Failed</th>
-                <th className={`${tableCls.th} text-right`}>Clicks</th>
-                <th className={`${tableCls.th} text-right`}>Booked</th>
-                <th className={`${tableCls.th} text-right`}>Booked %</th>
-                <th className={tableCls.th}>Status</th>
-                <th className={tableCls.th}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && (
-                <tr><td colSpan={10} className={`${tableCls.td} text-center text-muted-foreground`}>No broadcasts yet</td></tr>
-              )}
-              {rows.map((r) => (
-                <tr key={r.id} className={tableCls.tr} onClick={() => setDetail(r)}>
-                  <td className={tableCls.td}>{fmt(r.created_at)}</td>
-                  <td className={tableCls.td}>
-                    <span className="font-semibold">{r.campaign_name}</span>
-                    {r.is_test && <span className="ml-2 text-[11px] text-muted-foreground">Test</span>}
-                  </td>
-                  <td className={`${tableCls.td} text-right`}>{r.sent}/{r.total}</td>
-                  <td className={`${tableCls.td} text-right`}>{r.failed}</td>
-                  <td className={`${tableCls.td} text-right`}>{r.link_code ? r.clicks : "—"}</td>
-                  <td className={`${tableCls.td} text-right`}>{r.booked}</td>
-                  <td className={`${tableCls.td} text-right`}>{pct(r.booked, r.sent)}</td>
-                  <td className={tableCls.td}>
-                    <StatusPill status={r.status === "done" ? "completed" : "confirmed"} label={r.status === "done" ? "Done" : r.status === "sending" ? "Sending" : "Queued"} />
-                  </td>
-                  <td className={tableCls.td} onClick={(e) => e.stopPropagation()}>
-                    {canWrite && r.failed > 0 && r.status === "done" && (
-                      <button className={ghostBtn} disabled={retry.isPending} onClick={() => retry.mutate(r.id)}>
-                        <RotateCcw className="h-3.5 w-3.5" /> Retry Failed ({r.failed})
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
-
       {confirmOpen && (
         <Modal onClose={() => setConfirmOpen(false)}>
           <p className="text-[15px] font-bold">Send to {totalEstimate} numbers?</p>
@@ -269,14 +220,13 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
           </div>
         </Modal>
       )}
-      {detail && <DetailDrawer row={rows.find((r) => r.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
-    </div>
+    </>
   );
 }
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4" onClick={onClose}>
       <div className="w-full max-w-[420px] rounded-[16px] bg-card p-5 space-y-2" onClick={(e) => e.stopPropagation()}>{children}</div>
     </div>
   );
@@ -293,7 +243,14 @@ function Tick({ r }: { r: WaRecipientRow }) {
   return <span className="text-[11px] text-muted-foreground">…</span>;
 }
 
-function DetailDrawer({ row, onClose }: { row: WaBroadcastRow; onClose: () => void }) {
+export function WhatsAppDrawer({ row, canWrite, onClose }: { row: WaBroadcastRow; canWrite: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const retryFn = useServerFn(retryWaFailed);
+  const retry = useMutation({
+    mutationFn: () => retryFn({ data: { id: row.id } }),
+    onSuccess: () => { toast.success("Retrying failed numbers"); void qc.invalidateQueries({ queryKey: ["wa"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const fn = useServerFn(getWaRecipients);
   const { data } = useQuery({
     queryKey: ["wa", "recipients", row.id],
@@ -358,7 +315,12 @@ function DetailDrawer({ row, onClose }: { row: WaBroadcastRow; onClose: () => vo
               {l}
             </button>
           ))}
-          <button className={`${ghostBtn} ml-auto`} onClick={exportCsv}><Download className="h-4 w-4" /> Export CSV</button>
+          {canWrite && row.failed > 0 && row.status === "done" && (
+            <button className={`${ghostBtn} ml-auto`} disabled={retry.isPending} onClick={() => retry.mutate()}>
+              <RotateCcw className="h-3.5 w-3.5" /> Retry Failed ({row.failed})
+            </button>
+          )}
+          <button className={`${ghostBtn} ${canWrite && row.failed > 0 && row.status === "done" ? "" : "ml-auto"}`} onClick={exportCsv}><Download className="h-4 w-4" /> Export CSV</button>
         </div>
 
         <div className="divide-y divide-border rounded-[12px] border border-border">
