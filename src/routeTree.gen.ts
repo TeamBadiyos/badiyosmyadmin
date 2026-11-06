@@ -26,6 +26,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedScanRedeemRouteImport } from './routes/_authenticated/scan-redeem'
+import { Route as GoCodeRouteImport } from './routes/go.$code'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as ApiPublicAisensyWebhookRouteImport } from './routes/api/public/aisensy-webhook'
@@ -124,6 +125,11 @@ const AuthenticatedScanRedeemRoute = AuthenticatedScanRedeemRouteImport.update({
   path: '/scan-redeem',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const GoCodeRoute = GoCodeRouteImport.update({
+  id: '/go/$code',
+  path: '/go/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyadminLoginRoute = MyadminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
   '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/aisensy-webhook'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/aisensy-webhook'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/_authenticated/dashboard'
     | '/_authenticated/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
     | '/api/public/aisensy-webhook'
@@ -394,6 +406,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  GoCodeRoute: typeof GoCodeRoute
   StoreSlugRoute: typeof StoreSlugRoute
   ApiPublicAisensyWebhookRoute: typeof ApiPublicAisensyWebhookRoute
   ApiPublicBannersRoute: typeof ApiPublicBannersRoute
@@ -528,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScanRedeemRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/go/$code': {
+      id: '/go/$code'
+      path: '/go/$code'
+      fullPath: '/go/$code'
+      preLoaderRoute: typeof GoCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/myadmin/login': {
       id: '/myadmin/login'
       path: '/login'
@@ -655,6 +675,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  GoCodeRoute: GoCodeRoute,
   StoreSlugRoute: StoreSlugRoute,
   ApiPublicAisensyWebhookRoute: ApiPublicAisensyWebhookRoute,
   ApiPublicBannersRoute: ApiPublicBannersRoute,
