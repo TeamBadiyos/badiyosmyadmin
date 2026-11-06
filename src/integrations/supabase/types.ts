@@ -11824,17 +11824,12 @@ export type Database = {
           booked_at: string | null
           booking_id: string | null
           broadcast_id: string
-          button_text: string | null
           claimed_at: string | null
           customer_id: string | null
-          delivered_at: string | null
           error: string | null
           id: string
           name: string | null
           phone: string
-          read_at: string | null
-          replied_at: string | null
-          reply_text: string | null
           sent_at: string | null
           status: string
         }
@@ -11842,17 +11837,12 @@ export type Database = {
           booked_at?: string | null
           booking_id?: string | null
           broadcast_id: string
-          button_text?: string | null
           claimed_at?: string | null
           customer_id?: string | null
-          delivered_at?: string | null
           error?: string | null
           id?: string
           name?: string | null
           phone: string
-          read_at?: string | null
-          replied_at?: string | null
-          reply_text?: string | null
           sent_at?: string | null
           status?: string
         }
@@ -11860,17 +11850,12 @@ export type Database = {
           booked_at?: string | null
           booking_id?: string | null
           broadcast_id?: string
-          button_text?: string | null
           claimed_at?: string | null
           customer_id?: string | null
-          delivered_at?: string | null
           error?: string | null
           id?: string
           name?: string | null
           phone?: string
-          read_at?: string | null
-          replied_at?: string | null
-          reply_text?: string | null
           sent_at?: string | null
           status?: string
         }
@@ -11953,36 +11938,6 @@ export type Database = {
           id?: string
           link_code?: string
           user_agent?: string | null
-        }
-        Relationships: []
-      }
-      wa_webhook_events: {
-        Row: {
-          event_type: string | null
-          id: string
-          matched_recipient_id: string | null
-          phone: string | null
-          raw: Json | null
-          received_at: string
-          signature_valid: boolean
-        }
-        Insert: {
-          event_type?: string | null
-          id?: string
-          matched_recipient_id?: string | null
-          phone?: string | null
-          raw?: Json | null
-          received_at?: string
-          signature_valid?: boolean
-        }
-        Update: {
-          event_type?: string | null
-          id?: string
-          matched_recipient_id?: string | null
-          phone?: string | null
-          raw?: Json | null
-          received_at?: string
-          signature_valid?: boolean
         }
         Relationships: []
       }
@@ -17309,17 +17264,12 @@ export type Database = {
           booked_at: string | null
           booking_id: string | null
           broadcast_id: string
-          button_text: string | null
           claimed_at: string | null
           customer_id: string | null
-          delivered_at: string | null
           error: string | null
           id: string
           name: string | null
           phone: string
-          read_at: string | null
-          replied_at: string | null
-          reply_text: string | null
           sent_at: string | null
           status: string
         }[]

@@ -29,7 +29,6 @@ import { Route as AuthenticatedScanRedeemRouteImport } from './routes/_authentic
 import { Route as GoCodeRouteImport } from './routes/go.$code'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
-import { Route as ApiPublicAisensyWebhookRouteImport } from './routes/api/public/aisensy-webhook'
 import { Route as ApiPublicBannersRouteImport } from './routes/api/public/banners'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
@@ -140,11 +139,6 @@ const StoreSlugRoute = StoreSlugRouteImport.update({
   path: '/store/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAisensyWebhookRoute = ApiPublicAisensyWebhookRouteImport.update({
-  id: '/api/public/aisensy-webhook',
-  path: '/api/public/aisensy-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicBannersRoute = ApiPublicBannersRouteImport.update({
   id: '/api/public/banners',
   path: '/api/public/banners',
@@ -218,7 +212,6 @@ export interface FileRoutesByFullPath {
   '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
-  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -249,7 +242,6 @@ export interface FileRoutesByTo {
   '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
-  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -282,7 +274,6 @@ export interface FileRoutesById {
   '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
-  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -315,7 +306,6 @@ export interface FileRouteTypes {
     | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
-    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -346,7 +336,6 @@ export interface FileRouteTypes {
     | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
-    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -378,7 +367,6 @@ export interface FileRouteTypes {
     | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
-    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -408,7 +396,6 @@ export interface RootRouteChildren {
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
   GoCodeRoute: typeof GoCodeRoute
   StoreSlugRoute: typeof StoreSlugRoute
-  ApiPublicAisensyWebhookRoute: typeof ApiPublicAisensyWebhookRoute
   ApiPublicBannersRoute: typeof ApiPublicBannersRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
@@ -562,13 +549,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/aisensy-webhook': {
-      id: '/api/public/aisensy-webhook'
-      path: '/api/public/aisensy-webhook'
-      fullPath: '/api/public/aisensy-webhook'
-      preLoaderRoute: typeof ApiPublicAisensyWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/banners': {
       id: '/api/public/banners'
       path: '/api/public/banners'
@@ -677,7 +657,6 @@ const rootRouteChildren: RootRouteChildren = {
   TermsAndConditionsRoute: TermsAndConditionsRoute,
   GoCodeRoute: GoCodeRoute,
   StoreSlugRoute: StoreSlugRoute,
-  ApiPublicAisensyWebhookRoute: ApiPublicAisensyWebhookRoute,
   ApiPublicBannersRoute: ApiPublicBannersRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
   ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,

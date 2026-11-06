@@ -223,9 +223,6 @@ export type WaBroadcastRow = {
   sent: number;
   failed: number;
   link_code: string | null;
-  delivered: number;
-  read: number;
-  replied: number;
   booked: number;
   clicks: number;
 };
@@ -245,14 +242,9 @@ export type WaRecipientRow = {
   id: string;
   name: string | null;
   phone: string;
-  status: "pending" | "sent" | "delivered" | "read" | "failed";
+  status: "pending" | "sending" | "sent" | "failed";
   error: string | null;
   sent_at: string | null;
-  delivered_at: string | null;
-  read_at: string | null;
-  replied_at: string | null;
-  reply_text: string | null;
-  button_text: string | null;
   booked_at: string | null;
 };
 
@@ -266,7 +258,7 @@ export const getWaRecipients = createServerFn({ method: "GET" })
     for (let from = 0; ; from += 1000) {
       const { data: page, error } = await db
         .from("wa_broadcast_recipients")
-        .select("id, name, phone, status, error, sent_at, delivered_at, read_at, replied_at, reply_text, button_text, booked_at")
+        .select("id, name, phone, status, error, sent_at, booked_at")
         .eq("broadcast_id", data.id)
         .order("id")
         .range(from, from + 999);
@@ -277,25 +269,3 @@ export const getWaRecipients = createServerFn({ method: "GET" })
     return { role, rows };
   });
 
-export const listWaWebhookEvents = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const role = await requireWaStaff(context.supabase, context.userId);
-    if (role !== "super_admin") throw new Error("Forbidden");
-    const db = await admin();
-    const { data, error } = await db
-      .from("wa_webhook_events")
-      .select("id, received_at, event_type, phone, raw, signature_valid, matched_recipient_id")
-      .order("received_at", { ascending: false })
-      .limit(100);
-    if (error) throw new Error(error.message);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((data ?? []) as any[]).map((e) => ({
-      id: String(e.id),
-      received_at: String(e.received_at),
-      event_type: (e.event_type as string | null) ?? null,
-      raw: JSON.stringify(e.raw ?? null, null, 2),
-      signature_valid: !!e.signature_valid,
-      matched_recipient_id: (e.matched_recipient_id as string | null) ?? null,
-    }));
-  });

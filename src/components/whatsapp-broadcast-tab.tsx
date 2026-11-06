@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, CheckCheck, Copy, Download, ImagePlus, Plus, RotateCcw, Send, X } from "lucide-react";
+import { Check, Copy, Download, ImagePlus, Plus, RotateCcw, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { tableCls, StatusPill } from "@/components/section-chrome";
 import {
@@ -10,7 +10,6 @@ import {
   getWaAccess,
   getWaRecipients,
   listWaBroadcasts,
-  listWaWebhookEvents,
   processWaBroadcast,
   retryWaFailed,
   sendWaTest,
@@ -62,7 +61,6 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
   const [testPhone, setTestPhone] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detail, setDetail] = useState<WaBroadcastRow | null>(null);
-  const [showLog, setShowLog] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const extraValid = useMemo(() => validCount(extra), [extra]);
@@ -209,9 +207,6 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
 
       <div className="flex items-center justify-between">
         <h3 className="text-[14px] font-bold">History</h3>
-        {access?.role === "super_admin" && (
-          <button className="text-[12px] text-primary underline" onClick={() => setShowLog(true)}>Webhook Log</button>
-        )}
       </div>
       <div className={tableCls.wrap}>
         <div className={tableCls.scroll}>
@@ -221,11 +216,10 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
                 <th className={tableCls.th}>Date</th>
                 <th className={tableCls.th}>Campaign</th>
                 <th className={`${tableCls.th} text-right`}>Sent</th>
-                <th className={`${tableCls.th} text-right`}>Delivered</th>
-                <th className={`${tableCls.th} text-right`}>Read</th>
-                <th className={`${tableCls.th} text-right`}>Replied</th>
+                <th className={`${tableCls.th} text-right`}>Failed</th>
                 <th className={`${tableCls.th} text-right`}>Clicks</th>
                 <th className={`${tableCls.th} text-right`}>Booked</th>
+                <th className={`${tableCls.th} text-right`}>Booked %</th>
                 <th className={tableCls.th}>Status</th>
                 <th className={tableCls.th}></th>
               </tr>
@@ -242,11 +236,10 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
                     {r.is_test && <span className="ml-2 text-[11px] text-muted-foreground">Test</span>}
                   </td>
                   <td className={`${tableCls.td} text-right`}>{r.sent}/{r.total}</td>
-                  <td className={`${tableCls.td} text-right`}>{pct(r.delivered, r.sent)}</td>
-                  <td className={`${tableCls.td} text-right`}>{pct(r.read, r.sent)}</td>
-                  <td className={`${tableCls.td} text-right`}>{r.replied}</td>
+                  <td className={`${tableCls.td} text-right`}>{r.failed}</td>
                   <td className={`${tableCls.td} text-right`}>{r.link_code ? r.clicks : "—"}</td>
                   <td className={`${tableCls.td} text-right`}>{r.booked}</td>
+                  <td className={`${tableCls.td} text-right`}>{pct(r.booked, r.sent)}</td>
                   <td className={tableCls.td}>
                     <StatusPill status={r.status === "done" ? "completed" : "confirmed"} label={r.status === "done" ? "Done" : r.status === "sending" ? "Sending" : "Queued"} />
                   </td>
@@ -277,7 +270,6 @@ export function WhatsAppBroadcastTab({ canWrite }: { canWrite: boolean }) {
         </Modal>
       )}
       {detail && <DetailDrawer row={rows.find((r) => r.id === detail.id) ?? detail} onClose={() => setDetail(null)} />}
-      {showLog && <WebhookLog onClose={() => setShowLog(false)} />}
     </div>
   );
 }
@@ -290,19 +282,14 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-type Filter = "all" | "failed" | "delivered" | "read" | "replied" | "booked" | "read_not_booked";
+type Filter = "all" | "sent" | "failed" | "booked" | "sent_not_booked";
 const FILTERS: [Filter, string][] = [
-  ["all", "All"], ["failed", "Failed"], ["delivered", "Delivered"], ["read", "Read"],
-  ["replied", "Replied"], ["booked", "Booked"], ["read_not_booked", "Read, not booked"],
+  ["all", "All"], ["sent", "Sent"], ["failed", "Failed"], ["booked", "Booked"], ["sent_not_booked", "Sent, not booked"],
 ];
-const isDelivered = (r: WaRecipientRow) => !!r.delivered_at || !!r.read_at || r.status === "delivered" || r.status === "read";
-const isRead = (r: WaRecipientRow) => !!r.read_at || r.status === "read";
 
 function Tick({ r }: { r: WaRecipientRow }) {
   if (r.status === "failed") return <X className="h-4 w-4 text-destructive" />;
-  if (isRead(r)) return <CheckCheck className="h-4 w-4 text-primary" />;
-  if (isDelivered(r)) return <CheckCheck className="h-4 w-4 text-muted-foreground" />;
-  if (r.status === "sent") return <Check className="h-4 w-4 text-muted-foreground" />;
+  if (r.status === "sent") return <Check className="h-4 w-4 text-primary" />;
   return <span className="text-[11px] text-muted-foreground">…</span>;
 }
 
@@ -317,32 +304,21 @@ function DetailDrawer({ row, onClose }: { row: WaBroadcastRow; onClose: () => vo
   const all = data?.rows ?? [];
   const list = all.filter((r) => {
     switch (filter) {
+      case "sent": return r.status === "sent";
       case "failed": return r.status === "failed";
-      case "delivered": return isDelivered(r);
-      case "read": return isRead(r);
-      case "replied": return !!r.replied_at;
       case "booked": return !!r.booked_at;
-      case "read_not_booked": return isRead(r) && !r.booked_at;
+      case "sent_not_booked": return r.status === "sent" && !r.booked_at;
       default: return true;
     }
   });
-  const buttons = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of all) if (r.button_text) m.set(r.button_text, (m.get(r.button_text) ?? 0) + 1);
-    return [...m].sort((a, b) => b[1] - a[1]);
-  }, [all]);
-  const funnel: [string, number][] = [
-    ["Sent", row.sent], ["Delivered", row.delivered], ["Read", row.read],
-    ["Replied", row.replied], ["Clicked", row.clicks], ["Booked", row.booked],
-  ];
+  const funnel: [string, number][] = [["Sent", row.sent], ["Clicked", row.clicks], ["Booked", row.booked]];
   const max = Math.max(1, row.sent);
 
   function exportCsv() {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [["Name", "Phone", "Status", "Sent", "Delivered", "Read", "Replied", "Reply", "Button", "Booked", "Error"].join(",")];
+    const lines = [["Name", "Phone", "Status", "Sent", "Booked", "Error"].join(",")];
     for (const r of list) {
-      lines.push([r.name ?? "", r.phone, r.status, fmt(r.sent_at), fmt(r.delivered_at), fmt(r.read_at), fmt(r.replied_at),
-        r.reply_text ?? "", r.button_text ?? "", fmt(r.booked_at), r.error ?? ""].map(esc).join(","));
+      lines.push([r.name ?? "", r.phone, r.status, fmt(r.sent_at), fmt(r.booked_at), r.error ?? ""].map(esc).join(","));
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
@@ -373,13 +349,7 @@ function DetailDrawer({ row, onClose }: { row: WaBroadcastRow; onClose: () => vo
           ))}
         </div>
 
-        {buttons.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {buttons.map(([t, n]) => (
-              <span key={t} className="rounded-full border border-border px-3 py-1 text-[12px]">{t} — {n}</span>
-            ))}
-          </div>
-        )}
+        <p className="text-[11px] text-muted-foreground">Delivered/Read stats → see AiSensy dashboard</p>
 
         <div className="flex flex-wrap items-center gap-2">
           {FILTERS.map(([k, l]) => (
@@ -399,47 +369,14 @@ function DetailDrawer({ row, onClose }: { row: WaBroadcastRow; onClose: () => vo
               <Tick r={r} />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold">{r.name || "—"} <span className="font-normal text-muted-foreground">{r.phone}</span></div>
-                {(r.button_text || r.reply_text) && (
-                  <div className="text-[12px]">{r.button_text ? `Button: ${r.button_text}` : r.reply_text}</div>
-                )}
                 {r.error && <div className="text-[12px] text-destructive break-words">{r.error}</div>}
                 <div className="text-[11px] text-muted-foreground">
-                  {[r.sent_at && `Sent ${fmt(r.sent_at)}`, r.read_at && `Read ${fmt(r.read_at)}`, r.replied_at && `Replied ${fmt(r.replied_at)}`, r.booked_at && `Booked ${fmt(r.booked_at)}`].filter(Boolean).join(" · ")}
+                  {[r.sent_at && `Sent ${fmt(r.sent_at)}`, r.booked_at && `Booked ${fmt(r.booked_at)}`].filter(Boolean).join(" · ")}
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function WebhookLog({ onClose }: { onClose: () => void }) {
-  const fn = useServerFn(listWaWebhookEvents);
-  const { data, error } = useQuery({ queryKey: ["wa", "webhook"], queryFn: () => fn() });
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-foreground/40" onClick={onClose}>
-      <div className="h-full w-full max-w-[720px] overflow-y-auto bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <p className="text-[16px] font-bold">Webhook Log</p>
-          <button className={ghostBtn} onClick={onClose}><X className="h-4 w-4" /></button>
-        </div>
-        {error && <p className="text-[13px] text-destructive">{(error as Error).message}</p>}
-        {data?.length === 0 && <p className="text-[13px] text-muted-foreground">No events yet</p>}
-        {data?.map((e) => (
-          <div key={e.id} className="rounded-[12px] border border-border">
-            <button className="flex w-full items-center gap-3 p-3 text-left text-[12px]" onClick={() => setOpen(open === e.id ? null : e.id)}>
-              <span className={e.signature_valid ? "text-primary" : "text-destructive"}>{e.signature_valid ? "✓" : "✗"}</span>
-              <span className="flex-1">{fmt(e.received_at)} · {e.event_type ?? "—"}</span>
-              <span className="text-muted-foreground">{e.matched_recipient_id ? "matched" : ""}</span>
-            </button>
-            {open === e.id && (
-              <pre className="max-h-[320px] overflow-auto border-t border-border bg-muted p-3 text-[11px]">{e.raw}</pre>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   );
