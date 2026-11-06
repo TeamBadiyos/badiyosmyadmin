@@ -288,13 +288,13 @@ export const listWaWebhookEvents = createServerFn({ method: "GET" })
       .order("received_at", { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as Array<{
-      id: string;
-      received_at: string;
-      event_type: string | null;
-      phone: string | null;
-      raw: unknown;
-      signature_valid: boolean;
-      matched_recipient_id: string | null;
-    }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data ?? []) as any[]).map((e) => ({
+      id: String(e.id),
+      received_at: String(e.received_at),
+      event_type: (e.event_type as string | null) ?? null,
+      raw: JSON.stringify(e.raw ?? null, null, 2),
+      signature_valid: !!e.signature_valid,
+      matched_recipient_id: (e.matched_recipient_id as string | null) ?? null,
+    }));
   });

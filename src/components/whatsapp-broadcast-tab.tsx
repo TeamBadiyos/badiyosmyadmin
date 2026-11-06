@@ -436,7 +436,7 @@ function WebhookLog({ onClose }: { onClose: () => void }) {
               <span className="text-muted-foreground">{e.matched_recipient_id ? "matched" : ""}</span>
             </button>
             {open === e.id && (
-              <pre className="max-h-[320px] overflow-auto border-t border-border bg-muted p-3 text-[11px]">{JSON.stringify(e.raw, null, 2)}</pre>
+              <pre className="max-h-[320px] overflow-auto border-t border-border bg-muted p-3 text-[11px]">{e.raw}</pre>
             )}
           </div>
         ))}
