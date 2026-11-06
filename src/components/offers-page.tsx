@@ -1,5 +1,6 @@
 import { CityName, useShowCity } from "@/lib/city-scope";
 import { formatPhone } from "@/lib/phone";
+import { WhatsAppBroadcastTab } from "@/components/whatsapp-broadcast-tab";
 import { DateInput } from "@/components/date-input";
 import { FilterBar, FilterField, filterInputCls, countLabel, tableCls, StatusPill } from "@/components/section-chrome";
 import { useEffect, useMemo, useState } from "react";
@@ -40,7 +41,7 @@ import {
   revokeCouponGrant,
 } from "@/lib/offers.functions";
 
-type Tab = "coupons" | "milestones" | "campaigns";
+type Tab = "coupons" | "milestones" | "campaigns" | "whatsapp";
 type Audience = "all" | "targeted" | "referral_reward" | "new_customers" | "existing_customers";
 
 /** Coupons don't apply to delivery categories yet. */
@@ -222,6 +223,7 @@ export function OffersPage() {
             ["coupons", "Coupons"],
             ["milestones", "Referral Rewards"],
             ["campaigns", "Campaigns"],
+            ["whatsapp", "WhatsApp"],
           ] as [Tab, string][]
         ).map(([key, label]) => (
           <button
@@ -246,6 +248,9 @@ export function OffersPage() {
 
       {tab === "coupons" && <CouponsTab canWrite={canWrite} />}
       {tab === "milestones" && <MilestonesTab canWrite={canWrite} />}
+      {tab === "whatsapp" && (access?.role === "super_admin" || access?.role === "ops_manager") && (
+        <WhatsAppBroadcastTab canWrite={canWrite} />
+      )}
       {tab === "campaigns" && (
         <CampaignsTab
           canWrite={canWrite}
