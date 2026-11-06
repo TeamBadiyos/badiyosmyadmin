@@ -1,6 +1,7 @@
 import { CityName, useShowCity } from "@/lib/city-scope";
 import { formatPhone } from "@/lib/phone";
-import { WhatsAppBroadcastTab } from "@/components/whatsapp-broadcast-tab";
+import { WhatsAppComposeModal, WhatsAppDrawer, useWaBroadcasts } from "@/components/whatsapp-broadcast-tab";
+import type { WaBroadcastRow } from "@/lib/wa-broadcast.functions";
 import { DateInput } from "@/components/date-input";
 import { FilterBar, FilterField, filterInputCls, countLabel, tableCls, StatusPill } from "@/components/section-chrome";
 import { useEffect, useMemo, useState } from "react";
@@ -41,7 +42,7 @@ import {
   revokeCouponGrant,
 } from "@/lib/offers.functions";
 
-type Tab = "coupons" | "milestones" | "campaigns" | "whatsapp";
+type Tab = "coupons" | "milestones" | "campaigns";
 type Audience = "all" | "targeted" | "referral_reward" | "new_customers" | "existing_customers";
 
 /** Coupons don't apply to delivery categories yet. */
@@ -223,7 +224,6 @@ export function OffersPage() {
             ["coupons", "Coupons"],
             ["milestones", "Referral Rewards"],
             ["campaigns", "Campaigns"],
-            ["whatsapp", "WhatsApp"],
           ] as [Tab, string][]
         ).map(([key, label]) => (
           <button
@@ -248,9 +248,6 @@ export function OffersPage() {
 
       {tab === "coupons" && <CouponsTab canWrite={canWrite} />}
       {tab === "milestones" && <MilestonesTab canWrite={canWrite} />}
-      {tab === "whatsapp" && (access?.role === "super_admin" || access?.role === "ops_manager") && (
-        <WhatsAppBroadcastTab canWrite={canWrite} />
-      )}
       {tab === "campaigns" && (
         <CampaignsTab
           canWrite={canWrite}
@@ -1134,6 +1131,12 @@ export function CampaignsTab({
   const [editing, setEditing] = useState<CampaignRow | "new" | null>(null);
   const [detail, setDetail] = useState<CampaignRow | null>(null);
   const [confirmSend, setConfirmSend] = useState<CampaignRow | null>(null);
+  const [channel, setChannel] = useState<"all" | "push" | "whatsapp">("all");
+  const [pickChannel, setPickChannel] = useState(false);
+  const [waCompose, setWaCompose] = useState(false);
+  const [waDetail, setWaDetail] = useState<WaBroadcastRow | null>(null);
+  const waAllowed = role === "super_admin" || role === "ops_manager";
+  const { rows: waRows, isLoading: waLoading } = useWaBroadcasts(waAllowed, canWrite);
 
   const fetchList = useServerFn(listCampaigns);
   const send = useServerFn(sendCampaign);
@@ -1176,14 +1179,28 @@ export function CampaignsTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  type Merged = { kind: "push"; at: string; row: CampaignRow } | { kind: "wa"; at: string; row: WaBroadcastRow };
+  const merged: Merged[] = [
+    ...(channel === "whatsapp" ? [] : data.map((row) => ({ kind: "push" as const, at: row.sent_at ?? row.created_at ?? "", row }))),
+    ...(channel === "push" || !waAllowed ? [] : waRows.map((row) => ({ kind: "wa" as const, at: row.created_at, row }))),
+  ].sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));
+
   return (
     <div className="space-y-4">
       <FilterBar
         count={
           <div className="flex items-center gap-3">
-            <span className="text-[13px] text-muted-foreground">{countLabel(data.length, "campaign")}</span>
+            <span className="text-[13px] text-muted-foreground">{countLabel(merged.length, "campaign")}</span>
+            <div className="flex gap-1">
+              {([["all", "All"], ["push", "Push"], ...(waAllowed ? [["whatsapp", "WhatsApp"]] : [])] as ["all" | "push" | "whatsapp", string][]).map(([k, l]) => (
+                <button key={k} onClick={() => setChannel(k)}
+                  className={`h-8 px-3 rounded-full text-[12px] font-semibold border ${channel === k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
             {canWrite && (
-              <button className={primaryBtn} onClick={() => setEditing("new")}>
+              <button className={primaryBtn} onClick={() => (waAllowed ? setPickChannel(true) : setEditing("new"))}>
                 <Plus size={16} /> New campaign
               </button>
             )}
@@ -1210,13 +1227,46 @@ export function CampaignsTab({
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
+              {(isLoading || (waAllowed && waLoading)) && merged.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</td></tr>
               )}
-              {!isLoading && data.length === 0 && (
+              {!isLoading && !waLoading && merged.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No campaigns yet.</td></tr>
               )}
-              {data.map((c) => {
+              {merged.map((m) => {
+                if (m.kind === "wa") {
+                  const w = m.row;
+                  return (
+                    <tr key={`wa-${w.id}`} className={tableCls.tr} onClick={() => setWaDetail(w)}>
+                      <td className={`${tableCls.td} max-w-[360px]`}>
+                        <p className="font-bold truncate">{w.campaign_name}{w.is_test && <span className="ml-2 text-[11px] font-normal text-muted-foreground">Test</span>}</p>
+                        <p className="text-[12px] text-muted-foreground truncate">{w.link_code ? `badiyos.com/go/${w.link_code}` : "AiSensy template"}</p>
+                      </td>
+                      <td className={tableCls.td}><StatusPill status="completed" label="WHATSAPP" /></td>
+                      <td className={tableCls.td}>{w.total} numbers</td>
+                      <td className={tableCls.td}>
+                        {w.status === "done" ? fmtDate(w.created_at) : <StatusPill status="pending" label="Sending" />}
+                      </td>
+                      <td className={`${tableCls.td} text-right font-semibold`}>{w.sent}</td>
+                      <td className={`${tableCls.td} text-right`}>
+                        {w.failed > 0 ? <span className="font-semibold text-destructive">{w.failed}</span> : "0"}
+                      </td>
+                      <td className={`${tableCls.td} text-right`} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2 items-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-[10px] hover:bg-muted">
+                              <MoreHorizontal size={16} />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setWaDetail(w)}>View</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                const c = m.row;
                 const total = c.delivered + c.failed;
                 const pct = total ? Math.round((c.failed / total) * 100) : 0;
                 const sent = c.status === "sent";
@@ -1274,6 +1324,23 @@ export function CampaignsTab({
         </div>
       </div>
 
+      {pickChannel && (
+        <Modal title="New campaign" onClose={() => setPickChannel(false)}>
+          <p className="text-[13px] text-muted-foreground">Choose a channel</p>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button className={`${ghostBtn} h-16 justify-center text-[14px]`} onClick={() => { setPickChannel(false); setEditing("new"); }}>
+              Push
+            </button>
+            <button className={`${ghostBtn} h-16 justify-center text-[14px]`} onClick={() => { setPickChannel(false); setWaCompose(true); }}>
+              WhatsApp
+            </button>
+          </div>
+        </Modal>
+      )}
+      {waCompose && <WhatsAppComposeModal onClose={() => setWaCompose(false)} />}
+      {waDetail && (
+        <WhatsAppDrawer row={waRows.find((r) => r.id === waDetail.id) ?? waDetail} canWrite={canWrite} onClose={() => setWaDetail(null)} />
+      )}
       {editing && (
         <CampaignModal
           campaign={editing === "new" ? null : editing}
