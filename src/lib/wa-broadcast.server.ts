@@ -86,7 +86,7 @@ export async function processBroadcast(broadcastId: string): Promise<number> {
                 : { status: "sent", sent_at: new Date().toISOString(), error: null },
             )
             .eq("id", r.id)
-            .eq("status", "pending");
+            .eq("status", "sending");
         }),
       );
     }
