@@ -26,8 +26,10 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TermsAndConditionsRouteImport } from './routes/terms-and-conditions'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedScanRedeemRouteImport } from './routes/_authenticated/scan-redeem'
+import { Route as GoCodeRouteImport } from './routes/go.$code'
 import { Route as MyadminLoginRouteImport } from './routes/myadmin.login'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
+import { Route as ApiPublicAisensyWebhookRouteImport } from './routes/api/public/aisensy-webhook'
 import { Route as ApiPublicBannersRouteImport } from './routes/api/public/banners'
 import { Route as ApiPublicServiceImageRouteImport } from './routes/api/public/service-image'
 import { Route as ApiPublicHooksDispatchAlertsRouteImport } from './routes/api/public/hooks/dispatch-alerts'
@@ -123,6 +125,11 @@ const AuthenticatedScanRedeemRoute = AuthenticatedScanRedeemRouteImport.update({
   path: '/scan-redeem',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const GoCodeRoute = GoCodeRouteImport.update({
+  id: '/go/$code',
+  path: '/go/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyadminLoginRoute = MyadminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -131,6 +138,11 @@ const MyadminLoginRoute = MyadminLoginRouteImport.update({
 const StoreSlugRoute = StoreSlugRouteImport.update({
   id: '/store/$slug',
   path: '/store/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAisensyWebhookRoute = ApiPublicAisensyWebhookRouteImport.update({
+  id: '/api/public/aisensy-webhook',
+  path: '/api/public/aisensy-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicBannersRoute = ApiPublicBannersRouteImport.update({
@@ -203,8 +215,10 @@ export interface FileRoutesByFullPath {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
+  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -232,8 +246,10 @@ export interface FileRoutesByTo {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
+  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -263,8 +279,10 @@ export interface FileRoutesById {
   '/terms-and-conditions': typeof TermsAndConditionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/scan-redeem': typeof AuthenticatedScanRedeemRoute
+  '/go/$code': typeof GoCodeRoute
   '/myadmin/login': typeof MyadminLoginRoute
   '/store/$slug': typeof StoreSlugRoute
+  '/api/public/aisensy-webhook': typeof ApiPublicAisensyWebhookRoute
   '/api/public/banners': typeof ApiPublicBannersRoute
   '/api/public/service-image': typeof ApiPublicServiceImageRoute
   '/api/public/hooks/dispatch-alerts': typeof ApiPublicHooksDispatchAlertsRoute
@@ -294,8 +312,10 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
+    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -323,8 +343,10 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/dashboard'
     | '/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
+    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -353,8 +375,10 @@ export interface FileRouteTypes {
     | '/terms-and-conditions'
     | '/_authenticated/dashboard'
     | '/_authenticated/scan-redeem'
+    | '/go/$code'
     | '/myadmin/login'
     | '/store/$slug'
+    | '/api/public/aisensy-webhook'
     | '/api/public/banners'
     | '/api/public/service-image'
     | '/api/public/hooks/dispatch-alerts'
@@ -382,7 +406,9 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TermsAndConditionsRoute: typeof TermsAndConditionsRoute
+  GoCodeRoute: typeof GoCodeRoute
   StoreSlugRoute: typeof StoreSlugRoute
+  ApiPublicAisensyWebhookRoute: typeof ApiPublicAisensyWebhookRoute
   ApiPublicBannersRoute: typeof ApiPublicBannersRoute
   ApiPublicServiceImageRoute: typeof ApiPublicServiceImageRoute
   ApiPublicHooksDispatchAlertsRoute: typeof ApiPublicHooksDispatchAlertsRoute
@@ -515,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScanRedeemRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/go/$code': {
+      id: '/go/$code'
+      path: '/go/$code'
+      fullPath: '/go/$code'
+      preLoaderRoute: typeof GoCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/myadmin/login': {
       id: '/myadmin/login'
       path: '/login'
@@ -527,6 +560,13 @@ declare module '@tanstack/react-router' {
       path: '/store/$slug'
       fullPath: '/store/$slug'
       preLoaderRoute: typeof StoreSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/aisensy-webhook': {
+      id: '/api/public/aisensy-webhook'
+      path: '/api/public/aisensy-webhook'
+      fullPath: '/api/public/aisensy-webhook'
+      preLoaderRoute: typeof ApiPublicAisensyWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/banners': {
@@ -635,7 +675,9 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TermsAndConditionsRoute: TermsAndConditionsRoute,
+  GoCodeRoute: GoCodeRoute,
   StoreSlugRoute: StoreSlugRoute,
+  ApiPublicAisensyWebhookRoute: ApiPublicAisensyWebhookRoute,
   ApiPublicBannersRoute: ApiPublicBannersRoute,
   ApiPublicServiceImageRoute: ApiPublicServiceImageRoute,
   ApiPublicHooksDispatchAlertsRoute: ApiPublicHooksDispatchAlertsRoute,

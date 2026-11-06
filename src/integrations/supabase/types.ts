@@ -17302,6 +17302,7 @@ export type Database = {
         Returns: Json
       }
       wa_attribute_bookings: { Args: never; Returns: number }
+      wa_broadcast_list: { Args: { _limit?: number }; Returns: Json }
       wa_claim_pending: {
         Args: { _broadcast_id: string; _limit: number }
         Returns: {
