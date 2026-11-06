@@ -1221,7 +1221,7 @@ export function CampaignsTab({
                 <th className={tableCls.th}>Channel</th>
                 <th className={tableCls.th}>Audience</th>
                 <th className={tableCls.th}>Sent on</th>
-                <th className={`${tableCls.th} text-right`}>Delivered</th>
+                <th className={`${tableCls.th} text-right`}>Sent</th>
                 <th className={`${tableCls.th} text-right`}>Failed</th>
                 <th className={tableCls.th}></th>
               </tr>
