@@ -282,8 +282,9 @@ export const listWaWebhookEvents = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const role = await requireWaStaff(context.supabase, context.userId);
     if (role !== "super_admin") throw new Error("Forbidden");
-    const { data, error } = await context.supabase
-      .from("wa_webhook_events" as never)
+    const db = await admin();
+    const { data, error } = await db
+      .from("wa_webhook_events")
       .select("id, received_at, event_type, phone, raw, signature_valid, matched_recipient_id")
       .order("received_at", { ascending: false })
       .limit(100);
