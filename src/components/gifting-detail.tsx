@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, Download, FileText, MapPin, MessageCircle, Plus, Ro
 import { formatPhone } from "@/lib/phone";
 import { btn, danger, err, ghost, input, parseDropsCsv, CampaignForm, PinPicker } from "@/components/gifting-tab";
 import {
-  addGiftDropsV2, deleteGiftDrop, deleteGiftTestData, addClientFromCustomer, getDefaultGiftPickup, getGiftCampaign, searchBadiyosCustomers, getGiftProofs, listGiftClients, listGiftRiders,
+  addGiftDropsV2, deleteGiftDrop, addClientFromCustomer, addClientsFromCustomers, getGiftClientZones, getDefaultGiftPickup, getGiftCampaign, searchBadiyosCustomers, getGiftProofs, listGiftClients, listGiftRiders,
   moveGiftDrop, planGiftTrips, retryGiftDrops, saveGiftPickup, sendAllGiftTrips, sendGiftTrip, setGiftPin, setGiftTripOrder,
   type BadiyosCustomer, type DropInput2, type GiftCampaign, type GiftDrop, type GiftProof, type GiftTrip,
 } from "@/lib/gifting.functions";
@@ -113,66 +113,106 @@ function AddRecipientModal({ c, onClose, onSaved, prefill }: { c: GiftCampaign; 
 
 function FromClientsModal({ c, onClose, onSaved, onNew }: { c: GiftCampaign; onClose: () => void; onSaved: () => void; onNew: (p: { name?: string; phone?: string }) => void }) {
   const listFn = useServerFn(listGiftClients);
+  const zonesFn = useServerFn(getGiftClientZones);
   const add = useServerFn(addGiftDropsV2);
   const findCust = useServerFn(searchBadiyosCustomers);
   const addCust = useServerFn(addClientFromCustomer);
-  const [cust, setCust] = useState<BadiyosCustomer[] | null>(null);
-  const [cbusy, setCbusy] = useState(false);
+  const addAll = useServerFn(addClientsFromCustomers);
   const { data, refetch } = useQuery({ queryKey: ["gifting", "clients", c.merchant_id], queryFn: () => listFn({ data: { merchant_id: c.merchant_id } }) });
+  const { data: zd, refetch: refetchZones } = useQuery({ queryKey: ["gifting", "clientZones", c.merchant_id], queryFn: () => zonesFn({ data: { merchant_id: c.merchant_id } }) });
   const [q, setQ] = useState("");
+  const [cq, setCq] = useState("");
+  const [zone, setZone] = useState("");
   const [onlyAddr, setOnlyAddr] = useState(false);
   const [sel, setSel] = useState<Record<string, string>>({}); // client -> address id
   const [busy, setBusy] = useState(false);
-  const rows = useMemo(() => (data ?? []).filter((x) => (!q || `${x.name} ${x.phone ?? ""} ${x.company ?? ""}`.toLowerCase().includes(q.toLowerCase())) && (!onlyAddr || x.addresses.length > 1)), [data, q, onlyAddr]);
+  const zoneName = useMemo(() => new Map((zd?.zones ?? []).map((z) => [z.id, z.name])), [zd]);
+  const zoneOf = (aid?: string) => (aid ? zd?.addresses[aid] ?? null : null);
+  const zLabel = zone ? zoneName.get(zone) ?? "zone" : "";
+  const rows = useMemo(() => {
+    const t = q.trim().toLowerCase(), d = q.replace(/\D/g, "");
+    return (data ?? []).filter((x) =>
+      (!t || x.name.toLowerCase().includes(t) || (x.company ?? "").toLowerCase().includes(t) || (d.length >= 2 && (x.phone ?? "").replace(/\D/g, "").includes(d)))
+      && (!onlyAddr || x.addresses.length > 1)
+      && (!zone || x.addresses.some((a) => zoneOf(a.id) === zone)));
+  }, [data, q, onlyAddr, zone, zd]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pickAddr = (r: (typeof rows)[number]) => (zone ? r.addresses.find((a) => zoneOf(a.id) === zone) : r.addresses[0])?.id;
   const allOn = rows.length > 0 && rows.every((r) => sel[r.id]);
+  const [dq, setDq] = useState("");
+  useEffect(() => { const t = setTimeout(() => setDq(cq), 300); return () => clearTimeout(t); }, [cq]);
+  const { data: pool, isFetching: poolLoading, refetch: refetchPool } = useQuery({
+    queryKey: ["gifting", "custPool", c.merchant_id, dq, zone],
+    queryFn: () => findCust({ data: { merchant_id: c.merchant_id, q: dq, zone_id: zone || null, limit: 50 } }),
+  });
+  const afterAdd = async () => { await Promise.all([refetch(), refetchZones(), refetchPool()]); };
+  const bulk = async (z: string | null) => {
+    const full = await findCust({ data: { merchant_id: c.merchant_id, q: "", zone_id: z, limit: 1 } });
+    if (!full.total) { toast.error(`No badiyos customers with a pinned address${z ? ` in ${zLabel}` : ""}`); return; }
+    if (!confirm(`Add ${full.total} badiyos customers${z ? ` in ${zLabel}` : ""} as clients of ${c.business_name}?${full.no_pin ? ` ${full.no_pin} without a map pin will be skipped.` : ""}`)) return;
+    setBusy(true);
+    try { const r = await addAll({ data: { merchant_id: c.merchant_id, zone_id: z } }); toast.success(`${r.added} clients added${r.skipped ? ` · ${r.skipped} skipped (no pin)` : ""}`); await afterAdd(); }
+    catch (e) { err(e); } finally { setBusy(false); }
+  };
+  const chip = (zid: string | null) => <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{zid ? zoneName.get(zid) ?? "Zone" : "No zone"}</span>;
   return (
     <Modal title="Add from clients" onClose={onClose} wide>
       <div className="flex flex-wrap items-center gap-2">
+        <select className={input + " max-w-[180px]"} value={zone} onChange={(e) => { setZone(e.target.value); setSel({}); }}>
+          <option value="">All zones</option>
+          {(zd?.zones ?? []).map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+        </select>
         <input className={input + " max-w-xs"} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, phone, company" />
         <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" checked={onlyAddr} onChange={(e) => setOnlyAddr(e.target.checked)} />Only clients with 2+ addresses</label>
         <label className="ml-auto flex items-center gap-1 text-[12px] font-semibold"><input type="checkbox" checked={allOn} onChange={(e) => {
-          const n = { ...sel }; for (const r of rows) { if (e.target.checked && r.addresses[0]) n[r.id] = r.addresses[0].id; else delete n[r.id]; } setSel(n);
-        }} />Select all ({rows.length})</label>
+          const n = { ...sel }; for (const r of rows) { const a = pickAddr(r); if (e.target.checked && a) n[r.id] = a; else delete n[r.id]; } setSel(n);
+        }} />Select all{zone ? ` in ${zLabel}` : ""} ({rows.length})</label>
       </div>
-      <div className="max-h-[50vh] divide-y divide-border overflow-y-auto rounded-[10px] border border-border">
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-[12px]">
-            <input type="checkbox" disabled={!r.addresses.length} checked={!!sel[r.id]} onChange={(e) => { const n = { ...sel }; if (e.target.checked) n[r.id] = r.addresses[0]?.id; else delete n[r.id]; setSel(n); }} />
-            <div className="w-44 min-w-0"><p className="truncate font-semibold text-foreground">{r.name}</p><p className="text-muted-foreground">{r.phone ? formatPhone(r.phone) : "—"}</p></div>
-            {r.addresses.length > 1 ? (
-              <select className={input} value={sel[r.id] ?? r.addresses[0].id} onChange={(e) => setSel({ ...sel, [r.id]: e.target.value })}>
-                {r.addresses.map((a) => <option key={a.id} value={a.id}>{a.label}{a.is_default ? " (default)" : ""} — {a.address}</option>)}
-              </select>
-            ) : <p className="flex-1 truncate text-muted-foreground">{r.addresses[0]?.address ?? "No address saved"}</p>}
-          </div>
-        ))}
+      <div className="max-h-[40vh] divide-y divide-border overflow-y-auto rounded-[10px] border border-border">
+        {rows.map((r) => {
+          const cur = sel[r.id] ?? pickAddr(r);
+          return (
+            <div key={r.id} className="flex items-center gap-2 px-3 py-2 text-[12px]">
+              <input type="checkbox" disabled={!r.addresses.length} checked={!!sel[r.id]} onChange={(e) => { const n = { ...sel }; if (e.target.checked && cur) n[r.id] = cur; else delete n[r.id]; setSel(n); }} />
+              <div className="w-44 min-w-0"><p className="truncate font-semibold text-foreground">{r.name}</p><p className="text-muted-foreground">{r.phone ? formatPhone(r.phone) : "—"}</p></div>
+              {r.addresses.length ? chip(zoneOf(cur)) : null}
+              {r.addresses.length > 1 ? (
+                <select className={input} value={cur} onChange={(e) => setSel({ ...sel, [r.id]: e.target.value })}>
+                  {r.addresses.map((a) => <option key={a.id} value={a.id}>{a.label}{a.is_default ? " (default)" : ""} — {a.address}</option>)}
+                </select>
+              ) : <p className="flex-1 truncate text-muted-foreground">{r.addresses[0]?.address ?? "No address saved"}</p>}
+            </div>
+          );
+        })}
         {data && !data.length ? <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Abhi koi client nahi. Import CSV ya + Add recipient se jodiye.</p> : null}
         {data && data.length > 0 && !rows.length ? (
           <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-            <p>No client found</p>
-            <button className={ghost + " mt-2"} onClick={() => { const digits = q.replace(/\D/g, ""); onNew(digits.length >= 6 ? { phone: q.trim() } : { name: q.trim() }); }}><Plus className="h-3.5 w-3.5" />Add as new recipient</button>
+            <p>No client found{zone ? ` in ${zLabel}` : ""}</p>
+            {q.trim() ? <button className={ghost + " mt-2"} onClick={() => { const d = q.replace(/\D/g, ""); onNew(d.length >= 6 ? { phone: q.trim() } : { name: q.trim() }); }}><Plus className="h-3.5 w-3.5" />Add as new recipient</button> : null}
           </div>
         ) : null}
       </div>
       <div className="space-y-2 rounded-[10px] border border-border p-3">
-        <div className="flex items-center gap-2">
-          <p className="text-[12px] font-semibold">Badiyos customer by phone</p>
-          <button className={ghost + " ml-auto"} disabled={cbusy || q.replace(/\D/g, "").length < 6} onClick={async () => {
-            setCbusy(true); try { setCust(await findCust({ data: { phone: q } })); } catch (e) { err(e); } finally { setCbusy(false); }
-          }}><Search className="h-3.5 w-3.5" />Search badiyos customers</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[12px] font-semibold">Badiyos customers{zone ? ` · ${zLabel}` : ""}</p>
+          <input className={input + " max-w-xs"} value={cq} onChange={(e) => setCq(e.target.value)} placeholder="Search name or phone" />
+          <div className="ml-auto flex gap-2">
+            <button className={ghost} disabled={busy} onClick={() => bulk(null)}><Users className="h-3.5 w-3.5" />Add all badiyos customers</button>
+            {zone ? <button className={ghost} disabled={busy} onClick={() => bulk(zone)}><Users className="h-3.5 w-3.5" />Add all in {zLabel}</button> : null}
+          </div>
         </div>
-        {cust && !cust.length ? <p className="text-[12px] text-muted-foreground">No badiyos customer with this phone.</p> : null}
-        {(cust ?? []).map((u) => {
-          const exists = (data ?? []).some((x) => x.phone && x.phone.replace(/\D/g, "").slice(-10) === u.phone.replace(/\D/g, "").slice(-10));
-          return (
+        <p className="text-[11px] text-muted-foreground">{poolLoading ? "Searching…" : pool ? `${pool.total} with a map pin${pool.no_pin ? ` · ${pool.no_pin} without a pin (skipped)` : ""}${pool.total > pool.customers.length ? ` · showing ${pool.customers.length}` : ""}` : ""}</p>
+        <div className="max-h-[30vh] space-y-1 overflow-y-auto">
+          {(pool?.customers ?? []).map((u) => (
             <div key={u.id} className="flex items-center gap-2 text-[12px]">
-              <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{u.name} · {formatPhone(u.phone)}</p><p className="truncate text-muted-foreground">{u.addresses.length ? u.addresses.map((a) => a.label).join(", ") : "No pinned addresses"}</p></div>
-              <button className={ghost} disabled={exists || cbusy} onClick={async () => {
-                setCbusy(true); try { await addCust({ data: { merchant_id: c.merchant_id, customer: u } }); toast.success("Added as client"); setQ(u.phone.replace(/\D/g, "").slice(-10)); await refetch(); } catch (e) { err(e); } finally { setCbusy(false); }
-              }}><Plus className="h-3.5 w-3.5" />{exists ? "Already a client" : "Add as client"}</button>
+              {chip(u.zone_id)}
+              <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{u.name} · {formatPhone(u.phone)}</p><p className="truncate text-muted-foreground">{u.addresses.map((a) => a.label).join(", ")}</p></div>
+              <button className={ghost} disabled={busy} onClick={async () => {
+                setBusy(true); try { await addCust({ data: { merchant_id: c.merchant_id, customer: u } }); toast.success("Added as client"); await afterAdd(); } catch (e) { err(e); } finally { setBusy(false); }
+              }}><Plus className="h-3.5 w-3.5" />Add as client</button>
             </div>
-          );
-        })}
+          ))}
+          {pool && !pool.customers.length && !poolLoading ? <p className="text-[12px] text-muted-foreground">No badiyos customers found.</p> : null}
+        </div>
       </div>
       <div className="flex justify-end gap-2"><button className={ghost} onClick={onClose}>Cancel</button>
         <button className={btn} disabled={busy || !Object.keys(sel).length} onClick={async () => {
@@ -253,7 +293,6 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
   const orderFn = useServerFn(setGiftTripOrder);
   const addFn = useServerFn(addGiftDropsV2);
   const delFn = useServerFn(deleteGiftDrop);
-  const delTestFn = useServerFn(deleteGiftTestData);
   const sendFn = useServerFn(sendGiftTrip);
   const sendAllFn = useServerFn(sendAllGiftTrips);
   const retryFn = useServerFn(retryGiftDrops);
@@ -336,10 +375,6 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
           }}><Send className="h-4 w-4" />Send all trips</button>
           <button className={ghost} disabled={!drops.length} onClick={exportCsv}><Download className="h-3.5 w-3.5" />CSV</button>
           <button className={ghost} disabled={!trips.length} onClick={() => tripsPdf(c, tripLists, `${fileBase}.pdf`)}><FileText className="h-3.5 w-3.5" />Campaign PDF</button>
-          {testCount ? <button className={danger} disabled={busy} onClick={() => {
-            if (!confirm(`Delete ${testCount} TEST drops and their test clients?`)) return;
-            run(async () => { const r = await delTestFn({ data: { campaign_id: c.id } }); toast.success(`Deleted ${r.drops} test drops`); if (r.campaign_deleted) onBack(); });
-          }}><Trash2 className="h-3.5 w-3.5" />Delete test data</button> : null}
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">CSV columns: name, address (phone, lat, lng, note, packets optional). Rows without lat/lng are found by address and marked "Pin to confirm". Drag a drop onto another trip to move it; arrows reorder stops.{testCount ? " TEST drops are never sent to riders." : ""}</p>

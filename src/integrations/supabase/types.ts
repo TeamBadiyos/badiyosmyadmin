@@ -14740,7 +14740,11 @@ export type Database = {
         Returns: Json
       }
       gift_can: { Args: { _merchant: string }; Returns: boolean }
-      gift_delete_test_data: { Args: { _campaign: string }; Returns: Json }
+      gift_client_zones: { Args: { _merchant: string }; Returns: Json }
+      gift_customer_pool: {
+        Args: { _limit: number; _merchant: string; _q: string; _zone: string }
+        Returns: Json
+      }
       gift_km: {
         Args: { a_lat: number; a_lng: number; b_lat: number; b_lng: number }
         Returns: number
@@ -14802,6 +14806,10 @@ export type Database = {
         Returns: undefined
       }
       gift_trip_recalc: { Args: { _trip: string }; Returns: undefined }
+      gift_zone_at: {
+        Args: { _city: string; _lat: number; _lng: number }
+        Returns: string
+      }
       has_login_pin: { Args: { p_phone: string }; Returns: boolean }
       haversine_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
