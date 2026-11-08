@@ -25,9 +25,9 @@ export type GiftCampaign = {
 export type GiftDrop = {
   id: string; recipient_name: string; recipient_phone: string | null; address: string; lat: number; lng: number;
   zone_name: string | null; gift_note: string | null; packet_count: number; trip_id: string | null; stop_seq: number | null;
-  status: string; is_test: boolean;
+  status: string; is_test: boolean; pin_status: string; delivered_at: string | null; fail_reason: string | null; courier_order_id: string | null;
 };
-export type GiftTrip = { id: string; trip_no: number; zone_name: string | null; distance_km: number | null; status: string; route_source: string };
+export type GiftTrip = { id: string; trip_no: number; zone_name: string | null; distance_km: number | null; status: string; route_source: string; courier_order_id: string | null; fail_reason: string | null; sent_at: string | null };
 
 export const listGiftCampaigns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -64,8 +64,8 @@ export const getGiftCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data: i, context }) => {
     const c = context as Ctx; await requireOps(c);
     const [d, t] = await Promise.all([
-      c.supabase.from("gift_drops").select("id, recipient_name, recipient_phone, address, lat, lng, zone_name, gift_note, packet_count, trip_id, stop_seq, status, is_test").eq("campaign_id", i.id).order("stop_seq").limit(5000),
-      c.supabase.from("gift_trips").select("id, trip_no, zone_name, distance_km, status, route_source").eq("campaign_id", i.id).order("trip_no"),
+      c.supabase.from("gift_drops").select("id, recipient_name, recipient_phone, address, lat, lng, zone_name, gift_note, packet_count, trip_id, stop_seq, status, is_test, pin_status, delivered_at, fail_reason, courier_order_id").eq("campaign_id", i.id).order("stop_seq").limit(5000),
+      c.supabase.from("gift_trips").select("id, trip_no, zone_name, distance_km, status, route_source, courier_order_id, fail_reason, sent_at").eq("campaign_id", i.id).order("trip_no"),
     ]);
     if (d.error) throw new Error(d.error.message);
     if (t.error) throw new Error(t.error.message);
@@ -281,8 +281,8 @@ export const saveGiftPickup = createServerFn({ method: "POST" })
     const c = context as Ctx; await requireOps(c);
     const { data: camp, error } = await c.supabase.from("gift_campaigns").select("merchant_id").eq("id", i.campaign_id).single();
     if (error) throw new Error(error.message);
-    const pid = await rpc(c, "business_pickup_write", { _mid: camp.merchant_id, _id: null, _name: i.name || "Pickup", _address: i.address.trim(),
-      _lat: i.lat, _lng: i.lng, _contact_name: null, _contact_phone: i.contact || null, _is_default: i.as_default, _is_active: true, _actor_label: "gifting" });
+    const pid = await rpc(c, "staff_upsert_pickup_point", { _merchant_id: camp.merchant_id, _id: null, _name: i.name || "Pickup", _address: i.address.trim(),
+      _lat: i.lat, _lng: i.lng, _contact_name: null, _contact_phone: i.contact || null, _is_default: i.as_default, _is_active: true });
     const { error: e2 } = await c.supabase.from("gift_campaigns").update({ pickup_name: i.name || "Pickup", pickup_address: i.address.trim(), pickup_lat: i.lat, pickup_lng: i.lng,
       pickup_contact: i.contact || null, pickup_point_id: typeof pid === "string" ? pid : null }).eq("id", i.campaign_id);
     if (e2) throw new Error(e2.message);
