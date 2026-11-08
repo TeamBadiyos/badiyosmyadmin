@@ -829,10 +829,13 @@ export const forceCancelOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireCourierWriter(context);
+    // Pass null for "no custom amount" so the DB applies its default refund
+    // (full amount when paid). A non-null amount is super-admin-only there.
+    const custom = Number(data.refundAmount ?? 0);
     const { error } = await context.supabase.rpc("staff_courier_force_cancel", {
       _order_id: data.orderId,
       _reason: data.reason.trim(),
-      _refund_amount: Number(data.refundAmount ?? 0),
+      _refund_amount: custom > 0 ? custom : undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
