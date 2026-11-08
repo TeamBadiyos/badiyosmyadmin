@@ -156,3 +156,183 @@ export const deleteGiftTestData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { campaign_id: string }) => i)
   .handler(async ({ data: i, context }) => rpc(context as Ctx, "gift_delete_test_data", { _campaign: i.campaign_id }) as Promise<{ drops: number; clients: number; campaign_deleted: boolean }>);
+
+/* ---------------------------- finishing pieces ---------------------------- */
+
+type LatLng = { lat: number; lng: number };
+
+async function geocodeOne(address: string): Promise<LatLng | null> {
+  const lov = process.env.LOVABLE_API_KEY;
+  const gm = process.env.GOOGLE_MAPS_API_KEY;
+  if (!lov || !gm) throw new Error("Address lookup needs the Google Maps connection");
+  const r = await fetch(
+    `https://connector-gateway.lovable.dev/google_maps/maps/api/geocode/json?region=in&components=country:IN&address=${encodeURIComponent(address)}`,
+    { headers: { Authorization: `Bearer ${lov}`, "X-Connection-Api-Key": gm } },
+  );
+  if (!r.ok) {
+    const t = await r.text();
+    console.error(`Geocode failed [${r.status}]: ${t}`);
+    if (r.status === 403) throw new Error("Google Maps key does not allow address lookup (Geocoding API)");
+    return null;
+  }
+  const j = await r.json();
+  const loc = j?.results?.[0]?.geometry?.location;
+  return loc && Number.isFinite(loc.lat) ? { lat: loc.lat, lng: loc.lng } : null;
+}
+
+/** Address search for the pin picker (bounded: one lookup per call). */
+export const geocodeAddress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { q: string }) => {
+    const q = String(i?.q ?? "").trim();
+    if (q.length < 3 || q.length > 300) throw new Error("Type an address");
+    return { q };
+  })
+  .handler(async ({ data, context }) => { await requireOps(context as Ctx); return geocodeOne(data.q); });
+
+export type DropInput2 = Omit<DropInput, "lat" | "lng"> & { lat?: number | null; lng?: number | null; save_client?: boolean; client_id?: string | null; address_id?: string | null };
+
+/** Adds drops; rows without a pin are looked up by address (max 300 lookups per import). */
+export const addGiftDropsV2 = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { campaign_id: string; drops: DropInput2[] }) => {
+    if (!i?.campaign_id || !Array.isArray(i.drops) || !i.drops.length) throw new Error("No drops to add");
+    if (i.drops.length > 2000) throw new Error("Max 2000 drops at a time");
+    for (const d of i.drops) {
+      if (!d.recipient_name?.trim() || !d.address?.trim()) throw new Error("Every row needs name and address");
+      const has = d.lat != null && d.lng != null && String(d.lat) !== "" && String(d.lng) !== "";
+      if (has && (!Number.isFinite(Number(d.lat)) || !Number.isFinite(Number(d.lng)) || Math.abs(Number(d.lat)) > 90 || Math.abs(Number(d.lng)) > 180))
+        throw new Error(`Invalid location for ${d.recipient_name}`);
+    }
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: camp, error: e1 } = await c.supabase.from("gift_campaigns").select("merchant_id, city_id").eq("id", i.campaign_id).single();
+    if (e1) throw new Error(e1.message);
+    const needLookup = i.drops.filter((d) => d.lat == null || d.lng == null || String(d.lat) === "").length;
+    if (needLookup > 300) throw new Error("Max 300 rows without lat/lng per import (address lookups are paid)");
+    const cache = new Map<string, LatLng | null>();
+    let looked = 0, missing = 0;
+    const rows: any[] = [];
+    for (const d of i.drops) {
+      let lat = d.lat != null && String(d.lat) !== "" ? Number(d.lat) : null;
+      let lng = d.lng != null && String(d.lng) !== "" ? Number(d.lng) : null;
+      let pin = "ok";
+      if (lat == null || lng == null) {
+        const key = d.address.trim().toLowerCase();
+        if (!cache.has(key)) cache.set(key, await geocodeOne(d.address.trim()));
+        const g = cache.get(key);
+        looked++;
+        if (g) { lat = g.lat; lng = g.lng; pin = "to_confirm"; } else { pin = "missing"; missing++; }
+      }
+      let client_id = d.client_id ?? null, address_id = d.address_id ?? null;
+      if (!client_id && d.save_client !== false) {
+        const { data: cl } = await c.supabase.from("gift_clients").insert({ merchant_id: camp.merchant_id, city_id: camp.city_id, name: d.recipient_name.trim(), phone: d.recipient_phone?.trim() || null }).select("id").single();
+        if (cl) {
+          client_id = cl.id;
+          if (lat != null) {
+            const { data: ad } = await c.supabase.from("gift_client_addresses").insert({ client_id: cl.id, merchant_id: camp.merchant_id, address: d.address.trim(), lat, lng, is_default: true }).select("id").single();
+            address_id = ad?.id ?? null;
+          }
+        }
+      }
+      rows.push({ campaign_id: i.campaign_id, merchant_id: camp.merchant_id, client_id, address_id, recipient_name: d.recipient_name.trim(),
+        recipient_phone: d.recipient_phone?.trim() || null, address: d.address.trim(), lat, lng, pin_status: pin,
+        gift_note: d.gift_note?.trim() || null, packet_count: Math.max(1, Number(d.packet_count) || 1) });
+    }
+    const { error } = await c.supabase.from("gift_drops").insert(rows);
+    if (error) throw new Error(error.message);
+    await c.supabase.rpc("business_audit", { _action: "gift_drops_add", _table: "gift_campaigns", _id: i.campaign_id, _before: null, _after: { count: rows.length, looked_up: looked, missing }, _actor_label: null });
+    return { added: rows.length, lookedUp: looked, missing };
+  });
+
+export type GiftClient = { id: string; name: string; phone: string | null; company: string | null; is_test: boolean;
+  addresses: { id: string; label: string; address: string; lat: number; lng: number; is_default: boolean }[] };
+
+export const listGiftClients = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const [cl, ad] = await Promise.all([
+      c.supabase.from("gift_clients").select("id, name, phone, company, is_test").eq("merchant_id", i.merchant_id).order("name").limit(5000),
+      c.supabase.from("gift_client_addresses").select("id, client_id, label, address, lat, lng, is_default").eq("merchant_id", i.merchant_id).limit(10000),
+    ]);
+    if (cl.error) throw new Error(cl.error.message);
+    const by = new Map<string, any[]>();
+    for (const a of (ad.data ?? []) as any[]) { const l = by.get(a.client_id) ?? []; l.push(a); by.set(a.client_id, l); }
+    return ((cl.data ?? []) as any[]).map((x) => ({ ...x, addresses: (by.get(x.id) ?? []).sort((a, b) => Number(b.is_default) - Number(a.is_default)) })) as GiftClient[];
+  });
+
+export const setGiftPin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { drop_id: string; lat: number; lng: number }) => i)
+  .handler(async ({ data: i, context }) => { await rpc(context as Ctx, "gift_set_pin", { _drop: i.drop_id, _lat: i.lat, _lng: i.lng }); return { ok: true }; });
+
+/** Campaign pickup; optionally also saved as the business's default pickup point. */
+export const saveGiftPickup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { campaign_id: string; name: string; address: string; lat: number; lng: number; contact?: string; as_default: boolean }) => {
+    if (!i?.address?.trim() || !Number.isFinite(i.lat) || !Number.isFinite(i.lng)) throw new Error("Address and pin are required");
+    return i;
+  })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: camp, error } = await c.supabase.from("gift_campaigns").select("merchant_id").eq("id", i.campaign_id).single();
+    if (error) throw new Error(error.message);
+    const pid = await rpc(c, "business_pickup_write", { _mid: camp.merchant_id, _id: null, _name: i.name || "Pickup", _address: i.address.trim(),
+      _lat: i.lat, _lng: i.lng, _contact_name: null, _contact_phone: i.contact || null, _is_default: i.as_default, _is_active: true, _actor_label: "gifting" });
+    const { error: e2 } = await c.supabase.from("gift_campaigns").update({ pickup_name: i.name || "Pickup", pickup_address: i.address.trim(), pickup_lat: i.lat, pickup_lng: i.lng,
+      pickup_contact: i.contact || null, pickup_point_id: typeof pid === "string" ? pid : null }).eq("id", i.campaign_id);
+    if (e2) throw new Error(e2.message);
+    return { ok: true };
+  });
+
+export const sendGiftTrip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { trip_id: string; expert_id?: string | null; training?: boolean }) => i)
+  .handler(async ({ data: i, context }) => rpc(context as Ctx, "gift_send_trip", { _trip: i.trip_id, _expert: i.expert_id ?? null, _training: !!i.training }) as Promise<{ ok: boolean; courier_order_id: string; total: number }>);
+
+export const sendAllGiftTrips = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { campaign_id: string }) => i)
+  .handler(async ({ data: i, context }) => rpc(context as Ctx, "gift_send_all", { _campaign: i.campaign_id }) as Promise<{ sent: number; errors: { trip: number; error: string }[] }>);
+
+export const retryGiftDrops = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { campaign_id: string; drop_ids: string[] }) => i)
+  .handler(async ({ data: i, context }) => rpc(context as Ctx, "gift_retry_drops", { _campaign: i.campaign_id, _drop_ids: i.drop_ids }) as Promise<{ trip_no: number; drops: number }>);
+
+export const listGiftRiders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data, error } = await c.supabase.from("experts").select("id, name, mode").eq("status", "active").order("name").limit(2000);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; name: string; mode: string | null }[];
+  });
+
+export type GiftProof = { drop_id: string; kind: string; url: string; captured_at: string; distance_m: number | null };
+
+/** Delivered / not-delivered photos for a campaign (signed for 1 hour). */
+export const getGiftProofs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { campaign_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: drops } = await c.supabase.from("gift_drops").select("id, business_order_id").eq("campaign_id", i.campaign_id).not("business_order_id", "is", null).limit(5000);
+    const boIds = ((drops ?? []) as any[]).map((d) => d.business_order_id);
+    if (!boIds.length) return [] as GiftProof[];
+    const { data: bos } = await c.supabase.from("business_orders").select("id, drop_stop_id").in("id", boIds);
+    const stopToDrop = new Map<string, string>();
+    for (const b of (bos ?? []) as any[]) { const d = (drops as any[]).find((x) => x.business_order_id === b.id); if (b.drop_stop_id && d) stopToDrop.set(b.drop_stop_id, d.id); }
+    if (!stopToDrop.size) return [] as GiftProof[];
+    const { data: pr } = await c.supabase.from("business_delivery_proofs").select("stop_id, storage_path, kind, captured_at, distance_from_pin_m").in("stop_id", [...stopToDrop.keys()]);
+    const rows = (pr ?? []) as any[];
+    if (!rows.length) return [] as GiftProof[];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: signed } = await supabaseAdmin.storage.from("delivery-proofs").createSignedUrls(rows.map((r) => r.storage_path), 3600);
+    return rows.map((r, k) => ({ drop_id: stopToDrop.get(r.stop_id)!, kind: r.kind ?? "delivered", url: signed?.[k]?.signedUrl ?? "",
+      captured_at: r.captured_at, distance_m: r.distance_from_pin_m })) as GiftProof[];
+  });
