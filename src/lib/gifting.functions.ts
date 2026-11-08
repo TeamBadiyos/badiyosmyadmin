@@ -152,11 +152,6 @@ export const setGiftTripOrder = createServerFn({ method: "POST" })
   .inputValidator((i: { trip_id: string; drop_ids: string[] }) => i)
   .handler(async ({ data: i, context }) => { await rpc(context as Ctx, "gift_set_trip_order", { _trip: i.trip_id, _drop_ids: i.drop_ids }); return { ok: true }; });
 
-export const deleteGiftTestData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { campaign_id: string }) => i)
-  .handler(async ({ data: i, context }) => rpc(context as Ctx, "gift_delete_test_data", { _campaign: i.campaign_id }) as Promise<{ drops: number; clients: number; campaign_deleted: boolean }>);
-
 /* ---------------------------- finishing pieces ---------------------------- */
 
 type LatLng = { lat: number; lng: number };
@@ -348,27 +343,53 @@ export const getDefaultGiftPickup = createServerFn({ method: "POST" })
     return (data ?? null) as { name: string; address: string; lat: number; lng: number; contact_phone: string | null } | null;
   });
 
-export type BadiyosCustomer = { id: string; name: string; phone: string; addresses: { label: string; address: string; lat: number; lng: number; is_default: boolean }[] };
+export type BadiyosCustomer = { id: string; name: string; phone: string; zone_id: string | null;
+  addresses: { label: string; address: string; lat: number; lng: number; is_default: boolean; zone_id: string | null }[] };
 
-/** Find Badiyos customers by phone (last 10 digits) with their saved, pinned addresses. */
+/** Badiyos customers (name or phone, partial) with pinned addresses, optionally in one zone; excludes existing clients. */
 export const searchBadiyosCustomers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { phone: string }) => {
-    const d = String(i?.phone ?? "").replace(/\D/g, "").slice(-10);
-    if (d.length < 6) throw new Error("Type at least 6 digits of the phone");
-    return { d };
-  })
+  .inputValidator((i: { merchant_id: string; q?: string; zone_id?: string | null; limit?: number }) => { if (!i?.merchant_id) throw new Error("Business required"); return i; })
   .handler(async ({ data: i, context }) => {
     const c = context as Ctx; await requireOps(c);
-    const { data: us, error } = await c.supabase.from("users").select("id, full_name, phone").is("deleted_at", null).ilike("phone", `%${i.d}%`).limit(10);
+    const { data, error } = await c.supabase.rpc("gift_customer_pool", { _merchant: i.merchant_id, _q: (i.q ?? "").slice(0, 80), _zone: i.zone_id || null, _limit: i.limit ?? 50 });
     if (error) throw new Error(error.message);
-    const ids = ((us ?? []) as any[]).map((u) => u.id);
-    const { data: ad } = ids.length ? await c.supabase.from("addresses").select("user_id, label, full_address, latitude, longitude, is_default").in("user_id", ids) : { data: [] };
-    return ((us ?? []) as any[]).map((u) => ({
-      id: u.id, name: u.full_name || "Customer", phone: u.phone,
-      addresses: ((ad ?? []) as any[]).filter((a) => a.user_id === u.id && a.latitude != null && a.longitude != null)
-        .map((a) => ({ label: a.label || "Address", address: a.full_address, lat: Number(a.latitude), lng: Number(a.longitude), is_default: !!a.is_default })),
-    })) as BadiyosCustomer[];
+    return data as { customers: BadiyosCustomer[]; total: number; no_pin: number };
+  });
+
+/** Zones of the business's city + zone of every client address. */
+export const getGiftClientZones = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => i)
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data, error } = await c.supabase.rpc("gift_client_zones", { _merchant: i.merchant_id });
+    if (error) throw new Error(error.message);
+    return data as { zones: { id: string; name: string }[]; addresses: Record<string, string | null> };
+  });
+
+/** Bulk: save Badiyos customers (pinned addresses only) as clients of the business. */
+export const addClientsFromCustomers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string; q?: string; zone_id?: string | null }) => { if (!i?.merchant_id) throw new Error("Business required"); return i; })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: pool, error } = await c.supabase.rpc("gift_customer_pool", { _merchant: i.merchant_id, _q: i.q ?? "", _zone: i.zone_id || null, _limit: 5000 });
+    if (error) throw new Error(error.message);
+    const list = ((pool as any).customers ?? []) as BadiyosCustomer[];
+    const { data: m } = await c.supabase.from("merchants").select("city_id").eq("id", i.merchant_id).maybeSingle();
+    let added = 0;
+    for (let k = 0; k < list.length; k += 200) {
+      const chunk = list.slice(k, k + 200);
+      const { data: cls, error: e1 } = await c.supabase.from("gift_clients").insert(chunk.map((u) => ({ merchant_id: i.merchant_id, city_id: m?.city_id ?? null, name: u.name, phone: u.phone }))).select("id, phone");
+      if (e1) throw new Error(e1.message);
+      const byPhone = new Map(((cls ?? []) as any[]).map((x) => [x.phone, x.id]));
+      const addrs = chunk.flatMap((u) => u.addresses.map((a, n) => ({ client_id: byPhone.get(u.phone), merchant_id: i.merchant_id, label: a.label, address: a.address, lat: a.lat, lng: a.lng, is_default: n === 0 }))).filter((a) => a.client_id);
+      if (addrs.length) { const { error: e2 } = await c.supabase.from("gift_client_addresses").insert(addrs); if (e2) throw new Error(e2.message); }
+      added += chunk.length;
+    }
+    await c.supabase.rpc("business_audit", { _action: "gift_clients_from_customers", _table: "business_profiles", _id: i.merchant_id, _before: null, _after: { added, zone_id: i.zone_id ?? null, skipped_no_pin: (pool as any).no_pin }, _actor_label: null });
+    return { added, skipped: Number((pool as any).no_pin) || 0 };
   });
 
 /** Save a Badiyos customer (name, phone, pinned addresses) as a gifting client of the business. */
@@ -382,7 +403,7 @@ export const addClientFromCustomer = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (i.customer.addresses.length) {
       const { error: e2 } = await c.supabase.from("gift_client_addresses").insert(i.customer.addresses.map((a, k) => ({
-        client_id: cl.id, merchant_id: i.merchant_id, label: a.label, address: a.address, lat: a.lat, lng: a.lng, is_default: a.is_default || k === 0,
+        client_id: cl.id, merchant_id: i.merchant_id, label: a.label, address: a.address, lat: a.lat, lng: a.lng, is_default: k === 0,
       })));
       if (e2) throw new Error(e2.message);
     }
