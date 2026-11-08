@@ -1345,6 +1345,7 @@ export type Database = {
           distance_from_pin_m: number | null
           expert_id: string | null
           id: string
+          kind: string
           lat: number | null
           lng: number | null
           location_unverified: boolean
@@ -1362,6 +1363,7 @@ export type Database = {
           distance_from_pin_m?: number | null
           expert_id?: string | null
           id?: string
+          kind?: string
           lat?: number | null
           lng?: number | null
           location_unverified?: boolean
@@ -1379,6 +1381,7 @@ export type Database = {
           distance_from_pin_m?: number | null
           expert_id?: string | null
           id?: string
+          kind?: string
           lat?: number | null
           lng?: number | null
           location_unverified?: boolean
@@ -1815,6 +1818,7 @@ export type Database = {
           low_balance_threshold: number
           merchant_id: string
           pricing_plan_id: string | null
+          proof_geofence_m: number | null
           proof_retention_days: number
           qty_threshold: number
           time_slab_minutes: number
@@ -1835,6 +1839,7 @@ export type Database = {
           low_balance_threshold?: number
           merchant_id: string
           pricing_plan_id?: string | null
+          proof_geofence_m?: number | null
           proof_retention_days?: number
           qty_threshold?: number
           time_slab_minutes?: number
@@ -1855,6 +1860,7 @@ export type Database = {
           low_balance_threshold?: number
           merchant_id?: string
           pricing_plan_id?: string | null
+          proof_geofence_m?: number | null
           proof_retention_days?: number
           qty_threshold?: number
           time_slab_minutes?: number
@@ -5547,6 +5553,7 @@ export type Database = {
           pickup_lat: number | null
           pickup_lng: number | null
           pickup_name: string | null
+          pickup_point_id: string | null
           status: string
           updated_at: string
         }
@@ -5567,6 +5574,7 @@ export type Database = {
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_name?: string | null
+          pickup_point_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -5587,6 +5595,7 @@ export type Database = {
           pickup_lat?: number | null
           pickup_lng?: number | null
           pickup_name?: string | null
+          pickup_point_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -5610,6 +5619,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_campaigns_pickup_point_id_fkey"
+            columns: ["pickup_point_id"]
+            isOneToOne: false
+            referencedRelation: "business_pickup_points"
             referencedColumns: ["id"]
           },
         ]
@@ -5740,16 +5756,21 @@ export type Database = {
         Row: {
           address: string
           address_id: string | null
+          business_order_id: string | null
           campaign_id: string
           client_id: string | null
+          courier_order_id: string | null
           created_at: string
+          delivered_at: string | null
+          fail_reason: string | null
           gift_note: string | null
           id: string
           is_test: boolean
-          lat: number
-          lng: number
+          lat: number | null
+          lng: number | null
           merchant_id: string
           packet_count: number
+          pin_status: string
           recipient_name: string
           recipient_phone: string | null
           status: string
@@ -5762,16 +5783,21 @@ export type Database = {
         Insert: {
           address: string
           address_id?: string | null
+          business_order_id?: string | null
           campaign_id: string
           client_id?: string | null
+          courier_order_id?: string | null
           created_at?: string
+          delivered_at?: string | null
+          fail_reason?: string | null
           gift_note?: string | null
           id?: string
           is_test?: boolean
-          lat: number
-          lng: number
+          lat?: number | null
+          lng?: number | null
           merchant_id: string
           packet_count?: number
+          pin_status?: string
           recipient_name: string
           recipient_phone?: string | null
           status?: string
@@ -5784,16 +5810,21 @@ export type Database = {
         Update: {
           address?: string
           address_id?: string | null
+          business_order_id?: string | null
           campaign_id?: string
           client_id?: string | null
+          courier_order_id?: string | null
           created_at?: string
+          delivered_at?: string | null
+          fail_reason?: string | null
           gift_note?: string | null
           id?: string
           is_test?: boolean
-          lat?: number
-          lng?: number
+          lat?: number | null
+          lng?: number | null
           merchant_id?: string
           packet_count?: number
+          pin_status?: string
           recipient_name?: string
           recipient_phone?: string | null
           status?: string
@@ -5809,6 +5840,13 @@ export type Database = {
             columns: ["address_id"]
             isOneToOne: false
             referencedRelation: "gift_client_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_business_order_id_fkey"
+            columns: ["business_order_id"]
+            isOneToOne: false
+            referencedRelation: "business_orders"
             referencedColumns: ["id"]
           },
           {
@@ -5850,12 +5888,16 @@ export type Database = {
       }
       gift_trips: {
         Row: {
+          batch_id: string | null
           campaign_id: string
+          courier_order_id: string | null
           created_at: string
           distance_km: number | null
+          fail_reason: string | null
           id: string
           merchant_id: string
           route_source: string
+          sent_at: string | null
           status: string
           trip_no: number
           updated_at: string
@@ -5863,12 +5905,16 @@ export type Database = {
           zone_name: string | null
         }
         Insert: {
+          batch_id?: string | null
           campaign_id: string
+          courier_order_id?: string | null
           created_at?: string
           distance_km?: number | null
+          fail_reason?: string | null
           id?: string
           merchant_id: string
           route_source?: string
+          sent_at?: string | null
           status?: string
           trip_no: number
           updated_at?: string
@@ -5876,12 +5922,16 @@ export type Database = {
           zone_name?: string | null
         }
         Update: {
+          batch_id?: string | null
           campaign_id?: string
+          courier_order_id?: string | null
           created_at?: string
           distance_km?: number | null
+          fail_reason?: string | null
           id?: string
           merchant_id?: string
           route_source?: string
+          sent_at?: string | null
           status?: string
           trip_no?: number
           updated_at?: string
@@ -5889,6 +5939,13 @@ export type Database = {
           zone_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "gift_trips_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "business_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "gift_trips_campaign_id_fkey"
             columns: ["campaign_id"]
@@ -14231,6 +14288,15 @@ export type Database = {
         Args: { _order_id: string; _reason: string }
         Returns: Json
       }
+      courier_rider_fail_photo: {
+        Args: {
+          _lat?: number
+          _lng?: number
+          _paths: string[]
+          _stop_id: string
+        }
+        Returns: Json
+      }
       courier_rider_fail_stop: {
         Args: {
           _notes?: string
@@ -14703,6 +14769,7 @@ export type Database = {
           pickup_lat: number | null
           pickup_lng: number | null
           pickup_name: string | null
+          pickup_point_id: string | null
           status: string
           updated_at: string
         }
@@ -14713,9 +14780,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      gift_retry_drops: {
+        Args: { _campaign: string; _drop_ids: string[] }
+        Returns: Json
+      }
       gift_route_order: {
         Args: { _drop_ids: string[]; _from_lat: number; _from_lng: number }
         Returns: string[]
+      }
+      gift_send_all: { Args: { _campaign: string }; Returns: Json }
+      gift_send_trip: {
+        Args: { _expert?: string; _training?: boolean; _trip: string }
+        Returns: Json
+      }
+      gift_set_pin: {
+        Args: { _drop: string; _lat: number; _lng: number }
+        Returns: undefined
       }
       gift_set_trip_order: {
         Args: { _drop_ids: string[]; _trip: string }
