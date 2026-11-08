@@ -336,3 +336,56 @@ export const getGiftProofs = createServerFn({ method: "POST" })
     return rows.map((r, k) => ({ drop_id: stopToDrop.get(r.stop_id)!, kind: r.kind ?? "delivered", url: signed?.[k]?.signedUrl ?? "",
       captured_at: r.captured_at, distance_m: r.distance_from_pin_m })) as GiftProof[];
   });
+
+/** The business's default pickup point (used to prefill campaign pickups). */
+export const getDefaultGiftPickup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string }) => { if (!i?.merchant_id) throw new Error("Business required"); return i; })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data } = await c.supabase.from("business_pickup_points").select("name, address, lat, lng, contact_phone")
+      .eq("merchant_id", i.merchant_id).eq("is_active", true).order("is_default", { ascending: false }).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    return (data ?? null) as { name: string; address: string; lat: number; lng: number; contact_phone: string | null } | null;
+  });
+
+export type BadiyosCustomer = { id: string; name: string; phone: string; addresses: { label: string; address: string; lat: number; lng: number; is_default: boolean }[] };
+
+/** Find Badiyos customers by phone (last 10 digits) with their saved, pinned addresses. */
+export const searchBadiyosCustomers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { phone: string }) => {
+    const d = String(i?.phone ?? "").replace(/\D/g, "").slice(-10);
+    if (d.length < 6) throw new Error("Type at least 6 digits of the phone");
+    return { d };
+  })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: us, error } = await c.supabase.from("users").select("id, full_name, phone").is("deleted_at", null).ilike("phone", `%${i.d}%`).limit(10);
+    if (error) throw new Error(error.message);
+    const ids = ((us ?? []) as any[]).map((u) => u.id);
+    const { data: ad } = ids.length ? await c.supabase.from("addresses").select("user_id, label, full_address, latitude, longitude, is_default").in("user_id", ids) : { data: [] };
+    return ((us ?? []) as any[]).map((u) => ({
+      id: u.id, name: u.full_name || "Customer", phone: u.phone,
+      addresses: ((ad ?? []) as any[]).filter((a) => a.user_id === u.id && a.latitude != null && a.longitude != null)
+        .map((a) => ({ label: a.label || "Address", address: a.full_address, lat: Number(a.latitude), lng: Number(a.longitude), is_default: !!a.is_default })),
+    })) as BadiyosCustomer[];
+  });
+
+/** Save a Badiyos customer (name, phone, pinned addresses) as a gifting client of the business. */
+export const addClientFromCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { merchant_id: string; customer: BadiyosCustomer }) => { if (!i?.merchant_id || !i.customer?.phone) throw new Error("Customer required"); return i; })
+  .handler(async ({ data: i, context }) => {
+    const c = context as Ctx; await requireOps(c);
+    const { data: prof } = await c.supabase.from("merchants").select("city_id").eq("id", i.merchant_id).maybeSingle();
+    const { data: cl, error } = await c.supabase.from("gift_clients").insert({ merchant_id: i.merchant_id, city_id: prof?.city_id ?? null, name: i.customer.name.trim(), phone: i.customer.phone }).select("id").single();
+    if (error) throw new Error(error.message);
+    if (i.customer.addresses.length) {
+      const { error: e2 } = await c.supabase.from("gift_client_addresses").insert(i.customer.addresses.map((a, k) => ({
+        client_id: cl.id, merchant_id: i.merchant_id, label: a.label, address: a.address, lat: a.lat, lng: a.lng, is_default: a.is_default || k === 0,
+      })));
+      if (e2) throw new Error(e2.message);
+    }
+    await c.supabase.rpc("business_audit", { _action: "gift_client_from_customer", _table: "gift_clients", _id: cl.id, _before: null, _after: { customer_id: i.customer.id, addresses: i.customer.addresses.length }, _actor_label: null });
+    return { id: cl.id as string };
+  });
