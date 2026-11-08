@@ -1,15 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Download, FileText, MapPin, MessageCircle, Plus, Route, Search, Send, Trash2, Truck, Upload, UserCheck, Users, X } from "lucide-react";
 import { formatPhone } from "@/lib/phone";
-import { PinMap } from "@/components/customer-address-editor";
-import { btn, danger, err, ghost, input, parseDropsCsv, CampaignForm } from "@/components/gifting-tab";
+import { btn, danger, err, ghost, input, parseDropsCsv, CampaignForm, PinPicker } from "@/components/gifting-tab";
 import {
-  addGiftDropsV2, deleteGiftDrop, deleteGiftTestData, geocodeAddress, getGiftCampaign, getGiftProofs, listGiftClients, listGiftRiders,
+  addGiftDropsV2, deleteGiftDrop, deleteGiftTestData, addClientFromCustomer, getDefaultGiftPickup, getGiftCampaign, searchBadiyosCustomers, getGiftProofs, listGiftClients, listGiftRiders,
   moveGiftDrop, planGiftTrips, retryGiftDrops, saveGiftPickup, sendAllGiftTrips, sendGiftTrip, setGiftPin, setGiftTripOrder,
-  type DropInput2, type GiftCampaign, type GiftDrop, type GiftProof, type GiftTrip,
+  type BadiyosCustomer, type DropInput2, type GiftCampaign, type GiftDrop, type GiftProof, type GiftTrip,
 } from "@/lib/gifting.functions";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -40,26 +39,6 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
   );
 }
 
-/** Address search + draggable pin. */
-function PinPicker({ address, lat, lng, onChange }: { address: string; lat: number | null; lng: number | null; onChange: (p: { lat: number; lng: number }) => void }) {
-  const geo = useServerFn(geocodeAddress);
-  const [q, setQ] = useState(address);
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <input className={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search address" />
-        <button className={ghost} disabled={busy || q.trim().length < 3} onClick={async () => {
-          setBusy(true);
-          try { const r = await geo({ data: { q } }); if (r) onChange(r); else toast.error("Address not found — drop the pin on the map"); } catch (e) { err(e); } finally { setBusy(false); }
-        }}><Search className="h-3.5 w-3.5" />Find</button>
-      </div>
-      <PinMap lat={lat} lng={lng} onPick={onChange} />
-      <p className="text-[11px] text-muted-foreground">{lat != null ? `Pin: ${lat.toFixed(6)}, ${lng?.toFixed(6)}` : "Click the map or drag the pin"}</p>
-    </div>
-  );
-}
-
 function SetPinModal({ d, onClose, onSaved }: { d: GiftDrop; onClose: () => void; onSaved: () => void }) {
   const save = useServerFn(setGiftPin);
   const [p, setP] = useState<{ lat: number; lng: number } | null>(d.lat != null ? { lat: d.lat, lng: d.lng! } : null);
@@ -77,6 +56,16 @@ function PickupModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: () => 
   const save = useServerFn(saveGiftPickup);
   const [f, setF] = useState({ name: c.pickup_name ?? "", address: c.pickup_address ?? "", contact: "" , as_default: true });
   const [p, setP] = useState<{ lat: number; lng: number } | null>(c.pickup_lat != null ? { lat: c.pickup_lat, lng: c.pickup_lng! } : null);
+  const defFn = useServerFn(getDefaultGiftPickup);
+  const [k, setK] = useState(0);
+  useEffect(() => {
+    if (c.pickup_lat != null) return;
+    defFn({ data: { merchant_id: c.merchant_id } }).then((d) => {
+      if (!d) return;
+      setF((o) => ({ ...o, name: d.name ?? o.name, address: d.address ?? o.address, contact: d.contact_phone ?? o.contact }));
+      setP({ lat: Number(d.lat), lng: Number(d.lng) }); setK((x) => x + 1);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Modal title="Pickup point" onClose={onClose}>
       <div className="grid grid-cols-2 gap-2">
@@ -84,8 +73,8 @@ function PickupModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: () => 
         <label className="block text-[12px] font-semibold">Contact phone<input className={input} value={f.contact} onChange={(e) => setF({ ...f, contact: e.target.value })} placeholder="+91" /></label>
       </div>
       <label className="block text-[12px] font-semibold">Address<input className={input} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></label>
-      <PinPicker address={f.address} lat={p?.lat ?? null} lng={p?.lng ?? null} onChange={setP} />
-      <label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={f.as_default} onChange={(e) => setF({ ...f, as_default: e.target.checked })} />Also make this the business's default pickup</label>
+      <PinPicker key={k} address={f.address} lat={p?.lat ?? null} lng={p?.lng ?? null} onChange={setP} />
+      <label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={f.as_default} onChange={(e) => setF({ ...f, as_default: e.target.checked })} />Save as business default pickup</label>
       <div className="flex justify-end gap-2"><button className={ghost} onClick={onClose}>Cancel</button>
         <button className={btn} disabled={!p || !f.address.trim()} onClick={async () => {
           try { await save({ data: { campaign_id: c.id, name: f.name, address: f.address, lat: p!.lat, lng: p!.lng, contact: f.contact, as_default: f.as_default } }); toast.success("Pickup saved"); onSaved(); } catch (e) { err(e); }
@@ -94,9 +83,9 @@ function PickupModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: () => 
   );
 }
 
-function AddRecipientModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: () => void; onSaved: () => void }) {
+function AddRecipientModal({ c, onClose, onSaved, prefill }: { c: GiftCampaign; onClose: () => void; onSaved: () => void; prefill?: { name?: string; phone?: string } }) {
   const add = useServerFn(addGiftDropsV2);
-  const [f, setF] = useState({ name: "", phone: "", address: "", packets: "1", note: "", save: true });
+  const [f, setF] = useState({ name: prefill?.name ?? "", phone: prefill?.phone ?? "", address: "", packets: "1", note: "", save: true });
   const [p, setP] = useState<{ lat: number; lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
   return (
@@ -111,7 +100,7 @@ function AddRecipientModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: 
       <PinPicker address={f.address} lat={p?.lat ?? null} lng={p?.lng ?? null} onChange={setP} />
       <label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={f.save} onChange={(e) => setF({ ...f, save: e.target.checked })} />Save as client</label>
       <div className="flex justify-end gap-2"><button className={ghost} onClick={onClose}>Cancel</button>
-        <button className={btn} disabled={busy || !f.name.trim() || !f.address.trim()} onClick={async () => {
+        <button className={btn} disabled={busy || !f.name.trim() || !f.address.trim() || !p} onClick={async () => {
           setBusy(true);
           try {
             await add({ data: { campaign_id: c.id, drops: [{ recipient_name: f.name, recipient_phone: f.phone, address: f.address, lat: p?.lat ?? null, lng: p?.lng ?? null, packet_count: Number(f.packets) || 1, gift_note: f.note, save_client: f.save }] } });
@@ -122,10 +111,14 @@ function AddRecipientModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: 
   );
 }
 
-function FromClientsModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: () => void; onSaved: () => void }) {
+function FromClientsModal({ c, onClose, onSaved, onNew }: { c: GiftCampaign; onClose: () => void; onSaved: () => void; onNew: (p: { name?: string; phone?: string }) => void }) {
   const listFn = useServerFn(listGiftClients);
   const add = useServerFn(addGiftDropsV2);
-  const { data } = useQuery({ queryKey: ["gifting", "clients", c.merchant_id], queryFn: () => listFn({ data: { merchant_id: c.merchant_id } }) });
+  const findCust = useServerFn(searchBadiyosCustomers);
+  const addCust = useServerFn(addClientFromCustomer);
+  const [cust, setCust] = useState<BadiyosCustomer[] | null>(null);
+  const [cbusy, setCbusy] = useState(false);
+  const { data, refetch } = useQuery({ queryKey: ["gifting", "clients", c.merchant_id], queryFn: () => listFn({ data: { merchant_id: c.merchant_id } }) });
   const [q, setQ] = useState("");
   const [onlyAddr, setOnlyAddr] = useState(false);
   const [sel, setSel] = useState<Record<string, string>>({}); // client -> address id
@@ -153,7 +146,33 @@ function FromClientsModal({ c, onClose, onSaved }: { c: GiftCampaign; onClose: (
             ) : <p className="flex-1 truncate text-muted-foreground">{r.addresses[0]?.address ?? "No address saved"}</p>}
           </div>
         ))}
-        {data && !rows.length ? <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">No clients</p> : null}
+        {data && !data.length ? <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">Abhi koi client nahi. Import CSV ya + Add recipient se jodiye.</p> : null}
+        {data && data.length > 0 && !rows.length ? (
+          <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
+            <p>No client found</p>
+            <button className={ghost + " mt-2"} onClick={() => { const digits = q.replace(/\D/g, ""); onNew(digits.length >= 6 ? { phone: q.trim() } : { name: q.trim() }); }}><Plus className="h-3.5 w-3.5" />Add as new recipient</button>
+          </div>
+        ) : null}
+      </div>
+      <div className="space-y-2 rounded-[10px] border border-border p-3">
+        <div className="flex items-center gap-2">
+          <p className="text-[12px] font-semibold">Badiyos customer by phone</p>
+          <button className={ghost + " ml-auto"} disabled={cbusy || q.replace(/\D/g, "").length < 6} onClick={async () => {
+            setCbusy(true); try { setCust(await findCust({ data: { phone: q } })); } catch (e) { err(e); } finally { setCbusy(false); }
+          }}><Search className="h-3.5 w-3.5" />Search badiyos customers</button>
+        </div>
+        {cust && !cust.length ? <p className="text-[12px] text-muted-foreground">No badiyos customer with this phone.</p> : null}
+        {(cust ?? []).map((u) => {
+          const exists = (data ?? []).some((x) => x.phone && x.phone.replace(/\D/g, "").slice(-10) === u.phone.replace(/\D/g, "").slice(-10));
+          return (
+            <div key={u.id} className="flex items-center gap-2 text-[12px]">
+              <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{u.name} · {formatPhone(u.phone)}</p><p className="truncate text-muted-foreground">{u.addresses.length ? u.addresses.map((a) => a.label).join(", ") : "No pinned addresses"}</p></div>
+              <button className={ghost} disabled={exists || cbusy} onClick={async () => {
+                setCbusy(true); try { await addCust({ data: { merchant_id: c.merchant_id, customer: u } }); toast.success("Added as client"); setQ(u.phone.replace(/\D/g, "").slice(-10)); await refetch(); } catch (e) { err(e); } finally { setCbusy(false); }
+              }}><Plus className="h-3.5 w-3.5" />{exists ? "Already a client" : "Add as client"}</button>
+            </div>
+          );
+        })}
       </div>
       <div className="flex justify-end gap-2"><button className={ghost} onClick={onClose}>Cancel</button>
         <button className={btn} disabled={busy || !Object.keys(sel).length} onClick={async () => {
@@ -243,6 +262,7 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [modal, setModal] = useState<null | "pickup" | "add" | "clients">(null);
+  const [prefill, setPrefill] = useState<{ name?: string; phone?: string } | undefined>();
   const [pinFor, setPinFor] = useState<GiftDrop | null>(null);
   const [assign, setAssign] = useState<GiftTrip | null>(null);
   const [retrySel, setRetrySel] = useState<Record<string, boolean>>({});
@@ -415,7 +435,7 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
 
       {modal === "pickup" ? <PickupModal c={c} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
       {modal === "add" ? <AddRecipientModal c={c} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
-      {modal === "clients" ? <FromClientsModal c={c} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
+      {modal === "clients" ? <FromClientsModal c={c} onNew={(p) => { setPrefill(p); setModal("add"); }} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
       {pinFor ? <SetPinModal d={pinFor} onClose={() => setPinFor(null)} onSaved={() => { setPinFor(null); refresh(); }} /> : null}
       {assign ? <AssignModal t={assign} onClose={() => setAssign(null)} onDone={() => { setAssign(null); refresh(); }} /> : null}
       {photo ? <Modal title="Proof photo" onClose={() => setPhoto(null)}><img src={photo} alt="Proof" className="w-full rounded-[10px]" /></Modal> : null}
