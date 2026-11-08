@@ -34,6 +34,7 @@ import { Field, Modal, OrderDetail, Pill, inputCls } from "@/components/courier-
 import { SealStickersTab, SealStockCard } from "@/components/seal-stickers-tab";
 import { LeftBehindTodayCard } from "@/components/left-behind";
 import { FirstTimeTodayCard, ProofGlobalsCard, ProofSettingsCard, ReceiverLocationPanel } from "@/components/drop-proofs";
+import { GiftingTab } from "@/components/gifting-tab";
 import { getLeftBehindCounts } from "@/lib/left-behind.functions";
 
 const btn = "rounded-[10px] bg-primary px-4 py-2 text-[13px] font-bold text-primary-foreground disabled:opacity-40";
@@ -650,7 +651,7 @@ function WalletTab({ biz, canWrite, ledger, topups, onChanged }: { biz: Business
 
 /* --------------------------------- page --------------------------------- */
 
-type BTab = "plans" | "businesses" | "seals";
+type BTab = "plans" | "businesses" | "seals" | "gifting";
 
 export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean }) {
   const fetchAccess = useServerFn(getBulkAccess);
@@ -665,8 +666,8 @@ export function BulkCourierPage({ canWriteOrders }: { canWriteOrders: boolean })
           Read-only — only a super admin can change plans, modules, delivery status or wallet. You can still dispatch now and manage pickup points.
         </div>
       ) : null}
-      <Tabs value={tab} onChange={setTab} items={[{ key: "businesses", label: "Businesses" }, { key: "plans", label: "Plans" }, { key: "seals", label: "Stickers" }] as const} />
-      {tab === "plans" ? <div className="space-y-8"><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Pricing plans</h2><PricingPlansTab canWrite={canWrite} /></section><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Dispatch plans</h2><DispatchPlansTab canWrite={canWrite} /></section></div> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <div className="space-y-3">{access ? <ProofGlobalsCard canEdit={canOperate} /> : null}<BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} /></div>}
+      <Tabs value={tab} onChange={setTab} items={[{ key: "businesses", label: "Businesses" }, { key: "plans", label: "Plans" }, { key: "seals", label: "Stickers" }, { key: "gifting", label: "Gifting" }] as const} />
+      {tab === "plans" ? <div className="space-y-8"><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Pricing plans</h2><PricingPlansTab canWrite={canWrite} /></section><section><h2 className="mb-3 text-[15px] font-bold text-foreground">Dispatch plans</h2><DispatchPlansTab canWrite={canWrite} /></section></div> : tab === "gifting" ? <GiftingTab /> : tab === "seals" ? <SealStickersTab canWrite={canWrite} canVoid={canOperate} /> : <div className="space-y-3">{access ? <ProofGlobalsCard canEdit={canOperate} /> : null}<BusinessesTab canWrite={canWrite} canOperate={canOperate} canWriteOrders={canWriteOrders} /></div>}
     </div>
   );
 }
