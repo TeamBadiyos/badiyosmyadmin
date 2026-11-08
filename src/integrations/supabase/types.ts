@@ -5529,6 +5529,389 @@ export type Database = {
         }
         Relationships: []
       }
+      gift_campaigns: {
+        Row: {
+          city_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_test: boolean
+          max_drops_per_trip: number
+          merchant_id: string
+          name: string
+          notes: string | null
+          occasion: string | null
+          pickup_address: string | null
+          pickup_contact: string | null
+          pickup_date: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_test?: boolean
+          max_drops_per_trip?: number
+          merchant_id: string
+          name: string
+          notes?: string | null
+          occasion?: string | null
+          pickup_address?: string | null
+          pickup_contact?: string | null
+          pickup_date?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_test?: boolean
+          max_drops_per_trip?: number
+          merchant_id?: string
+          name?: string
+          notes?: string | null
+          occasion?: string | null
+          pickup_address?: string | null
+          pickup_contact?: string | null
+          pickup_date?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_campaigns_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_campaigns_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_campaigns_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_client_addresses: {
+        Row: {
+          address: string
+          client_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          lat: number
+          lng: number
+          merchant_id: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          client_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          lat: number
+          lng: number
+          merchant_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          lat?: number
+          lng?: number
+          merchant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_client_addresses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "gift_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_client_addresses_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_client_addresses_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_clients: {
+        Row: {
+          city_id: string | null
+          company: string | null
+          created_at: string
+          id: string
+          is_test: boolean
+          merchant_id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          city_id?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          is_test?: boolean
+          merchant_id: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city_id?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          is_test?: boolean
+          merchant_id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_clients_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_clients_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_clients_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_drops: {
+        Row: {
+          address: string
+          address_id: string | null
+          campaign_id: string
+          client_id: string | null
+          created_at: string
+          gift_note: string | null
+          id: string
+          is_test: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          packet_count: number
+          recipient_name: string
+          recipient_phone: string | null
+          status: string
+          stop_seq: number | null
+          trip_id: string | null
+          updated_at: string
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Insert: {
+          address: string
+          address_id?: string | null
+          campaign_id: string
+          client_id?: string | null
+          created_at?: string
+          gift_note?: string | null
+          id?: string
+          is_test?: boolean
+          lat: number
+          lng: number
+          merchant_id: string
+          packet_count?: number
+          recipient_name: string
+          recipient_phone?: string | null
+          status?: string
+          stop_seq?: number | null
+          trip_id?: string | null
+          updated_at?: string
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Update: {
+          address?: string
+          address_id?: string | null
+          campaign_id?: string
+          client_id?: string | null
+          created_at?: string
+          gift_note?: string | null
+          id?: string
+          is_test?: boolean
+          lat?: number
+          lng?: number
+          merchant_id?: string
+          packet_count?: number
+          recipient_name?: string
+          recipient_phone?: string | null
+          status?: string
+          stop_seq?: number | null
+          trip_id?: string | null
+          updated_at?: string
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_drops_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "gift_client_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "gift_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "gift_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_drops_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "gift_trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_trips: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          distance_km: number | null
+          id: string
+          merchant_id: string
+          route_source: string
+          status: string
+          trip_no: number
+          updated_at: string
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          merchant_id: string
+          route_source?: string
+          status?: string
+          trip_no: number
+          updated_at?: string
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          merchant_id?: string
+          route_source?: string
+          status?: string
+          trip_no?: number
+          updated_at?: string
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_trips_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "gift_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_trips_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_trips_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homepage_sections: {
         Row: {
           city_id: string | null
@@ -14290,6 +14673,55 @@ export type Database = {
         Args: { _settlement_id: string }
         Returns: Json
       }
+      gift_can: { Args: { _merchant: string }; Returns: boolean }
+      gift_delete_test_data: { Args: { _campaign: string }; Returns: Json }
+      gift_km: {
+        Args: { a_lat: number; a_lng: number; b_lat: number; b_lng: number }
+        Returns: number
+      }
+      gift_move_drop: {
+        Args: { _drop: string; _to_trip: string }
+        Returns: undefined
+      }
+      gift_plan_trips: { Args: { _campaign: string }; Returns: Json }
+      gift_require_campaign: {
+        Args: { _campaign: string }
+        Returns: {
+          city_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_test: boolean
+          max_drops_per_trip: number
+          merchant_id: string
+          name: string
+          notes: string | null
+          occasion: string | null
+          pickup_address: string | null
+          pickup_contact: string | null
+          pickup_date: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_name: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gift_campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      gift_route_order: {
+        Args: { _drop_ids: string[]; _from_lat: number; _from_lng: number }
+        Returns: string[]
+      }
+      gift_set_trip_order: {
+        Args: { _drop_ids: string[]; _trip: string }
+        Returns: undefined
+      }
+      gift_trip_recalc: { Args: { _trip: string }; Returns: undefined }
       has_login_pin: { Args: { p_phone: string }; Returns: boolean }
       haversine_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
