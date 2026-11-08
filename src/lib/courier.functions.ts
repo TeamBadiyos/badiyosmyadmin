@@ -835,7 +835,7 @@ export const forceCancelOrder = createServerFn({ method: "POST" })
     const { error } = await context.supabase.rpc("staff_courier_force_cancel", {
       _order_id: data.orderId,
       _reason: data.reason.trim(),
-      _refund_amount: custom > 0 ? custom : null,
+      _refund_amount: custom > 0 ? custom : undefined,
     });
     if (error) throw new Error(error.message);
     return { ok: true as const };
