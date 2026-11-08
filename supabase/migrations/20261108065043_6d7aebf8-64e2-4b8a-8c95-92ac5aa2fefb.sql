@@ -1,0 +1,1 @@
+alter function public.gift_km(double precision,double precision,double precision,double precision) set search_path = public;
