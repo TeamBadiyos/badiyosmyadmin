@@ -316,7 +316,7 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
         </div>
         <div className="flex flex-wrap gap-2">
           <button className={ghost} onClick={onEdit}>Edit</button>
-          <button className={ghost} onClick={() => setModal("add")}><Plus className="h-3.5 w-3.5" />Add recipient</button>
+          <button className={ghost} onClick={() => { setPrefill(undefined); setModal("add"); }}><Plus className="h-3.5 w-3.5" />Add recipient</button>
           <button className={ghost} onClick={() => setModal("clients")}><Users className="h-3.5 w-3.5" />Add from clients</button>
           <label className={ghost + " cursor-pointer"}><Upload className="h-3.5 w-3.5" />Import CSV
             <input type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => {
@@ -434,7 +434,7 @@ export function CampaignDetail({ c, onBack, onEdit, editing, setEditing }: { c: 
       ) : null}
 
       {modal === "pickup" ? <PickupModal c={c} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
-      {modal === "add" ? <AddRecipientModal c={c} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
+      {modal === "add" ? <AddRecipientModal c={c} prefill={prefill} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
       {modal === "clients" ? <FromClientsModal c={c} onNew={(p) => { setPrefill(p); setModal("add"); }} onClose={() => setModal(null)} onSaved={() => { setModal(null); refresh(); }} /> : null}
       {pinFor ? <SetPinModal d={pinFor} onClose={() => setPinFor(null)} onSaved={() => { setPinFor(null); refresh(); }} /> : null}
       {assign ? <AssignModal t={assign} onClose={() => setAssign(null)} onDone={() => { setAssign(null); refresh(); }} /> : null}
