@@ -20,7 +20,7 @@ async function rpc(context: Ctx, name: string, args: Record<string, unknown>) {
 export type GiftCampaign = {
   id: string; merchant_id: string; name: string; occasion: string | null; status: string; is_test: boolean;
   pickup_name: string | null; pickup_address: string | null; pickup_lat: number | null; pickup_lng: number | null;
-  pickup_date: string | null; max_drops_per_trip: number; business_name: string; drops: number; trips: number;
+  pickup_date: string | null; max_drops_per_trip: number; pickup_point_id: string | null; business_name: string; drops: number; trips: number;
 };
 export type GiftDrop = {
   id: string; recipient_name: string; recipient_phone: string | null; address: string; lat: number; lng: number;
