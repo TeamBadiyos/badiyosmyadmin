@@ -11,7 +11,7 @@ BEGIN
   -- Clone the historical trip into a transaction-only fixture; never reset a live order.
   PERFORM set_config('app.courier_skip_default_stops','on',true);
   INSERT INTO public.courier_orders SELECT (jsonb_populate_record(NULL::public.courier_orders,
-   to_jsonb(o)||jsonb_build_object('id',gen_random_uuid(),'status','SEARCHING','cancelled_at',NULL,'delivered_at',NULL,'completed_at',NULL,'is_training',true))).*
+   to_jsonb(o)||jsonb_build_object('id',gen_random_uuid(),'order_code',upper(substr(gen_random_uuid()::text,1,8)),'status','SEARCHING','cancelled_at',NULL,'delivered_at',NULL,'completed_at',NULL,'is_training',true))).*
   FROM public.courier_orders o WHERE o.id=_id RETURNING id INTO _drop;
   INSERT INTO public.gift_trips(campaign_id,merchant_id,trip_no,courier_order_id)
   SELECT campaign_id,merchant_id,(SELECT coalesce(max(trip_no),0)+1 FROM public.gift_trips),_drop FROM public.gift_trips WHERE courier_order_id=_id LIMIT 1;
