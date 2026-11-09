@@ -14092,6 +14092,10 @@ export type Database = {
         Returns: Json
       }
       courier_hash_otp: { Args: { _otp: string }; Returns: string }
+      courier_is_gifting_order: {
+        Args: { _order_id: string }
+        Returns: boolean
+      }
       courier_is_next_stop: { Args: { _stop_id: string }; Returns: boolean }
       courier_is_ops_staff: { Args: never; Returns: boolean }
       courier_is_super_admin: { Args: never; Returns: boolean }
@@ -14286,6 +14290,10 @@ export type Database = {
       }
       courier_rider_cancel: {
         Args: { _order_id: string; _reason: string }
+        Returns: Json
+      }
+      courier_rider_complete_gifting_stop: {
+        Args: { _stop_id: string }
         Returns: Json
       }
       courier_rider_fail_photo: {
