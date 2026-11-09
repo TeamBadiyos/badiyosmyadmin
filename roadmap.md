@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Repair the staff in-transit cancellation rule and cancel EFAF76D2 with existing refund handling and audit records.
+- [x] Repair staff post-pickup cancellation rule; isolated SQL tests passed, EFAF76D2 verified Cancelled with audit record, existing refund preserved and other rider delivery untouched.
 - [x] Check admin new-order WhatsApp dispatch after migration: secret already restored, no pending/failed alerts, recent real orders marked sent; delay/cancellation alerts remain off. Actual phone receipt unverified.
 - [x] Restore single-flight expired-login recovery without changing connection settings; six tests and simulated browser recovery/login redirect passed. Real-account expiry check unavailable for external Supabase.
 - [x] Add audited Super Admin Edit/Delete options for manual adjustments; rolled-back balance, date, provenance, stale-edit, payout protection and permission tests passed.
