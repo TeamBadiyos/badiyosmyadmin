@@ -5,11 +5,11 @@ BEGIN
  SELECT auth_user_id INTO _staff FROM staff_users WHERE role='super_admin' AND status='active' LIMIT 1;
  BEGIN
   PERFORM set_config('app.courier_skip_default_stops','on',true);
-  INSERT INTO courier_orders SELECT (jsonb_populate_record(NULL::courier_orders,to_jsonb(o)||jsonb_build_object('id',gen_random_uuid(),'order_code',upper(substr(gen_random_uuid()::text,1,8)),'status','IN_TRANSIT','earnings_credited_at',NULL,'delivered_at',NULL,'completed_at',NULL,'is_training',true))).* FROM courier_orders o WHERE o.id='d8baf515-5e33-45ef-9795-563880c3a56c' RETURNING id INTO _order;
+  INSERT INTO courier_orders SELECT (jsonb_populate_record(NULL::courier_orders,to_jsonb(o)||jsonb_build_object('id',gen_random_uuid(),'order_code',upper(substr(gen_random_uuid()::text,1,8)),'razorpay_order_id',NULL,'razorpay_payment_id',NULL,'status','IN_TRANSIT','earnings_credited_at',NULL,'delivered_at',NULL,'completed_at',NULL,'is_training',true))).* FROM courier_orders o WHERE o.id='d8baf515-5e33-45ef-9795-563880c3a56c' RETURNING id INTO _order;
   IF _order IS NULL OR _staff IS NULL THEN RAISE EXCEPTION 'Fixture unavailable'; END IF;
-  INSERT INTO courier_order_stops(order_id,stop_type,sequence,status) VALUES(_order,'pickup',1,'completed') RETURNING id INTO _pick;
-  INSERT INTO courier_order_stops(order_id,stop_type,sequence,status) VALUES(_order,'drop',2,'pending') RETURNING id INTO _stop;
-  INSERT INTO courier_order_parcels(order_id,pickup_stop_id,drop_stop_id,status) VALUES(_order,_pick,_stop,'picked');
+  INSERT INTO courier_order_stops SELECT (jsonb_populate_record(NULL::courier_order_stops,to_jsonb(s)||jsonb_build_object('id',gen_random_uuid(),'order_id',_order,'status','completed'))).* FROM courier_order_stops s WHERE s.order_id='d8baf515-5e33-45ef-9795-563880c3a56c' AND s.stop_type='pickup' LIMIT 1 RETURNING id INTO _pick;
+  INSERT INTO courier_order_stops SELECT (jsonb_populate_record(NULL::courier_order_stops,to_jsonb(s)||jsonb_build_object('id',gen_random_uuid(),'order_id',_order,'status','pending','arrived_at',NULL,'completed_at',NULL))).* FROM courier_order_stops s WHERE s.order_id='d8baf515-5e33-45ef-9795-563880c3a56c' AND s.stop_type='drop' LIMIT 1 RETURNING id INTO _stop;
+  INSERT INTO courier_order_parcels SELECT (jsonb_populate_record(NULL::courier_order_parcels,to_jsonb(p)||jsonb_build_object('id',gen_random_uuid(),'order_id',_order,'pickup_stop_id',_pick,'drop_stop_id',_stop,'return_stop_id',NULL,'status','picked'))).* FROM courier_order_parcels p WHERE p.order_id='d8baf515-5e33-45ef-9795-563880c3a56c' LIMIT 1;
   _blocked:=false;
   BEGIN PERFORM staff_courier_override(_order,'complete','App issue',NULL,_stop,NULL,NULL,NULL,NULL,gen_random_uuid()); EXCEPTION WHEN insufficient_privilege THEN _blocked:=true; END;
   IF NOT _blocked THEN RAISE EXCEPTION 'Non-staff accepted'; END IF;
