@@ -1,4 +1,6 @@
 import { DeliveryRateFields } from "@/components/delivery-rate-card";
+import { CourierOverrideActions } from "@/components/courier-override-actions";
+import { getCourierOverrides } from "@/lib/courier-overrides.functions";
 import { formatPhone } from "@/lib/phone";
 import { commissionToRiderShare, riderShareToCommission } from "@/lib/delivery-rate";
 import { ContactButtons } from "@/components/booking-details-modal";
@@ -1118,6 +1120,7 @@ export function OrderDetail({
         <Pill tone="off">Parcel</Pill>
         {order.city ? <Pill tone="off">{order.city}</Pill> : null}
         {order.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
+        {order.hasStaffOverride ? <Pill tone="warn">Override</Pill> : null}
         <span className="text-[13px] font-bold text-foreground">₹{order.total_amount}</span>
         <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${order.payment_status === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
           {order.payment_status ?? "—"}
@@ -1195,6 +1198,7 @@ export function OrderDetail({
       ) : null}
 
       <MultiStopSections order={order} fetchStops={fetchStops} onChanged={onChanged} />
+      <CourierOverrideActions order={order} onChanged={onChanged} />
 
       {canWrite && (
         <div className="mt-3">
@@ -1377,6 +1381,8 @@ function MultiStopSections({
   const waive = useServerFn(waiveCourierCharge);
   const verify = useServerFn(verifyCourierStop);
   const skipScan = useServerFn(skipCourierStopScan);
+  const fetchOverrides = useServerFn(getCourierOverrides);
+  const { data: overrides } = useQuery({ queryKey: ["courier", "overrides", order.id], queryFn: () => fetchOverrides({ data: { orderId: order.id } }) });
   const [skipFor, setSkipFor] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["courier", "stops", order.id],
@@ -1443,6 +1449,7 @@ function MultiStopSections({
                   {i + 1}. {STOP_TYPE_LABEL[st.stop_type] ?? cap(st.stop_type)}
                 </span>
                 <Pill tone={toneFor(st.status)}>{cap(st.status)}</Pill>
+                {overrides?.some((o) => o.stop_id === st.id || o.action === "complete_all") ? <Pill tone="warn">Override</Pill> : null}
               </div>
               <p className="mt-1 text-muted-foreground">{st.address ?? "—"}</p>
               <p className="text-muted-foreground">
@@ -1640,6 +1647,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   const [status, setStatus] = useState<string>("");
   const [search, setSearch] = useState("");
   const [multiStop, setMultiStop] = useState(false);
+  const [staffOverrides, setStaffOverrides] = useState(false);
   const [business, setBusiness] = useState("");
   const [selected, setSelected] = useState<CourierOrderRow | null>(null);
   const fetchBiz = useServerFn(listBusinesses);
@@ -1650,10 +1658,10 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   });
 
   const { data } = useQuery({
-    queryKey: ["courier", "orders", status, search, multiStop, business],
+    queryKey: ["courier", "orders", status, search, multiStop, business, staffOverrides],
     queryFn: () =>
       fetchOrders({
-        data: { status: status || null, search: search || null, multiStop, businessId: business || null },
+        data: { status: status || null, search: search || null, multiStop, businessId: business || null, staffOverrides },
       }),
     refetchInterval: 30_000,
   });
@@ -1725,6 +1733,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
   return (
     <div className="space-y-6">
       <FilterBar count={countLabel(rows.length, "order")}>
+        <FilterField label="Review"><select className={filterSelectCls} value={staffOverrides ? "overrides" : "all"} onChange={(e) => setStaffOverrides(e.target.value === "overrides")}><option value="all">All orders</option><option value="overrides">Staff overrides</option></select></FilterField>
         <FilterField label="Search"><input
           placeholder="Search code, customer, phone"
           className={`${filterInputCls} min-w-[230px]`}
@@ -1828,6 +1837,7 @@ function OrdersTab({ canWrite }: { canWrite: boolean }) {
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         <Pill tone={toneFor(o.status)}>{o.status}</Pill>
+                        {o.hasStaffOverride ? <Pill tone="warn">Override</Pill> : null}
                         {o.needs_ops_attention ? <Pill tone="warn">Needs attention</Pill> : null}
                         {o.returnPaymentPending ? <Pill tone="warn">Return pending</Pill> : null}
                       </div>
