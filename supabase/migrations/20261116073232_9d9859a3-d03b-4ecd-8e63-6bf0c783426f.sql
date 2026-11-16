@@ -1,0 +1,2 @@
+REVOKE SELECT ON public.courier_staff_overrides FROM authenticated;
+GRANT SELECT (id,order_id,stop_id,city_id,action,reason,note,photo_path,staff_id,staff_name,undone_at,created_at,updated_at) ON public.courier_staff_overrides TO authenticated;
