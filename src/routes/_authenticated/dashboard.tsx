@@ -129,6 +129,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Badiyos Command Center" },
+      { name: "description", content: "Badiyos staff operations, courier deliveries, bookings and finance." },
+      { property: "og:title", content: "Badiyos Command Center" },
+      { property: "og:description", content: "Badiyos staff operations, courier deliveries, bookings and finance." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -1,6 +1,7 @@
 # Roadmap
-- [ ] Add audited courier emergency overrides with mandatory reasons, normal payout/billing paths, stop badges and order filtering; keep Area Partners Clean-only.
-- [ ] Verify overrides with rollback tests and complete Sushant’s pending delivery only if exactly one matching active order exists.
+- [x] Add audited courier emergency overrides with mandatory reasons, normal payout/billing paths, stop badges and order filtering; keep Area Partners Clean-only. Four rule tests and rolled-back SQL checks passed.
+- [x] Complete the single matching Sushant delivery 893B649C: Completed, drop completed, ₹21 normal payout exactly once, ₹31.50 bill unchanged, override audited.
+- [ ] Verify all override controls signed in and customer Delivered screen on phone; blocked by external Supabase without browser session and separate Customer App access.
 - [x] Make gifting delivery rules route-only: no QR/OTP/proof/geofence, assigned-rider sequential completion, unchanged fares/payout code; rolled-back multi-drop and ordinary-trip regression checks passed.
 - [ ] Remove gifting scan/OTP/photo screens in the separate Expert App and verify on a rider phone; blocked by that app's source/access here. Handoff: docs/expert-app-gifting-route-only.md.
 - [x] Repair staff post-pickup cancellation rule; isolated SQL tests passed, EFAF76D2 verified Cancelled with audit record, existing refund preserved and other rider delivery untouched.
