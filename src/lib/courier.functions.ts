@@ -586,6 +586,7 @@ export type CourierOrderRow = {
   stopsFee: number;
   business_merchant_id: string | null;
   businessName: string | null;
+  hasStaffOverride: boolean;
 };
 
 export const COURIER_STATUSES = [
@@ -611,12 +612,14 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       multiStop?: boolean;
       businessId?: string | null;
       orderId?: string | null;
+      staffOverrides?: boolean;
     }) => ({
       businessId: input?.businessId ?? null,
       orderId: input?.orderId ?? null,
       status: input?.status ?? null,
       search: input?.search?.trim() || null,
       multiStop: !!input?.multiStop,
+      staffOverrides: !!input?.staffOverrides,
     }),
   )
   .handler(async ({ data, context }): Promise<CourierOrderRow[]> => {
@@ -637,6 +640,17 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     if (data.businessId === "any") q = q.not("business_merchant_id", "is", null);
     else if (data.businessId) q = q.eq("business_merchant_id", data.businessId);
     if (data.orderId) q = q.eq("id", data.orderId);
+    if (data.staffOverrides) {
+      const ids: string[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data: overrides, error: overrideError } = await db.from("courier_staff_overrides").select("order_id").order("id").range(offset, offset + 999);
+        if (overrideError) throw new Error(overrideError.message);
+        ids.push(...(overrides ?? []).map((r: { order_id: string }) => r.order_id));
+        if ((overrides ?? []).length < 1000) break;
+      }
+      if (!ids.length) return [];
+      q = q.in("id", [...new Set(ids)]);
+    }
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
@@ -659,6 +673,9 @@ export const listCourierOrders = createServerFn({ method: "POST" })
     );
 
     const orderIds = list.map((r) => r["id"] as string);
+    const { data: overrideRows, error: overrideError } = await db.from("courier_staff_overrides").select("order_id").in("order_id", orderIds);
+    if (overrideError) throw new Error(overrideError.message);
+    const overrideIds = new Set((overrideRows ?? []).map((r: { order_id: string }) => r.order_id));
     const bizIds = Array.from(
       new Set(list.map((r) => r["business_merchant_id"]).filter(Boolean) as string[]),
     );
@@ -732,6 +749,7 @@ export const listCourierOrders = createServerFn({ method: "POST" })
       businessName: r["business_merchant_id"]
         ? (bMap.get(r["business_merchant_id"] as string) ?? "Business")
         : null,
+      hasStaffOverride: overrideIds.has(r["id"] as string),
     }));
   });
 
