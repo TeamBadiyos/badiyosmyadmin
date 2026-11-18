@@ -586,8 +586,10 @@ function GenerateBatchDialog({
 }) {
   const gen = useServerFn(generatePayoutBatch);
   const r = lastWeekRange();
-  const [from, setFrom] = useState(r.from);
-  const [to, setTo] = useState(r.to);
+  const shift = (d: string, n: number) => { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
+  // Default: Monday–Sunday of the week before last (paid on Wednesday).
+  const [from, setFrom] = useState(mode === "expert" ? shift(r.from, -7) : r.from);
+  const to = shift(from, 6);
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const m = useMutation({
@@ -595,11 +597,9 @@ function GenerateBatchDialog({
     onSuccess: onDone,
     onError: (e) => setErr(e instanceof Error ? e.message : "Failed"),
   });
-  const preset = (f: string, t: string) => {
-    setFrom(f);
-    setTo(t);
-  };
   const inp = "w-full h-11 px-3 rounded-[14px] border border-border bg-card text-[14px]";
+  const fmt = (d: string) => format(parseISO(d), "EEE dd MMM yyyy");
+  const canNext = shift(from, 7) <= r.from;
   return (
     <div className="fixed inset-0 z-50 bg-foreground/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-card rounded-[18px] border border-border w-full max-w-md p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -607,29 +607,23 @@ function GenerateBatchDialog({
           <h3 className="text-[17px] font-bold text-foreground">Generate payout batch</h3>
           <button onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => preset(r.from, r.to)} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted">Last week (Mon–Sun)</button>
-          <button onClick={() => preset(r.thisMon, r.today)} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted">This week so far</button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
-            <span>From</span>
-            <DateInput  className={inp} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label className="text-[12px] font-semibold text-muted-foreground space-y-1">
-            <span>To</span>
-            <DateInput  className={inp} value={to} min={from} max={r.today} onChange={(e) => setTo(e.target.value)} />
-          </label>
+        <div className="flex items-center justify-between gap-2 rounded-[14px] border border-border p-3">
+          <button onClick={() => setFrom(shift(from, -7))} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted">‹ Prev</button>
+          <div className="text-center">
+            <div className="text-[11px] font-semibold text-muted-foreground">Monday – Sunday</div>
+            <div className="text-[14px] font-bold text-foreground">{fmt(from)} – {fmt(to)}</div>
+          </div>
+          <button disabled={!canNext} onClick={() => setFrom(shift(from, 7))} className="h-8 px-3 rounded-full border border-border text-[12px] font-semibold hover:bg-muted disabled:opacity-40">Next ›</button>
         </div>
         <input className={inp} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <p className="text-[12px] text-muted-foreground">
-          Includes all unpaid wallet earnings up to the end date — order payouts and bonuses. Bonuses are shown separately.
+          Pays work done up to this Sunday, minus everything already paid. Any extra paid earlier is adjusted automatically from coming weeks.
         </p>
         {err && <p className="text-[13px] text-destructive">{err}</p>}
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="h-10 px-4 rounded-[12px] border border-border font-semibold text-[13px]">Cancel</button>
           <button
-            disabled={m.isPending || !from || !to || from > to || to > r.today}
+            disabled={m.isPending || !from || !to || from > to || to >= r.today}
             onClick={() => { setErr(null); m.mutate(); }}
             className="h-10 px-4 rounded-[12px] bg-primary text-primary-foreground font-bold text-[13px] disabled:opacity-50"
           >
